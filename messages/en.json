@@ -1,0 +1,31 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "program": "Program",
+    "speakers": "Speakers",
+    "sponsors": "Partners",
+    "contributions": "Contributions & Proceedings",
+    "practicalInfo": "Practical information",
+    "news": "News",
+    "verifyBadge": "Verify a badge",
+    "admin": "Organisers",
+    "myRegistrations": "My registrations",
+    "register": "Register",
+    "menu": "Menu"
+  },
+  "theme": {
+    "toggleToDark": "Switch to dark theme",
+    "toggleToLight": "Switch to light theme"
+  },
+  "locale": {
+    "fr": "FR",
+    "en": "EN",
+    "switchTo": "Switch to {locale}"
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong.",
+    "comingSoon": "This page is under construction."
+  }
+}

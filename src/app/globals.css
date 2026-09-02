@@ -1,0 +1,234 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Design tokens — repris de docs/Template_final_Forum_ANSD_clair_sombre.html
+   Couleurs de marque ANSD : valeurs approchées (cf. PLAN.md décision C3),
+   à remplacer par la charte officielle dès qu'elle est fournie.
+   ============================================================ */
+:root {
+  /* Marque (identiques dans les deux thèmes) */
+  --ansd-bleu: #0b4f8a;
+  --ansd-bleu-nuit: #082c4e;
+  --ansd-bleu-vif: #2f7fd1;
+  --ansd-vert: #1f8a4c;
+  --ansd-vert-vif: #3dbb6e;
+  --ansd-or: #e9a824;
+  --rouge: #c8323a;
+  --orange: #e07b1a;
+
+  /* Thème clair */
+  --bg: #ffffff;
+  --bg-2: #f5f8fb;
+  --bg-3: #e8f0f8;
+  --surface: #ffffff;
+  --surface-2: #f5f8fb;
+  --border: #d7dee5;
+  --text: #12212f;
+  --text-2: #4e5d6b;
+  --text-3: #8a96a3;
+  --heading: #082c4e;
+  --link: #0b4f8a;
+  --primary: #1f8a4c;
+  --primary-hover: #186f3d;
+  --primary-text: #fff;
+  --secondary: #0b4f8a;
+  --secondary-hover: #093e6c;
+  --accent-soft: #e4f3ea;
+  --accent-text: #1f8a4c;
+  --blue-soft: #e8f0f8;
+  --blue-text: #0b4f8a;
+  --warn-soft: #fff1e0;
+  --warn-text: #e07b1a;
+  --danger-soft: #fbe7e8;
+  --danger-text: #c8323a;
+  --gold-soft: #fff4dd;
+  --gold-text: #a46a08;
+  --dark-panel: #082c4e;
+  --dark-panel-text: #fff;
+  --dark-panel-muted: #9fb8d2;
+  --dark-panel-line: rgba(255, 255, 255, 0.12);
+  --ticker-bg: #082c4e;
+  --ticker-text: #c9daec;
+  --grid-line: #d7dee5;
+  --shadow: 0 30px 60px -30px rgba(8, 44, 78, 0.45);
+  --chart-bar: #0b4f8a;
+  --chart-bar-2: #1f8a4c;
+  --badge-bg: #fff;
+  --badge-text: #082c4e;
+  --radius-card: 12px;
+  color-scheme: light;
+}
+
+:root:not([data-theme="light"]) {
+  @media (prefers-color-scheme: dark) {
+    --bg: #061e38;
+    --bg-2: #0b2b4e;
+    --bg-3: #123a64;
+    --surface: #0b2b4e;
+    --surface-2: #0e3358;
+    --border: #1a4270;
+    --text: #dce7f3;
+    --text-2: #9db4cc;
+    --text-3: #5f7a96;
+    --heading: #f4f8fc;
+    --link: #7fe0a2;
+    --primary: #3dbb6e;
+    --primary-hover: #7fe0a2;
+    --primary-text: #06261a;
+    --secondary: #2f7fd1;
+    --secondary-hover: #3d8fe2;
+    --accent-soft: rgba(61, 187, 110, 0.15);
+    --accent-text: #7fe0a2;
+    --blue-soft: rgba(47, 127, 209, 0.18);
+    --blue-text: #8fc0f0;
+    --warn-soft: rgba(245, 154, 60, 0.15);
+    --warn-text: #f59a3c;
+    --danger-soft: rgba(240, 85, 92, 0.15);
+    --danger-text: #f0555c;
+    --gold-soft: rgba(242, 178, 51, 0.15);
+    --gold-text: #f2b233;
+    --dark-panel: #0b2b4e;
+    --dark-panel-text: #fff;
+    --dark-panel-muted: #9db4cc;
+    --dark-panel-line: #1a4270;
+    --ticker-bg: #3dbb6e;
+    --ticker-text: #06261a;
+    --grid-line: #123a64;
+    --shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.7);
+    --chart-bar: #2f7fd1;
+    --chart-bar-2: #3dbb6e;
+    --badge-bg: #f4f8fc;
+    --badge-text: #082c4e;
+    --rouge: #f0555c;
+    --orange: #f59a3c;
+    color-scheme: dark;
+  }
+}
+
+/* Sans restriction à `:root` : permet aussi de forcer un sous-arbre en sombre
+   (ex. l'application de scan, toujours sombre — brief §9 bis) indépendamment
+   du thème global de la page. */
+[data-theme="dark"] {
+  --bg: #061e38;
+  --bg-2: #0b2b4e;
+  --bg-3: #123a64;
+  --surface: #0b2b4e;
+  --surface-2: #0e3358;
+  --border: #1a4270;
+  --text: #dce7f3;
+  --text-2: #9db4cc;
+  --text-3: #5f7a96;
+  --heading: #f4f8fc;
+  --link: #7fe0a2;
+  --primary: #3dbb6e;
+  --primary-hover: #7fe0a2;
+  --primary-text: #06261a;
+  --secondary: #2f7fd1;
+  --secondary-hover: #3d8fe2;
+  --accent-soft: rgba(61, 187, 110, 0.15);
+  --accent-text: #7fe0a2;
+  --blue-soft: rgba(47, 127, 209, 0.18);
+  --blue-text: #8fc0f0;
+  --warn-soft: rgba(245, 154, 60, 0.15);
+  --warn-text: #f59a3c;
+  --danger-soft: rgba(240, 85, 92, 0.15);
+  --danger-text: #f0555c;
+  --gold-soft: rgba(242, 178, 51, 0.15);
+  --gold-text: #f2b233;
+  --dark-panel: #0b2b4e;
+  --dark-panel-text: #fff;
+  --dark-panel-muted: #9db4cc;
+  --dark-panel-line: #1a4270;
+  --ticker-bg: #3dbb6e;
+  --ticker-text: #06261a;
+  --grid-line: #123a64;
+  --shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.7);
+  --chart-bar: #2f7fd1;
+  --chart-bar-2: #3dbb6e;
+  --badge-bg: #f4f8fc;
+  --badge-text: #082c4e;
+  --rouge: #f0555c;
+  --orange: #f59a3c;
+  color-scheme: dark;
+}
+
+/* Utilitaires Tailwind générés à partir des tokens ci-dessus (v4, CSS-first).
+   Les valeurs pointent vers les variables `:root`/`[data-theme]` pour que le
+   changement de thème s'applique sans recompilation. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-bg-3: var(--bg-3);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-heading: var(--heading);
+  --color-link: var(--link);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-text: var(--primary-text);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-blue-soft: var(--blue-soft);
+  --color-blue-text: var(--blue-text);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-text: var(--warn-text);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-text: var(--danger-text);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-text: var(--gold-text);
+  --color-dark-panel: var(--dark-panel);
+  --color-dark-panel-text: var(--dark-panel-text);
+  --color-dark-panel-muted: var(--dark-panel-muted);
+  --color-ansd-bleu: var(--ansd-bleu);
+  --color-ansd-bleu-nuit: var(--ansd-bleu-nuit);
+  --color-ansd-bleu-vif: var(--ansd-bleu-vif);
+  --color-ansd-vert: var(--ansd-vert);
+  --color-ansd-vert-vif: var(--ansd-vert-vif);
+  --color-ansd-or: var(--ansd-or);
+  --color-rouge: var(--rouge);
+  --color-orange: var(--orange);
+
+  --font-display: var(--font-sora), sans-serif;
+  --font-body: var(--font-inter), sans-serif;
+
+  --radius-card: var(--radius-card);
+
+  --animate-ticker: ticker 45s linear infinite;
+}
+
+@keyframes ticker {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.55;
+  transition:
+    background 0.25s,
+    color 0.25s;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  line-height: 1.12;
+  letter-spacing: -0.012em;
+  color: var(--heading);
+}
+
+:focus-visible {
+  outline: 3px solid var(--ansd-or);
+  outline-offset: 2px;
+}

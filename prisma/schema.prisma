@@ -1,0 +1,789 @@
+// Schéma de données — Portail Forum international sur les données (ANSD)
+// Référence : docs/BRIEF_Claude_Code_Portail_Forum_ANSD.md §4
+//
+// Convention editionId (cf. brief : « Toutes les tables métier portent editionId ») :
+// appliquée à toute entité métier propre à une édition du Forum. Exceptions volontaires,
+// car ce sont des tables d'infrastructure transverses aux éditions, pas des données
+// « métier » d'une édition donnée :
+//   - User / Role                 : le BackOffice est partagé entre éditions (D1).
+//   - AuditLog / Job / Setting    : journalisation et infrastructure technique.
+// Les tables de jonction/log qui référencent déjà une entité edition-scopée
+// (CategoryZone, ParticipantZoneOverride, ScanLog, SessionSpeaker, SessionRegistration,
+// Contribution, Badge, MagicLink, NotificationLog) n'ont pas de editionId dupliqué :
+// il est transitif via leur relation obligatoire.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum ParticipantStatus {
+  INVITED
+  INVITATION_SENT
+  REGISTRATION_STARTED
+  REGISTERED
+  CONFIRMED
+  BADGED
+  CHECKED_IN
+  DECLINED
+  CANCELLED
+}
+
+enum ParticipantSource {
+  ONLINE
+  ONSITE
+  IMPORT
+}
+
+enum InvitationStatus {
+  PENDING
+  SENT
+  OPENED
+  CLICKED
+  REGISTERED
+  DECLINED
+  EXPIRED
+}
+
+enum SpeakerConfirmationStatus {
+  PRESSENTI
+  CONTACTE
+  INVITE
+  ACCEPTE
+  CONFIRME
+  PRESENT
+}
+
+enum SessionSpeakerRole {
+  MODERATOR
+  PANELIST
+  KEYNOTE
+  GUEST_OF_HONOR
+}
+
+enum SessionRegistrationStatus {
+  REGISTERED
+  WAITLISTED
+  CANCELLED
+  ATTENDED
+}
+
+enum SessionType {
+  OPENING
+  PLENARY
+  PANEL
+  INAUGURAL
+  AWARDS
+  BREAK
+  LUNCH
+  CLOSING
+  SIDE_EVENT
+}
+
+enum ScanDirection {
+  IN
+  OUT
+}
+
+enum ScanResult {
+  OK
+  ALREADY
+  DENIED_ZONE
+  REVOKED
+  UNKNOWN
+}
+
+enum ContributionType {
+  PROBLEM
+  OBJECTIVES
+  KEY_QUESTIONS
+  PRESENTATION
+  DOCUMENT
+  PHOTO
+  VIDEO
+  SYNTHESIS
+  RECOMMENDATION
+  CONCLUSION
+}
+
+enum DocumentCategory {
+  TDR
+  PROGRAM
+  PRESS
+  RELEASE
+  PROCEEDINGS
+  OTHER
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+  BOUNCED
+}
+
+enum AuditActorType {
+  USER
+  PARTICIPANT
+  SYSTEM
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Édition & BackOffice
+// ---------------------------------------------------------------------------
+
+model Edition {
+  id        String   @id @default(cuid())
+  code      String   @unique // ex. FID-2026
+  title     String
+  theme     String?
+  startDate DateTime
+  endDate   DateTime
+  venue     String
+  city      String
+  isActive  Boolean  @default(false)
+  settings  Json // validation auto par catégorie, ouverture inscriptions, etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categories            ParticipantCategory[]
+  participants          Participant[]
+  invitations           Invitation[]
+  delegations           Delegation[]
+  zones                 Zone[]
+  checkpoints           Checkpoint[]
+  rooms                 Room[]
+  sessions              Session[]
+  speakers              Speaker[]
+  sponsorLevels         SponsorLevel[]
+  sponsors              Sponsor[]
+  documents             Document[]
+  posts                 Post[]
+  contentBlocks         ContentBlock[]
+  notificationTemplates NotificationTemplate[]
+  contributions         Contribution[]
+}
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  passwordHash   String
+  name           String
+  roleId         String
+  totpSecret     String?
+  totpEnabled    Boolean   @default(false)
+  isActive       Boolean   @default(true)
+  lastLoginAt    DateTime?
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  role Role @relation(fields: [roleId], references: [id])
+
+  confirmedParticipants Participant[]             @relation("ParticipantConfirmedBy")
+  generatedBadges       Badge[]                   @relation("BadgeGeneratedBy")
+  grantedZoneOverrides  ParticipantZoneOverride[] @relation("ZoneOverrideGrantedBy")
+  scans                 ScanLog[]                 @relation("ScanAgent")
+  updatedContentBlocks  ContentBlock[]            @relation("ContentBlockUpdatedBy")
+  auditLogs             AuditLog[]                @relation("AuditActorUser")
+
+  @@index([roleId])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  permissions Json // string[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users User[]
+}
+
+// ---------------------------------------------------------------------------
+// Participants
+// ---------------------------------------------------------------------------
+
+model ParticipantCategory {
+  id                String   @id @default(cuid())
+  editionId         String
+  code              String
+  labelFr           String
+  labelEn           String
+  color             String?
+  badgeTemplateId   String?
+  autoConfirm       Boolean  @default(false)
+  requiresLogistics Boolean  @default(false)
+  sortOrder         Int      @default(0)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  edition       Edition        @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  participants  Participant[]
+  invitations   Invitation[]
+  categoryZones CategoryZone[]
+
+  @@unique([editionId, code])
+}
+
+model Participant {
+  id                  String            @id @default(cuid())
+  editionId           String
+  publicId            String            @unique // ex. FID26-7K3M2P, non séquentiel
+  civility            String?
+  firstName           String
+  lastName            String
+  email               String
+  phone               String?
+  photoPath           String?
+  locale              String            @default("fr")
+  jobTitle            String?
+  organization        String?
+  organizationType    String?
+  activityDomain      String?
+  bio                 String?           @db.Text
+  website             String?
+  country             String
+  city                String?
+  categoryId          String
+  delegationId        String?
+  invitationId        String?           @unique
+  status              ParticipantStatus @default(INVITED)
+  participationDays   Json?
+  attendsOpening      Boolean           @default(false)
+  attendsInaugural    Boolean           @default(false)
+  attendsAwards       Boolean           @default(false)
+  arrivalDate         DateTime?
+  departureDate       DateTime?
+  needsAccommodation  Boolean           @default(false)
+  needsTransport      Boolean           @default(false)
+  dietaryRequirements String?
+  specialNeeds        String?
+  consentTerms        Boolean           @default(false)
+  consentData         Boolean           @default(false)
+  consentImage        Boolean           @default(false)
+  consentAt           DateTime?
+  source              ParticipantSource @default(ONLINE)
+  registeredAt        DateTime?
+  confirmedAt         DateTime?
+  confirmedById       String?
+  notes               String?           @db.Text
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  deletedAt           DateTime?
+
+  edition     Edition             @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  category    ParticipantCategory @relation(fields: [categoryId], references: [id])
+  delegation  Delegation?         @relation("DelegationMembers", fields: [delegationId], references: [id])
+  headOf      Delegation?         @relation("DelegationHead")
+  invitation  Invitation?         @relation(fields: [invitationId], references: [id])
+  confirmedBy User?               @relation("ParticipantConfirmedBy", fields: [confirmedById], references: [id])
+  speaker     Speaker?
+
+  badges               Badge[]
+  sessionRegistrations SessionRegistration[]
+  scanLogs             ScanLog[]
+  zoneOverrides        ParticipantZoneOverride[]
+  magicLinks           MagicLink[]
+  notificationLogs     NotificationLog[]
+  auditLogs            AuditLog[]                @relation("AuditActorParticipant")
+
+  @@unique([editionId, email])
+  @@index([editionId, status])
+  @@index([editionId, categoryId])
+}
+
+model Invitation {
+  id             String           @id @default(cuid())
+  editionId      String
+  email          String
+  firstName      String
+  lastName       String
+  organization   String?
+  categoryId     String
+  token          String           @unique
+  status         InvitationStatus @default(PENDING)
+  sentAt         DateTime?
+  remindersCount Int              @default(0)
+  lastReminderAt DateTime?
+  openedAt       DateTime?
+  respondedAt    DateTime?
+  importBatchId  String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  edition     Edition             @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  category    ParticipantCategory @relation(fields: [categoryId], references: [id])
+  participant Participant?
+
+  @@index([editionId, status])
+}
+
+model Delegation {
+  id                String   @id @default(cuid())
+  editionId         String
+  name              String
+  country           String?
+  institution       String?
+  headParticipantId String?  @unique
+  maxMembers        Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  edition         Edition       @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  headParticipant Participant?  @relation("DelegationHead", fields: [headParticipantId], references: [id])
+  members         Participant[] @relation("DelegationMembers")
+}
+
+// ---------------------------------------------------------------------------
+// Badges & QR
+// ---------------------------------------------------------------------------
+
+model Badge {
+  id            String    @id @default(cuid())
+  participantId String
+  version       Int       @default(1)
+  qrToken       String    @unique // hash du token QR
+  generatedAt   DateTime?
+  generatedById String?
+  pdfPath       String?
+  pngPath       String?
+  downloadedAt  DateTime?
+  emailedAt     DateTime?
+  printedAt     DateTime?
+  printedCount  Int       @default(0)
+  revokedAt     DateTime?
+  revokeReason  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  generatedBy User?       @relation("BadgeGeneratedBy", fields: [generatedById], references: [id])
+  scanLogs    ScanLog[]
+
+  @@index([participantId])
+}
+
+// ---------------------------------------------------------------------------
+// Zones & contrôle d'accès
+// ---------------------------------------------------------------------------
+
+model Zone {
+  id          String  @id @default(cuid())
+  editionId   String
+  code        String
+  name        String
+  description String? @db.Text
+
+  edition       Edition                   @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  categoryZones CategoryZone[]
+  checkpoints   Checkpoint[]
+  overrides     ParticipantZoneOverride[]
+
+  @@unique([editionId, code])
+}
+
+model CategoryZone {
+  id         String @id @default(cuid())
+  categoryId String
+  zoneId     String
+
+  category ParticipantCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  zone     Zone                @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, zoneId])
+}
+
+model ParticipantZoneOverride {
+  id            String   @id @default(cuid())
+  participantId String
+  zoneId        String
+  grantedById   String?
+  reason        String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  zone        Zone        @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  grantedBy   User?       @relation("ZoneOverrideGrantedBy", fields: [grantedById], references: [id])
+
+  @@unique([participantId, zoneId])
+}
+
+model Checkpoint {
+  id          String  @id @default(cuid())
+  editionId   String
+  name        String
+  zoneId      String
+  deviceLabel String?
+  isActive    Boolean @default(true)
+
+  edition  Edition   @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  zone     Zone      @relation(fields: [zoneId], references: [id])
+  scanLogs ScanLog[]
+}
+
+model ScanLog {
+  id            String        @id @default(cuid())
+  participantId String?
+  badgeVersion  Int
+  checkpointId  String
+  agentUserId   String?
+  scannedAt     DateTime      @default(now())
+  day           DateTime      @db.Date
+  direction     ScanDirection @default(IN)
+  result        ScanResult
+  clientScanId  String        @unique // UUID côté client, idempotence hors-ligne
+  syncedAt      DateTime?
+  badgeId       String?
+
+  participant Participant? @relation(fields: [participantId], references: [id])
+  checkpoint  Checkpoint   @relation(fields: [checkpointId], references: [id], onDelete: Cascade)
+  agent       User?        @relation("ScanAgent", fields: [agentUserId], references: [id])
+  badge       Badge?       @relation(fields: [badgeId], references: [id])
+
+  @@index([day, checkpointId])
+  @@index([participantId, day])
+}
+
+// ---------------------------------------------------------------------------
+// Programme
+// ---------------------------------------------------------------------------
+
+model Room {
+  id        String  @id @default(cuid())
+  editionId String
+  name      String
+  capacity  Int?
+  floor     String?
+
+  edition  Edition   @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  sessions Session[]
+}
+
+model Session {
+  id                   String      @id @default(cuid())
+  editionId            String
+  slug                 String
+  number               Int?
+  type                 SessionType
+  titleFr              String
+  titleEn              String
+  descriptionFr        String?     @db.Text
+  descriptionEn        String?     @db.Text
+  objectives           String?     @db.Text
+  theme                String?
+  day                  DateTime    @db.Date
+  startTime            DateTime
+  endTime              DateTime
+  roomId               String?
+  capacity             Int?
+  registrationOpen     Boolean     @default(false)
+  registrationDeadline DateTime?
+  waitlistEnabled      Boolean     @default(true)
+  vipQuota             Int?
+  tdrPath              String?
+  isPublished          Boolean     @default(false)
+  liveStreamUrl        String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  deletedAt            DateTime?
+
+  edition       Edition               @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  room          Room?                 @relation(fields: [roomId], references: [id])
+  speakers      SessionSpeaker[]
+  registrations SessionRegistration[]
+  contributions Contribution[]
+
+  @@unique([editionId, slug])
+}
+
+model Speaker {
+  id               String    @id @default(cuid())
+  editionId        String
+  participantId    String?   @unique
+  firstName        String
+  lastName         String
+  jobTitle         String?
+  organization     String?
+  country          String?
+  photoPath        String?
+  bioFr            String?   @db.Text
+  bioEn            String?   @db.Text
+  presentationPath String?
+  isPublished      Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  edition       Edition          @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  participant   Participant?     @relation(fields: [participantId], references: [id])
+  sessions      SessionSpeaker[]
+  contributions Contribution[]
+}
+
+model SessionSpeaker {
+  id                 String                    @id @default(cuid())
+  sessionId          String
+  speakerId          String
+  role               SessionSpeakerRole
+  confirmationStatus SpeakerConfirmationStatus @default(PRESSENTI)
+  sortOrder          Int                       @default(0)
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  speaker Speaker @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, speakerId])
+}
+
+model SessionRegistration {
+  id               String                    @id @default(cuid())
+  sessionId        String
+  participantId    String
+  status           SessionRegistrationStatus @default(REGISTERED)
+  waitlistPosition Int?
+  registeredAt     DateTime                  @default(now())
+  promotedAt       DateTime?
+  cancelledAt      DateTime?
+
+  session     Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, participantId])
+  @@index([sessionId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Sponsors
+// ---------------------------------------------------------------------------
+
+model SponsorLevel {
+  id           String @id @default(cuid())
+  editionId    String
+  code         String
+  name         String
+  sortOrder    Int    @default(0)
+  logoMaxWidth Int?
+
+  edition  Edition   @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  sponsors Sponsor[]
+
+  @@unique([editionId, code])
+}
+
+model Sponsor {
+  id            String    @id @default(cuid())
+  editionId     String
+  name          String
+  levelId       String
+  logoPath      String?
+  descriptionFr String?   @db.Text
+  descriptionEn String?   @db.Text
+  website       String?
+  videoUrl      String?
+  standNumber   String?
+  contactName   String?
+  contactEmail  String?
+  isPublished   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  edition Edition      @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  level   SponsorLevel @relation(fields: [levelId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Contributions & Actes / documentation / contenus
+// ---------------------------------------------------------------------------
+
+model Contribution {
+  id          String           @id @default(cuid())
+  editionId   String
+  sessionId   String
+  type        ContributionType
+  title       String
+  body        String?          @db.Text
+  filePath    String?
+  url         String?
+  speakerId   String?
+  isPublished Boolean          @default(false)
+  sortOrder   Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  edition Edition  @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  session Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  speaker Speaker? @relation(fields: [speakerId], references: [id])
+}
+
+model Document {
+  id        String           @id @default(cuid())
+  editionId String
+  title     String
+  category  DocumentCategory
+  filePath  String
+  isPublic  Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  edition Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+}
+
+model Post {
+  id          String    @id @default(cuid())
+  editionId   String
+  slug        String
+  titleFr     String
+  titleEn     String
+  bodyFr      String    @db.Text
+  bodyEn      String    @db.Text
+  coverPath   String?
+  publishedAt DateTime?
+  isPublished Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  edition Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+
+  @@unique([editionId, slug])
+}
+
+model ContentBlock {
+  id          String   @id @default(cuid())
+  editionId   String
+  key         String // home.hero, home.objectives, practical.visa, ...
+  valueFr     Json
+  valueEn     Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  edition   Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  updatedBy User?   @relation("ContentBlockUpdatedBy", fields: [updatedById], references: [id])
+
+  @@unique([editionId, key])
+}
+
+// ---------------------------------------------------------------------------
+// Notifications & lien magique
+// ---------------------------------------------------------------------------
+
+model NotificationTemplate {
+  id        String              @id @default(cuid())
+  editionId String
+  key       String
+  channel   NotificationChannel
+  subjectFr String?
+  subjectEn String?
+  bodyFr    String              @db.Text
+  bodyEn    String              @db.Text
+  variables Json? // liste des variables disponibles, ex. ["prenom", "lien_badge"]
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  edition Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+
+  @@unique([editionId, key, channel])
+}
+
+model NotificationLog {
+  id                String              @id @default(cuid())
+  participantId     String
+  templateKey       String
+  channel           NotificationChannel
+  to                String
+  status            NotificationStatus  @default(QUEUED)
+  providerMessageId String?
+  error             String?             @db.Text
+  sentAt            DateTime?
+  createdAt         DateTime            @default(now())
+
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([participantId])
+}
+
+model MagicLink {
+  id            String    @id @default(cuid())
+  participantId String
+  tokenHash     String    @unique
+  code6         String
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([participantId])
+}
+
+// ---------------------------------------------------------------------------
+// Audit, files/jobs, réglages
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id                 String         @id @default(cuid())
+  actorType          AuditActorType
+  actorUserId        String?
+  actorParticipantId String?
+  action             String
+  entity             String
+  entityId           String
+  before             Json?
+  after              Json?
+  ip                 String?
+  userAgent          String?
+  createdAt          DateTime       @default(now())
+
+  actorUser        User?        @relation("AuditActorUser", fields: [actorUserId], references: [id])
+  actorParticipant Participant? @relation("AuditActorParticipant", fields: [actorParticipantId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model Job {
+  id             String    @id @default(cuid())
+  type           String
+  payload        Json
+  status         JobStatus @default(PENDING)
+  attempts       Int       @default(0)
+  runAt          DateTime  @default(now())
+  error          String?   @db.Text
+  // Ajouté au-delà des champs listés au brief §4 : nécessaire pour l'idempotence
+  // des jobs exigée au §3.3 (envois d'email, génération de badges) côté DbJobQueue
+  // (repli sans Redis) — cf. src/lib/queue.
+  idempotencyKey String?   @unique
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status, runAt])
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}

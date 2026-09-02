@@ -1,0 +1,3160 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Forum international sur les données — ANSD · Template final</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ============================================================
+   TEMPLATE FINAL — base « Institutionnelle claire » (A)
+   + ticker, histogramme vivant, grille jour × salle, jauges
+     de salles et cadre de scan issus du « Cockpit » (B)
+   + thèmes clair / sombre via variables CSS (data-theme)
+   Palette ANSD : valeurs approchées, à remplacer par la charte.
+   ============================================================ */
+      :root {
+        /* Marque (identiques dans les deux thèmes) */
+        --ansd-bleu: #0b4f8a;
+        --ansd-bleu-nuit: #082c4e;
+        --ansd-bleu-vif: #2f7fd1;
+        --ansd-vert: #1f8a4c;
+        --ansd-vert-vif: #3dbb6e;
+        --ansd-or: #e9a824;
+        --rouge: #c8323a;
+        --orange: #e07b1a;
+
+        /* Thème clair */
+        --bg: #ffffff;
+        --bg-2: #f5f8fb;
+        --bg-3: #e8f0f8;
+        --surface: #ffffff;
+        --surface-2: #f5f8fb;
+        --border: #d7dee5;
+        --text: #12212f;
+        --text-2: #4e5d6b;
+        --text-3: #8a96a3;
+        --heading: #082c4e;
+        --link: #0b4f8a;
+        --primary: #1f8a4c;
+        --primary-hover: #186f3d;
+        --primary-text: #fff;
+        --secondary: #0b4f8a;
+        --secondary-hover: #093e6c;
+        --accent-soft: #e4f3ea;
+        --accent-text: #1f8a4c;
+        --blue-soft: #e8f0f8;
+        --blue-text: #0b4f8a;
+        --warn-soft: #fff1e0;
+        --warn-text: #e07b1a;
+        --danger-soft: #fbe7e8;
+        --danger-text: #c8323a;
+        --gold-soft: #fff4dd;
+        --gold-text: #a46a08;
+        --dark-panel: #082c4e;
+        --dark-panel-text: #fff;
+        --dark-panel-muted: #9fb8d2;
+        --dark-panel-line: rgba(255, 255, 255, 0.12);
+        --ticker-bg: #082c4e;
+        --ticker-text: #c9daec;
+        --grid-line: #d7dee5;
+        --shadow: 0 30px 60px -30px rgba(8, 44, 78, 0.45);
+        --chart-bar: #0b4f8a;
+        --chart-bar-2: #1f8a4c;
+        --badge-bg: #fff;
+        --badge-text: #082c4e;
+        --r: 12px;
+        --font-display: "Sora", sans-serif;
+        --font-body: "Inter", sans-serif;
+        --maxw: 1200px;
+        color-scheme: light;
+      }
+      [data-theme="dark"] {
+        --bg: #061e38;
+        --bg-2: #0b2b4e;
+        --bg-3: #123a64;
+        --surface: #0b2b4e;
+        --surface-2: #0e3358;
+        --border: #1a4270;
+        --text: #dce7f3;
+        --text-2: #9db4cc;
+        --text-3: #5f7a96;
+        --heading: #f4f8fc;
+        --link: #7fe0a2;
+        --primary: #3dbb6e;
+        --primary-hover: #7fe0a2;
+        --primary-text: #06261a;
+        --secondary: #2f7fd1;
+        --secondary-hover: #3d8fe2;
+        --accent-soft: rgba(61, 187, 110, 0.15);
+        --accent-text: #7fe0a2;
+        --blue-soft: rgba(47, 127, 209, 0.18);
+        --blue-text: #8fc0f0;
+        --warn-soft: rgba(245, 154, 60, 0.15);
+        --warn-text: #f59a3c;
+        --danger-soft: rgba(240, 85, 92, 0.15);
+        --danger-text: #f0555c;
+        --gold-soft: rgba(242, 178, 51, 0.15);
+        --gold-text: #f2b233;
+        --dark-panel: #0b2b4e;
+        --dark-panel-text: #fff;
+        --dark-panel-muted: #9db4cc;
+        --dark-panel-line: #1a4270;
+        --ticker-bg: #3dbb6e;
+        --ticker-text: #06261a;
+        --grid-line: #123a64;
+        --shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.7);
+        --chart-bar: #2f7fd1;
+        --chart-bar-2: #3dbb6e;
+        --badge-bg: #f4f8fc;
+        --badge-text: #082c4e;
+        --rouge: #f0555c;
+        --orange: #f59a3c;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: var(--font-body);
+        color: var(--text);
+        background: var(--bg);
+        line-height: 1.55;
+        font-size: 16px;
+        transition:
+          background 0.25s,
+          color 0.25s;
+      }
+      h1,
+      h2,
+      h3,
+      h4 {
+        font-family: var(--font-display);
+        line-height: 1.12;
+        letter-spacing: -0.012em;
+        color: var(--heading);
+      }
+      h1 {
+        font-size: clamp(2.3rem, 5.2vw, 3.8rem);
+        font-weight: 800;
+      }
+      h2 {
+        font-size: clamp(1.6rem, 3vw, 2.3rem);
+        font-weight: 700;
+      }
+      h3 {
+        font-size: 1.2rem;
+        font-weight: 600;
+      }
+      p {
+        color: var(--text-2);
+      }
+      a {
+        color: var(--link);
+        text-decoration: none;
+      }
+      button {
+        font-family: inherit;
+        cursor: pointer;
+      }
+      .wrap {
+        max-width: var(--maxw);
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      .view {
+        display: none;
+      }
+      .view.active {
+        display: block;
+      }
+      .muted {
+        color: var(--text-3);
+        font-size: 0.88rem;
+      }
+      .num {
+        font-variant-numeric: tabular-nums;
+      }
+      :focus-visible {
+        outline: 3px solid var(--ansd-or);
+        outline-offset: 2px;
+      }
+
+      /* ---------- Ticker (B) ---------- */
+      .ticker {
+        background: var(--ticker-bg);
+        color: var(--ticker-text);
+        font-size: 0.8rem;
+        font-weight: 600;
+        overflow: hidden;
+        white-space: nowrap;
+        height: 32px;
+        line-height: 32px;
+      }
+      .ticker div {
+        display: inline-block;
+        animation: tk 45s linear infinite;
+        padding-left: 100%;
+      }
+      .ticker span {
+        margin-right: 48px;
+      }
+      @keyframes tk {
+        to {
+          transform: translateX(-100%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .ticker div {
+          animation: none;
+          padding-left: 16px;
+        }
+      }
+
+      /* ---------- Navigation ---------- */
+      header.nav {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: color-mix(in srgb, var(--bg) 90%, transparent);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+      }
+      header.nav .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 72px;
+        gap: 20px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .brand .mark {
+        width: 40px;
+        height: 40px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 3px;
+        align-items: end;
+        padding: 5px;
+        background: var(--ansd-bleu-nuit);
+        border-radius: 10px;
+      }
+      .brand .mark i {
+        display: block;
+        background: #7fb3e6;
+        border-radius: 2px;
+      }
+      .brand .mark i:nth-child(1) {
+        height: 40%;
+      }
+      .brand .mark i:nth-child(2) {
+        height: 70%;
+        background: var(--ansd-vert-vif);
+      }
+      .brand .mark i:nth-child(3) {
+        height: 100%;
+        background: #fff;
+      }
+      .brand b {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 0.95rem;
+        color: var(--heading);
+        line-height: 1.1;
+      }
+      .brand small {
+        display: block;
+        color: var(--text-3);
+        font-size: 0.72rem;
+      }
+      nav.menu {
+        display: flex;
+        gap: 2px;
+      }
+      nav.menu a {
+        padding: 8px 12px;
+        border-radius: 8px;
+        color: var(--text-2);
+        font-weight: 500;
+        font-size: 0.9rem;
+      }
+      nav.menu a:hover {
+        background: var(--blue-soft);
+        color: var(--blue-text);
+      }
+      nav.menu a.on {
+        color: var(--blue-text);
+        background: var(--blue-soft);
+      }
+      .nav-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 18px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border: 1px solid transparent;
+        transition:
+          transform 0.12s,
+          background 0.15s,
+          border-color 0.15s;
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn-primary {
+        background: var(--primary);
+        color: var(--primary-text);
+      }
+      .btn-primary:hover {
+        background: var(--primary-hover);
+      }
+      .btn-blue {
+        background: var(--secondary);
+        color: #fff;
+      }
+      .btn-blue:hover {
+        background: var(--secondary-hover);
+      }
+      .btn-ghost {
+        border-color: var(--border);
+        color: var(--heading);
+        background: var(--surface);
+      }
+      .btn-ghost:hover {
+        border-color: var(--text-3);
+      }
+      .btn-sm {
+        padding: 8px 12px;
+        font-size: 0.84rem;
+      }
+      .seg {
+        display: flex;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .seg button {
+        background: none;
+        border: 0;
+        color: var(--text-2);
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+      .seg button.on {
+        background: var(--blue-soft);
+        color: var(--blue-text);
+      }
+      .theme-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        display: grid;
+        place-items: center;
+        color: var(--text-2);
+        font-size: 1rem;
+      }
+      .burger {
+        display: none;
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        width: 42px;
+        height: 42px;
+        color: var(--text);
+      }
+
+      /* ---------- Hero : compte à rebours + histogramme (A+B) ---------- */
+      .hero {
+        background: linear-gradient(180deg, var(--bg-2), var(--bg) 75%);
+        border-bottom: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+      }
+      .hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(var(--grid-line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+        background-size: 56px 56px;
+        opacity: 0.4;
+        mask-image: linear-gradient(180deg, #000, transparent 85%);
+      }
+      .hero .wrap {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 52px;
+        padding: 68px 24px 60px;
+        align-items: center;
+      }
+      .hero .date {
+        font-family: var(--font-display);
+        font-weight: 600;
+        color: var(--accent-text);
+        font-size: 1rem;
+        margin-bottom: 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .hero .date::before {
+        content: "";
+        width: 32px;
+        height: 2px;
+        background: var(--ansd-vert-vif);
+      }
+      .hero h1 {
+        margin-bottom: 18px;
+        max-width: 15ch;
+      }
+      .hero .lead {
+        font-size: 1.1rem;
+        max-width: 54ch;
+        margin-bottom: 28px;
+      }
+      .hero .cta {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .hero .meta {
+        display: flex;
+        gap: 28px;
+        margin-top: 34px;
+        flex-wrap: wrap;
+      }
+      .hero .meta b {
+        display: block;
+        font-family: var(--font-display);
+        color: var(--heading);
+        font-size: 1.02rem;
+      }
+      .hero .meta span {
+        font-size: 0.82rem;
+        color: var(--text-3);
+      }
+      .live {
+        background: var(--dark-panel);
+        color: var(--dark-panel-text);
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--dark-panel-line);
+      }
+      .live .lh {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.82rem;
+        color: var(--dark-panel-muted);
+      }
+      .live .lh span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #7fe0a2;
+      }
+      .live .lh span::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--ansd-vert-vif);
+        box-shadow: 0 0 10px var(--ansd-vert-vif);
+      }
+      .live .cells {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .live .cell {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 14px 6px;
+        text-align: center;
+      }
+      .live .cell b {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .live .cell span {
+        font-size: 0.7rem;
+        color: var(--dark-panel-muted);
+      }
+      .live .sub {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        margin-top: 18px;
+        padding-top: 14px;
+        border-top: 1px solid var(--dark-panel-line);
+      }
+      .live .sub b {
+        font-family: var(--font-display);
+        font-size: 1.9rem;
+        font-weight: 800;
+        line-height: 1;
+      }
+      .live .sub b small {
+        font-size: 0.8rem;
+        color: var(--dark-panel-muted);
+        font-weight: 500;
+        margin-left: 6px;
+      }
+      .live .sub span {
+        font-size: 0.75rem;
+        color: var(--dark-panel-muted);
+      }
+      .live svg {
+        width: 100%;
+        height: 130px;
+        display: block;
+        margin-top: 8px;
+      }
+
+      /* ---------- Sections ---------- */
+      section.block {
+        padding: 64px 0;
+      }
+      section.block.tint {
+        background: var(--bg-2);
+      }
+      .sec-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 24px;
+        margin-bottom: 30px;
+      }
+      .sec-head p {
+        max-width: 60ch;
+        margin-top: 6px;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        padding: 22px;
+      }
+      .card h3 {
+        margin-bottom: 8px;
+      }
+      .card.j {
+        border-top: 3px solid var(--ansd-vert-vif);
+      }
+      .card .idx {
+        font-family: var(--font-display);
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: var(--ansd-bleu-vif);
+        line-height: 1;
+        margin-bottom: 10px;
+      }
+      .pill {
+        display: inline-block;
+        padding: 3px 9px;
+        border-radius: 999px;
+        font-size: 0.74rem;
+        font-weight: 600;
+      }
+      .pill.open {
+        background: var(--accent-soft);
+        color: var(--accent-text);
+      }
+      .pill.wait {
+        background: var(--warn-soft);
+        color: var(--warn-text);
+      }
+      .pill.full {
+        background: var(--danger-soft);
+        color: var(--danger-text);
+      }
+      .pill.blue {
+        background: var(--blue-soft);
+        color: var(--blue-text);
+      }
+      .pill.gold {
+        background: var(--gold-soft);
+        color: var(--gold-text);
+      }
+      .logos {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+        gap: 12px;
+      }
+      .logo-box {
+        height: 86px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        font-family: var(--font-display);
+        font-weight: 700;
+        color: var(--blue-text);
+        background: var(--surface);
+      }
+
+      /* ---------- Programme : grille jour × salle (B) ---------- */
+      .tabs {
+        display: inline-flex;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 4px;
+        gap: 4px;
+        margin-bottom: 24px;
+      }
+      .tabs button {
+        background: none;
+        border: 0;
+        padding: 9px 16px;
+        border-radius: 7px;
+        color: var(--text-2);
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      .tabs button.on {
+        background: var(--primary);
+        color: var(--primary-text);
+      }
+      .day {
+        display: none;
+      }
+      .day.on {
+        display: block;
+      }
+      .grid-prog {
+        display: grid;
+        grid-template-columns: 80px repeat(3, 1fr);
+        gap: 8px;
+      }
+      .grid-prog .h {
+        font-size: 0.78rem;
+        color: var(--text-3);
+        font-weight: 600;
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 4px;
+      }
+      .grid-prog .t {
+        font-family: var(--font-display);
+        font-weight: 600;
+        color: var(--text-2);
+        font-size: 0.9rem;
+        padding-top: 12px;
+      }
+      .sess {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 118px;
+        transition: border-color 0.15s;
+        color: inherit;
+      }
+      .sess:hover {
+        border-color: var(--ansd-bleu-vif);
+      }
+      .sess.plen {
+        grid-column: 2/-1;
+        background: var(--blue-soft);
+        border-color: transparent;
+        min-height: auto;
+      }
+      .sess.pause {
+        background: transparent;
+        border-style: dashed;
+        min-height: auto;
+        color: var(--text-3);
+        grid-column: 2/-1;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+      }
+      .sess h4 {
+        font-family: var(--font-display);
+        font-size: 0.98rem;
+        color: var(--heading);
+        font-weight: 600;
+      }
+      .sess .n {
+        font-size: 0.74rem;
+        color: var(--text-3);
+      }
+      .sess .cap {
+        margin-top: auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.78rem;
+        color: var(--text-2);
+      }
+      .meter {
+        height: 5px;
+        background: var(--bg-3);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .meter i {
+        display: block;
+        height: 100%;
+        background: var(--ansd-vert-vif);
+      }
+      .meter i.w {
+        background: var(--orange);
+      }
+      .meter i.f {
+        background: var(--rouge);
+      }
+
+      /* Fiche session */
+      .session-hero {
+        background: var(--dark-panel);
+        color: #fff;
+        padding: 56px 0;
+        border-bottom: 1px solid var(--dark-panel-line);
+      }
+      .session-hero h1 {
+        color: #fff;
+        font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+        max-width: 24ch;
+      }
+      .crumb {
+        font-size: 0.82rem;
+        color: var(--dark-panel-muted);
+        margin-bottom: 14px;
+      }
+      .crumb a {
+        color: #fff;
+      }
+      .facts {
+        display: flex;
+        gap: 28px;
+        flex-wrap: wrap;
+        margin-top: 22px;
+      }
+      .facts div span {
+        display: block;
+        font-size: 0.76rem;
+        color: var(--dark-panel-muted);
+      }
+      .facts div b {
+        font-family: var(--font-display);
+      }
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 40px;
+        padding: 48px 0;
+      }
+      .people {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+        gap: 12px;
+      }
+      .person {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        background: var(--surface);
+      }
+      .avatar {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--ansd-bleu-vif), var(--ansd-vert-vif));
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-family: var(--font-display);
+        font-weight: 700;
+        flex: none;
+      }
+      .person b {
+        display: block;
+        font-size: 0.93rem;
+        color: var(--heading);
+      }
+      .person span {
+        font-size: 0.78rem;
+        color: var(--text-3);
+      }
+      .sticky {
+        position: sticky;
+        top: 96px;
+      }
+      .reserve {
+        background: var(--blue-soft);
+        border-radius: 14px;
+        padding: 22px;
+      }
+      .reserve .big {
+        font-family: var(--font-display);
+        font-size: 2.4rem;
+        font-weight: 800;
+        color: var(--heading);
+        line-height: 1;
+      }
+      .reserve .big small {
+        font-size: 0.95rem;
+        color: var(--text-3);
+        font-weight: 500;
+      }
+      .doc {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-top: 10px;
+        background: var(--surface);
+      }
+      .doc .ic {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: var(--danger-soft);
+        color: var(--danger-text);
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        font-size: 0.7rem;
+      }
+      ul.q {
+        margin: 8px 0 24px 18px;
+        color: var(--text-2);
+      }
+
+      /* Intervenants */
+      .speakers {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+      }
+      .speaker {
+        text-align: center;
+        padding: 24px 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        background: var(--surface);
+      }
+      .speaker .avatar {
+        width: 84px;
+        height: 84px;
+        margin: 0 auto 12px;
+        font-size: 1.5rem;
+      }
+      .speaker b {
+        display: block;
+        font-family: var(--font-display);
+        color: var(--heading);
+      }
+      .speaker span {
+        font-size: 0.84rem;
+        color: var(--text-2);
+        display: block;
+      }
+      .speaker .flag {
+        font-size: 0.78rem;
+        color: var(--text-3);
+        margin-top: 6px;
+      }
+
+      /* Sponsors */
+      .level {
+        margin-bottom: 30px;
+      }
+      .level h3 {
+        font-size: 0.85rem;
+        color: var(--text-3);
+        font-weight: 500;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .level h3::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+      .level.principal .logo-box {
+        height: 124px;
+        font-size: 1.25rem;
+        border-color: var(--ansd-or);
+      }
+
+      /* Infos */
+      .infos {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+      .info .k {
+        font-family: var(--font-display);
+        color: var(--accent-text);
+        font-weight: 600;
+        font-size: 0.84rem;
+        margin-bottom: 8px;
+      }
+
+      /* Inscription */
+      .form-shell {
+        max-width: 840px;
+        margin: 0 auto;
+        padding: 56px 24px;
+      }
+      .steps {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+      .steps div {
+        flex: 1;
+        height: 5px;
+        border-radius: 3px;
+        background: var(--bg-3);
+      }
+      .steps div.done {
+        background: var(--ansd-vert-vif);
+      }
+      .steps div.on {
+        background: var(--ansd-bleu-vif);
+      }
+      .steplabel {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.82rem;
+        color: var(--text-3);
+        margin-bottom: 26px;
+      }
+      .steplabel b {
+        color: var(--heading);
+      }
+      .fields {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .field.full {
+        grid-column: 1/-1;
+      }
+      .field label {
+        font-size: 0.84rem;
+        font-weight: 600;
+        color: var(--heading);
+      }
+      .field input,
+      .field select,
+      .field textarea {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 11px 12px;
+        font: inherit;
+        background: var(--surface);
+        color: var(--text);
+      }
+      .field input::placeholder,
+      .field textarea::placeholder {
+        color: var(--text-3);
+      }
+      .field input:focus,
+      .field select:focus,
+      .field textarea:focus {
+        border-color: var(--ansd-bleu-vif);
+        outline: 0;
+        box-shadow: 0 0 0 3px var(--blue-soft);
+      }
+      .field small {
+        color: var(--text-3);
+        font-size: 0.78rem;
+      }
+      .form-nav {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 26px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+      }
+      .fstep {
+        display: none;
+      }
+      .fstep.on {
+        display: block;
+      }
+      .choice {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .choice label {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 14px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        cursor: pointer;
+        background: var(--surface);
+        color: var(--text);
+      }
+      .choice input {
+        accent-color: var(--ansd-vert);
+      }
+
+      /* Mon espace + badge (le badge reste clair : il est imprimé) */
+      .space {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 36px;
+        padding: 48px 0;
+      }
+      .badge {
+        aspect-ratio: 54/85.6;
+        background: var(--badge-bg);
+        color: var(--badge-text);
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .badge .top {
+        background: var(--ansd-bleu-nuit);
+        color: #fff;
+        padding: 14px 18px;
+        font-size: 0.72rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .badge .top b {
+        font-family: var(--font-display);
+      }
+      .badge .band {
+        height: 9px;
+        background: linear-gradient(90deg, var(--ansd-bleu-vif), var(--ansd-vert-vif));
+      }
+      .badge .body {
+        padding: 18px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 6px;
+      }
+      .badge .body .avatar {
+        width: 96px;
+        height: 96px;
+        font-size: 1.6rem;
+      }
+      .badge .name {
+        font-family: var(--font-display);
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: var(--ansd-bleu-nuit);
+        line-height: 1.08;
+        margin-top: 8px;
+      }
+      .badge .org {
+        font-size: 0.84rem;
+        color: #4e6a88;
+      }
+      .badge .cat {
+        margin-top: auto;
+      }
+      .badge .cat .pill {
+        background: #e4f3ea;
+        color: #1f8a4c;
+      }
+      .qr {
+        width: 96px;
+        height: 96px;
+        margin: 10px auto 0;
+        background: repeating-conic-gradient(var(--ansd-bleu-nuit) 0 25%, #fff 0 50%) 0 0/16px 16px;
+        border: 6px solid #fff;
+        outline: 1px solid #c9d6e3;
+      }
+      .badge .uid {
+        font-size: 0.72rem;
+        color: #7a8fa6;
+        letter-spacing: 0.08em;
+      }
+      .mine {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        border-radius: 10px;
+        padding: 14px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+      .mine b {
+        color: var(--heading);
+      }
+
+      /* Vérification */
+      .verify {
+        max-width: 520px;
+        margin: 64px auto;
+        text-align: center;
+        padding: 0 24px;
+      }
+      .verify input {
+        flex: 1;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 11px 12px;
+        font: inherit;
+        background: var(--surface);
+        color: var(--text);
+      }
+      .verify .result {
+        margin-top: 26px;
+        border: 1px solid var(--ansd-vert-vif);
+        background: var(--surface);
+        border-radius: 16px;
+        padding: 26px;
+        text-align: left;
+      }
+      .verify .ok {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--accent-text);
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 16px;
+      }
+      .verify .ok i {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: var(--ansd-vert-vif);
+        color: #06261a;
+        display: grid;
+        place-items: center;
+        font-style: normal;
+      }
+      .verify dl {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        row-gap: 8px;
+      }
+      .verify dt {
+        color: var(--text-3);
+      }
+      .verify dd {
+        color: var(--heading);
+      }
+
+      /* ---------- BackOffice ---------- */
+      .bo {
+        display: grid;
+        grid-template-columns: 236px 1fr;
+        min-height: calc(100vh - 104px);
+      }
+      .bo aside {
+        background: var(--dark-panel);
+        color: var(--dark-panel-muted);
+        padding: 22px 14px;
+        border-right: 1px solid var(--dark-panel-line);
+      }
+      .bo aside .who {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 6px 10px 18px;
+        border-bottom: 1px solid var(--dark-panel-line);
+        margin-bottom: 12px;
+      }
+      .bo aside .who .avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 0.8rem;
+      }
+      .bo aside .who b {
+        display: block;
+        color: #fff;
+        font-size: 0.9rem;
+      }
+      .bo aside .who span {
+        font-size: 0.74rem;
+      }
+      .bo aside a {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 9px 10px;
+        border-radius: 8px;
+        color: var(--dark-panel-muted);
+        font-size: 0.88rem;
+      }
+      .bo aside a.on,
+      .bo aside a:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+      }
+      .bo aside a.on {
+        box-shadow: inset 3px 0 0 var(--ansd-vert-vif);
+      }
+      .bo aside .grp {
+        font-size: 0.7rem;
+        color: #6e8aa6;
+        margin: 16px 10px 6px;
+      }
+      .bo main {
+        background: var(--bg-2);
+        padding: 28px;
+      }
+      .bo-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .bo-head h2 {
+        font-size: 1.5rem;
+      }
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .kpi {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+      }
+      .kpi span {
+        font-size: 0.78rem;
+        color: var(--text-3);
+      }
+      .kpi b {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 1.9rem;
+        font-weight: 700;
+        color: var(--heading);
+        margin: 4px 0 2px;
+      }
+      .kpi small {
+        color: var(--accent-text);
+        font-weight: 600;
+      }
+      .rooms {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .room {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+      }
+      .room b {
+        display: block;
+        color: var(--heading);
+        font-family: var(--font-display);
+      }
+      .room .meter {
+        margin: 10px 0 6px;
+      }
+      .room span {
+        font-size: 0.76rem;
+        color: var(--text-3);
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+      }
+      .panel h3 {
+        font-size: 0.95rem;
+        margin-bottom: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .bo-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 12px;
+      }
+      .chart {
+        display: flex;
+        align-items: end;
+        gap: 8px;
+        height: 180px;
+        padding: 22px 0 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .chart div {
+        flex: 1;
+        background: var(--chart-bar);
+        border-radius: 4px 4px 0 0;
+        position: relative;
+      }
+      .chart div.g {
+        background: var(--chart-bar-2);
+      }
+      .chart div::after {
+        content: attr(data-v);
+        position: absolute;
+        top: -20px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 0.72rem;
+        color: var(--text-2);
+      }
+      .chart-x {
+        display: flex;
+        gap: 8px;
+        font-size: 0.72rem;
+        color: var(--text-3);
+        margin-top: 6px;
+      }
+      .chart-x span {
+        flex: 1;
+        text-align: center;
+      }
+      .feed {
+        list-style: none;
+      }
+      .feed li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.86rem;
+      }
+      .feed li:last-child {
+        border: 0;
+      }
+      .feed .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--ansd-vert-vif);
+        flex: none;
+        box-shadow: 0 0 8px var(--ansd-vert-vif);
+      }
+      .feed .dot.o {
+        background: var(--orange);
+        box-shadow: 0 0 8px var(--orange);
+      }
+      .feed .dot.r {
+        background: var(--rouge);
+        box-shadow: 0 0 8px var(--rouge);
+      }
+      .feed time {
+        margin-left: auto;
+        color: var(--text-3);
+        font-size: 0.78rem;
+      }
+      table.data {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+      }
+      table.data th {
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-3);
+        font-size: 0.76rem;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-2);
+      }
+      table.data td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+      table.data td b {
+        color: var(--heading);
+      }
+      table.data tr:hover td {
+        background: var(--blue-soft);
+      }
+      .toolbar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      .toolbar input,
+      .toolbar select {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 9px 12px;
+        font: inherit;
+        background: var(--surface);
+        color: var(--text);
+      }
+      .toolbar input {
+        flex: 1;
+        min-width: 220px;
+      }
+      .st {
+        display: inline-block;
+        padding: 3px 9px;
+        border-radius: 6px;
+        font-size: 0.74rem;
+        font-weight: 600;
+      }
+      .st.confirmed {
+        background: var(--accent-soft);
+        color: var(--accent-text);
+      }
+      .st.registered {
+        background: var(--blue-soft);
+        color: var(--blue-text);
+      }
+      .st.invited {
+        background: var(--bg-3);
+        color: var(--text-2);
+      }
+      .st.badged {
+        background: var(--gold-soft);
+        color: var(--gold-text);
+      }
+      .st.checked {
+        background: var(--ansd-bleu-nuit);
+        color: #fff;
+      }
+
+      /* Scanner (cadre à coins de B) */
+      .scanner {
+        max-width: 420px;
+        margin: 0 auto;
+        background: #020c18;
+        border: 1px solid #1a4270;
+        border-radius: 30px;
+        padding: 18px;
+        min-height: 720px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        box-shadow: 0 50px 100px -40px rgba(0, 0, 0, 0.8);
+        color: #fff;
+      }
+      .scanner .sbar {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.78rem;
+        color: #9db4cc;
+      }
+      .scanner .sbar b {
+        color: #7fe0a2;
+      }
+      .scanner .cam {
+        flex: 1;
+        border-radius: 20px;
+        background: radial-gradient(circle at 50% 40%, #12304f, #020c18 70%);
+        display: grid;
+        place-items: center;
+        min-height: 300px;
+        position: relative;
+      }
+      .scanner .frame {
+        width: 210px;
+        height: 210px;
+        border-radius: 20px;
+        position: relative;
+        --c: var(--ansd-vert-vif);
+        background:
+          linear-gradient(var(--c), var(--c)) top left/28px 3px no-repeat,
+          linear-gradient(var(--c), var(--c)) top left/3px 28px no-repeat,
+          linear-gradient(var(--c), var(--c)) top right/28px 3px no-repeat,
+          linear-gradient(var(--c), var(--c)) top right/3px 28px no-repeat,
+          linear-gradient(var(--c), var(--c)) bottom left/28px 3px no-repeat,
+          linear-gradient(var(--c), var(--c)) bottom left/3px 28px no-repeat,
+          linear-gradient(var(--c), var(--c)) bottom right/28px 3px no-repeat,
+          linear-gradient(var(--c), var(--c)) bottom right/3px 28px no-repeat;
+      }
+      .scanner .frame::before {
+        content: "";
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        top: 50%;
+        height: 2px;
+        background: #7fe0a2;
+        box-shadow: 0 0 14px var(--ansd-vert-vif);
+        animation: scan 2.2s ease-in-out infinite;
+      }
+      @keyframes scan {
+        0%,
+        100% {
+          top: 10%;
+        }
+        50% {
+          top: 90%;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .scanner .frame::before {
+          animation: none;
+        }
+      }
+      .scanner .res {
+        border-radius: 18px;
+        padding: 18px;
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        min-height: 120px;
+      }
+      .scanner .res.ok {
+        background: var(--ansd-vert-vif);
+        color: #06261a;
+      }
+      .scanner .res.warn {
+        background: #f59a3c;
+        color: #2b1500;
+      }
+      .scanner .res.no {
+        background: #f0555c;
+        color: #fff;
+      }
+      .scanner .res .avatar {
+        width: 64px;
+        height: 64px;
+        background: rgba(0, 0, 0, 0.2);
+        color: inherit;
+      }
+      .scanner .res b {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 1.15rem;
+      }
+      .scanner .res span {
+        font-size: 0.84rem;
+        opacity: 0.9;
+      }
+      .scanner .res .state {
+        margin-left: auto;
+        font-family: var(--font-display);
+        font-weight: 800;
+        font-size: 1.05rem;
+        text-align: right;
+      }
+      .scanner .actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .scanner .actions button {
+        background: #0b2b4e;
+        color: #dce7f3;
+        border: 1px solid #1a4270;
+        border-radius: 12px;
+        padding: 12px 6px;
+        font-size: 0.78rem;
+      }
+      .scanner .actions button.on {
+        border-color: var(--ansd-vert-vif);
+        color: #7fe0a2;
+      }
+
+      /* Footer */
+      footer {
+        background: var(--dark-panel);
+        color: var(--dark-panel-muted);
+        padding: 48px 0 26px;
+        margin-top: 40px;
+        border-top: 1px solid var(--dark-panel-line);
+      }
+      footer .wrap {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr 1fr 1fr;
+        gap: 30px;
+      }
+      footer h4 {
+        color: #fff;
+        font-size: 0.92rem;
+        margin-bottom: 10px;
+      }
+      footer a {
+        color: var(--dark-panel-muted);
+        display: block;
+        font-size: 0.88rem;
+        padding: 3px 0;
+      }
+      footer p {
+        color: var(--dark-panel-muted);
+      }
+      footer .bottom {
+        grid-column: 1/-1;
+        border-top: 1px solid var(--dark-panel-line);
+        padding-top: 18px;
+        font-size: 0.8rem;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      @media (max-width: 980px) {
+        .hero .wrap {
+          grid-template-columns: 1fr;
+          gap: 36px;
+        }
+        .grid-3,
+        .speakers,
+        .infos,
+        .rooms {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .kpis {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .two-col,
+        .space,
+        .bo-grid {
+          grid-template-columns: 1fr;
+        }
+        .bo {
+          grid-template-columns: 1fr;
+        }
+        .bo aside {
+          display: none;
+        }
+        .grid-prog {
+          grid-template-columns: 1fr;
+        }
+        .grid-prog .h {
+          display: none;
+        }
+        .sess.plen,
+        .sess.pause {
+          grid-column: auto;
+        }
+        footer .wrap {
+          grid-template-columns: 1fr 1fr;
+        }
+        nav.menu {
+          display: none;
+        }
+        .burger {
+          display: block;
+        }
+        header.nav.open nav.menu {
+          display: flex;
+          flex-direction: column;
+          position: absolute;
+          top: 72px;
+          left: 0;
+          right: 0;
+          background: var(--bg);
+          padding: 12px;
+          border-bottom: 1px solid var(--border);
+        }
+        .nav-actions .btn-ghost,
+        .nav-actions .seg {
+          display: none;
+        }
+      }
+      @media (max-width: 600px) {
+        .grid-3,
+        .speakers,
+        .infos,
+        .rooms,
+        .kpis,
+        .fields {
+          grid-template-columns: 1fr;
+        }
+        .live .cell b {
+          font-size: 1.5rem;
+        }
+        footer .wrap {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="ticker" aria-hidden="true">
+      <div>
+        <span>487 participants inscrits</span><span>32 pays représentés</span
+        ><span>18 panels · 3 journées</span><span>Ouverture des inscriptions : 5 octobre 2026</span
+        ><span>Traduction simultanée FR · EN</span
+        ><span>CICAD Diamniadio · 23–25 novembre 2026</span
+        ><span>Appel à contributions ouvert jusqu'au 10 novembre</span>
+      </div>
+    </div>
+
+    <header class="nav" id="nav">
+      <div class="wrap">
+        <a class="brand" href="#accueil"
+          ><div class="mark"><i></i><i></i><i></i></div>
+          <div>
+            <b>Forum international sur les données</b
+            ><small>ANSD · Dakar · 23–25 novembre 2026</small>
+          </div></a
+        >
+        <nav class="menu">
+          <a href="#accueil" data-nav="accueil" class="on">Accueil</a>
+          <a href="#programme" data-nav="programme">Programme</a>
+          <a href="#intervenants" data-nav="intervenants">Intervenants</a>
+          <a href="#sponsors" data-nav="sponsors">Partenaires</a>
+          <a href="#infos" data-nav="infos">Infos pratiques</a>
+          <a href="#verifier" data-nav="verifier">Vérifier un badge</a>
+          <a href="#admin" data-nav="admin">Organisation</a>
+        </nav>
+        <div class="nav-actions">
+          <div class="seg"><button class="on">FR</button><button>EN</button></div>
+          <button
+            class="theme-btn"
+            id="themeBtn"
+            aria-label="Changer de thème"
+            title="Thème clair / sombre"
+          >
+            ☾
+          </button>
+          <a class="btn btn-ghost btn-sm" href="#espace">Mes inscriptions</a>
+          <a class="btn btn-primary btn-sm" href="#inscription">S'inscrire</a>
+          <button
+            class="burger"
+            aria-label="Menu"
+            onclick="document.getElementById('nav').classList.toggle('open')"
+          >
+            ☰
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ===================== ACCUEIL ===================== -->
+    <div class="view active" id="v-accueil">
+      <section class="hero">
+        <div class="wrap">
+          <div>
+            <div class="date">23, 24 et 25 novembre 2026 · CICAD, Diamniadio</div>
+            <h1>Des données fiables pour des décisions qui comptent</h1>
+            <p class="lead">
+              Trois jours de plénières, de panels et d'ateliers réunissant les instituts nationaux
+              de statistique, les organisations internationales, les chercheurs et les décideurs
+              autour de la production, du partage et de l'usage des données en Afrique.
+            </p>
+            <div class="cta">
+              <a class="btn btn-primary" href="#inscription">S'inscrire au Forum</a
+              ><a class="btn btn-ghost" href="#programme">Voir le programme</a
+              ><a class="btn btn-ghost" href="#espace">Télécharger mon badge</a>
+            </div>
+            <div class="meta">
+              <div><b>18 panels · 4 plénières</b><span>Trois journées thématiques</span></div>
+              <div><b>Français · English</b><span>Traduction simultanée</span></div>
+              <div>
+                <b>1<sup>re</sup> édition</b><span>Organisée par l'ANSD</span>
+              </div>
+            </div>
+          </div>
+          <div class="live" aria-label="Compte à rebours et inscriptions en direct">
+            <div class="lh"><b>Ouverture dans</b><span>En direct · heure de Dakar</span></div>
+            <div class="cells">
+              <div class="cell"><b class="num" id="cd-d">83</b><span>jours</span></div>
+              <div class="cell"><b class="num" id="cd-h">14</b><span>heures</span></div>
+              <div class="cell"><b class="num" id="cd-m">27</b><span>minutes</span></div>
+              <div class="cell"><b class="num" id="cd-s">08</b><span>secondes</span></div>
+            </div>
+            <div class="sub">
+              <b class="num">487<small>participants · 32 pays</small></b
+              ><span>Inscriptions par pays</span>
+            </div>
+            <svg
+              viewBox="0 0 400 130"
+              id="livechart"
+              role="img"
+              aria-label="Histogramme des inscriptions par pays"
+            ></svg>
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="wrap">
+          <div class="sec-head">
+            <div>
+              <h2>Trois journées, trois questions</h2>
+              <p>
+                Chaque journée est construite autour d'une question posée aux producteurs et aux
+                utilisateurs de données.
+              </p>
+            </div>
+          </div>
+          <div class="grid-3">
+            <div class="card j">
+              <div class="idx">J1</div>
+              <h3>Comment produire des données de qualité ?</h3>
+              <p>
+                Recensements, enquêtes, registres administratifs, données mobiles : les méthodes et
+                leurs limites.
+              </p>
+            </div>
+            <div class="card j">
+              <div class="idx">J2</div>
+              <h3>Comment les partager en confiance ?</h3>
+              <p>
+                Gouvernance, souveraineté numérique, interopérabilité SDMX, ouverture des données
+                publiques.
+              </p>
+            </div>
+            <div class="card j">
+              <div class="idx">J3</div>
+              <h3>Comment décider avec ?</h3>
+              <p>
+                Cas d'usage en santé, éducation, emploi ; recommandations et Déclaration de Dakar.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tint block">
+        <div class="wrap">
+          <div class="sec-head">
+            <div><h2>Temps forts</h2></div>
+            <a class="btn btn-ghost btn-sm" href="#programme">Programme complet</a>
+          </div>
+          <div class="grid-3">
+            <div class="card">
+              <span class="pill blue">Lundi 23 · 09h30</span>
+              <h3 style="margin-top: 12px">Ouverture et conférence inaugurale</h3>
+              <p>Sous la présidence du Ministre de l'Économie, du Plan et de la Coopération.</p>
+            </div>
+            <div class="card">
+              <span class="pill gold">Mardi 24 · 16h00</span>
+              <h3 style="margin-top: 12px">Cérémonie de distinction</h3>
+              <p>Reconnaissance des acteurs de la statistique publique africaine.</p>
+            </div>
+            <div class="card">
+              <span class="pill blue">Mercredi 25 · 12h00</span>
+              <h3 style="margin-top: 12px">Déclaration de Dakar et clôture</h3>
+              <p>Restitution des recommandations des 18 panels.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="wrap">
+          <div class="sec-head">
+            <div><h2>Actualités</h2></div>
+          </div>
+          <div class="grid-3">
+            <div class="card">
+              <span class="muted">28 août 2026</span>
+              <h3 style="margin-top: 8px">Ouverture des inscriptions le 5 octobre</h3>
+              <p>Les délégations invitées recevront un lien personnalisé d'inscription.</p>
+            </div>
+            <div class="card">
+              <span class="muted">20 août 2026</span>
+              <h3 style="margin-top: 8px">Appel à contributions</h3>
+              <p>
+                Les panélistes déposent leur présentation depuis leur espace jusqu'au 10 novembre.
+              </p>
+            </div>
+            <div class="card">
+              <span class="muted">12 août 2026</span>
+              <h3 style="margin-top: 8px">Programme provisoire en ligne</h3>
+              <p>Dix-huit panels sur trois journées thématiques.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tint block">
+        <div class="wrap">
+          <div class="sec-head">
+            <div><h2>Avec le soutien de</h2></div>
+            <a class="btn btn-ghost btn-sm" href="#sponsors">Tous les partenaires</a>
+          </div>
+          <div class="logos">
+            <div class="logo-box">Banque mondiale</div>
+            <div class="logo-box">PHASAOC</div>
+            <div class="logo-box">BAD</div>
+            <div class="logo-box">AFRISTAT</div>
+            <div class="logo-box">UNECA</div>
+            <div class="logo-box">PARIS21</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===================== PROGRAMME ===================== -->
+    <div class="view" id="v-programme">
+      <section class="block">
+        <div class="wrap">
+          <div class="sec-head">
+            <div>
+              <h2>Programme</h2>
+              <p>
+                Grille par salle. Réservation des panels depuis votre espace, places limitées. Heure
+                de Dakar (GMT).
+              </p>
+            </div>
+            <a class="btn btn-ghost btn-sm" href="#">Ajouter à mon agenda (.ics)</a>
+          </div>
+          <div class="tabs" id="daytabs">
+            <button class="on" data-day="1">Lundi 23</button><button data-day="2">Mardi 24</button
+            ><button data-day="3">Mercredi 25</button>
+          </div>
+
+          <div class="day on" data-day="1">
+            <div class="grid-prog">
+              <div class="h"></div>
+              <div class="h">Salle plénière · Panel 1</div>
+              <div class="h">Salle Panel 2</div>
+              <div class="h">Salle Panel 3</div>
+              <div class="t">08h00</div>
+              <div class="sess pause">Enregistrement et remise des badges — Hall principal</div>
+              <div class="t">09h30</div>
+              <div class="sess plen">
+                <div class="n">Plénière · 09h30 – 11h00</div>
+                <h4>Cérémonie d'ouverture · Conférence inaugurale</h4>
+                <span class="pill blue">Tous participants</span>
+              </div>
+              <div class="t">11h30</div>
+              <a class="sess" href="#session"
+                ><div class="n">Panel n°1 · 11h30 – 13h00</div>
+                <h4>Recensement 2023 : enseignements et innovations méthodologiques</h4>
+                <div class="meter"><i class="w" style="width: 90%"></i></div>
+                <div class="cap">
+                  <span>72 / 80</span><span class="pill open">8 places</span>
+                </div></a
+              >
+              <div class="sess">
+                <div class="n">Panel n°2</div>
+                <h4>SDMX et interopérabilité en Afrique de l'Ouest</h4>
+                <div class="meter"><i class="f" style="width: 100%"></i></div>
+                <div class="cap">
+                  <span>80 / 80</span><span class="pill wait">Liste d'attente</span>
+                </div>
+              </div>
+              <div class="sess">
+                <div class="n">Panel n°3</div>
+                <h4>Données mobiles et statistiques du tourisme</h4>
+                <div class="meter"><i style="width: 45%"></i></div>
+                <div class="cap"><span>36 / 80</span><span class="pill open">44 places</span></div>
+              </div>
+              <div class="t">13h00</div>
+              <div class="sess pause">Déjeuner — Espace restauration</div>
+              <div class="t">14h30</div>
+              <div class="sess">
+                <div class="n">Panel n°4</div>
+                <h4>Registre national des entreprises et NINEA numérique</h4>
+                <div class="meter"><i style="width: 62%"></i></div>
+                <div class="cap"><span>50 / 80</span><span class="pill open">30 places</span></div>
+              </div>
+              <div class="sess">
+                <div class="n">Panel n°5</div>
+                <h4>Financer les systèmes statistiques nationaux</h4>
+                <div class="meter"><i style="width: 30%"></i></div>
+                <div class="cap"><span>24 / 80</span><span class="pill open">56 places</span></div>
+              </div>
+              <div class="sess">
+                <div class="n">Panel n°6</div>
+                <h4>Statistiques de genre : mesurer pour agir</h4>
+                <div class="meter"><i style="width: 70%"></i></div>
+                <div class="cap"><span>56 / 80</span><span class="pill open">24 places</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="day" data-day="2">
+            <div class="grid-prog">
+              <div class="h"></div>
+              <div class="h">Salle plénière · Panel 1</div>
+              <div class="h">Salle Panel 2</div>
+              <div class="h">Salle Panel 3</div>
+              <div class="t">09h00</div>
+              <div class="sess plen">
+                <div class="n">Plénière · 09h00 – 10h30</div>
+                <h4>Gouvernance des données et souveraineté numérique</h4>
+              </div>
+              <div class="t">11h00</div>
+              <div class="sess">
+                <div class="n">Panel n°7</div>
+                <h4>Intelligence artificielle et statistique officielle</h4>
+                <div class="meter"><i class="w" style="width: 95%"></i></div>
+                <div class="cap"><span>76 / 80</span><span class="pill open">4 places</span></div>
+              </div>
+              <div class="sess">
+                <div class="n">Panel n°8</div>
+                <h4>Statistiques agricoles et sécurité alimentaire</h4>
+                <div class="meter"><i style="width: 40%"></i></div>
+                <div class="cap"><span>32 / 80</span><span class="pill open">48 places</span></div>
+              </div>
+              <div class="sess">
+                <div class="n">Panel n°9</div>
+                <h4>Comptes nationaux et économie informelle</h4>
+                <div class="meter"><i style="width: 52%"></i></div>
+                <div class="cap"><span>42 / 80</span><span class="pill open">38 places</span></div>
+              </div>
+              <div class="t">16h00</div>
+              <div class="sess plen">
+                <div class="n">Plénière · 16h00 – 17h30</div>
+                <h4>Cérémonie de distinction</h4>
+                <span class="pill gold">Sur invitation</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="day" data-day="3">
+            <div class="grid-prog">
+              <div class="h"></div>
+              <div class="h">Salle plénière · Panel 1</div>
+              <div class="h">Salle Panel 2</div>
+              <div class="h">Salle Panel 3</div>
+              <div class="t">09h00</div>
+              <div class="sess">
+                <div class="n">Panel n°13</div>
+                <h4>Données ouvertes : de la plateforme ODP aux usages citoyens</h4>
+                <div class="meter"><i style="width: 55%"></i></div>
+                <div class="cap"><span>44 / 80</span><span class="pill open">36 places</span></div>
+              </div>
+              <div class="sess">
+                <div class="n">Panel n°14</div>
+                <h4>Former la prochaine génération de statisticiens</h4>
+                <div class="meter"><i style="width: 20%"></i></div>
+                <div class="cap"><span>16 / 80</span><span class="pill open">64 places</span></div>
+              </div>
+              <div class="sess">
+                <div class="n">Panel n°15</div>
+                <h4>Données et santé : de la surveillance à la décision</h4>
+                <div class="meter"><i style="width: 66%"></i></div>
+                <div class="cap"><span>53 / 80</span><span class="pill open">27 places</span></div>
+              </div>
+              <div class="t">12h00</div>
+              <div class="sess plen">
+                <div class="n">Plénière · 12h00 – 13h00</div>
+                <h4>Recommandations · Déclaration de Dakar · Clôture</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===================== SESSION ===================== -->
+    <div class="view" id="v-session">
+      <div class="session-hero">
+        <div class="wrap">
+          <div class="crumb"><a href="#programme">Programme</a> · Lundi 23 · Panel n°1</div>
+          <h1>Recensement 2023 : enseignements et innovations méthodologiques</h1>
+          <div class="facts">
+            <div><span>Date</span><b>Lundi 23 novembre</b></div>
+            <div><span>Horaire</span><b>11h30 – 13h00</b></div>
+            <div><span>Salle</span><b>Salle Panel 1</b></div>
+            <div><span>Thème</span><b>Production statistique</b></div>
+            <div><span>Langues</span><b>FR · EN</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="wrap two-col">
+        <div>
+          <h3>Objectifs</h3>
+          <p style="margin: 8px 0 22px">
+            Tirer les leçons du RGPH-5 : collecte numérique, cartographie censitaire, gestion de la
+            qualité et diffusion. Le panel confronte l'expérience sénégalaise à celles du Mali, de
+            la Côte d'Ivoire et du Ghana.
+          </p>
+          <h3>Questions clés</h3>
+          <ul class="q">
+            <li>
+              Quel apport réel des tablettes et de la cartographie satellitaire sur la couverture ?
+            </li>
+            <li>Comment assurer la comparabilité entre pays ?</li>
+            <li>Quelle place pour les registres administratifs au prochain cycle ?</li>
+          </ul>
+          <h3>Modératrice</h3>
+          <div class="people" style="margin: 10px 0 22px">
+            <div class="person">
+              <div class="avatar">AS</div>
+              <div>
+                <b>Aminata SOW</b><span>Directrice des statistiques démographiques, ANSD</span>
+              </div>
+            </div>
+          </div>
+          <h3>Panélistes</h3>
+          <div class="people" style="margin-top: 10px">
+            <div class="person">
+              <div class="avatar">IK</div>
+              <div><b>Ibrahima KONÉ</b><span>INSTAT Mali</span></div>
+            </div>
+            <div class="person">
+              <div class="avatar">MD</div>
+              <div><b>Mariam DIALLO</b><span>ANStat Côte d'Ivoire</span></div>
+            </div>
+            <div class="person">
+              <div class="avatar">KO</div>
+              <div><b>Kwame OSEI</b><span>Ghana Statistical Service</span></div>
+            </div>
+            <div class="person">
+              <div class="avatar">JL</div>
+              <div><b>Julie LAMBERT</b><span>UNFPA, bureau régional</span></div>
+            </div>
+          </div>
+          <h3 style="margin-top: 26px">Documents</h3>
+          <div class="doc">
+            <div class="ic">PDF</div>
+            <div>
+              <b style="color: var(--heading); font-size: 0.92rem">Termes de référence du panel</b
+              ><br /><span class="muted">420 Ko · 18 août</span>
+            </div>
+          </div>
+        </div>
+        <aside class="sticky">
+          <div class="reserve">
+            <div class="big num">8 <small>places restantes sur 80</small></div>
+            <div class="meter" style="margin: 14px 0"><i class="w" style="width: 90%"></i></div>
+            <a class="btn btn-primary" style="width: 100%; justify-content: center" href="#espace"
+              >S'inscrire à ce panel</a
+            >
+            <p class="muted" style="margin-top: 12px">
+              Ouvert jusqu'au 22 novembre 18h00. Réservé aux participants confirmés.
+            </p>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ===================== INTERVENANTS ===================== -->
+    <div class="view" id="v-intervenants">
+      <section class="block">
+        <div class="wrap">
+          <div class="sec-head">
+            <div>
+              <h2>Intervenants</h2>
+              <p>Conférenciers, modérateurs et panélistes confirmés.</p>
+            </div>
+          </div>
+          <div class="speakers">
+            <div class="speaker">
+              <div class="avatar">AS</div>
+              <b>Aminata SOW</b><span>Directrice des statistiques démographiques</span
+              ><span>ANSD</span>
+              <div class="flag">🇸🇳 Sénégal · Modératrice</div>
+            </div>
+            <div class="speaker">
+              <div class="avatar">IK</div>
+              <b>Ibrahima KONÉ</b><span>Directeur général</span><span>INSTAT</span>
+              <div class="flag">🇲🇱 Mali · Panéliste</div>
+            </div>
+            <div class="speaker">
+              <div class="avatar">MD</div>
+              <b>Mariam DIALLO</b><span>Cheffe de service Recensement</span><span>ANStat</span>
+              <div class="flag">🇨🇮 Côte d'Ivoire · Panéliste</div>
+            </div>
+            <div class="speaker">
+              <div class="avatar">KO</div>
+              <b>Kwame OSEI</b><span>Deputy Government Statistician</span
+              ><span>Ghana Statistical Service</span>
+              <div class="flag">🇬🇭 Ghana · Panéliste</div>
+            </div>
+            <div class="speaker">
+              <div class="avatar">OB</div>
+              <b>Oumar BA</b><span>Directeur général</span><span>ANSD</span>
+              <div class="flag">🇸🇳 Sénégal · Conférencier</div>
+            </div>
+            <div class="speaker">
+              <div class="avatar">FN</div>
+              <b>Fatou NDIAYE</b><span>Directrice des systèmes d'information</span><span>ANSD</span>
+              <div class="flag">🇸🇳 Sénégal · Modératrice</div>
+            </div>
+            <div class="speaker">
+              <div class="avatar">PT</div>
+              <b>Paul TCHOUA</b><span>Directeur général</span><span>AFRISTAT</span>
+              <div class="flag">🇲🇱 Bamako · Conférencier</div>
+            </div>
+            <div class="speaker">
+              <div class="avatar">JL</div>
+              <b>Julie LAMBERT</b><span>Conseillère régionale</span><span>UNFPA</span>
+              <div class="flag">🇫🇷 France · Panéliste</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===================== SPONSORS ===================== -->
+    <div class="view" id="v-sponsors">
+      <section class="block">
+        <div class="wrap">
+          <div class="sec-head">
+            <div>
+              <h2>Sponsors et partenaires</h2>
+              <p>
+                Organisé par l'ANSD avec le concours des partenaires techniques et financiers du
+                système statistique national.
+              </p>
+            </div>
+          </div>
+          <div class="level principal">
+            <h3>Sponsor principal</h3>
+            <div class="logos"><div class="logo-box">Banque mondiale · PHASAOC</div></div>
+          </div>
+          <div class="level">
+            <h3>Gold</h3>
+            <div class="logos">
+              <div class="logo-box">BAD</div>
+              <div class="logo-box">Union européenne</div>
+              <div class="logo-box">AFD</div>
+            </div>
+          </div>
+          <div class="level">
+            <h3>Silver</h3>
+            <div class="logos">
+              <div class="logo-box">UNFPA</div>
+              <div class="logo-box">UNICEF</div>
+              <div class="logo-box">PNUD</div>
+              <div class="logo-box">Sonatel</div>
+            </div>
+          </div>
+          <div class="level">
+            <h3>Partenaires institutionnels et techniques</h3>
+            <div class="logos">
+              <div class="logo-box">AFRISTAT</div>
+              <div class="logo-box">UNECA</div>
+              <div class="logo-box">PARIS21</div>
+              <div class="logo-box">ENSAE Dakar</div>
+              <div class="logo-box">UN-CHK</div>
+            </div>
+          </div>
+          <div class="level">
+            <h3>Partenaires médias</h3>
+            <div class="logos">
+              <div class="logo-box">RTS</div>
+              <div class="logo-box">APS</div>
+              <div class="logo-box">Le Soleil</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===================== INFOS ===================== -->
+    <div class="view" id="v-infos">
+      <section class="block">
+        <div class="wrap">
+          <div class="sec-head">
+            <div><h2>Informations pratiques</h2></div>
+          </div>
+          <div class="infos">
+            <div class="card info">
+              <div class="k">Lieu</div>
+              <h3>CICAD, Diamniadio</h3>
+              <p>À 35 km de Dakar par l'autoroute à péage. Parking et accès PMR.</p>
+            </div>
+            <div class="card info">
+              <div class="k">Arrivée</div>
+              <h3>Aéroport AIBD</h3>
+              <p>À 15 minutes du CICAD. Navettes pour les délégations sur présentation du badge.</p>
+            </div>
+            <div class="card info">
+              <div class="k">Hébergement</div>
+              <h3>Quatre hôtels partenaires</h3>
+              <p>
+                Tarifs négociés à Diamniadio et Dakar. Code de réservation envoyé après
+                confirmation.
+              </p>
+            </div>
+            <div class="card info">
+              <div class="k">Visas</div>
+              <h3>Lettre d'invitation officielle</h3>
+              <p>Générée depuis votre espace participant pour les démarches consulaires.</p>
+            </div>
+            <div class="card info">
+              <div class="k">Transports</div>
+              <h3>Navettes et TER</h3>
+              <p>
+                Hôtels ↔ CICAD à 07h30 et 08h00 ; retours 18h00 et 19h00. Gare TER de Diamniadio.
+              </p>
+            </div>
+            <div class="card info">
+              <div class="k">Contacts</div>
+              <h3>forum@ansd.sn</h3>
+              <p>+221 33 869 21 39 · Accréditation presse : presse@ansd.sn</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===================== INSCRIPTION ===================== -->
+    <div class="view" id="v-inscription">
+      <div class="form-shell">
+        <h2 style="margin-bottom: 6px">Inscription au Forum</h2>
+        <p style="margin-bottom: 26px">
+          Cinq étapes, environ quatre minutes. Votre progression est enregistrée à chaque étape.
+        </p>
+        <div class="steps" id="steps">
+          <div class="on"></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+        </div>
+        <div class="steplabel">
+          <span>Étape <b id="stepno">1</b> sur 5</span><b id="steptitle">Identité</b>
+        </div>
+        <div class="fstep on" data-step="1">
+          <div class="fields">
+            <div class="field">
+              <label>Civilité</label
+              ><select>
+                <option>Madame</option>
+                <option>Monsieur</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Langue préférée</label
+              ><select>
+                <option>Français</option>
+                <option>English</option>
+              </select>
+            </div>
+            <div class="field"><label>Prénom</label><input placeholder="Aminata" /></div>
+            <div class="field"><label>Nom</label><input placeholder="SOW" /></div>
+            <div class="field">
+              <label>Adresse e-mail</label
+              ><input type="email" placeholder="prenom.nom@institution.sn" /><small
+                >Votre lien d'accès à « Mes inscriptions » y sera envoyé.</small
+              >
+            </div>
+            <div class="field">
+              <label>Téléphone</label><input placeholder="+221 77 000 00 00" />
+            </div>
+            <div class="field">
+              <label>Pays</label
+              ><select>
+                <option>Sénégal</option>
+                <option>Mali</option>
+                <option>Côte d'Ivoire</option>
+                <option>Ghana</option>
+              </select>
+            </div>
+            <div class="field"><label>Ville</label><input placeholder="Dakar" /></div>
+            <div class="field full">
+              <label>Photo (facultative ici, requise pour le badge)</label
+              ><input type="file" /><small>Format carré recommandé.</small>
+            </div>
+          </div>
+        </div>
+        <div class="fstep" data-step="2">
+          <div class="fields">
+            <div class="field"><label>Organisation</label><input placeholder="ANSD" /></div>
+            <div class="field">
+              <label>Type d'organisation</label
+              ><select>
+                <option>Institut national de statistique</option>
+                <option>Organisation internationale</option>
+                <option>Administration publique</option>
+                <option>Université / recherche</option>
+                <option>Secteur privé</option>
+                <option>Média</option>
+              </select>
+            </div>
+            <div class="field"><label>Fonction</label><input /></div>
+            <div class="field"><label>Domaine d'activité</label><input /></div>
+            <div class="field full">
+              <label>Biographie courte</label
+              ><textarea rows="3" placeholder="300 caractères maximum"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="fstep" data-step="3">
+          <div class="fields">
+            <div class="field full">
+              <label>Jours de participation</label>
+              <div class="choice">
+                <label><input type="checkbox" checked /> Lundi 23</label
+                ><label><input type="checkbox" checked /> Mardi 24</label
+                ><label><input type="checkbox" checked /> Mercredi 25</label>
+              </div>
+            </div>
+            <div class="field full">
+              <label>Moments officiels</label>
+              <div class="choice">
+                <label><input type="checkbox" checked /> Cérémonie d'ouverture</label
+                ><label><input type="checkbox" checked /> Conférence inaugurale</label
+                ><label><input type="checkbox" /> Cérémonie de distinction</label>
+              </div>
+            </div>
+            <div class="field full">
+              <label>Panels souhaités (réservation définitive depuis votre espace)</label>
+              <div class="choice">
+                <label><input type="checkbox" /> Panel 1 · Recensement</label
+                ><label><input type="checkbox" /> Panel 2 · SDMX</label
+                ><label><input type="checkbox" /> Panel 7 · IA</label
+                ><label><input type="checkbox" /> Panel 13 · Données ouvertes</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="fstep" data-step="4">
+          <div class="fields">
+            <div class="field"><label>Date d'arrivée</label><input type="date" /></div>
+            <div class="field"><label>Date de départ</label><input type="date" /></div>
+            <div class="field">
+              <label>Hébergement</label
+              ><select>
+                <option>Non</option>
+                <option>Oui</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Transport</label
+              ><select>
+                <option>Non</option>
+                <option>Navette aéroport</option>
+                <option>Navette hôtel</option>
+              </select>
+            </div>
+            <div class="field"><label>Régime alimentaire</label><input placeholder="Aucun" /></div>
+            <div class="field">
+              <label>Besoins particuliers</label><input placeholder="Accessibilité, etc." />
+            </div>
+          </div>
+        </div>
+        <div class="fstep" data-step="5">
+          <div class="fields">
+            <div class="field full">
+              <div class="choice">
+                <label
+                  ><input type="checkbox" /> J'accepte les conditions de participation au
+                  Forum.</label
+                >
+              </div>
+            </div>
+            <div class="field full">
+              <div class="choice">
+                <label
+                  ><input type="checkbox" /> Je consens au traitement de mes données personnelles
+                  pour l'organisation du Forum (loi n° 2008-12).</label
+                >
+              </div>
+            </div>
+            <div class="field full">
+              <div class="choice">
+                <label
+                  ><input type="checkbox" /> J'autorise la prise et l'utilisation de mon image dans
+                  les supports du Forum.</label
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="form-nav">
+          <button class="btn btn-ghost" onclick="stepMove(-1)">Précédent</button
+          ><button class="btn btn-primary" id="nextbtn" onclick="stepMove(1)">Continuer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== MON ESPACE ===================== -->
+    <div class="view" id="v-espace">
+      <div class="wrap space">
+        <div>
+          <div class="badge">
+            <div class="top"><span>Forum international sur les données</span><b>ANSD</b></div>
+            <div class="band"></div>
+            <div class="body">
+              <div class="avatar">AS</div>
+              <div class="name">Aminata<br />SOW</div>
+              <div class="org">Directrice des statistiques démographiques<br />ANSD · Sénégal</div>
+              <div class="cat"><span class="pill">Participante nationale</span></div>
+              <div class="qr" aria-label="QR code"></div>
+              <div class="uid">FID26-7K3M2P</div>
+            </div>
+          </div>
+          <div style="display: grid; gap: 8px; margin-top: 14px">
+            <a class="btn btn-blue" style="justify-content: center" href="#"
+              >Télécharger le badge (PDF)</a
+            ><a class="btn btn-ghost" style="justify-content: center" href="#"
+              >Recevoir par e-mail</a
+            >
+          </div>
+        </div>
+        <div>
+          <h2>Bonjour Aminata</h2>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 24px">
+            <span class="st confirmed">Inscription confirmée</span
+            ><span class="st badged">Badge généré le 12 oct.</span
+            ><span class="pill blue">Accès : entrée · plénière · panels · restauration</span>
+          </div>
+          <h3 style="margin-bottom: 12px">Mes panels</h3>
+          <div class="mine">
+            <div>
+              <b>Panel 1 · Recensement 2023</b><br /><span class="muted"
+                >Lundi 23 · 11h30 · Salle Panel 1</span
+              >
+            </div>
+            <span class="st confirmed">Inscrite</span>
+          </div>
+          <div class="mine">
+            <div>
+              <b>Panel 2 · SDMX et interopérabilité</b><br /><span class="muted"
+                >Lundi 23 · 11h30 · Salle Panel 2</span
+              >
+            </div>
+            <span class="pill wait">Liste d'attente · 3<sup>e</sup></span>
+          </div>
+          <div class="mine">
+            <div>
+              <b>Panel 7 · IA et statistique officielle</b><br /><span class="muted"
+                >Mardi 24 · 11h00 · Salle Panel 1</span
+              >
+            </div>
+            <span class="st confirmed">Inscrite</span>
+          </div>
+          <a class="btn btn-ghost btn-sm" href="#programme">Réserver un autre panel</a>
+          <h3 style="margin: 30px 0 12px">Mes informations</h3>
+          <div class="card">
+            <p>
+              Modifiables jusqu'au 20 novembre. Après cette date, adressez-vous à l'accueil du
+              Forum.
+            </p>
+            <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap">
+              <a class="btn btn-ghost btn-sm" href="#">Modifier mes informations</a
+              ><a class="btn btn-ghost btn-sm" href="#">Lettre d'invitation (visa)</a
+              ><a class="btn btn-ghost btn-sm" href="#">Exporter mes données</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== VÉRIFIER ===================== -->
+    <div class="view" id="v-verifier">
+      <div class="verify">
+        <h2>Vérifier un badge</h2>
+        <p style="margin-top: 8px">Scannez le QR code d'un badge ou saisissez son identifiant.</p>
+        <div style="display: flex; gap: 8px; margin-top: 22px">
+          <input value="FID26-7K3M2P" /><button class="btn btn-blue">Vérifier</button>
+        </div>
+        <div class="result">
+          <div class="ok"><i>✓</i> Badge valide</div>
+          <dl>
+            <dt>Participant</dt>
+            <dd><b>Aminata SOW</b></dd>
+            <dt>Organisation</dt>
+            <dd>ANSD – Sénégal</dd>
+            <dt>Catégorie</dt>
+            <dd>Participante nationale</dd>
+            <dt>Évènement</dt>
+            <dd>Forum international sur les données, 23–25 nov. 2026</dd>
+          </dl>
+          <p class="muted" style="margin-top: 14px">
+            Seules les informations strictement nécessaires sont affichées.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== BACKOFFICE ===================== -->
+    <div class="view" id="v-admin">
+      <div class="bo">
+        <aside>
+          <div class="who">
+            <div class="avatar">FN</div>
+            <div><b>Fatou NDIAYE</b><span>Administratrice Forum</span></div>
+          </div>
+          <a href="#admin" class="on">Tableau de bord</a>
+          <div class="grp">Participants</div>
+          <a href="#participants">Participants</a><a href="#">Invitations</a
+          ><a href="#">Délégations</a><a href="#">Badges</a>
+          <div class="grp">Jour J</div>
+          <a href="#scanner">Scanner</a><a href="#">Présences</a><a href="#">Zones d'accès</a>
+          <div class="grp">Programme</div>
+          <a href="#">Sessions</a><a href="#">Intervenants</a><a href="#">Contributions</a>
+          <div class="grp">Communication</div>
+          <a href="#">Contenus</a><a href="#">Sponsors</a><a href="#">Notifications</a>
+          <div class="grp">Pilotage</div>
+          <a href="#">Rapports</a><a href="#">Utilisateurs</a><a href="#">Journal d'audit</a>
+        </aside>
+        <main>
+          <div class="bo-head">
+            <div>
+              <h2>Jour 1 — Lundi 23 novembre</h2>
+              <span class="muted">Édition 2026 · mis à jour il y a 4 s</span>
+            </div>
+            <div style="display: flex; gap: 8px">
+              <button class="btn btn-ghost btn-sm">Exporter</button
+              ><button class="btn btn-primary btn-sm">Envoyer un rappel</button>
+            </div>
+          </div>
+          <div class="kpis">
+            <div class="kpi">
+              <span>Inscrits</span><b class="num">487</b><small>+23 / 7 j</small>
+            </div>
+            <div class="kpi"><span>Confirmés</span><b class="num">421</b><small>86 %</small></div>
+            <div class="kpi">
+              <span>Badges générés</span><b class="num">398</b><small>312 téléchargés</small>
+            </div>
+            <div class="kpi">
+              <span>Présents aujourd'hui</span><b class="num">365</b><small>taux 87 %</small>
+            </div>
+            <div class="kpi">
+              <span>Réservations panels</span><b class="num">1 126</b><small>2 complets</small>
+            </div>
+          </div>
+          <div class="rooms">
+            <div class="room">
+              <b>Salle plénière</b>
+              <div class="meter"><i style="width: 81%"></i></div>
+              <span>324 / 400 · Cérémonie d'ouverture</span>
+            </div>
+            <div class="room">
+              <b>Salle Panel 1</b>
+              <div class="meter"><i class="w" style="width: 90%"></i></div>
+              <span>72 / 80 · Panel 1</span>
+            </div>
+            <div class="room">
+              <b>Salle Panel 2</b>
+              <div class="meter"><i class="f" style="width: 100%"></i></div>
+              <span>80 / 80 · Panel 2 · 6 en attente</span>
+            </div>
+            <div class="room">
+              <b>Espace VIP</b>
+              <div class="meter"><i style="width: 35%"></i></div>
+              <span>14 / 40</span>
+            </div>
+          </div>
+          <div class="bo-grid">
+            <div class="panel">
+              <h3>Entonnoir invitation → présence <span class="muted">Objectif 500</span></h3>
+              <div class="chart">
+                <div style="height: 100%" data-v="620"></div>
+                <div style="height: 88%" data-v="548"></div>
+                <div style="height: 78%" data-v="487"></div>
+                <div style="height: 68%" data-v="421"></div>
+                <div style="height: 64%" data-v="398"></div>
+                <div class="g" style="height: 59%" data-v="365"></div>
+                <div class="g" style="height: 55%" data-v="—"></div>
+                <div class="g" style="height: 51%" data-v="—"></div>
+              </div>
+              <div class="chart-x">
+                <span>Invités</span><span>Envoyées</span><span>Inscrits</span><span>Confirmés</span
+                ><span>Badgés</span><span>J1</span><span>J2</span><span>J3</span>
+              </div>
+            </div>
+            <div class="panel">
+              <h3>Flux des scans <span class="pill open">En direct</span></h3>
+              <ul class="feed">
+                <li><span class="dot"></span>Aminata SOW · ANSD <time>08:32</time></li>
+                <li><span class="dot"></span>Ibrahima KONÉ · INSTAT Mali <time>08:35</time></li>
+                <li><span class="dot o"></span>S.E. Mme la Ministre · VIP <time>08:36</time></li>
+                <li><span class="dot"></span>Kwame OSEI · GSS <time>08:37</time></li>
+                <li><span class="dot r"></span>Badge révoqué · FID26-2QX9AA <time>08:38</time></li>
+                <li><span class="dot"></span>Mariam DIALLO · ANStat <time>08:39</time></li>
+              </ul>
+            </div>
+          </div>
+          <div class="panel" style="margin-top: 12px">
+            <h3>Répartition par pays <span class="muted">32 pays</span></h3>
+            <div class="chart" style="height: 130px">
+              <div style="height: 100%" data-v="212"></div>
+              <div style="height: 22%" data-v="46"></div>
+              <div style="height: 19%" data-v="40"></div>
+              <div style="height: 16%" data-v="34"></div>
+              <div style="height: 13%" data-v="28"></div>
+              <div style="height: 11%" data-v="24"></div>
+              <div style="height: 9%" data-v="19"></div>
+              <div style="height: 8%" data-v="17"></div>
+              <div style="height: 7%" data-v="15"></div>
+              <div style="height: 6%" data-v="12"></div>
+            </div>
+            <div class="chart-x">
+              <span>Sénégal</span><span>Mali</span><span>Côte d'Iv.</span><span>Ghana</span
+              ><span>Burkina</span><span>Niger</span><span>Guinée</span><span>Bénin</span
+              ><span>Togo</span><span>Cameroun</span>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="view" id="v-participants">
+      <div class="bo">
+        <aside>
+          <div class="who">
+            <div class="avatar">FN</div>
+            <div><b>Fatou NDIAYE</b><span>Administratrice Forum</span></div>
+          </div>
+          <a href="#admin">Tableau de bord</a>
+          <div class="grp">Participants</div>
+          <a href="#participants" class="on">Participants</a><a href="#">Invitations</a
+          ><a href="#">Délégations</a><a href="#">Badges</a>
+          <div class="grp">Jour J</div>
+          <a href="#scanner">Scanner</a><a href="#">Présences</a>
+        </aside>
+        <main>
+          <div class="bo-head">
+            <div>
+              <h2>Participants</h2>
+              <span class="muted">487 inscrits · 66 en attente de validation</span>
+            </div>
+            <div style="display: flex; gap: 8px">
+              <button class="btn btn-ghost btn-sm">Importer</button
+              ><button class="btn btn-ghost btn-sm">Exporter XLSX</button
+              ><button class="btn btn-primary btn-sm">Ajouter</button>
+            </div>
+          </div>
+          <div class="toolbar">
+            <input placeholder="Nom, e-mail, organisation, identifiant…" /><select>
+              <option>Toutes catégories</option></select
+            ><select>
+              <option>Tous statuts</option></select
+            ><select>
+              <option>Tous pays</option>
+            </select>
+          </div>
+          <div class="panel" style="padding: 0; overflow: hidden">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>Identifiant</th>
+                  <th>Participant</th>
+                  <th>Organisation</th>
+                  <th>Pays</th>
+                  <th>Catégorie</th>
+                  <th>Statut</th>
+                  <th>Badge</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>FID26-7K3M2P</td>
+                  <td><b>Aminata SOW</b><br /><span class="muted">a.sow@ansd.sn</span></td>
+                  <td>ANSD</td>
+                  <td>Sénégal</td>
+                  <td>National</td>
+                  <td><span class="st checked">Présente J1</span></td>
+                  <td>v1</td>
+                  <td><a href="#">Ouvrir</a></td>
+                </tr>
+                <tr>
+                  <td>FID26-9H2TQA</td>
+                  <td><b>Ibrahima KONÉ</b><br /><span class="muted">i.kone@instat.gov.ml</span></td>
+                  <td>INSTAT</td>
+                  <td>Mali</td>
+                  <td>INS</td>
+                  <td><span class="st confirmed">Confirmé</span></td>
+                  <td>v1</td>
+                  <td><a href="#">Ouvrir</a></td>
+                </tr>
+                <tr>
+                  <td>FID26-4B8NMZ</td>
+                  <td><b>Julie LAMBERT</b><br /><span class="muted">jlambert@unfpa.org</span></td>
+                  <td>UNFPA</td>
+                  <td>France</td>
+                  <td>Org. internationale</td>
+                  <td><span class="st confirmed">Confirmée</span></td>
+                  <td>v2 <span class="muted">réémis</span></td>
+                  <td><a href="#">Ouvrir</a></td>
+                </tr>
+                <tr>
+                  <td>FID26-1P6RCD</td>
+                  <td><b>Moussa FALL</b><br /><span class="muted">m.fall@lesoleil.sn</span></td>
+                  <td>Le Soleil</td>
+                  <td>Sénégal</td>
+                  <td>Média</td>
+                  <td><span class="st registered">En attente</span></td>
+                  <td>—</td>
+                  <td><a href="#">Valider</a></td>
+                </tr>
+                <tr>
+                  <td>—</td>
+                  <td>
+                    <b>Grace MENSAH</b><br /><span class="muted">g.mensah@statsghana.gov.gh</span>
+                  </td>
+                  <td>GSS</td>
+                  <td>Ghana</td>
+                  <td>INS</td>
+                  <td><span class="st invited">Invitation envoyée · 2 relances</span></td>
+                  <td>—</td>
+                  <td><a href="#">Relancer</a></td>
+                </tr>
+                <tr>
+                  <td>FID26-5W3KLE</td>
+                  <td>
+                    <b>S.E. Mme Oulimata SARR</b><br /><span class="muted"
+                      >cabinet@economie.gouv.sn</span
+                    >
+                  </td>
+                  <td>MEPC</td>
+                  <td>Sénégal</td>
+                  <td>Autorité / VIP</td>
+                  <td><span class="st badged">Badgée</span></td>
+                  <td>v1</td>
+                  <td><a href="#">Ouvrir</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div
+            style="display: flex; justify-content: space-between; margin-top: 12px"
+            class="muted"
+          >
+            <span>1–6 sur 487</span><span>Page 1 / 82</span>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="view" id="v-scanner">
+      <section class="tint block">
+        <div class="wrap">
+          <div class="sec-head">
+            <div>
+              <h2>Application de scan (PWA)</h2>
+              <p>
+                Plein écran pour l'agent d'accueil. Fonctionne hors-ligne et resynchronise
+                automatiquement. Toujours sombre, quel que soit le thème.
+              </p>
+            </div>
+            <div style="display: flex; gap: 8px">
+              <button class="btn btn-ghost btn-sm" onclick="scanState('ok')">Vert</button
+              ><button class="btn btn-ghost btn-sm" onclick="scanState('warn')">Orange</button
+              ><button class="btn btn-ghost btn-sm" onclick="scanState('no')">Rouge</button>
+            </div>
+          </div>
+          <div class="scanner">
+            <div class="sbar">
+              <span>Entrée principale · Agent M. Diop</span
+              ><span><b>● En ligne</b> · 0 en attente</span>
+            </div>
+            <div class="cam"><div class="frame"></div></div>
+            <div class="res ok" id="scan-res">
+              <div class="avatar">AS</div>
+              <div>
+                <b>Aminata SOW</b><span>ANSD · Participante nationale</span><br /><span
+                  >Première présence du jour · 08:32</span
+                >
+              </div>
+              <div class="state">AUTORISÉ</div>
+            </div>
+            <div class="actions">
+              <button class="on">Entrée</button><button>Sortie</button><button>Rechercher</button
+              ><button>Inscription sur place</button><button>Imprimer badge</button
+              ><button>Journal (214)</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <div class="wrap">
+        <div>
+          <div class="brand" style="margin-bottom: 12px">
+            <div class="mark"><i></i><i></i><i></i></div>
+            <div>
+              <b style="color: #fff">Forum international sur les données</b
+              ><small>Une initiative de l'ANSD</small>
+            </div>
+          </div>
+          <p style="font-size: 0.88rem; max-width: 40ch">
+            Agence nationale de la Statistique et de la Démographie, Rocade Fann – Bel-Air –
+            Cerf-volant, Dakar.
+          </p>
+        </div>
+        <div>
+          <h4>Le Forum</h4>
+          <a href="#accueil">À propos</a><a href="#programme">Programme</a
+          ><a href="#intervenants">Intervenants</a><a href="#sponsors">Partenaires</a>
+        </div>
+        <div>
+          <h4>Participer</h4>
+          <a href="#inscription">S'inscrire</a><a href="#espace">Mes inscriptions</a
+          ><a href="#verifier">Vérifier un badge</a><a href="#infos">Infos pratiques</a>
+        </div>
+        <div>
+          <h4>Suivre</h4>
+          <a href="#">LinkedIn</a><a href="#">X / Twitter</a><a href="#">Facebook</a
+          ><a href="#">YouTube</a>
+        </div>
+        <div class="bottom">
+          <span>© 2026 ANSD — Données sous licence CC BY 4.0</span
+          ><span
+            ><a href="#" style="display: inline">Politique de confidentialité</a> ·
+            <a href="#" style="display: inline">Mentions légales</a></span
+          >
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      // ---- Thème clair / sombre ----
+      const root = document.documentElement,
+        themeBtn = document.getElementById("themeBtn");
+      function applyTheme(t) {
+        root.dataset.theme = t;
+        themeBtn.textContent = t === "dark" ? "☀" : "☾";
+        themeBtn.setAttribute(
+          "aria-label",
+          t === "dark" ? "Passer en thème clair" : "Passer en thème sombre",
+        );
+      }
+      (function () {
+        let t = "light";
+        try {
+          t =
+            localStorage.getItem("fid-theme") ||
+            (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        } catch (e) {}
+        applyTheme(t);
+      })();
+      themeBtn.addEventListener("click", () => {
+        const t = root.dataset.theme === "dark" ? "light" : "dark";
+        applyTheme(t);
+        try {
+          localStorage.setItem("fid-theme", t);
+        } catch (e) {}
+      });
+
+      // ---- Navigation interne ----
+      const views = [
+        "accueil",
+        "programme",
+        "session",
+        "intervenants",
+        "sponsors",
+        "infos",
+        "inscription",
+        "espace",
+        "verifier",
+        "admin",
+        "participants",
+        "scanner",
+      ];
+      function route() {
+        let h = (location.hash || "#accueil").slice(1);
+        if (!views.includes(h)) h = "accueil";
+        document
+          .querySelectorAll(".view")
+          .forEach((v) => v.classList.toggle("active", v.id === "v-" + h));
+        document
+          .querySelectorAll("[data-nav]")
+          .forEach((a) =>
+            a.classList.toggle(
+              "on",
+              a.dataset.nav === h ||
+                (h === "session" && a.dataset.nav === "programme") ||
+                (["participants", "scanner"].includes(h) && a.dataset.nav === "admin"),
+            ),
+          );
+        document.getElementById("nav").classList.remove("open");
+        window.scrollTo({ top: 0 });
+      }
+      window.addEventListener("hashchange", route);
+      route();
+
+      document.querySelectorAll("#daytabs button").forEach((b) =>
+        b.addEventListener("click", () => {
+          document
+            .querySelectorAll("#daytabs button")
+            .forEach((x) => x.classList.toggle("on", x === b));
+          document
+            .querySelectorAll(".day")
+            .forEach((d) => d.classList.toggle("on", d.dataset.day === b.dataset.day));
+        }),
+      );
+
+      // ---- Compte à rebours (Dakar = GMT) ----
+      const target = new Date("2026-11-23T09:30:00Z");
+      const cd = {
+        d: document.getElementById("cd-d"),
+        h: document.getElementById("cd-h"),
+        m: document.getElementById("cd-m"),
+        s: document.getElementById("cd-s"),
+      };
+      function tick() {
+        const d = Math.max(0, target - Date.now());
+        const p = (n) => String(n).padStart(2, "0");
+        cd.d.textContent = Math.floor(d / 864e5);
+        cd.h.textContent = p(Math.floor((d / 36e5) % 24));
+        cd.m.textContent = p(Math.floor((d / 6e4) % 60));
+        cd.s.textContent = p(Math.floor((d / 1e3) % 60));
+      }
+      tick();
+      setInterval(tick, 1000);
+
+      // ---- Histogramme des inscriptions par pays (animation unique au chargement) ----
+      const data = [
+        ["SN", 212],
+        ["ML", 46],
+        ["CI", 40],
+        ["GH", 34],
+        ["BF", 28],
+        ["NE", 24],
+        ["GN", 19],
+        ["BJ", 17],
+        ["TG", 15],
+        ["CM", 12],
+        ["MR", 10],
+        ["Autres", 30],
+      ];
+      const svg = document.getElementById("livechart");
+      const W = 400,
+        H = 130,
+        pad = 8,
+        bw = (W - pad) / data.length - 6,
+        max = 220;
+      const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const NS = "http://www.w3.org/2000/svg";
+      data.forEach(([k, v], i) => {
+        const x = pad + i * (bw + 6),
+          h = (v / max) * (H - 36),
+          y = H - 22 - h;
+        const r = document.createElementNS(NS, "rect");
+        r.setAttribute("x", x);
+        r.setAttribute("width", bw);
+        r.setAttribute("rx", 3);
+        r.setAttribute("fill", i === 0 ? "#3DBB6E" : "#7FB3E6");
+        r.setAttribute("y", reduce ? y : H - 22);
+        r.setAttribute("height", reduce ? h : 0);
+        svg.appendChild(r);
+        if (!reduce) {
+          setTimeout(
+            () => {
+              r.style.transition =
+                "y .8s cubic-bezier(.2,.8,.2,1),height .8s cubic-bezier(.2,.8,.2,1)";
+              r.setAttribute("y", y);
+              r.setAttribute("height", h);
+            },
+            150 + i * 50,
+          );
+        }
+        const t = document.createElementNS(NS, "text");
+        t.setAttribute("x", x + bw / 2);
+        t.setAttribute("y", H - 7);
+        t.setAttribute("text-anchor", "middle");
+        t.setAttribute("font-size", "9");
+        t.setAttribute("fill", "#9FB8D2");
+        t.setAttribute("font-family", "Inter");
+        t.textContent = k;
+        svg.appendChild(t);
+        const n = document.createElementNS(NS, "text");
+        n.setAttribute("x", x + bw / 2);
+        n.setAttribute("y", y - 4);
+        n.setAttribute("text-anchor", "middle");
+        n.setAttribute("font-size", "9");
+        n.setAttribute("fill", "#fff");
+        n.setAttribute("font-family", "Inter");
+        n.textContent = v;
+        svg.appendChild(n);
+      });
+
+      // ---- Formulaire multi-étapes ----
+      let step = 1;
+      const titles = ["Identité", "Profession", "Participation", "Logistique", "Consentements"];
+      function stepMove(dir) {
+        step = Math.min(5, Math.max(1, step + dir));
+        document
+          .querySelectorAll(".fstep")
+          .forEach((f) => f.classList.toggle("on", +f.dataset.step === step));
+        document.querySelectorAll("#steps div").forEach((d, i) => {
+          d.className = i + 1 < step ? "done" : i + 1 === step ? "on" : "";
+        });
+        document.getElementById("stepno").textContent = step;
+        document.getElementById("steptitle").textContent = titles[step - 1];
+        document.getElementById("nextbtn").textContent =
+          step === 5 ? "Envoyer mon inscription" : "Continuer";
+      }
+
+      // ---- Scanner : états ----
+      function scanState(s) {
+        const r = document.getElementById("scan-res");
+        r.className = "res " + s;
+        const d = {
+          ok: [
+            "AS",
+            "Aminata SOW",
+            "ANSD · Participante nationale",
+            "Première présence du jour · 08:32",
+            "AUTORISÉ",
+          ],
+          warn: [
+            "OS",
+            "S.E. Mme Oulimata SARR",
+            "Autorité / VIP",
+            "Prévenir le protocole · accès VIP",
+            "AUTORISÉ · VIP",
+          ],
+          no: [
+            "??",
+            "Badge FID26-2QX9AA",
+            "Révoqué le 20 nov. (perte déclarée)",
+            "Orienter vers l'accueil",
+            "REFUSÉ",
+          ],
+        }[s];
+        r.innerHTML = `<div class="avatar">${d[0]}</div><div><b>${d[1]}</b><span>${d[2]}</span><br><span>${d[3]}</span></div><div class="state">${d[4]}</div>`;
+      }
+    </script>
+  </body>
+</html>
