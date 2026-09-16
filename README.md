@@ -41,6 +41,31 @@ rechargement à chaud, + MySQL, Redis, Mailpit, MinIO en option). `docker-compos
 est celui de **production** (image buildée en mode standalone, + MySQL, Redis, nginx +
 Let's Encrypt, sans Mailpit/MinIO) — cf. `PLAN.md` décision C5.
 
+## Démarrer la stack locale (image de production)
+
+Un seul script construit l'image si le code a changé, démarre MySQL, Redis, Mailpit puis
+l'application, attend que chacun réponde, applique les migrations et vérifie que le
+conteneur tourne bien sur l'image construite :
+
+```bash
+./scripts/stack.sh                # démarre tout, en reconstruisant l'image si le code a changé
+./scripts/stack.sh --build        # reconstruit l'image même si le code n'a pas changé
+./scripts/stack.sh --sans-build   # démarre sans reconstruire, même si le code a changé
+./scripts/stack.sh etat           # état des conteneurs, code identique à l'image ou non
+./scripts/stack.sh arreter        # arrête tout, sans rien supprimer
+./scripts/stack.sh journaux app   # suit les journaux (app, mysql, redis, mailpit)
+./scripts/stack.sh aide
+```
+
+- Site : http://localhost:3010 · BackOffice : `/admin` · Scanner : `/scan` · Mailpit : http://localhost:8025
+- Les variables de l'application (secrets compris) sont lues dans `.env.docker`, **non
+  versionné**. Au premier lancement, il est créé à partir du conteneur existant.
+- La base n'est **jamais** supprimée. Sur une nouvelle machine, `--creer-base` crée une
+  base vide puis charge les données de référence ; sans cette option, un MySQL absent
+  arrête le script plutôt que d'en créer un vide sans prévenir.
+- Sous Windows, le script lance Docker Desktop s'il ne répond pas, et empêche la mise en
+  veille pendant une construction.
+
 ## Démarrage sans Docker
 
 ```bash

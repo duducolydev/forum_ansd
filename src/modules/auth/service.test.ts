@@ -1,9 +1,18 @@
 import argon2 from "argon2";
 import { generate } from "otplib";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/db";
 import { generateTotpSecret } from "@/lib/totp";
-import { authenticateUser } from "./service";
+import { authenticateUser, enableTotp } from "./service";
+
+/*
+ * argon2 est **volontairement** coûteux : c'est ce qui protège les mots de
+ * passe. Chaque test de ce fichier en enchaîne plusieurs, et quand la suite
+ * tourne à plusieurs fichiers de front sur une machine chargée, le délai par
+ * défaut est dépassé sans qu'aucun défaut applicatif soit en cause. Le seuil
+ * est relevé ici seulement, plutôt que d'aveugler toute la suite.
+ */
+vi.setConfig({ testTimeout: 90_000, hookTimeout: 90_000 });
 
 const PASSWORD = "Test-Password-123!";
 
@@ -86,8 +95,61 @@ describe("authenticateUser (règles métier — brief §7)", () => {
     const withWrongCode = await authenticateUser(user.email, PASSWORD, "000000");
     expect(withWrongCode.status).toBe("TOTP_INVALID");
 
+    // Le code TOTP change toutes les 30 secondes. `authenticateUser` vérifie un
+    // hachage argon2, qui peut prendre plusieurs secondes sous charge : sans
+    // marge, le code expirait entre sa génération et sa vérification et le test
+    // échouait au hasard. On attend donc le début d'un pas.
+    const secondesRestantes = 30 - (Math.floor(Date.now() / 1000) % 30);
+    if (secondesRestantes < 15) {
+      await new Promise((resolve) => setTimeout(resolve, (secondesRestantes + 1) * 1000));
+    }
+
     const validCode = await generate({ secret });
     const withValidCode = await authenticateUser(user.email, PASSWORD, validCode);
     expect(withValidCode.status).toBe("OK");
+  });
+
+  describe("enrôlement du second facteur (PLAN.md §18)", () => {
+    it("active le 2FA et ferme les autres sessions du compte", async () => {
+      const user = await createUser();
+      const secret = generateTotpSecret();
+
+      const resultat = await enableTotp(user.id, secret, await generate({ secret }));
+
+      expect(resultat).toBe("OK");
+      const apres = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+      expect(apres.totpEnabled).toBe(true);
+      expect(apres.totpSecret).toBe(secret);
+      expect(apres.sessionVersion).toBe(user.sessionVersion + 1);
+    });
+
+    it("refuse de remplacer un second facteur déjà actif", async () => {
+      // Le défaut : depuis une session ouverte, même volée, la page
+      // d'enrôlement remplaçait le second facteur du compte par un autre.
+      const secretEnPlace = generateTotpSecret();
+      const user = await createUser({ totpEnabled: true, totpSecret: secretEnPlace });
+      const secretPirate = generateTotpSecret();
+
+      const resultat = await enableTotp(
+        user.id,
+        secretPirate,
+        await generate({ secret: secretPirate }),
+      );
+
+      expect(resultat).toBe("DEJA_ACTIVE");
+      const apres = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+      expect(apres.totpSecret).toBe(secretEnPlace);
+      expect(apres.sessionVersion).toBe(user.sessionVersion);
+    });
+
+    it("refuse un code faux ou un secret qui n'est pas du base32", async () => {
+      const user = await createUser();
+      const secret = generateTotpSecret();
+
+      expect(await enableTotp(user.id, secret, "000000")).toBe("CODE_INVALIDE");
+      expect(await enableTotp(user.id, "pas un secret", "123456")).toBe("CODE_INVALIDE");
+      const apres = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+      expect(apres.totpEnabled).toBe(false);
+    });
   });
 });

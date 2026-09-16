@@ -30,6 +30,11 @@ export class DbJobQueue implements JobQueue {
     this.handlers.set(type, handler as JobHandler);
   }
 
+  close(): Promise<void> {
+    // Aucune connexion propre à fermer : `prisma` est un singleton partagé par ailleurs.
+    return Promise.resolve();
+  }
+
   /** À appeler périodiquement (cron) pour exécuter les jobs en attente. */
   async runPendingJobs(limit = 20): Promise<void> {
     const jobs = await prisma.job.findMany({

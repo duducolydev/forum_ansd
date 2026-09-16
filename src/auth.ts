@@ -2,10 +2,25 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { authenticateUser } from "./modules/auth/service";
+import { revaliderJeton } from "./modules/auth/revalidation";
 import { AuthStatusError } from "./lib/auth-errors";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  callbacks: {
+    ...authConfig.callbacks,
+    /*
+     * Configuration du runtime Node, donc avec accès à la base : chaque lecture
+     * de session y est revalidée (compte actif, version de session, droits
+     * relus). À la connexion, le jeton vient d'être construit depuis la base et
+     * n'a pas à être relu. Le middleware garde la configuration Edge, sans base.
+     */
+    async jwt(parametres) {
+      const jeton = authConfig.callbacks.jwt(parametres);
+      if (parametres.user) return jeton;
+      return revaliderJeton(jeton);
+    },
+  },
   providers: [
     Credentials({
       credentials: {
@@ -31,16 +46,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new AuthStatusError(result.status);
         }
 
-        return {
-          id: result.user.id,
-          email: result.user.email,
-          name: result.user.name,
-          roleId: result.user.roleId,
-          roleName: result.user.roleName,
-          permissions: result.user.permissions,
-          totpEnabled: result.user.totpEnabled,
-          requiresTotpEnrollment: result.user.requiresTotpEnrollment,
-        };
+        return result.user;
       },
     }),
   ],

@@ -1,11 +1,20 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AuthError, CredentialsSignin } from "next-auth";
 import { auth, signIn } from "@/auth";
+import { utiliseLaCamera } from "@/lib/pages-camera";
+import { destinationSure } from "./destination";
 
 export interface LoginState {
   error?: string;
+  /**
+   * Destination à charger **par le navigateur**, et non par une redirection de
+   * Server Action : celle-ci est une navigation interne, qui garderait la
+   * politique de la page de connexion — caméra refusée (PLAN.md §16).
+   */
+  redirection?: string;
 }
 
 export async function loginAction(_prevState: LoginState, formData: FormData): Promise<LoginState> {
@@ -33,5 +42,15 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
   if (session?.user?.requiresTotpEnrollment) {
     redirect("/admin/2fa/enroll");
   }
-  redirect("/admin");
+
+  const entetes = await headers();
+  const destination = destinationSure(
+    String(formData.get("callbackUrl") ?? ""),
+    entetes.get("x-forwarded-host") ?? entetes.get("host"),
+  );
+
+  if (destination && utiliseLaCamera(destination.split("?")[0]!)) {
+    return { redirection: destination };
+  }
+  redirect(destination ?? "/admin");
 }

@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import { confirmEnrollAction, type EnrollState } from "./actions";
+import { ShieldCheck } from "lucide-react";
+import { Bouton } from "@/components/ui/bouton";
 
 const initialState: EnrollState = {};
 
@@ -26,13 +28,9 @@ export function EnrollForm({ secret }: { secret: string }) {
         />
       </div>
       {state.error && <p className="text-danger-text text-sm">{state.error}</p>}
-      <button
-        type="submit"
-        disabled={pending}
-        className="bg-primary text-primary-text hover:bg-primary-hover rounded-lg px-4 py-2.5 font-semibold disabled:opacity-60"
-      >
+      <Bouton ton="principal" icone={ShieldCheck} type="submit" disabled={pending}>
         {pending ? "Vérification…" : "Activer"}
-      </button>
+      </Bouton>
     </form>
   );
 }

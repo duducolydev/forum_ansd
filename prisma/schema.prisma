@@ -96,6 +96,7 @@ enum ScanResult {
   OK
   ALREADY
   DENIED_ZONE
+  DENIED_STATUS
   REVOKED
   UNKNOWN
 }
@@ -111,6 +112,14 @@ enum ContributionType {
   SYNTHESIS
   RECOMMENDATION
   CONCLUSION
+}
+
+/// D'où vient une contribution. C'est ce qui décide qui peut la publier : une
+/// présentation déposée par un intervenant ne se publie qu'avec son accord.
+enum ContributionOrigine {
+  COMITE
+  INTERVENANT
+  RAPPORTEUR
 }
 
 enum DocumentCategory {
@@ -179,6 +188,7 @@ model Edition {
   documents             Document[]
   posts                 Post[]
   contentBlocks         ContentBlock[]
+  pageSections          PageSection[]
   notificationTemplates NotificationTemplate[]
   contributions         Contribution[]
 }
@@ -195,6 +205,9 @@ model User {
   lastLoginAt    DateTime?
   failedAttempts Int       @default(0)
   lockedUntil    DateTime?
+  /// Incrémenté pour fermer toutes les sessions ouvertes du compte (mot de
+  /// passe ou 2FA réinitialisés, désactivation) — PLAN.md §18.
+  sessionVersion Int       @default(0)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -206,6 +219,7 @@ model User {
   scans                 ScanLog[]                 @relation("ScanAgent")
   updatedContentBlocks  ContentBlock[]            @relation("ContentBlockUpdatedBy")
   auditLogs             AuditLog[]                @relation("AuditActorUser")
+  sessionsRapportees    SessionRapporteur[]
 
   @@index([roleId])
 }
@@ -234,6 +248,7 @@ model ParticipantCategory {
   badgeTemplateId   String?
   autoConfirm       Boolean  @default(false)
   requiresLogistics Boolean  @default(false)
+  alertOnScan       Boolean  @default(false) // scan orange : catégorie à accueillir (§2.5)
   sortOrder         Int      @default(0)
   isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())
@@ -321,6 +336,10 @@ model Invitation {
   firstName      String
   lastName       String
   organization   String?
+  // Ajouté au-delà des champs listés au brief §4 : nécessaire pour filtrer les
+  // relances par pays (brief §5.5 « Relances ... filtrées catégorie/pays »),
+  // qu'aucun autre champ du modèle ne permet de dériver avant inscription.
+  country        String?
   categoryId     String
   token          String           @unique
   status         InvitationStatus @default(PENDING)
@@ -514,32 +533,44 @@ model Session {
   speakers      SessionSpeaker[]
   registrations SessionRegistration[]
   contributions Contribution[]
+  rapporteurs   SessionRapporteur[]
 
   @@unique([editionId, slug])
 }
 
 model Speaker {
-  id               String    @id @default(cuid())
-  editionId        String
-  participantId    String?   @unique
-  firstName        String
-  lastName         String
-  jobTitle         String?
-  organization     String?
-  country          String?
-  photoPath        String?
-  bioFr            String?   @db.Text
-  bioEn            String?   @db.Text
-  presentationPath String?
-  isPublished      Boolean   @default(false)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  deletedAt        DateTime?
+  id                       String    @id @default(cuid())
+  editionId                String
+  participantId            String?   @unique
+  /// Adresse propre à l'intervenant, pour son espace de dépôt.
+  ///
+  /// Nullable et distincte de celle du participant : un panéliste n'est pas
+  /// forcément inscrit au Forum (`participantId` est facultatif), et sans
+  /// adresse ici il serait injoignable — c'est le manque réel derriere C12.
+  /// L'adresse retenue pour l'envoi est celle-ci, sinon celle du participant lié.
+  email                    String?
+  firstName                String
+  lastName                 String
+  jobTitle                 String?
+  organization             String?
+  country                  String?
+  photoPath                String?
+  bioFr                    String?   @db.Text
+  bioEn                    String?   @db.Text
+  presentationPath         String?
+  /// Accord de l'intervenant pour que sa présentation soit publiée sur le site.
+  /// Sans lui, le comité ne peut pas publier la contribution qui en est issue.
+  presentationConsentement Boolean   @default(false)
+  isPublished              Boolean   @default(false)
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  deletedAt                DateTime?
 
   edition       Edition          @relation(fields: [editionId], references: [id], onDelete: Cascade)
   participant   Participant?     @relation(fields: [participantId], references: [id])
   sessions      SessionSpeaker[]
   contributions Contribution[]
+  magicLinks    MagicLink[]
 }
 
 model SessionSpeaker {
@@ -618,23 +649,39 @@ model Sponsor {
 // ---------------------------------------------------------------------------
 
 model Contribution {
-  id          String           @id @default(cuid())
+  id          String              @id @default(cuid())
   editionId   String
   sessionId   String
   type        ContributionType
   title       String
-  body        String?          @db.Text
+  body        String?             @db.Text
   filePath    String?
   url         String?
   speakerId   String?
-  isPublished Boolean          @default(false)
-  sortOrder   Int              @default(0)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  isPublished Boolean             @default(false)
+  origine     ContributionOrigine @default(COMITE)
+  sortOrder   Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 
   edition Edition  @relation(fields: [editionId], references: [id], onDelete: Cascade)
   session Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   speaker Speaker? @relation(fields: [speakerId], references: [id])
+}
+
+/// Rapporteur rattaché à une session (§15). Il rédige des contributions sur ses
+/// sessions et sur elles seules ; la publication reste au gestionnaire programme.
+model SessionRapporteur {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([userId])
 }
 
 model Document {
@@ -656,9 +703,15 @@ model Post {
   slug        String
   titleFr     String
   titleEn     String
+  /// Chapô : le résumé affiché en liste et dans les partages, distinct du corps.
+  excerptFr   String?   @db.Text
+  excerptEn   String?   @db.Text
   bodyFr      String    @db.Text
   bodyEn      String    @db.Text
   coverPath   String?
+  /// Galerie : [{ path, captionFr, captionEn }]. En JSON plutôt qu'en table —
+  /// une image de galerie n'existe que par son article et ne se requête jamais seule.
+  gallery     Json?
   publishedAt DateTime?
   isPublished Boolean   @default(false)
   createdAt   DateTime  @default(now())
@@ -667,6 +720,34 @@ model Post {
   edition Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
 
   @@unique([editionId, slug])
+}
+
+/// Section de page paramétrable (PLAN.md §8.4).
+///
+/// Le `type` désigne une entrée d'un **catalogue fermé** côté code, et
+/// `variant` l'une de ses présentations vérifiées. Rien ici ne décrit une mise
+/// en page : ni coordonnées, ni styles libres. C'est l'arbitrage C15 — un
+/// catalogue se teste et reste accessible, un moteur de mise en page non.
+model PageSection {
+  id        String   @id @default(cuid())
+  editionId String
+  /// Page d'accueil ou autre page composable : "accueil", "a-propos", …
+  page      String
+  type      String
+  variant   String
+  sortOrder Int      @default(0)
+  isVisible Boolean  @default(true)
+  /// Réglages propres au type (nombre d'éléments, source, alignement…).
+  settings  Json
+  /// Contenu rédactionnel, une version par langue.
+  contentFr Json
+  contentEn Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  edition Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+
+  @@index([editionId, page, sortOrder])
 }
 
 model ContentBlock {
@@ -724,18 +805,32 @@ model NotificationLog {
   @@index([participantId])
 }
 
+/// Lien à usage unique, pour un participant **ou** un intervenant.
+///
+/// Les deux destinataires partagent la même table, donc la même durée de vie,
+/// le même hachage et les mêmes limites de débit : deux mecanismes parallèles
+/// auraient fini par diverger, et c'est le plus négligé des deux qui aurait
+/// porté la faille. Exactement un des deux liens est renseigné — la règle est
+/// tenue par le code (`modules/auth/magic-link.ts`), MySQL 8 ne permettant pas
+/// de contrainte CHECK portant sur deux colonnes nullables de façon lisible.
 model MagicLink {
-  id            String    @id @default(cuid())
-  participantId String
-  tokenHash     String    @unique
-  code6         String
-  expiresAt     DateTime
-  usedAt        DateTime?
-  createdAt     DateTime  @default(now())
+  id             String    @id @default(cuid())
+  participantId  String?
+  speakerId      String?
+  tokenHash      String    @unique
+  code6          String
+  expiresAt      DateTime
+  usedAt         DateTime?
+  /// Codes à 6 chiffres erronés saisis pour ce lien ; au 5e, il est annulé
+  /// (PLAN.md §18).
+  failedAttempts Int       @default(0)
+  createdAt      DateTime  @default(now())
 
-  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  participant Participant? @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  speaker     Speaker?     @relation(fields: [speakerId], references: [id], onDelete: Cascade)
 
   @@index([participantId])
+  @@index([speakerId])
 }
 
 // ---------------------------------------------------------------------------

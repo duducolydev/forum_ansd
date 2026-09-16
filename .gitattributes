@@ -1,0 +1,12 @@
+# Fins de ligne LF pour tous les fichiers texte, quelle que soit la configuration Git du
+# poste. Git pour Windows active `core.autocrlf=true` par défaut : toute opération qui
+# réécrit l'arbre de travail repasse alors les fichiers en CRLF. Constaté le 16 septembre
+# 2026 : un commit refusé par lint-staged, qui restaure l'arbre par `git reset`, a
+# converti 393 fichiers, et un test qui lit `globals.css` a échoué (PLAN.md §18.9).
+# Prettier écrit en LF : le dépôt doit l'être aussi. Les binaires sont détectés par Git
+# (`text=auto`) et laissés intacts.
+* text=auto eol=lf
+
+# Scripts shell en fins de ligne LF, quelle que soit la configuration Git du poste :
+# un script extrait en CRLF sous Windows échoue dans Bash (« $'\r': command not found »).
+*.sh text eol=lf

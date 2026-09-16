@@ -2,7 +2,15 @@ import { Queue, Worker, type Job as BullJob } from "bullmq";
 import IORedis from "ioredis";
 import type { EnqueueOptions, JobHandler, JobQueue } from "./types";
 
-const QUEUE_NAME = "forum-ansd";
+/**
+ * Nom de la file. Paramétrable pour **cloisonner** plusieurs consommateurs
+ * partageant le même Redis : sans cela, les processus de test se volaient
+ * mutuellement les jobs (un worker traitait le badge d'un participant créé par
+ * un autre fichier), avec des échecs intermittents impossibles à reproduire
+ * isolément. Utile aussi pour séparer un environnement de recette de la
+ * production sur une instance Redis commune.
+ */
+const QUEUE_NAME = process.env.QUEUE_NAME ?? "forum-ansd";
 
 /** Implémentation par défaut (brief §3.1) : une file BullMQ/Redis unique, un
  * type de job par nom de job BullMQ, un seul worker qui dispatche vers les
@@ -21,7 +29,9 @@ export class BullMqJobQueue implements JobQueue {
   async enqueue<T>(type: string, payload: T, options: EnqueueOptions = {}): Promise<void> {
     const delay = options.runAt ? Math.max(0, options.runAt.getTime() - Date.now()) : undefined;
     await this.queue.add(type, payload, {
-      jobId: options.idempotencyKey,
+      // BullMQ interdit `:` dans un jobId personnalisé (utilisé comme séparateur
+      // de clé Redis en interne) : l'appelant de `JobQueue` n'a pas à le savoir.
+      jobId: options.idempotencyKey?.replaceAll(":", "_"),
       delay,
       attempts: 3,
       backoff: { type: "exponential", delay: 5000 },

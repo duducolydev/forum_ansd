@@ -8,9 +8,9 @@ export interface SessionLike {
 
 /**
  * RBAC déclaratif (brief §3.3, §12) : `can(session, "participants.export")`.
- * Les permissions sont résolues au moment de la connexion (`src/auth.ts`) et
- * embarquées dans le token de session — un changement de rôle ne prend donc
- * effet qu'à la reconnexion (limite acceptée pour le Lot 0, cf. PLAN.md T13).
+ * Les permissions de la session sont relues en base à chaque `auth()`
+ * (`src/modules/auth/revalidation.ts`) : un changement de rôle prend effet à la
+ * requête suivante (PLAN.md §18, qui lève la limite T13).
  */
 export function can(session: SessionLike | null | undefined, permission: Permission): boolean {
   return Boolean(session?.user?.permissions?.includes(permission));

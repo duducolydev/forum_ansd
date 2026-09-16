@@ -64,8 +64,15 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Sans navigateur, les tests de rendu de badge se mettraient en skip
+      # silencieux : le module 3.6 ne serait plus couvert en CI.
+      - name: Install Chromium (rendu des badges)
+        run: sudo apt-get update && sudo apt-get install -y chromium-browser
+
       - name: Test
         run: pnpm test
+        env:
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
 
       - name: Build
         run: pnpm build

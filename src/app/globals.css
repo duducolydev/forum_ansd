@@ -12,7 +12,13 @@
   --ansd-bleu-vif: #2f7fd1;
   --ansd-vert: #1f8a4c;
   --ansd-vert-vif: #3dbb6e;
-  --ansd-or: #e9a824;
+  /* Cet or dessine le contour de focus au clavier (cf. `:focus-visible` plus
+     bas), qui relève du seuil non textuel de 3:1 (WCAG 1.4.11). L'ancien
+     #e9a824 ne tenait que 2,08:1 sur fond blanc — un contour de focus que les
+     visiteurs au clavier distinguaient mal, et qu'aucun outil ne signalait :
+     Lighthouse n'audite pas le contraste des contours de focus. Valeur retenue :
+     3,36:1 sur blanc, 5,00:1 sur le fond sombre. */
+  --ansd-or: #b6831c;
   --rouge: #c8323a;
   --orange: #e07b1a;
 
@@ -25,28 +31,62 @@
   --border: #d7dee5;
   --text: #12212f;
   --text-2: #4e5d6b;
-  --text-3: #8a96a3;
+  /* Texte atténué : 4,81:1 au pire (sur --bg-3), donc conforme AA. L'ancien
+     #8a96a3 ne tenait que 2,83:1 — illisible pour beaucoup, et jamais
+     signalé parce que l'audit d'accessibilité tournait en thème sombre. */
+  --text-3: #5d6a78;
   --heading: #082c4e;
   --link: #0b4f8a;
-  --primary: #1f8a4c;
+  /* Bouton d'action vert. Le vert de la charte (#1f8a4c) ne donnait que 4,38:1
+     avec du texte blanc — sous le seuil AA, sur le bouton le plus visible du
+     site (« S'inscrire »). T34 avait corrigé --btn-blue mais pas celui-ci,
+     l'audit d'accessibilité tournant en thème sombre, où --primary suit le
+     motif inverse (fond clair, texte foncé) et passe. Assombri à 4,84:1. */
+  --primary: #1d8247;
   --primary-hover: #186f3d;
   --primary-text: #fff;
   --secondary: #0b4f8a;
   --secondary-hover: #093e6c;
+  /* Bouton d'action bleu. Le bleu vif de la charte (#2f7fd1) ne donne que
+     4,14:1 avec du texte blanc — sous le seuil AA. On garde donc un bleu
+     ANSD, assombri jusqu'à 7,01:1. */
+  --btn-blue: #1d5a9c;
+  --btn-blue-text: #ffffff;
+  /* Pastilles de statut : texte de 12 px, donc seuil AA de 4,5:1 sur leur fond
+     adouci. Trois des quatre couples étaient en dessous et n'avaient jamais été
+     mesurés — warn tombait même à 2,69:1. Ratios sur le fond adouci après
+     correction : accent 4,56, warn 4,58, danger 4,60, or 4,58. */
   --accent-soft: #e4f3ea;
-  --accent-text: #1f8a4c;
+  --accent-text: #1c7c44;
   --blue-soft: #e8f0f8;
   --blue-text: #0b4f8a;
   --warn-soft: #fff1e0;
-  --warn-text: #e07b1a;
+  --warn-text: #a65b13;
   --danger-soft: #fbe7e8;
-  --danger-text: #c8323a;
+  --danger-text: #c43139;
   --gold-soft: #fff4dd;
-  --gold-text: #a46a08;
+  --gold-text: #9a6408;
   --dark-panel: #082c4e;
   --dark-panel-text: #fff;
   --dark-panel-muted: #9fb8d2;
   --dark-panel-line: rgba(255, 255, 255, 0.12);
+  /* Fond des sections « sombres » (PLAN.md §17). La section passe dans le thème
+     sombre (`data-theme="dark"`) : ce fond porte donc les textes de ce thème, et
+     reste plus foncé que le fond adouci. Contrastes vérifiés par palette.test.ts. */
+  --fond-sombre: #082c4e;
+  /* --- Jetons de graphiques (tableau de bord) ---------------------------
+     Marque à série unique et rampe ordinale à 5 pas pour l'entonnoir.
+     Valeurs **vérifiées** avec le validateur de la charte dataviz contre la
+     surface de chaque thème (contraste, monotonie de clarté, écart entre pas,
+     teinte unique) : le thème sombre a sa propre rampe, ce n'est pas une
+     inversion automatique de la rampe claire. */
+  --chart-mark: #2f7fd1; /* 4,14:1 sur #ffffff */
+  --chart-grid: #e3ebf3;
+  --chart-ordinal-1: #8ab6e8; /* pas le plus clair, 2,11:1 sur la surface */
+  --chart-ordinal-2: #5c95d9;
+  --chart-ordinal-3: #2f7fd1;
+  --chart-ordinal-4: #1f5da0;
+  --chart-ordinal-5: #133f70;
   --ticker-bg: #082c4e;
   --ticker-text: #c9daec;
   --grid-line: #d7dee5;
@@ -69,7 +109,7 @@
     --border: #1a4270;
     --text: #dce7f3;
     --text-2: #9db4cc;
-    --text-3: #5f7a96;
+    --text-3: #93a9c0; /* 4,78:1 au pire ; l'ancien #5f7a96 tombait à 3,21:1 */
     --heading: #f4f8fc;
     --link: #7fe0a2;
     --primary: #3dbb6e;
@@ -77,6 +117,10 @@
     --primary-text: #06261a;
     --secondary: #2f7fd1;
     --secondary-hover: #3d8fe2;
+    /* Fond clair, texte foncé — le motif déjà retenu pour --primary en thème
+       sombre. 8,62:1 pour le texte, 7,46:1 pour le bouton sur la surface. */
+    --btn-blue: #8fc0f0;
+    --btn-blue-text: #062038;
     --accent-soft: rgba(61, 187, 110, 0.15);
     --accent-text: #7fe0a2;
     --blue-soft: rgba(47, 127, 209, 0.18);
@@ -84,13 +128,23 @@
     --warn-soft: rgba(245, 154, 60, 0.15);
     --warn-text: #f59a3c;
     --danger-soft: rgba(240, 85, 92, 0.15);
-    --danger-text: #f0555c;
+    /* 3,70:1 sur le fond adouci aplati sur la surface — sous le seuil. Éclairci
+       jusqu'à 4,55:1, les autres pastilles du thème sombre passant déjà. */
+    --danger-text: #f37479;
     --gold-soft: rgba(242, 178, 51, 0.15);
     --gold-text: #f2b233;
+    --chart-mark: #5c9de0; /* 5,00:1 sur la surface sombre #0b2b4e */
+    --chart-grid: #17395f;
+    --chart-ordinal-1: #2f7fd1; /* pas le plus sombre, 3,45:1 sur la surface */
+    --chart-ordinal-2: #5c9de0;
+    --chart-ordinal-3: #86b8ea;
+    --chart-ordinal-4: #aed2f4;
+    --chart-ordinal-5: #d4e6fb;
     --dark-panel: #0b2b4e;
     --dark-panel-text: #fff;
     --dark-panel-muted: #9db4cc;
     --dark-panel-line: #1a4270;
+    --fond-sombre: #03101f;
     --ticker-bg: #3dbb6e;
     --ticker-text: #06261a;
     --grid-line: #123a64;
@@ -117,7 +171,7 @@
   --border: #1a4270;
   --text: #dce7f3;
   --text-2: #9db4cc;
-  --text-3: #5f7a96;
+  --text-3: #93a9c0;
   --heading: #f4f8fc;
   --link: #7fe0a2;
   --primary: #3dbb6e;
@@ -125,6 +179,8 @@
   --primary-text: #06261a;
   --secondary: #2f7fd1;
   --secondary-hover: #3d8fe2;
+  --btn-blue: #8fc0f0;
+  --btn-blue-text: #062038;
   --accent-soft: rgba(61, 187, 110, 0.15);
   --accent-text: #7fe0a2;
   --blue-soft: rgba(47, 127, 209, 0.18);
@@ -132,9 +188,18 @@
   --warn-soft: rgba(245, 154, 60, 0.15);
   --warn-text: #f59a3c;
   --danger-soft: rgba(240, 85, 92, 0.15);
-  --danger-text: #f0555c;
+  /* Même correction que dans le bloc `prefers-color-scheme` ci-dessus : 3,70:1
+     avant, 4,55:1 après. Les deux blocs doivent rester alignés. */
+  --danger-text: #f37479;
   --gold-soft: rgba(242, 178, 51, 0.15);
   --gold-text: #f2b233;
+  --chart-mark: #5c9de0;
+  --chart-grid: #17395f;
+  --chart-ordinal-1: #2f7fd1;
+  --chart-ordinal-2: #5c9de0;
+  --chart-ordinal-3: #86b8ea;
+  --chart-ordinal-4: #aed2f4;
+  --chart-ordinal-5: #d4e6fb;
   --dark-panel: #0b2b4e;
   --dark-panel-text: #fff;
   --dark-panel-muted: #9db4cc;
@@ -152,6 +217,12 @@
   color-scheme: dark;
 }
 
+/* Fond des sections sombres quand la page entière est en thème sombre choisi.
+   Sur `:root` seulement : une section `data-theme="dark"` hérite de la page. */
+:root[data-theme="dark"] {
+  --fond-sombre: #03101f;
+}
+
 /* Utilitaires Tailwind générés à partir des tokens ci-dessus (v4, CSS-first).
    Les valeurs pointent vers les variables `:root`/`[data-theme]` pour que le
    changement de thème s'applique sans recompilation. */
@@ -159,6 +230,7 @@
   --color-bg: var(--bg);
   --color-bg-2: var(--bg-2);
   --color-bg-3: var(--bg-3);
+  --color-fond-sombre: var(--fond-sombre);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-border: var(--border);
@@ -191,6 +263,10 @@
   --color-ansd-vert: var(--ansd-vert);
   --color-ansd-vert-vif: var(--ansd-vert-vif);
   --color-ansd-or: var(--ansd-or);
+  --color-btn-blue: var(--btn-blue);
+  --color-btn-blue-text: var(--btn-blue-text);
+  --color-chart-mark: var(--chart-mark);
+  --color-chart-grid: var(--chart-grid);
   --color-rouge: var(--rouge);
   --color-orange: var(--orange);
 
@@ -208,27 +284,316 @@
   }
 }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-body);
-  line-height: 1.55;
-  transition:
-    background 0.25s,
-    color 0.25s;
+/* ---------------------------------------------------------------------------
+   Styles de base des éléments.
+
+   `@layer base` n'est pas décoratif ici. Tailwind v4 place ses utilitaires dans
+   `@layer utilities` ; or, dans la cascade CSS, **une règle hors calque bat
+   toute règle en calque**, quelle que soit sa spécificité. Ces déclarations
+   écrites hors calque l'emportaient donc sur chaque classe utilitaire.
+
+   Le défaut que cela produisait : `<h2 className="text-white">` dans le pied de
+   page restait à `--heading`, soit #0b4f8a sur le bandeau #082c4e —
+   **1,69:1 mesuré**. C'est ce qui donnait les intitulés de colonnes délavés.
+   Aucun outil ne le signalait, et la relecture du JSX ne pouvait pas le voir :
+   la classe était bien là, elle perdait ailleurs.
+--------------------------------------------------------------------------- */
+
+@layer base {
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.55;
+    transition:
+      background 0.25s,
+      color 0.25s;
+  }
+
+  /*
+   * Échelle typographique.
+   *
+   * Le `preflight` de Tailwind ramène tous les titres à la taille et à la
+   * graisse du texte courant. Sans échelle explicite, chaque `h1` du site
+   * s'affichait donc à **16 px en graisse 400** — mesuré — et la hiérarchie
+   * visuelle des pages n'existait pas, quel que soit le soin mis aux bandeaux.
+   *
+   * Les tailles sont fluides : un titre de 46 px sur un écran de bureau est
+   * juste, le même sur un téléphone occupe quatre lignes.
+   */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    line-height: 1.12;
+    letter-spacing: -0.012em;
+    color: var(--heading);
+    text-wrap: balance;
+  }
+
+  h1 {
+    font-size: clamp(1.95rem, 1.35rem + 2.4vw, 2.9rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  h2 {
+    font-size: clamp(1.4rem, 1.15rem + 1vw, 1.85rem);
+    font-weight: 700;
+  }
+  h3 {
+    font-size: clamp(1.1rem, 1.02rem + 0.35vw, 1.3rem);
+    font-weight: 650;
+  }
+  h4 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--ansd-or);
+    outline-offset: 2px;
+  }
 }
 
-h1,
-h2,
-h3,
-h4 {
+/* ---------------------------------------------------------------------------
+   Interface du BackOffice (§9)
+
+   Les animations passent toutes par `--duree-animation`, mise à 0 sous
+   `prefers-reduced-motion`. Un seul endroit à couper : une transition écrite en
+   dur quelque part échapperait à ce réglage, et la préférence système ne serait
+   respectée qu'à moitié.
+--------------------------------------------------------------------------- */
+
+:root {
+  --duree-animation: 180ms;
+  --courbe-animation: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duree-animation: 0ms;
+  }
+  /* Filet : neutralise aussi ce qui n'utiliserait pas la variable. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.transition-tout {
+  transition:
+    background-color var(--duree-animation) var(--courbe-animation),
+    border-color var(--duree-animation) var(--courbe-animation),
+    color var(--duree-animation) var(--courbe-animation),
+    box-shadow var(--duree-animation) var(--courbe-animation),
+    transform var(--duree-animation) var(--courbe-animation),
+    width var(--duree-animation) var(--courbe-animation);
+}
+
+/* Carte qui se soulève au survol, pour les tuiles et vignettes cliquables. */
+.carte-relief {
+  transition:
+    transform var(--duree-animation) var(--courbe-animation),
+    box-shadow var(--duree-animation) var(--courbe-animation),
+    border-color var(--duree-animation) var(--courbe-animation);
+}
+.carte-relief:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -16px rgb(0 0 0 / 0.28);
+}
+
+/* Apparition des indicateurs, décalée pour donner un sens de lecture. */
+@keyframes monter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.apparait {
+  animation: monter calc(var(--duree-animation) * 2.2) var(--courbe-animation) both;
+}
+
+/* Comptage des grands nombres : la valeur reste lisible pendant l'animation. */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   SweetAlert2, habillé aux jetons du thème.
+
+   La bibliothèque pose ses propres couleurs ; sans cette reprise, la boîte de
+   confirmation reste blanche sur un BackOffice en thème sombre.
+--------------------------------------------------------------------------- */
+
+.forum-swal {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 30px 70px -30px rgb(0 0 0 / 0.45);
+}
+.forum-swal .swal2-title {
   font-family: var(--font-display);
-  line-height: 1.12;
-  letter-spacing: -0.012em;
   color: var(--heading);
 }
-
-:focus-visible {
+.forum-swal .swal2-html-container {
+  color: var(--text-2);
+}
+.forum-swal .swal2-styled {
+  border-radius: 10px;
+  font-weight: 600;
+  transition: filter var(--duree-animation) var(--courbe-animation);
+}
+.forum-swal .swal2-styled:hover {
+  filter: brightness(0.94);
+}
+.forum-swal .swal2-styled:focus-visible {
   outline: 3px solid var(--ansd-or);
   outline-offset: 2px;
+  box-shadow: none;
+}
+/* Le bouton d'annulation reçoit un fond clair : le texte doit rester foncé. */
+.forum-swal .forum-swal-annuler {
+  color: var(--text);
+}
+
+/* ---------------------------------------------------------------------------
+   Site public (§10)
+
+   Tout passe par `--duree-animation`, mise à 0 sous `prefers-reduced-motion`
+   par le bloc du BackOffice plus haut : un seul interrupteur pour tout le site.
+--------------------------------------------------------------------------- */
+
+/* Apparition au défilement. L'état de départ n'est appliqué que lorsque le
+   script a pris la main (`data-revele="0"`), pour qu'une page sans JavaScript
+   affiche son contenu au lieu de le laisser invisible. */
+[data-revele="0"] {
+  opacity: 0;
+  transform: translateY(14px);
+}
+[data-revele="1"] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity calc(var(--duree-animation) * 3) var(--courbe-animation),
+    transform calc(var(--duree-animation) * 3) var(--courbe-animation);
+}
+
+/* Fond de bandeau : dégradé doux plus deux halos. Décoratif et sans texte
+   posé dessus, donc hors du contrôle de contraste. */
+.fond-bandeau {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      60rem 30rem at 15% -10%,
+      color-mix(in srgb, var(--ansd-bleu-vif) 14%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      45rem 28rem at 95% 10%,
+      color-mix(in srgb, var(--ansd-vert-vif) 12%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(to bottom, var(--bg-2), var(--bg));
+}
+
+/* Filet coloré en haut d'une carte mise en avant. */
+.filet-haut::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(to right, var(--ansd-bleu-vif), var(--ansd-vert-vif));
+  opacity: 0.85;
+}
+
+/* Titre de section : petit trait coloré devant le sur-titre. */
+.surtitre {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.76rem;
+  color: var(--accent-text);
+}
+.surtitre::before {
+  content: "";
+  width: 2rem;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--ansd-bleu-vif), var(--ansd-vert-vif));
+}
+
+/* Vignette d'illustration : cadre stable même quand l'image est un logo au
+   format inattendu. `contain` sur fond neutre plutôt que `cover`, qui rognait
+   les logos en plein milieu. */
+.vignette {
+  display: block;
+  width: 100%;
+  height: 11rem;
+  object-fit: cover;
+  background: var(--bg-2);
+}
+.vignette-logo {
+  object-fit: contain;
+  padding: 1.25rem;
+}
+
+/* Lien de carte : la carte entière réagit, le titre se souligne. */
+.carte-lien {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition:
+    transform var(--duree-animation) var(--courbe-animation),
+    box-shadow var(--duree-animation) var(--courbe-animation),
+    border-color var(--duree-animation) var(--courbe-animation);
+}
+.carte-lien:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 34px -20px rgb(0 0 0 / 0.35);
+  border-color: var(--ansd-bleu-vif);
+}
+.carte-lien:hover .titre-carte {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Apparition d'une liste entière : un seul observateur, l'échelonnement des
+   enfants étant fait ici plutôt qu'en JavaScript (cf. `RevealListe`). */
+[data-revele-liste="0"] > * {
+  opacity: 0;
+  transform: translateY(14px);
+}
+[data-revele-liste="1"] > * {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity calc(var(--duree-animation) * 3) var(--courbe-animation),
+    transform calc(var(--duree-animation) * 3) var(--courbe-animation);
+}
+[data-revele-liste="1"] > *:nth-child(2) {
+  transition-delay: 60ms;
+}
+[data-revele-liste="1"] > *:nth-child(3) {
+  transition-delay: 120ms;
+}
+[data-revele-liste="1"] > *:nth-child(4) {
+  transition-delay: 180ms;
+}
+[data-revele-liste="1"] > *:nth-child(5) {
+  transition-delay: 240ms;
+}
+[data-revele-liste="1"] > *:nth-child(n + 6) {
+  transition-delay: 300ms;
 }

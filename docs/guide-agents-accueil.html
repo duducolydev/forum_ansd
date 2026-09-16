@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Guide de l'agent d'accueil — Forum international sur les données</title>
+    <!--
+      Source unique du guide (brief §14).
+
+      Écrit en HTML plutôt qu'en Markdown pour n'avoir qu'un seul fichier à
+      tenir à jour : c'est ce texte que l'on modifie, et `pnpm guide:agents` en
+      tire le PDF distribué aux agents. Deux sources auraient divergé, et c'est
+      la version imprimée — celle que personne ne relit — qui aurait vieilli.
+
+      Deux pages A4 recto-verso, volontairement : un agent lit ce document une
+      fois, debout, avant l'ouverture des portes.
+    -->
+    <style>
+      @page {
+        size: A4 portrait;
+        margin: 14mm 14mm 20mm;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #fff;
+        color: #10202f;
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        font-size: 9.5pt;
+        line-height: 1.45;
+      }
+      header {
+        border-bottom: 2px solid #082c4e;
+        padding-bottom: 4mm;
+        margin-bottom: 5mm;
+      }
+      .edition {
+        font-size: 7.5pt;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #2f7fd1;
+      }
+      h1 {
+        margin: 2mm 0 1mm;
+        font-size: 17pt;
+        color: #082c4e;
+      }
+      .sous-titre {
+        font-size: 9pt;
+        color: #4e5d6b;
+      }
+      h2 {
+        font-size: 11pt;
+        color: #082c4e;
+        margin: 6mm 0 2mm;
+        padding-bottom: 1mm;
+        border-bottom: 1px solid #c7d2dc;
+      }
+      h3 {
+        font-size: 9.5pt;
+        margin: 3.5mm 0 1mm;
+        color: #10202f;
+      }
+      p,
+      li {
+        margin: 0 0 1.5mm;
+      }
+      ol,
+      ul {
+        margin: 0 0 2mm;
+        padding-left: 5mm;
+      }
+      .verdicts {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 2mm 0 3mm;
+      }
+      .verdicts th {
+        text-align: left;
+        font-size: 7.5pt;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #4e5d6b;
+        border-bottom: 1px solid #c7d2dc;
+        padding: 1.5mm 2mm;
+      }
+      .verdicts td {
+        padding: 2mm;
+        border-bottom: 1px solid #e6ecf2;
+        vertical-align: top;
+      }
+      .pastille {
+        display: inline-block;
+        padding: 0.6mm 2mm;
+        border-radius: 2mm;
+        font-weight: 700;
+        font-size: 8pt;
+        color: #fff;
+        white-space: nowrap;
+      }
+      .vert {
+        background: #0f7b3e;
+      }
+      .orange {
+        background: #b45309;
+      }
+      .rouge {
+        background: #9b1c22;
+      }
+      .encadre {
+        border: 1px solid #c7d2dc;
+        border-left: 3px solid #2f7fd1;
+        background: #f6f9fb;
+        padding: 3mm 4mm;
+        margin: 3mm 0;
+      }
+      .encadre.alerte {
+        border-left-color: #b45309;
+        background: #fdf6ec;
+      }
+      .encadre p:last-child {
+        margin-bottom: 0;
+      }
+      strong {
+        color: #082c4e;
+      }
+      .page-2 {
+        page-break-before: always;
+      }
+      footer {
+        position: fixed;
+        bottom: 6mm;
+        left: 0;
+        right: 0;
+        font-size: 7.5pt;
+        color: #8a97a3;
+        display: flex;
+        justify-content: space-between;
+      }
+      .contacts {
+        margin-top: 4mm;
+        border-top: 1px solid #c7d2dc;
+        padding-top: 3mm;
+        font-size: 9pt;
+      }
+      .a-remplir {
+        color: #9b1c22;
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="edition">Forum international sur les données · 23–25 novembre 2026 · CICAD</div>
+      <h1>Guide de l'agent d'accueil</h1>
+      <div class="sous-titre">
+        Deux pages à lire avant l'ouverture des portes. Gardez-les sur votre poste.
+      </div>
+    </header>
+
+    <h2>1. Avant l'ouverture — cinq minutes, une seule fois</h2>
+    <ol>
+      <li>
+        Ouvrez <strong>l'application Scanner</strong> sur la tablette, à l'adresse
+        <span class="a-remplir">à compléter</span>, et connectez-vous avec le compte qui vous a été
+        remis.
+      </li>
+      <li>
+        Choisissez <strong>votre point de contrôle</strong> dans la liste en haut. Il reste mémorisé
+        : vous ne le referez pas.
+      </li>
+      <li>
+        Vérifiez que la ligne indique <strong>« En ligne »</strong> et un nombre de
+        <strong>badges embarqués</strong> supérieur à zéro. C'est la copie locale qui vous permettra
+        de travailler si le réseau tombe.
+      </li>
+      <li>Autorisez la caméra quand le navigateur le demande.</li>
+    </ol>
+
+    <div class="encadre">
+      <p>
+        <strong>Ne fermez pas l'onglet de la journée.</strong> Tant qu'il reste ouvert, la tablette
+        garde tout ce qu'il lui faut, réseau ou pas.
+      </p>
+    </div>
+
+    <h2>2. Scanner un badge</h2>
+    <p>
+      Présentez le QR devant la caméra. Le verdict s'affiche en plein écran, avec un son : aigu si
+      c'est bon, grave si c'est un refus. Vous n'avez rien à valider — touchez l'écran pour passer à
+      la personne suivante.
+    </p>
+
+    <table class="verdicts">
+      <thead>
+        <tr>
+          <th style="width: 24mm">Ce que vous voyez</th>
+          <th style="width: 42mm">Message</th>
+          <th>Ce que vous faites</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pastille vert">VERT</span></td>
+          <td>Accès autorisé</td>
+          <td>Laissez passer.</td>
+        </tr>
+        <tr>
+          <td><span class="pastille orange">ORANGE</span></td>
+          <td>Accès autorisé · <em>À accueillir</em></td>
+          <td>
+            Laissez passer, <strong>et accompagnez la personne</strong> : autorité, invité spécial
+            ou presse. Prévenez le protocole si c'est prévu.
+          </td>
+        </tr>
+        <tr>
+          <td><span class="pastille orange">ORANGE</span></td>
+          <td>Déjà scanné ici</td>
+          <td>
+            La personne vient de passer à ce même point, il y a moins de deux minutes. Laissez
+            passer : c'est un double scan, pas une fraude.
+          </td>
+        </tr>
+        <tr>
+          <td><span class="pastille rouge">ROUGE</span></td>
+          <td>Zone non autorisée</td>
+          <td>
+            Le badge est valide mais ne donne pas accès à <em>cette</em> salle. Indiquez où la
+            personne est attendue. Ce n'est pas un incident.
+          </td>
+        </tr>
+        <tr>
+          <td><span class="pastille rouge">ROUGE</span></td>
+          <td>Badge révoqué</td>
+          <td>
+            <strong>Récupérez le badge</strong> et orientez vers le comptoir d'accueil : un badge de
+            remplacement a peut-être déjà été émis.
+          </td>
+        </tr>
+        <tr>
+          <td><span class="pastille rouge">ROUGE</span></td>
+          <td>Inscription annulée / non confirmée</td>
+          <td>Orientez vers le comptoir d'accueil. Ne laissez pas entrer.</td>
+        </tr>
+        <tr>
+          <td><span class="pastille rouge">ROUGE</span></td>
+          <td>Badge inconnu</td>
+          <td>
+            Le code n'est pas reconnu. Essayez la <strong>recherche manuelle</strong> (§3) avant de
+            conclure.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      La mention <em>« Premier passage du jour »</em> est une information, pas une alerte : elle
+      indique simplement que c'est la première entrée de la personne aujourd'hui.
+    </p>
+
+    <div class="page-2">
+      <h2>3. Le QR ne se lit pas</h2>
+      <p>
+        Écran fissuré, badge froissé, téléphone trop sombre : cela arrive. Passez à l'onglet
+        <strong>Recherche manuelle</strong> et tapez le nom, l'organisation ou l'identifiant imprimé
+        sur le badge (de la forme <strong>FID26-XXXXXX</strong>). Touchez la bonne personne dans la
+        liste : le verdict s'affiche comme pour un scan, et la présence est enregistrée de la même
+        façon.
+      </p>
+
+      <h2>4. Le réseau est tombé</h2>
+      <p>
+        <strong>Continuez à scanner.</strong> La tablette travaille sur sa copie locale : les
+        verdicts restent justes et les passages sont conservés.
+      </p>
+      <ul>
+        <li>La pastille passe de « En ligne » à <strong>« Hors ligne »</strong>.</li>
+        <li>Le compteur <strong>« en attente »</strong> augmente à chaque scan.</li>
+        <li>
+          Au retour du réseau, tout remonte tout seul. Vous pouvez aussi toucher
+          <strong>« Synchroniser »</strong>.
+        </li>
+      </ul>
+
+      <div class="encadre alerte">
+        <p>
+          <strong>Deux choses à savoir pendant une coupure.</strong> Une personne inscrite dans les
+          dernières minutes peut ne pas figurer sur votre copie locale : orientez-la vers le
+          comptoir. Et si deux tablettes tiennent la même porte, elles ne se voient pas — un badge
+          scanné sur l'une peut passer en vert sur l'autre.
+        </p>
+      </div>
+
+      <h2>5. La personne n'a pas de badge</h2>
+      <p>
+        Orientez-la vers le <strong>comptoir d'accueil</strong>, qui fait tout en un seul écran :
+      </p>
+      <ol>
+        <li>
+          <strong>Rechercher</strong> son nom. Si elle est déjà inscrite, un seul bouton la valide,
+          édite son badge et enregistre son entrée.
+        </li>
+        <li>
+          Sinon, <strong>Nouvelle inscription</strong> : civilité, prénom, nom, organisation, pays,
+          catégorie, et <strong>au moins un e-mail ou un téléphone</strong>. La photo par webcam est
+          facultative — ne la prenez pas s'il y a du monde derrière.
+        </li>
+        <li>
+          <strong>Imprimer le badge</strong>, le remettre, et c'est fait : la personne est comptée
+          présente.
+        </li>
+      </ol>
+      <p>
+        Le reste du dossier — journées, hébergement, régime alimentaire — se complète plus tard. Ne
+        le remplissez pas devant une file.
+      </p>
+
+      <h2>6. Ce qu'il ne faut pas faire</h2>
+      <ul>
+        <li>
+          <strong>Ne rééditez pas un badge existant</strong> pour dépanner : le QR déjà imprimé
+          cesserait de fonctionner. Réimprimez celui qui existe.
+        </li>
+        <li>
+          <strong>Ne prêtez pas votre session.</strong> Chaque scan est enregistré à votre nom ;
+          c'est ce qui permet de reconstituer une journée en cas de litige.
+        </li>
+        <li>
+          <strong>Ne laissez pas entrer sur un rouge</strong> sans en référer. Un refus de zone se
+          règle en indiquant la bonne salle, pas en passant outre.
+        </li>
+      </ul>
+
+      <h2>7. En cas de doute</h2>
+      <p>
+        Un rouge sur quelqu'un manifestement légitime — un ministre, un intervenant attendu sur
+        scène — n'est pas une question de règlement mais de protocole.
+        <strong>Appelez le comptoir</strong> plutôt que de décider seul : une exception d'accès se
+        crée en trente secondes et reste tracée.
+      </p>
+
+      <div class="contacts">
+        <p><strong>Numéros du jour</strong></p>
+        <p>
+          Comptoir d'accueil : <span class="a-remplir">à compléter</span> · Responsable
+          accréditation : <span class="a-remplir">à compléter</span> · Assistance technique :
+          <span class="a-remplir">à compléter</span>
+        </p>
+      </div>
+    </div>
+
+    <footer>
+      <span>Forum international sur les données — guide de l'agent d'accueil</span>
+      <span>ANSD · CICAD, Diamniadio</span>
+    </footer>
+  </body>
+</html>

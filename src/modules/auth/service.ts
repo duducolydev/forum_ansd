@@ -9,16 +9,46 @@ const LOCK_DURATION_MS = 15 * 60 * 1000;
 /** Rôles pour lesquels le 2FA TOTP est obligatoire (brief §7). */
 export const ROLES_REQUIRING_TOTP = ["SUPER_ADMIN", "ADMIN_FORUM"] as const;
 
-export interface AuthenticatedUser {
-  id: string;
-  email: string;
-  name: string;
+/** Ce que la session porte des droits d'un compte. */
+export interface DroitsDuCompte {
   roleId: string;
   roleName: string;
   permissions: string[];
   totpEnabled: boolean;
   /** Le rôle impose le 2FA mais il n'est pas encore activé : à rediriger vers l'enrôlement. */
   requiresTotpEnrollment: boolean;
+  /** Version de session du compte au moment où le jeton a été émis (PLAN.md §18). */
+  sessionVersion: number;
+}
+
+export interface AuthenticatedUser extends DroitsDuCompte {
+  id: string;
+  email: string;
+  name: string;
+}
+
+/**
+ * Droits d'un compte tels que la session les porte.
+ *
+ * Un seul calcul, pour la connexion **et** pour la revalidation de chaque
+ * session (`revalidation.ts`) : deux calculs séparés finiraient par diverger, et
+ * une session revalidée n'aurait plus les droits qu'aurait une connexion neuve.
+ */
+export function droitsDuCompte(user: {
+  roleId: string;
+  totpEnabled: boolean;
+  sessionVersion: number;
+  role: { name: string; permissions: unknown };
+}): DroitsDuCompte {
+  return {
+    roleId: user.roleId,
+    roleName: user.role.name,
+    permissions: (user.role.permissions as string[] | null) ?? [],
+    totpEnabled: user.totpEnabled,
+    requiresTotpEnrollment:
+      (ROLES_REQUIRING_TOTP as readonly string[]).includes(user.role.name) && !user.totpEnabled,
+    sessionVersion: user.sessionVersion,
+  };
 }
 
 export type AuthenticateResult =
@@ -84,21 +114,9 @@ export async function authenticateUser(
     entityId: user.id,
   });
 
-  const permissions = (user.role.permissions as string[] | null) ?? [];
-
   return {
     status: "OK",
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      roleId: user.roleId,
-      roleName: user.role.name,
-      permissions,
-      totpEnabled: user.totpEnabled,
-      requiresTotpEnrollment:
-        (ROLES_REQUIRING_TOTP as readonly string[]).includes(user.role.name) && !user.totpEnabled,
-    },
+    user: { id: user.id, email: user.email, name: user.name, ...droitsDuCompte(user) },
   };
 }
 
@@ -123,15 +141,39 @@ async function registerFailedAttempt(userId: string, currentFailedAttempts: numb
   }
 }
 
-/** Confirme l'enrôlement 2FA d'un utilisateur (secret déjà généré côté serveur). */
-export async function enableTotp(userId: string, secret: string, code: string): Promise<boolean> {
-  if (!(await verifyTotpCode(secret, code))) {
-    return false;
+export type ResultatEnrolement = "OK" | "CODE_INVALIDE" | "DEJA_ACTIVE";
+
+/** Secret TOTP tel que `generateTotpSecret` le produit : du base32. */
+const SECRET_TOTP = /^[A-Z2-7]{16,64}$/;
+
+/**
+ * Confirme l'enrôlement 2FA d'un utilisateur.
+ *
+ * **Refusé si un second facteur est déjà actif.** Sans ce contrôle, n'importe
+ * quelle session ouverte — y compris volée — pouvait remplacer le second facteur
+ * du compte par le sien : la page restait accessible et l'action ne vérifiait
+ * rien. Changer de téléphone passe par la réinitialisation qu'effectue un
+ * gestionnaire des comptes (`reinitialiserDeuxFacteurs`).
+ *
+ * Le contrôle est fait **dans la même écriture** que l'activation : deux envois
+ * simultanés ne peuvent pas passer tous les deux.
+ *
+ * L'activation incrémente la version de session : les autres sessions ouvertes
+ * du compte, établies sans second facteur, sont fermées.
+ */
+export async function enableTotp(
+  userId: string,
+  secret: string,
+  code: string,
+): Promise<ResultatEnrolement> {
+  if (!SECRET_TOTP.test(secret) || !(await verifyTotpCode(secret, code))) {
+    return "CODE_INVALIDE";
   }
-  await prisma.user.update({
-    where: { id: userId },
-    data: { totpEnabled: true, totpSecret: secret },
+  const { count } = await prisma.user.updateMany({
+    where: { id: userId, totpEnabled: false },
+    data: { totpEnabled: true, totpSecret: secret, sessionVersion: { increment: 1 } },
   });
+  if (count === 0) return "DEJA_ACTIVE";
   await audit.log({
     actorType: "USER",
     actorUserId: userId,
@@ -139,5 +181,5 @@ export async function enableTotp(userId: string, secret: string, code: string): 
     entity: "User",
     entityId: userId,
   });
-  return true;
+  return "OK";
 }

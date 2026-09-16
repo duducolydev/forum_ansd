@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { Moon, Sun } from "lucide-react";
 import { setServerTheme, type Theme } from "@/lib/theme";
 
 export function ThemeToggle({ initialTheme }: { initialTheme: Theme | null }) {
@@ -33,11 +34,11 @@ export function ThemeToggle({ initialTheme }: { initialTheme: Theme | null }) {
     <button
       type="button"
       onClick={toggle}
-      className="border-border bg-surface text-text-2 hover:border-text-3 grid h-[38px] w-[38px] place-items-center rounded-lg border transition-colors"
+      className="border-border bg-surface text-text-2 hover:border-link hover:text-blue-text transition-tout grid h-[38px] w-[38px] place-items-center rounded-lg border"
       aria-label={isDark ? t("toggleToLight") : t("toggleToDark")}
       title={isDark ? t("toggleToLight") : t("toggleToDark")}
     >
-      {isDark ? "☀" : "☾"}
+      {isDark ? <Sun aria-hidden size={17} /> : <Moon aria-hidden size={17} />}
     </button>
   );
 }

@@ -39,9 +39,15 @@ RUN pnpm build
 # runner : image de production minimale
 # ---------------------------------------------------------------------------
 FROM base AS runner
-RUN apk add --no-cache openssl
+# Chromium système + polices : le rendu des badges (PDF/PNG) passe par
+# `puppeteer-core`, qui n'embarque aucun navigateur. Le Chromium livré par le
+# paquet `puppeteer` est lié à la glibc et ne s'exécute pas sur Alpine — d'où
+# le paquet système. `ttf-freefont` est indispensable : sans police, le badge
+# se rend en carrés vides.
+RUN apk add --no-cache   openssl   chromium   nss   freetype   harfbuzz   ca-certificates   ttf-freefont
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs

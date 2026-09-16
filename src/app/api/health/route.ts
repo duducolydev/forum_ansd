@@ -6,13 +6,13 @@ export async function GET() {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json({ status: "ok", db: "up" });
   } catch (error) {
-    return NextResponse.json(
-      {
-        status: "degraded",
-        db: "down",
-        error: error instanceof Error ? error.message : String(error),
-      },
-      { status: 503 },
-    );
+    /*
+     * Le détail reste dans les journaux du serveur. Cette route est publique :
+     * le message du pilote MySQL, qui peut nommer l'hôte, l'utilisateur ou la
+     * base, n'a pas à y être renvoyé (PLAN.md §18). Supervision et `stack.sh`
+     * ne lisent que le code HTTP.
+     */
+    console.error("[health] base de données injoignable :", error);
+    return NextResponse.json({ status: "degraded", db: "down" }, { status: 503 });
   }
 }

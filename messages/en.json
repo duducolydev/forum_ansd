@@ -1,6 +1,8 @@
 {
   "nav": {
     "home": "Home",
+    "theForum": "The Forum",
+    "infoServices": "Info & services",
     "about": "About",
     "program": "Program",
     "speakers": "Speakers",
@@ -12,7 +14,8 @@
     "admin": "Organisers",
     "myRegistrations": "My registrations",
     "register": "Register",
-    "menu": "Menu"
+    "menu": "Menu",
+    "skipToContent": "Skip to content"
   },
   "theme": {
     "toggleToDark": "Switch to dark theme",
@@ -27,5 +30,25 @@
     "loading": "Loading…",
     "error": "Something went wrong.",
     "comingSoon": "This page is under construction."
+  },
+  "home": {
+    "ctaRegister": "Register for the Forum",
+    "ctaProgram": "View the program",
+    "ctaBadge": "Download my badge",
+    "liveTitle": "Opening in",
+    "liveSubtitle": "Live",
+    "confirmedParticipants": "confirmed participants",
+    "countries": "countries",
+    "seeAllNews": "All news",
+    "noNews": "No news published yet."
+  },
+  "speakersPage": {
+    "empty": "The list of speakers will be published soon."
+  },
+  "sponsorsPage": {
+    "empty": "The list of partners will be published soon."
+  },
+  "newsPage": {
+    "empty": "No news published yet."
   }
 }

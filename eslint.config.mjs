@@ -12,7 +12,11 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts"],
+    // `k6/**` tourne dans le moteur k6, pas dans Node ni dans Next : ses
+    // scripts importent des modules distants et doivent exporter une
+    // fonction anonyme par défaut, ce que nos règles interdisent à juste
+    // titre pour le code de l'application.
+    ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "k6/**"],
   },
   {
     rules: {

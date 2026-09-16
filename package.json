@@ -15,8 +15,26 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "prepare": "husky"
+    "bench:badges": "tsx scripts/bench-badges.ts",
+    "create:admin": "tsx scripts/create-admin.ts",
+    "audit:lighthouse": "tsx scripts/lighthouse.ts",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "prepare": "husky",
+    "guide:agents": "tsx scripts/guide-agents.ts",
+    "comptes:demo": "tsx scripts/comptes-demo.ts",
+    "section:a-propos": "tsx scripts/section-a-propos.ts",
+    "illustrer:accueil": "tsx scripts/illustrer-accueil.ts",
+    "icones:scanner": "tsx scripts/icones-scanner.ts"
   },
+  "//browserslist": "Cibles modernes : sans cela, le build transpile pour des navigateurs qu'aucun visiteur du Forum n'utilisera et embarque des polyfills inutiles (11 Kio signalés par Lighthouse).",
+  "browserslist": [
+    "chrome >= 111",
+    "edge >= 111",
+    "firefox >= 111",
+    "safari >= 16.4",
+    "not dead"
+  ],
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
       "eslint --fix",
@@ -27,23 +45,36 @@
     ]
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@prisma/adapter-mariadb": "^7.10.0",
     "@prisma/client": "7.10.0",
+    "@tanstack/react-table": "^9.2.4",
+    "@tiptap/pm": "3.31.3",
+    "@tiptap/react": "3.31.3",
+    "@tiptap/starter-kit": "3.31.3",
     "argon2": "^0.45.1",
     "bullmq": "^6.3.4",
     "ioredis": "^6.0.0",
+    "jose": "^6.2.10",
+    "jsqr": "^1.4.0",
+    "lucide-react": "^1.43.0",
     "next": "15.5.25",
     "next-auth": "5.0.0-beta.32",
     "next-intl": "^4.14.2",
-    "nodemailer": "9.1.0",
+    "nodemailer": "9.1.1",
     "otplib": "^13.5.0",
+    "puppeteer-core": "^25.9.0",
     "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-hook-form": "^7.87.0",
+    "sweetalert2": "^11.26.25",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.5.4"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.6",
+    "@playwright/test": "^1.62.1",
     "@prisma/config": "7.10.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -55,6 +86,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.25",
     "husky": "^9.1.7",
+    "lighthouse": "^13.4.1",
     "lint-staged": "^17.4.1",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
@@ -74,7 +106,8 @@
       "unrs-resolver"
     ],
     "overrides": {
-      "lru.min": "1.1.4"
+      "lru.min": "1.1.4",
+      "mariadb": "3.4.7"
     }
   }
 }

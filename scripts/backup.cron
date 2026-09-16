@@ -1,0 +1,11 @@
+# Sauvegarde quotidienne du portail Forum ANSD (brief §8).
+#
+# Installation (sur le serveur, en tant qu'utilisateur propriétaire du déploiement) :
+#   crontab -l 2>/dev/null | cat - scripts/backup.cron | crontab -
+#
+# 03h10 UTC = 03h10 à Dakar (le Sénégal est à UTC+0 toute l'année) : creux de
+# trafic, et avant l'ouverture des bureaux.
+#
+# Le `.env` est chargé explicitement : cron ne dispose pas de l'environnement du
+# shell interactif, et le script échoue volontairement sans MYSQL_*.
+10 3 * * * cd /opt/forum-ansd && set -a && . ./.env && set +a && ./scripts/backup.sh >> /var/log/forum-backup.log 2>&1

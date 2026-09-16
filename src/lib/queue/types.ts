@@ -10,4 +10,6 @@ export interface EnqueueOptions {
 export interface JobQueue {
   enqueue<T = unknown>(type: string, payload: T, options?: EnqueueOptions): Promise<void>;
   process<T = unknown>(type: string, handler: JobHandler<T>): void;
+  /** Ferme les connexions ouvertes (Redis…) — à appeler en fin de script court-lived (ex. seed). */
+  close(): Promise<void>;
 }

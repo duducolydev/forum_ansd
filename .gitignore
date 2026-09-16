@@ -43,3 +43,17 @@ next-env.d.ts
 # uploads (Lot 1 — modules/badges, participants, content)
 /storage/*
 !/storage/.gitkeep
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+
+# docs/ — contient `comptes.txt`, qui porte des identifiants en clair et n'a
+# rien à faire dans le dépôt. On exclut le **contenu** du dossier et non le
+# dossier lui-même : git n'applique pas de négation sous un répertoire exclu,
+# et `!/docs/...` serait alors sans effet.
+/docs/*
+# Sauf le guide des agents d'accueil : livrable du brief §14 et source de
+# `pnpm guide:agents`, il doit rester versionné.
+!/docs/guide-agents-accueil.html

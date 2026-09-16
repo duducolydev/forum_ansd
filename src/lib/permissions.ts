@@ -29,6 +29,7 @@ export const PERMISSIONS = [
   "content.write",
   "sponsors.write",
   "contributions.write",
+  "contributions.draft",
   "notifications.send_bulk",
   "notifications.manage",
   "dashboard.read",
@@ -98,6 +99,12 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, readonly Permission[]> = {
     "reports.read",
     "presences.read",
   ],
+  /**
+   * Rapporteur de session (§15), hors des huit rôles du brief : rédige des
+   * contributions sur les sessions auxquelles il est rattaché, et sur elles
+   * seules. Il ne publie pas — la publication reste au gestionnaire programme.
+   */
+  RAPPORTEUR: ["contributions.draft"],
 };
 
 /** Libellés lisibles des rôles (§12), pour l'affichage BackOffice. */
@@ -110,4 +117,5 @@ export const ROLE_LABELS: Record<string, string> = {
   GESTIONNAIRE_COMMUNICATION: "Gestionnaire Communication",
   GESTIONNAIRE_STATISTIQUES: "Gestionnaire Statistiques",
   LECTEUR: "Lecteur",
+  RAPPORTEUR: "Rapporteur",
 };

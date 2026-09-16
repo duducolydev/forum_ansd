@@ -20,14 +20,19 @@ export async function confirmEnrollAction(
   const secret = String(formData.get("secret") ?? "");
   const code = String(formData.get("code") ?? "").trim();
 
-  const ok = await enableTotp(session.user.id, secret, code);
-  if (!ok) {
+  const resultat = await enableTotp(session.user.id, secret, code);
+  if (resultat === "CODE_INVALIDE") {
     return { error: "Code invalide. Réessayez." };
   }
+  if (resultat === "DEJA_ACTIVE") {
+    return {
+      error:
+        "La vérification en deux étapes est déjà active sur ce compte. Pour changer de téléphone, demandez sa réinitialisation à un gestionnaire des comptes.",
+    };
+  }
 
-  // La session en cours (JWT) ne reflète pas encore `totpEnabled` : on force
-  // une reconnexion pour repartir d'un jeton à jour plutôt que de dépendre
-  // d'une mise à jour de session côté serveur.
+  // L'activation a changé la version de session du compte (§18) : la session
+  // en cours n'est plus valable, on repart d'une connexion avec second facteur.
   await signOut({ redirect: false });
   redirect("/connexion?enrolled=1");
 }

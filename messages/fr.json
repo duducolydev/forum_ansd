@@ -1,6 +1,8 @@
 {
   "nav": {
     "home": "Accueil",
+    "theForum": "Le Forum",
+    "infoServices": "Infos & services",
     "about": "À propos",
     "program": "Programme",
     "speakers": "Intervenants",
@@ -12,7 +14,8 @@
     "admin": "Organisation",
     "myRegistrations": "Mes inscriptions",
     "register": "S'inscrire",
-    "menu": "Menu"
+    "menu": "Menu",
+    "skipToContent": "Aller au contenu"
   },
   "theme": {
     "toggleToDark": "Passer en thème sombre",
@@ -27,5 +30,25 @@
     "loading": "Chargement…",
     "error": "Une erreur est survenue.",
     "comingSoon": "Cette page est en cours de construction."
+  },
+  "home": {
+    "ctaRegister": "S'inscrire au Forum",
+    "ctaProgram": "Voir le programme",
+    "ctaBadge": "Télécharger mon badge",
+    "liveTitle": "Ouverture dans",
+    "liveSubtitle": "En direct",
+    "confirmedParticipants": "participants confirmés",
+    "countries": "pays",
+    "seeAllNews": "Toutes les actualités",
+    "noNews": "Aucune actualité publiée pour l'instant."
+  },
+  "speakersPage": {
+    "empty": "La liste des intervenants sera publiée prochainement."
+  },
+  "sponsorsPage": {
+    "empty": "La liste des partenaires sera publiée prochainement."
+  },
+  "newsPage": {
+    "empty": "Aucune actualité publiée pour l'instant."
   }
 }

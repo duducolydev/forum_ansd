@@ -1,10 +1,14 @@
 import type { NextAuthConfig } from "next-auth";
-import { NextResponse } from "next/server";
 
 /**
  * Config compatible Edge (sans Credentials/argon2/Prisma) : c'est celle-ci
  * que le middleware importe. La config complète (`src/auth.ts`) l'étend avec
  * le provider Credentials, qui a besoin du runtime Node.
+ *
+ * Pas de callback `authorized` ici : le middleware enveloppe `auth()` dans un
+ * gestionnaire pour poser les en-têtes de sécurité, ce qui neutralise ce
+ * callback. Le contrôle d'accès à `/admin` est donc appliqué dans
+ * `src/middleware.ts`, seul endroit où il s'exécute réellement.
  */
 export const authConfig = {
   pages: {
@@ -12,20 +16,6 @@ export const authConfig = {
   },
   session: { strategy: "jwt" },
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = Boolean(auth?.user);
-      const isProtected = nextUrl.pathname.startsWith("/admin");
-      if (!isProtected) return true;
-      if (!isLoggedIn) return false;
-
-      // 2FA obligatoire pour SUPER_ADMIN/ADMIN_FORUM (brief §7) : tant qu'il
-      // n'est pas activé, seule la page d'enrôlement est accessible.
-      const isEnrollPage = nextUrl.pathname === "/admin/2fa/enroll";
-      if (auth!.user.requiresTotpEnrollment && !isEnrollPage) {
-        return NextResponse.redirect(new URL("/admin/2fa/enroll", nextUrl));
-      }
-      return true;
-    },
     jwt({ token, user }) {
       if (user) {
         token.roleId = user.roleId;
@@ -33,6 +23,7 @@ export const authConfig = {
         token.permissions = user.permissions;
         token.totpEnabled = user.totpEnabled;
         token.requiresTotpEnrollment = user.requiresTotpEnrollment;
+        token.sessionVersion = user.sessionVersion;
       }
       return token;
     },

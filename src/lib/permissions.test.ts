@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_ROLE_PERMISSIONS, PERMISSIONS } from "./permissions";
 
 describe("permissions catalog", () => {
-  it("defines the 8 BackOffice roles from the brief (§12)", () => {
+  it("defines the 8 BackOffice roles from the brief (§12), plus the rapporteur", () => {
+    /*
+     * Le brief définit huit rôles. Le neuvième, RAPPORTEUR, a été ajouté sur
+     * décision du commanditaire le 14 septembre 2026 (PLAN.md §15) : il rédige
+     * des contributions sur les sessions auxquelles il est rattaché, sans les
+     * publier. Il est listé à part pour que l'écart au brief reste visible.
+     */
     expect(Object.keys(DEFAULT_ROLE_PERMISSIONS)).toEqual([
       "SUPER_ADMIN",
       "ADMIN_FORUM",
@@ -12,7 +18,12 @@ describe("permissions catalog", () => {
       "GESTIONNAIRE_COMMUNICATION",
       "GESTIONNAIRE_STATISTIQUES",
       "LECTEUR",
+      "RAPPORTEUR",
     ]);
+  });
+
+  it("limits the rapporteur to drafting, without publication", () => {
+    expect(DEFAULT_ROLE_PERMISSIONS.RAPPORTEUR).toEqual(["contributions.draft"]);
   });
 
   it("grants SUPER_ADMIN every permission in the catalog", () => {
