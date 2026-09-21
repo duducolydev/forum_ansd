@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { ADMIN_E2E, ensureAdminE2E, seConnecterAdmin } from "./helpers/comptes";
-import { codeTotp, secondesAvantRotation } from "./helpers/totp";
+import { ensureAdminE2E, seConnecterAdmin, validerConnexion } from "./helpers/comptes";
 
 /**
  * La caméra du scanner et du comptoir d'accueil, éprouvée avec une caméra
@@ -97,27 +96,13 @@ test("ouvert depuis le menu, le comptoir d'accueil a le droit d'utiliser la cam�
 test("un agent qui ouvre /scan revient au scanner après la connexion, caméra allumée", async ({
   page,
 }) => {
-  const secret = await ensureAdminE2E();
+  const userId = await ensureAdminE2E();
 
   // Sans session : le middleware renvoie vers la connexion, avec la destination.
   await page.goto("/scan");
   await expect(page).toHaveURL(/\/connexion\?callbackUrl=/);
 
-  for (let essai = 0; essai < 2; essai++) {
-    if (secondesAvantRotation() < 5) {
-      await page.waitForTimeout((secondesAvantRotation() + 1) * 1000);
-    }
-    await page.getByLabel("Adresse e-mail").fill(ADMIN_E2E.email);
-    await page.getByLabel("Mot de passe").fill(ADMIN_E2E.password);
-    await page.getByLabel(/Code de vérification/).fill(codeTotp(secret));
-    await page.getByRole("button", { name: "Se connecter" }).click();
-    try {
-      await page.waitForURL(/\/scan$/, { timeout: 15_000 });
-      break;
-    } catch (erreur) {
-      if (essai === 1) throw erreur;
-    }
-  }
+  await validerConnexion(page, userId, /\/scan$/);
 
   await attendreCameraActive(page);
 });

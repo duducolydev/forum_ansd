@@ -1,7 +1,8 @@
+import { createHash, randomUUID } from "node:crypto";
 import argon2 from "argon2";
 import { expect, test } from "@playwright/test";
 import { prisma } from "../src/lib/db";
-import { emailE2E, seConnecterAdmin } from "./helpers/comptes";
+import { ADMIN_E2E, emailE2E, ensureAdminE2E, seConnecterAdmin } from "./helpers/comptes";
 
 /**
  * Failles corrigées par l'audit de sécurité (PLAN.md §18), vérifiées sur
@@ -87,15 +88,67 @@ test("un compte désactivé perd aussitôt sa session ouverte, même réactivé 
   await contexteAgent.close();
 });
 
-test("un second facteur actif ne se remplace pas depuis la page d'enrôlement", async ({ page }) => {
-  // Le compte E2E a son second facteur activé. Avant correction, la page lui
-  // proposait un nouveau secret, et l'action l'enregistrait par-dessus.
-  await seConnecterAdmin(page);
+test("le code de connexion reçu par e-mail ne sert qu'une fois", async ({ page }) => {
+  /*
+   * Second facteur par e-mail (PLAN.md §23). Le parcours passe par le
+   * formulaire : mot de passe seul, puis code. Rejouer le même code doit être
+   * refusé — sans quoi un message oublié dans une boîte resterait une clé.
+   */
+  const userId = await ensureAdminE2E();
+  await page.goto("/connexion");
+  await page.getByLabel("Adresse e-mail").fill(ADMIN_E2E.email);
+  await page.getByLabel("Mot de passe").fill(ADMIN_E2E.password);
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await expect(page.getByText(/code à 6 chiffres/i)).toBeVisible();
 
-  await page.goto("/admin/2fa/enroll");
+  const defi = await prisma.adminLoginChallenge.findFirstOrThrow({
+    where: { userId, usedAt: null },
+    orderBy: { createdAt: "desc" },
+  });
 
-  await expect(page).not.toHaveURL(/\/2fa\/enroll/);
-  await expect(page.getByRole("heading", { name: "Tableau de bord" })).toBeVisible();
+  await page.getByLabel("Code reçu par e-mail").fill(defi.code6);
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.waitForURL(/\/admin/);
+
+  // Le même code, rejoué depuis une session neuve : refusé.
+  const contexte = await page.context().browser()!.newContext();
+  const seconde = await contexte.newPage();
+  await seconde.goto("/connexion");
+  await seconde.getByLabel("Adresse e-mail").fill(ADMIN_E2E.email);
+  await seconde.getByLabel("Mot de passe").fill(ADMIN_E2E.password);
+  await seconde.getByLabel("Code reçu par e-mail").fill(defi.code6);
+  await seconde.getByRole("button", { name: "Se connecter" }).click();
+  await expect(seconde.getByText(/Code incorrect ou expiré/)).toBeVisible();
+  await contexte.close();
+});
+
+test("le lien reçu par e-mail ouvre la session, et une seule fois", async ({ page }) => {
+  /*
+   * Second chemin du facteur (PLAN.md §23) : le lien, pour qui lit son courrier
+   * sur un autre appareil. La page ne valide pas au simple chargement — un
+   * antivirus de messagerie consommerait le jeton — mais par un envoi.
+   */
+  const userId = await ensureAdminE2E();
+  const jeton = `jeton-e2e-${randomUUID()}`;
+  await prisma.adminLoginChallenge.create({
+    data: {
+      userId,
+      tokenHash: createHash("sha256").update(jeton).digest("hex"),
+      code6: "654321",
+      expiresAt: new Date(Date.now() + 10 * 60_000),
+    },
+  });
+
+  await page.goto(`/connexion/valider/${jeton}`);
+  await page.waitForURL(/\/admin/, { timeout: 15_000 });
+
+  // Rejoué, le même lien ne vaut plus rien.
+  const contexte = await page.context().browser()!.newContext();
+  const seconde = await contexte.newPage();
+  await seconde.goto(`/connexion/valider/${jeton}`);
+  await expect(seconde.getByText(/Code incorrect ou expiré/)).toBeVisible();
+  await expect(seconde).not.toHaveURL(/\/admin/);
+  await contexte.close();
 });
 
 test("une IP forgée en tête de X-Forwarded-For ne contourne pas la limite de débit", async ({

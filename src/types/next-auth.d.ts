@@ -15,8 +15,6 @@ interface CustomUserFields {
   roleId: string;
   roleName: string;
   permissions: string[];
-  totpEnabled: boolean;
-  requiresTotpEnrollment: boolean;
   /** Version de session du compte à l'émission du jeton (PLAN.md §18). */
   sessionVersion: number;
 }

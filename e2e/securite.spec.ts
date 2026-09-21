@@ -116,15 +116,16 @@ test.describe("garde du BackOffice", () => {
     "/admin/participants",
     "/admin/invitations",
     "/admin/notifications",
-    "/admin/2fa/enroll",
+    "/admin/utilisateurs",
   ];
 
   for (const route of routesProtegees) {
     test(`${route} redirige vers la connexion sans session`, async ({ page }) => {
       const reponse = await page.goto(route);
 
-      // Ni 200 (page servie), ni 500 : la page d'enrôlement 2FA plantait en 500
-      // parce qu'elle supposait une session que la garde ne fournissait plus.
+      // Ni 200 (page servie), ni 500 : une page d'administration qui suppose une
+      // session déjà vérifiée plante quand la garde s'applique mal — c'est ce
+      // qui était arrivé à l'ancienne page d'enrôlement 2FA.
       expect(page.url()).toContain("/connexion");
       expect(reponse?.status()).toBeLessThan(400);
     });

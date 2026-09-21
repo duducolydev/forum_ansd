@@ -136,13 +136,23 @@ describe("scanner hors ligne (brief §5.6)", () => {
       expect(versions.find((ligne) => ligne.h === v2)!.revoque).toBe(false);
     });
 
-    it("garde un ETag stable entre deux générations identiques", async () => {
-      const premier = await buildManifeste(editionId, editionCode);
-      const second = await buildManifeste(editionId, editionCode);
+    it("garde un ETag stable quand seul l'horodatage change", async () => {
+      /*
+       * Le manifeste couvre **toute l'édition**, et la suite tourne à plusieurs
+       * fichiers de front sur la même base : comparer deux lectures successives
+       * revenait à parier qu'aucun autre test ne crée un badge entre les deux.
+       * Le pari a fini par être perdu. La propriété visée — l'horodatage n'entre
+       * pas dans le calcul, sans quoi le 304 ne servirait jamais — se vérifie
+       * sur une seule lecture, dont on ne change que l'heure.
+       */
+      const manifeste = await buildManifeste(editionId, editionCode);
+      const plusTard = {
+        ...manifeste,
+        genereLe: new Date(Date.parse(manifeste.genereLe) + 60_000).toISOString(),
+      };
 
-      expect(premier.genereLe).not.toBe(second.genereLe);
-      // Si l'horodatage entrait dans le calcul, le 304 ne servirait jamais.
-      expect(etagManifeste(premier)).toBe(etagManifeste(second));
+      expect(plusTard.genereLe).not.toBe(manifeste.genereLe);
+      expect(etagManifeste(plusTard)).toBe(etagManifeste(manifeste));
     });
 
     it("change d'ETag dès qu'un badge entre dans le périmètre", async () => {

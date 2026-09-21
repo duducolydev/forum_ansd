@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { ArrowLeft, CalendarDays, Newspaper, UserPlus } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
+import { lireTexteRiche, texteBrut } from "@/lib/texte-riche";
+import { TexteRiche } from "@/components/site/texte-riche";
 import { getPostBySlug, resolveLocaleValue } from "@/modules/content/service";
 import { lireGalerie } from "@/modules/content/schema";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
@@ -14,9 +16,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const post = await getPostBySlug(edition.id, slug);
   if (!post) return {};
 
-  // Le chapô a été écrit pour cela : le corps tronqué à 160 signes coupait au
-  // milieu d'un mot dans tous les aperçus partagés.
-  const description = post.excerptFr?.trim() || post.bodyFr.slice(0, 160);
+  /*
+   * Le chapô a été écrit pour cela : le corps tronqué à 160 signes coupait au
+   * milieu d'un mot dans tous les aperçus partagés. À défaut de chapô, c'est le
+   * **texte visible** du corps qui sert — depuis §26 il est mis en forme, et
+   * publier son balisage dans une balise `description` afficherait des accolades
+   * dans les résultats de recherche.
+   */
+  const description =
+    post.excerptFr?.trim() || texteBrut(lireTexteRiche(post.bodyFr)).slice(0, 160);
   return {
     title: post.titleFr,
     openGraph: {
@@ -57,7 +65,7 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
           {en ? "All news" : "Toutes les actualités"}
         </LienSite>
 
-        <h1 className="mt-5 mb-3">{en ? post.titleEn : post.titleFr}</h1>
+        <h1 className="mt-2 mb-1">{en ? post.titleEn : post.titleFr}</h1>
 
         {date && (
           <p className="text-text-3 flex items-center gap-1.5 text-sm">
@@ -85,9 +93,10 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
           </Reveal>
         )}
 
-        <p className="text-text-2 text-lg leading-relaxed whitespace-pre-line">
-          {en ? post.bodyEn : post.bodyFr}
-        </p>
+        <TexteRiche
+          valeur={en ? post.bodyEn : post.bodyFr}
+          className="text-text-2 text-lg leading-relaxed"
+        />
 
         {galerie.length > 0 && (
           <div className="mt-12">

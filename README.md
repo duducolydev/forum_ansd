@@ -1,13 +1,14 @@
 # Portail Forum international sur les données — ANSD
 
-Plateforme web du Forum international sur les données de l'ANSD (23–25 novembre 2026, CICAD Diamniadio) :
+Plateforme web du Forum international sur les données de l'ANSD (23–25 novembre 2026, Hôtel King Fahd Palace, Dakar) :
 site vitrine, espace participant, BackOffice de pilotage, application de scan d'accès.
 
 Référence normative : [`docs/BRIEF_Claude_Code_Portail_Forum_ANSD.md`](docs/BRIEF_Claude_Code_Portail_Forum_ANSD.md).
 Suivi d'avancement, décisions et TODO : [`PLAN.md`](PLAN.md).
 
 > État actuel : Lot 0 (Socle) en voie d'achèvement — monorepo, schéma Prisma migré et
-> seedé, authentification BackOffice + 2FA TOTP + RBAC, journal d'audit, i18n FR/EN,
+> seedé, authentification BackOffice + second facteur par e-mail + RBAC, journal d'audit,
+> i18n FR/EN,
 > layouts public/admin/scanner, files/jobs, CI et Docker sont en place. Le contenu réel
 > des pages (site public, programme, BackOffice complet) arrive avec le Lot 1 — cf.
 > `PLAN.md` §3.
@@ -15,7 +16,7 @@ Suivi d'avancement, décisions et TODO : [`PLAN.md`](PLAN.md).
 ## Stack
 
 Next.js 15 (App Router) · React 19 · TypeScript strict · Tailwind CSS v4 · Prisma 7
-(MySQL, via l'adaptateur `@prisma/adapter-mariadb`) · Auth.js v5 (bêta) + TOTP · BullMQ/Redis
+(MySQL, via l'adaptateur `@prisma/adapter-mariadb`) · Auth.js v5 (bêta) · BullMQ/Redis
 (repli sans Redis : `DbJobQueue`) · next-intl · Vitest.
 
 ## Démarrage avec Docker (recommandé)
@@ -85,13 +86,26 @@ dans `DATABASE_URL`/`REDIS_URL` (le port interne des conteneurs reste inchangé)
 > normalement dans le conteneur Docker (Linux) : c'est la voie de vérification à utiliser
 > sur cette plateforme, `docker build .`.
 
-## Authentification BackOffice et 2FA
+## Authentification BackOffice et second facteur
 
 Connexion : `/connexion`. Hachage `argon2id`, verrouillage après 5 échecs (15 minutes).
-Le 2FA TOTP est **obligatoire** pour les rôles `SUPER_ADMIN` et `ADMIN_FORUM` (brief §7) :
-à la première connexion, ces comptes sont automatiquement redirigés vers
-`/admin/2fa/enroll` (QR code + code à 6 chiffres) avant de pouvoir accéder au reste du
-BackOffice ; une application d'authentification (Google Authenticator, Authy…) est nécessaire.
+
+Le **second facteur passe par l'e-mail** pour les rôles `SUPER_ADMIN` et `ADMIN_FORUM`
+(PLAN.md §23) : le mot de passe accepté, un message part vers l'adresse du compte avec un
+**code à 6 chiffres** à saisir dans la même fenêtre, et un **lien de validation** pour qui
+lit son courrier ailleurs. Le code vaut 10 minutes, ne sert qu'une fois, et cinq essais
+faux verrouillent le compte comme cinq mots de passe faux. Il n'y a rien à enrôler ni à
+réinitialiser par compte : l'adresse suffit.
+
+Deux conséquences à connaître :
+
+- **La boîte mail devient la clé du BackOffice** : qui y accède entre. C'est le prix de ce
+  choix, fait en connaissance de cause en remplacement de l'application d'authentification
+  (TOTP) prévue au brief §7. Le cahier des charges de l'ANSD (§26) demande deux facteurs
+  pour les administrateurs, sans imposer la méthode.
+- **Plus d'envoi, plus de connexion** : si le SMTP tombe, les comptes soumis au second
+  facteur ne peuvent plus ouvrir de session. Les rôles opérationnels (agents d'accueil,
+  scanner) ne sont pas concernés et entrent avec leur seul mot de passe.
 
 ## Comptes de démonstration
 
@@ -102,8 +116,8 @@ développement local :
 | ----------------------------- | -------------------- | --------------------------------------------------------------- |
 | Super Administrateur `[DEMO]` | `superadmin@ansd.sn` | `ChangeMe!Forum2026` (ou `SEED_SUPER_ADMIN_PASSWORD` si défini) |
 
-Ce compte n'a pas encore de 2FA activé au premier seed : la première connexion déclenche
-l'enrôlement obligatoire décrit ci-dessus.
+Ce compte porte un rôle soumis au second facteur : sa connexion envoie un code à l'adresse
+`superadmin@ansd.sn`. En local, le message arrive dans Mailpit (http://localhost:8025).
 
 ## Données de seed
 
@@ -123,6 +137,40 @@ générés aléatoirement pour le développement — **à régénérer avant tou
 de test (`PLAN.md`, TODO T9). Le domaine (`PUBLIC_BASE_URL`) et le SMTP institutionnel ne
 sont pas encore fournis par l'ANSD (`PLAN.md`, décisions C6/C7) : la mise en production
 réelle en dépend.
+
+## Envoi des e-mails (SMTP)
+
+Notifications, alertes, invitations et liens magiques passent tous par `src/lib/mail.ts` :
+seules ces cinq variables changent d'un environnement à l'autre.
+
+| Variable        | En local (défaut)       | Compte Gmail du Forum                                       |
+| --------------- | ----------------------- | ----------------------------------------------------------- |
+| `SMTP_HOST`     | `forum-ansd-mailpit`    | `smtp.gmail.com`                                            |
+| `SMTP_PORT`     | `1025`                  | `587`                                                       |
+| `SMTP_USER`     | _(absent : pas d'auth)_ | `forumansd@gmail.com`                                       |
+| `SMTP_PASSWORD` | _(absent)_              | mot de passe **d'application** Google (16 caractères)       |
+| `SMTP_FROM`     | `… <forum@ansd.sn>`     | `Forum international sur les données <forumansd@gmail.com>` |
+
+- **Mot de passe d'application obligatoire** : Google refuse le mot de passe du compte en
+  SMTP. Il faut activer la validation en deux étapes, puis créer un mot de passe
+  d'application (Compte Google → Sécurité). Il ne va **que** dans `.env.docker` (local) ou
+  dans le `.env` du serveur, tous deux hors dépôt.
+- **L'adresse de `SMTP_FROM` doit être celle du compte** : Gmail réécrit sinon
+  l'expéditeur, et le message part avec une adresse différente de celle annoncée.
+- **Port 587 seulement** : `mail.ts` ouvre la connexion en clair puis passe en TLS
+  (STARTTLS). Le port 465, chiffré d'emblée, demanderait une variable `SMTP_SECURE`.
+- **Basculer en local** : décommenter le bloc Gmail de `.env.docker`, commenter les lignes
+  Mailpit, puis **`./scripts/stack.sh --recreer`**. L'option est indispensable : sans elle,
+  le script laisse tourner le conteneur existant, qui garde les anciennes variables — une
+  image à jour lui suffit. Les messages partent alors pour de vrai et ne s'affichent plus
+  dans Mailpit : **les tests E2E, qui lisent Mailpit, échouent tant que Gmail est actif**.
+  À remettre sur Mailpit après l'essai.
+
+**Limites d'un compte Gmail gratuit**, à connaître avant la campagne d'invitations :
+environ 500 destinataires par jour, et des envois en rafale que Google peut refuser (le
+portail met un message en file par destinataire, sans cadence). Pour plus de 500
+participants, il faut le SMTP de l'ANSD ou un service d'envoi (Brevo, Mailjet, Amazon SES)
+configuré sur le domaine `ansd.sn` — mêmes cinq variables.
 
 ## Scripts
 
@@ -154,7 +202,8 @@ Repères actuels :
   `/connexion`.
 - `src/app/(participant)/mon-espace`, `src/app/(backoffice)/admin`, `src/app/(scanner)/scan` :
   coquilles des trois autres espaces.
-- `src/modules/auth` : règles métier d'authentification (verrouillage, 2FA) — testées.
+- `src/modules/auth` : règles métier d'authentification (verrouillage, second facteur par
+  e-mail) — testées.
 - `src/lib` : utilitaires transverses (`db`, `audit`, `queue`, `mail`, `storage`, `qr`, `pdf`,
-  `permissions`, `rbac`, `totp`, `theme`).
+  `permissions`, `rbac`, `theme`).
 - `src/i18n` : i18n sans préfixe d'URL (cookie `NEXT_LOCALE`) — cf. `PLAN.md` §0.5.

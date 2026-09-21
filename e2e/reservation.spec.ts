@@ -12,7 +12,7 @@ import { confirmerBoite } from "./helpers/dialogue";
  * Réservation des panels (brief §5.5, PLAN.md 4.5).
  *
  * Le parcours participant passe par le **vrai lien magique** : c'est le seul
- * chemin qui ouvre une session « Mes inscriptions », et donc la seule façon
+ * chemin qui ouvre une session « Mon espace », et donc la seule façon
  * d'éprouver la route de réservation telle qu'elle sera appelée.
  */
 const SUFFIXE = randomUUID().slice(0, 8).toUpperCase();
@@ -47,7 +47,7 @@ async function creerParticipant(index: number) {
 }
 
 /**
- * Ouvre une session « Mes inscriptions » en posant le **vrai cookie de session
+ * Ouvre une session « Mon espace » en posant le **vrai cookie de session
  * participant**, signé avec le même secret que l'application.
  *
  * Le lien magique complet n'est pas rejouable ici : la base ne conserve que

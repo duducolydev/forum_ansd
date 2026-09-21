@@ -91,14 +91,16 @@ export default async function MySpacePage({
       <>
         <BandeauPage largeur="etroit">
           <div className="text-center">
-            <span
-              aria-hidden
-              className="bg-blue-soft text-blue-text mb-4 inline-grid h-14 w-14 place-items-center rounded-2xl"
-            >
-              <BadgeCheck size={26} strokeWidth={2.1} />
-            </span>
-            <h1 className="mb-2">Mes inscriptions</h1>
-            <p className="text-text-2 mx-auto max-w-[46ch]">
+            <h1 className="mb-1 flex items-center justify-center gap-3">
+              <span
+                aria-hidden
+                className="bg-blue-soft text-blue-text inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl"
+              >
+                <BadgeCheck size={20} strokeWidth={2.1} />
+              </span>
+              Mon espace
+            </h1>
+            <p className="text-text-2 mx-auto max-w-[68ch]">
               Pas de mot de passe : indiquez votre adresse e-mail, nous vous envoyons un lien
               d&apos;accès valable 30 minutes.
             </p>
@@ -130,8 +132,8 @@ export default async function MySpacePage({
       <BandeauPage largeur="moyen">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <span className="surtitre mb-3">Mon espace</span>
-            <h1 className="mb-2">
+            <span className="surtitre mb-1">Mon espace</span>
+            <h1 className="mb-1">
               Bonjour {participant.firstName} {participant.lastName}
             </h1>
             <p className="text-text-2 flex flex-wrap items-center gap-2">

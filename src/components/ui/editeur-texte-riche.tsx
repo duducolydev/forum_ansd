@@ -25,7 +25,11 @@ import {
 } from "@/lib/texte-riche";
 
 /**
- * Éditeur de texte mis en forme d'une section (PLAN.md §17).
+ * Éditeur de texte mis en forme, partagé par le BackOffice (PLAN.md §17, §26).
+ *
+ * Il sert aux sections de page, aux zones éditoriales et aux actualités : la
+ * même barre d'outils, les mêmes limites, le même document en sortie — une
+ * personne qui a appris à écrire une section sait écrire une actualité.
  *
  * Ce qu'il permet est exactement ce que le site sait afficher : gras, italique,
  * souligné, listes, liens et sauts de ligne. Les titres, citations et blocs de

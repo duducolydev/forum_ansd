@@ -2,10 +2,11 @@
 
 import { Save } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import { EditeurTexteRiche } from "@/components/ui/editeur-texte-riche";
 
 import { useActionState } from "react";
 import type { ActionState } from "../actions";
-import type { PostInput } from "../schema";
+import { LONGUEUR_MAX_ARTICLE, type PostInput } from "../schema";
 
 interface Props {
   action: (prevState: ActionState, formData: FormData) => Promise<ActionState>;
@@ -95,30 +96,35 @@ export function PostForm({ action, defaultValues, submitLabel }: Props) {
         </div>
       </div>
 
+      {/* Corps de l'article : même éditeur que les sections et les zones
+          éditoriales (§26). Le chapô, lui, reste du texte simple — il part dans
+          la balise `description` de la page et dans les aperçus partagés, où le
+          balisage n'a pas sa place. */}
       <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="bodyFr" className="text-heading text-sm font-semibold">
+          <label id="bodyFr-label" htmlFor="bodyFr" className="text-heading text-sm font-semibold">
             Contenu (français)
           </label>
-          <textarea
+          <EditeurTexteRiche
             id="bodyFr"
             name="bodyFr"
-            required
-            rows={8}
-            defaultValue={d.bodyFr}
-            className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
+            labelId="bodyFr-label"
+            libelle="Contenu (français)"
+            valeurInitiale={d.bodyFr ?? ""}
+            max={LONGUEUR_MAX_ARTICLE}
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="bodyEn" className="text-heading text-sm font-semibold">
+          <label id="bodyEn-label" htmlFor="bodyEn" className="text-heading text-sm font-semibold">
             Contenu (anglais)
           </label>
-          <textarea
+          <EditeurTexteRiche
             id="bodyEn"
             name="bodyEn"
-            rows={8}
-            defaultValue={d.bodyEn}
-            className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
+            labelId="bodyEn-label"
+            libelle="Contenu (anglais)"
+            valeurInitiale={d.bodyEn ?? ""}
+            max={LONGUEUR_MAX_ARTICLE}
           />
         </div>
       </div>
@@ -134,6 +140,11 @@ export function PostForm({ action, defaultValues, submitLabel }: Props) {
       </label>
 
       {state.error && <p className="text-danger-text text-sm">{state.error}</p>}
+      {state.message && !state.error && (
+        <p role="status" className="text-accent-text text-sm">
+          {state.message}
+        </p>
+      )}
 
       <div>
         <Bouton ton="principal" icone={Save} type="submit" disabled={pending}>

@@ -45,7 +45,7 @@ export default async function ContributionsPage() {
     <>
       <BandeauPage>
         <EnteteSection
-          marge={false}
+          bandeau
           niveau="h1"
           surtitre="Capitalisation"
           titre={t("contributions")}

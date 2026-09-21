@@ -5,7 +5,6 @@ import {
   creerUtilisateur,
   deverrouiller,
   modifierUtilisateur,
-  reinitialiserDeuxFacteurs,
   reinitialiserMotDePasse,
   UtilisateurRuleError,
 } from "./service";
@@ -240,20 +239,6 @@ describe("fermeture des sessions ouvertes (PLAN.md §18)", () => {
     expect(await version(cible.id)).toBe(avant + 1);
   });
 
-  it("détacher le second facteur ferme les sessions", async () => {
-    const acteur = await creerCompteTest();
-    const cible = await creerCompteTest("ADMIN_FORUM");
-    await prisma.user.update({
-      where: { id: cible.id },
-      data: { totpEnabled: true, totpSecret: "SECRETDETEST234567" },
-    });
-    const avant = await version(cible.id);
-
-    await reinitialiserDeuxFacteurs(cible.id, { userId: acteur.id });
-
-    expect(await version(cible.id)).toBe(avant + 1);
-  });
-
   it("corriger un nom ou un rôle ne ferme pas les sessions : les droits sont relus", async () => {
     const acteur = await creerCompteTest();
     const cible = await creerCompteTest();
@@ -271,32 +256,6 @@ describe("fermeture des sessions ouvertes (PLAN.md §18)", () => {
 });
 
 describe("dépannage des comptes", () => {
-  it("détache le second facteur et force le réenrôlement", async () => {
-    const acteur = await creerCompteTest();
-    const cible = await creerCompteTest("ADMIN_FORUM");
-    await prisma.user.update({
-      where: { id: cible.id },
-      data: { totpEnabled: true, totpSecret: "SECRETDETEST234567" },
-    });
-
-    await reinitialiserDeuxFacteurs(cible.id, { userId: acteur.id });
-
-    const apres = await prisma.user.findUniqueOrThrow({ where: { id: cible.id } });
-    expect(apres.totpEnabled).toBe(false);
-    // Le secret doit disparaître, sans quoi l'ancien téléphone continuerait
-    // de produire des codes valides.
-    expect(apres.totpSecret).toBeNull();
-  });
-
-  it("refuse de détacher un second facteur inexistant", async () => {
-    const acteur = await creerCompteTest();
-    const cible = await creerCompteTest();
-
-    await expect(reinitialiserDeuxFacteurs(cible.id, { userId: acteur.id })).rejects.toThrow(
-      /second facteur/,
-    );
-  });
-
   it("remplace le mot de passe et lève le verrouillage", async () => {
     const acteur = await creerCompteTest();
     const cible = await creerCompteTest();

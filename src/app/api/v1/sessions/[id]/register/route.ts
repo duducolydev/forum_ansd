@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 /**
  * Réservation d'une session par un participant (brief §5.5).
  *
- * L'authentification passe par la session « Mes inscriptions » (lien magique),
+ * L'authentification passe par la session « Mon espace » (lien magique),
  * pas par le BackOffice : c'est le participant lui-même qui réserve.
  */
 const CODES: Record<string, number> = {

@@ -80,13 +80,56 @@ export async function sendRemindersAction(
     });
 
     const edition = await getActiveEdition();
-    const { queued } = await service.sendReminders(edition.id, filters, {
+    const { queued, dureeMinutes } = await service.sendReminders(edition.id, filters, {
       type: "USER",
       userId: session.user.id,
     });
 
     revalidatePath("/admin/invitations");
-    return { success: `${queued} relance(s) mise(s) en file.` };
+    return { success: `${queued} relance(s) mise(s) en file${etalement(dureeMinutes)}.` };
+  } catch (error) {
+    return { error: firstFieldError(error) };
+  }
+}
+
+/** Mention d'étalement, tue quand la campagne part d'un coup. */
+function etalement(dureeMinutes: number): string {
+  return dureeMinutes > 0 ? `, étalées sur environ ${dureeMinutes} minute(s)` : "";
+}
+
+/**
+ * Envoi groupé des invitations jamais envoyées (PLAN.md §22).
+ *
+ * Les mêmes filtres que la relance : on peut lancer une campagne catégorie par
+ * catégorie, ce qui est le seul moyen de rester sous le quota quotidien d'une
+ * boîte d'envoi ordinaire.
+ */
+export async function sendPendingInvitationsAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const session = await requireSession();
+    if (!can(session, "invitations.send")) return { error: "Permission refusée." };
+
+    const filters = reminderFiltersSchema.parse({
+      categoryId: formData.get("categoryId") ?? undefined,
+      country: formData.get("country") ?? undefined,
+    });
+
+    const edition = await getActiveEdition();
+    const { queued, dureeMinutes } = await service.sendPendingInvitations(edition.id, filters, {
+      type: "USER",
+      userId: session.user.id,
+    });
+
+    revalidatePath("/admin/invitations");
+    return {
+      success:
+        queued === 0
+          ? "Aucune invitation en attente pour ce filtre."
+          : `${queued} invitation(s) mise(s) en file${etalement(dureeMinutes)}.`,
+    };
   } catch (error) {
     return { error: firstFieldError(error) };
   }

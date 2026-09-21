@@ -1,5 +1,5 @@
 import type { PageSection } from "@prisma/client";
-import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { randomBytes } from "node:crypto";
 import { audit } from "@/lib/audit";
@@ -15,27 +15,27 @@ export interface Acteur {
   userId: string;
 }
 
-const ETIQUETTE_SECTIONS = "sections-page";
-
 /**
- * Sections d'une page, en une lecture mise en cache.
+ * Sections visibles d'une page, **lues sans cache**.
  *
- * Même durée que les contenus éditoriaux (C13) : ce qui coûte est la lecture,
- * et elle ne dépend ni de la langue ni du thème du visiteur.
+ * Elles l'étaient auparavant par `unstable_cache` (60 s, étiquette
+ * « sections-page » invalidée à chaque écriture). Mesuré sur l'image de
+ * production : après un enregistrement depuis le BackOffice, la page publique
+ * servait encore l'ancienne composition **plus de 90 secondes**, alors que le
+ * même changement écrit directement en base apparaissait en 15. L'invalidation
+ * par étiquette ne tenait donc pas, et le cache faisait pire que rien — un
+ * administrateur qui ajoute une section ne la voyait pas apparaître.
+ *
+ * La lecture remplacée ne coûte presque rien : une poignée de lignes, sur un
+ * index, dans une page déjà rendue à chaque requête. Trois tests de bout en bout
+ * tiennent la propriété (`e2e/parametres.spec.ts`).
  */
-const sectionsEnCache = unstable_cache(
-  async (editionId: string, page: string) =>
-    prisma.pageSection.findMany({
-      where: { editionId, page },
-      orderBy: { sortOrder: "asc" },
-    }),
-  ["sections-page"],
-  { revalidate: 60, tags: [ETIQUETTE_SECTIONS] },
-);
-
 export async function sectionsVisibles(editionId: string, page: string): Promise<PageSection[]> {
-  const sections = await sectionsEnCache(editionId, page);
-  return sections.filter((section) => section.isVisible);
+  const sections = await prisma.pageSection.findMany({
+    where: { editionId, page, isVisible: true },
+    orderBy: { sortOrder: "asc" },
+  });
+  return sections;
 }
 
 export async function listerSections(editionId: string, page: string): Promise<PageSection[]> {
@@ -88,8 +88,16 @@ export async function oublierImageSection(chemin: string): Promise<void> {
   await fileStorage.delete(chemin).catch(() => undefined);
 }
 
+/**
+ * Rafraîchit les écrans qui montrent les sections.
+ *
+ * L'écran du BackOffice est rendu une fois et gardé : sans cela, la liste
+ * resterait telle qu'elle était avant l'enregistrement. La page publique, elle,
+ * est rendue à chaque requête et lit la base sans cache (voir
+ * `sectionsVisibles`) ; l'appel qui la concerne reste par sécurité, au cas où
+ * elle deviendrait statique.
+ */
 function invalider(page: string): void {
-  revalidateTag(ETIQUETTE_SECTIONS);
   revalidatePath("/admin/parametres/sections");
   if (page === "accueil") revalidatePath("/");
 }

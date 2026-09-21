@@ -108,11 +108,11 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
           Programme
         </LienSite>
 
-        <p className="surtitre mt-5 mb-3">
+        <p className="surtitre mt-2 mb-1">
           {TYPE_LABELS[session.type]}
           {session.theme ? ` · ${session.theme}` : ""}
         </p>
-        <h1 className="mb-5">{session.titleFr}</h1>
+        <h1 className="mb-2.5">{session.titleFr}</h1>
 
         <div className="flex flex-wrap gap-2.5">
           <Repere icone={CalendarDays}>{jourLong.format(session.day)}</Repere>

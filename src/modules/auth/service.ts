@@ -1,22 +1,30 @@
 import argon2 from "argon2";
 import { prisma } from "@/lib/db";
-import { verifyTotpCode } from "@/lib/totp";
 import { audit } from "@/lib/audit";
+import { consommerJeton, creerDefi, verifierCode } from "./deuxieme-facteur";
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
 
-/** Rôles pour lesquels le 2FA TOTP est obligatoire (brief §7). */
-export const ROLES_REQUIRING_TOTP = ["SUPER_ADMIN", "ADMIN_FORUM"] as const;
+/**
+ * Rôles soumis au second facteur (cahier des charges ANSD §26 : « authentification
+ * à deux facteurs pour les administrateurs »).
+ *
+ * Le facteur est une **validation par e-mail** depuis le §23 : code à 6 chiffres
+ * et lien, envoyés à l'adresse du compte. Il remplace l'application
+ * d'authentification (TOTP) prévue au brief §7, à la demande du commanditaire.
+ */
+export const ROLES_A_DEUX_FACTEURS = ["SUPER_ADMIN", "ADMIN_FORUM"] as const;
+
+export function exigeSecondFacteur(roleName: string): boolean {
+  return (ROLES_A_DEUX_FACTEURS as readonly string[]).includes(roleName);
+}
 
 /** Ce que la session porte des droits d'un compte. */
 export interface DroitsDuCompte {
   roleId: string;
   roleName: string;
   permissions: string[];
-  totpEnabled: boolean;
-  /** Le rôle impose le 2FA mais il n'est pas encore activé : à rediriger vers l'enrôlement. */
-  requiresTotpEnrollment: boolean;
   /** Version de session du compte au moment où le jeton a été émis (PLAN.md §18). */
   sessionVersion: number;
 }
@@ -36,7 +44,6 @@ export interface AuthenticatedUser extends DroitsDuCompte {
  */
 export function droitsDuCompte(user: {
   roleId: string;
-  totpEnabled: boolean;
   sessionVersion: number;
   role: { name: string; permissions: unknown };
 }): DroitsDuCompte {
@@ -44,9 +51,6 @@ export function droitsDuCompte(user: {
     roleId: user.roleId,
     roleName: user.role.name,
     permissions: (user.role.permissions as string[] | null) ?? [],
-    totpEnabled: user.totpEnabled,
-    requiresTotpEnrollment:
-      (ROLES_REQUIRING_TOTP as readonly string[]).includes(user.role.name) && !user.totpEnabled,
     sessionVersion: user.sessionVersion,
   };
 }
@@ -56,17 +60,21 @@ export type AuthenticateResult =
   | { status: "INVALID_CREDENTIALS" }
   | { status: "LOCKED"; lockedUntil: Date }
   | { status: "INACTIVE" }
-  | { status: "TOTP_REQUIRED" }
-  | { status: "TOTP_INVALID" };
+  /** Mot de passe accepté : un code vient de partir vers l'adresse du compte. */
+  | { status: "CODE_SENT" }
+  | { status: "CODE_INVALID" }
+  | { status: "CODE_THROTTLED"; retryAfterSeconds: number };
 
 /**
- * Authentifie un utilisateur BackOffice (brief §7) : hachage `argon2id`,
- * verrouillage après 5 échecs (15 min), vérification TOTP si activé.
+ * Authentifie un compte BackOffice : hachage `argon2id`, verrouillage après cinq
+ * échecs (15 min), puis **second facteur par e-mail** pour les rôles qui y sont
+ * soumis (PLAN.md §23).
  */
 export async function authenticateUser(
   email: string,
   password: string,
-  totpCode?: string,
+  code?: string,
+  ip?: string,
 ): Promise<AuthenticateResult> {
   const user = await prisma.user.findUnique({ where: { email }, include: { role: true } });
 
@@ -91,16 +99,51 @@ export async function authenticateUser(
     return { status: "INVALID_CREDENTIALS" };
   }
 
-  if (user.totpEnabled) {
-    if (!totpCode) {
-      return { status: "TOTP_REQUIRED" };
+  if (exigeSecondFacteur(user.role.name)) {
+    if (!code) {
+      const envoi = await creerDefi(user, ip);
+      return envoi.status === "ENVOYE"
+        ? { status: "CODE_SENT" }
+        : { status: "CODE_THROTTLED", retryAfterSeconds: envoi.retryAfterSeconds };
     }
-    if (!user.totpSecret || !(await verifyTotpCode(user.totpSecret, totpCode))) {
+    if (!(await verifierCode(user.id, code))) {
+      // Un code faux compte comme un échec de connexion : cinq essais, puis le
+      // compte se verrouille, comme pour un mot de passe.
       await registerFailedAttempt(user.id, user.failedAttempts);
-      return { status: "TOTP_INVALID" };
+      return { status: "CODE_INVALID" };
     }
   }
 
+  return ouvrirSession(user);
+}
+
+/**
+ * Connexion par le **lien** reçu par e-mail : le jeton vaut le code, puisqu'il
+ * n'a été créé qu'après un mot de passe correct.
+ */
+export async function authenticateByChallenge(jeton: string): Promise<AuthenticateResult> {
+  const userId = await consommerJeton(jeton);
+  if (!userId) return { status: "CODE_INVALID" };
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, include: { role: true } });
+  if (!user) return { status: "INVALID_CREDENTIALS" };
+  if (!user.isActive) return { status: "INACTIVE" };
+  if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+    return { status: "LOCKED", lockedUntil: user.lockedUntil };
+  }
+
+  return ouvrirSession(user);
+}
+
+/** Dernière étape, commune aux deux chemins : compteurs remis à zéro et trace. */
+async function ouvrirSession(user: {
+  id: string;
+  email: string;
+  name: string;
+  roleId: string;
+  sessionVersion: number;
+  role: { name: string; permissions: unknown };
+}): Promise<AuthenticateResult> {
   await prisma.user.update({
     where: { id: user.id },
     data: { failedAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
@@ -139,47 +182,4 @@ async function registerFailedAttempt(userId: string, currentFailedAttempts: numb
       entityId: userId,
     });
   }
-}
-
-export type ResultatEnrolement = "OK" | "CODE_INVALIDE" | "DEJA_ACTIVE";
-
-/** Secret TOTP tel que `generateTotpSecret` le produit : du base32. */
-const SECRET_TOTP = /^[A-Z2-7]{16,64}$/;
-
-/**
- * Confirme l'enrôlement 2FA d'un utilisateur.
- *
- * **Refusé si un second facteur est déjà actif.** Sans ce contrôle, n'importe
- * quelle session ouverte — y compris volée — pouvait remplacer le second facteur
- * du compte par le sien : la page restait accessible et l'action ne vérifiait
- * rien. Changer de téléphone passe par la réinitialisation qu'effectue un
- * gestionnaire des comptes (`reinitialiserDeuxFacteurs`).
- *
- * Le contrôle est fait **dans la même écriture** que l'activation : deux envois
- * simultanés ne peuvent pas passer tous les deux.
- *
- * L'activation incrémente la version de session : les autres sessions ouvertes
- * du compte, établies sans second facteur, sont fermées.
- */
-export async function enableTotp(
-  userId: string,
-  secret: string,
-  code: string,
-): Promise<ResultatEnrolement> {
-  if (!SECRET_TOTP.test(secret) || !(await verifyTotpCode(secret, code))) {
-    return "CODE_INVALIDE";
-  }
-  const { count } = await prisma.user.updateMany({
-    where: { id: userId, totpEnabled: false },
-    data: { totpEnabled: true, totpSecret: secret, sessionVersion: { increment: 1 } },
-  });
-  if (count === 0) return "DEJA_ACTIVE";
-  await audit.log({
-    actorType: "USER",
-    actorUserId: userId,
-    action: "auth.totp_enabled",
-    entity: "User",
-    entityId: userId,
-  });
-  return "OK";
 }

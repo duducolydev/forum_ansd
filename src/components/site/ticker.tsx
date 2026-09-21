@@ -6,14 +6,14 @@
 export function Ticker() {
   const items = [
     "Forum international sur les données",
-    "CICAD Diamniadio · 23–25 novembre 2026",
+    "Hôtel King Fahd Palace, Dakar · 23–25 novembre 2026",
     "Ouverture des inscriptions : 5 octobre 2026",
     "Traduction simultanée FR · EN",
   ];
 
   return (
     <div
-      className="bg-ticker-bg text-ticker-text h-8 overflow-hidden text-[0.8rem] leading-8 font-semibold whitespace-nowrap"
+      className="fond-entete h-8 overflow-hidden text-[0.8rem] leading-8 font-semibold whitespace-nowrap"
       aria-hidden
     >
       <div className="motion-safe:animate-ticker inline-block pl-[100%]">

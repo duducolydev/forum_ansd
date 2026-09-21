@@ -39,6 +39,8 @@ export function PhotoField({ photoActuelleUrl, onChange, onRemove, label = "Phot
   const [zoom, setZoom] = useState(1);
   const [decalage, setDecalage] = useState({ x: 0, y: 0 });
   const [erreur, setErreur] = useState<string | null>(null);
+  /** Une image survole le bloc : la bordure s'allume, comme sur les zones de dépôt. */
+  const [depot, setDepot] = useState(false);
   const glisse = useRef<{ x: number; y: number } | null>(null);
 
   /** Échelle minimale pour que l'image couvre toujours le carré. */
@@ -162,7 +164,27 @@ export function PhotoField({ photoActuelleUrl, onChange, onRemove, label = "Phot
       <span className="text-heading text-sm font-semibold">{label}</span>
       {hint && <span className="text-text-3 text-xs">{hint}</span>}
 
-      <div className="flex flex-wrap items-start gap-4">
+      {/*
+       * Glisser-déposer sur tout le bloc, comme partout ailleurs dans le
+       * BackOffice (§26). L'aperçu rond et le cadrage sont conservés : ils font
+       * plus que choisir un fichier, et une zone de dépôt générique les aurait
+       * remplacés par moins.
+       */}
+      <div
+        onDragOver={(evenement) => {
+          evenement.preventDefault();
+          setDepot(true);
+        }}
+        onDragLeave={() => setDepot(false)}
+        onDrop={(evenement) => {
+          evenement.preventDefault();
+          setDepot(false);
+          choisirFichier(evenement.dataTransfer.files?.[0]);
+        }}
+        className={`flex flex-wrap items-start gap-4 rounded-2xl border-2 border-dashed p-3 transition-colors ${
+          depot ? "border-link bg-blue-soft" : "border-transparent"
+        }`}
+      >
         {source ? (
           <div className="flex flex-col gap-2">
             <canvas

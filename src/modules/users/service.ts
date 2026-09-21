@@ -2,7 +2,7 @@ import argon2 from "argon2";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { PERMISSIONS } from "@/lib/permissions";
-import { ROLES_REQUIRING_TOTP } from "@/modules/auth/service";
+import { exigeSecondFacteur as exigeSecondFacteurDuRole } from "@/modules/auth/service";
 import type { CreationUtilisateur, ModificationUtilisateur } from "./schema";
 
 /** Erreur de règle métier : message destiné à l'écran, pas à la console. */
@@ -34,7 +34,6 @@ export async function listerUtilisateurs() {
       email: true,
       name: true,
       isActive: true,
-      totpEnabled: true,
       lastLoginAt: true,
       lockedUntil: true,
       failedAttempts: true,
@@ -52,7 +51,6 @@ export async function trouverUtilisateur(userId: string) {
       email: true,
       name: true,
       isActive: true,
-      totpEnabled: true,
       lastLoginAt: true,
       lockedUntil: true,
       createdAt: true,
@@ -61,9 +59,14 @@ export async function trouverUtilisateur(userId: string) {
   });
 }
 
-/** Le rôle impose-t-il un second facteur (brief §7) ? */
+/**
+ * Le rôle impose-t-il un second facteur ?
+ *
+ * Depuis le §23, ce facteur est une validation par e-mail : il n'y a plus rien à
+ * enrôler ni à réinitialiser par compte, l'adresse du compte suffit.
+ */
 export function exigeDeuxFacteurs(roleName: string): boolean {
-  return (ROLES_REQUIRING_TOTP as readonly string[]).includes(roleName);
+  return exigeSecondFacteurDuRole(roleName);
 }
 
 /**
@@ -224,38 +227,6 @@ export async function reinitialiserMotDePasse(
     entity: "User",
     entityId: userId,
     after: { email: utilisateur.email },
-  });
-}
-
-/**
- * Détache le second facteur : le compte devra le réenrôler à la connexion
- * suivante. C'est la réponse au téléphone perdu ou remplacé, seul cas où un
- * compte soumis au 2FA redevient joignable sans intervention en base.
- */
-export async function reinitialiserDeuxFacteurs(userId: string, acteur: Acteur): Promise<void> {
-  const utilisateur = await prisma.user.findUnique({
-    where: { id: userId },
-    include: { role: { select: { name: true } } },
-  });
-  if (!utilisateur) throw new UtilisateurRuleError("Compte introuvable.");
-  if (!utilisateur.totpEnabled) {
-    throw new UtilisateurRuleError("Ce compte n'a pas de second facteur activé.");
-  }
-
-  await prisma.user.update({
-    where: { id: userId },
-    // Téléphone perdu, peut-être volé : les sessions ouvertes sont fermées (§18).
-    data: { totpSecret: null, totpEnabled: false, sessionVersion: { increment: 1 } },
-  });
-
-  await audit.log({
-    actorType: "USER",
-    actorUserId: acteur.userId,
-    action: "user.totp_reset",
-    entity: "User",
-    entityId: userId,
-    before: { totpEnabled: true },
-    after: { totpEnabled: false, role: utilisateur.role.name },
   });
 }
 

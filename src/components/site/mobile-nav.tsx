@@ -31,7 +31,7 @@ export function MobileNav({
         onClick={() => setOpen((v) => !v)}
         aria-label={t("menu")}
         aria-expanded={open}
-        className="border-border text-text hover:border-link hover:bg-bg-2 transition-tout grid h-[42px] w-[42px] place-items-center rounded-lg border"
+        className="transition-tout border-ansd-bleu-nuit/25 text-ansd-bleu-nuit focus-visible:outline-ansd-bleu-nuit grid h-[42px] w-[42px] place-items-center rounded-lg border hover:bg-white/60"
       >
         {open ? <X aria-hidden size={19} /> : <Menu aria-hidden size={19} />}
       </button>

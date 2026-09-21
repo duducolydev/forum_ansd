@@ -2,6 +2,7 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import * as repo from "./repository";
+import { normaliserArticle, normaliserBlocContenu } from "./schema";
 import type { ContentBlockInput, PostInput } from "./schema";
 
 /**
@@ -70,10 +71,13 @@ export async function listContentBlocks(editionId: string) {
 }
 
 export async function saveContentBlock(editionId: string, input: ContentBlockInput, actor: Actor) {
-  const before = await repo.findContentBlock(editionId, input.key);
-  const updated = await repo.upsertContentBlock(editionId, input.key, {
-    valueFr: input.valueFr,
-    valueEn: input.valueEn || input.valueFr,
+  // Nettoyage ici, et non dans l'action : une Server Action n'est pas le seul
+  // chemin d'écriture, et un texte mal formé ne doit jamais atteindre la base.
+  const propre = normaliserBlocContenu(input);
+  const before = await repo.findContentBlock(editionId, propre.key);
+  const updated = await repo.upsertContentBlock(editionId, propre.key, {
+    valueFr: propre.valueFr,
+    valueEn: propre.valueEn || propre.valueFr,
     updatedById: actor.userId,
   });
 
@@ -110,7 +114,8 @@ export async function getPost(id: string) {
   return repo.findPostById(id);
 }
 
-export async function createPost(editionId: string, input: PostInput, actor: Actor) {
+export async function createPost(editionId: string, entree: PostInput, actor: Actor) {
+  const input = normaliserArticle(entree);
   const post = await repo.createPost({
     edition: { connect: { id: editionId } },
     slug: input.slug,
@@ -136,7 +141,8 @@ export async function createPost(editionId: string, input: PostInput, actor: Act
   return post;
 }
 
-export async function updatePost(postId: string, input: PostInput, actor: Actor) {
+export async function updatePost(postId: string, entree: PostInput, actor: Actor) {
+  const input = normaliserArticle(entree);
   const before = await prisma.post.findUniqueOrThrow({ where: { id: postId } });
   const becomingPublished = input.isPublished && !before.isPublished;
 

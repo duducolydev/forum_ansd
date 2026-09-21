@@ -35,7 +35,7 @@ async function main() {
       theme: "Des données fiables pour des décisions qui comptent",
       startDate: new Date("2026-11-23T00:00:00Z"),
       endDate: new Date("2026-11-25T23:59:59Z"),
-      venue: "CICAD, Diamniadio",
+      venue: "Hôtel King Fahd Palace",
       city: "Dakar",
       isActive: true,
       settings: {
@@ -792,9 +792,21 @@ async function main() {
       variables: ["prenom", "lien_badge"],
     },
     {
+      // Second facteur des comptes BackOffice (PLAN.md §23) : sans ce modèle,
+      // plus personne ne peut se connecter à l'administration.
+      key: "admin_login_code",
+      subjectFr: "Votre code de connexion au BackOffice",
+      subjectEn: "Your BackOffice sign-in code",
+      bodyFr:
+        "Bonjour {{nom}},\n\nVoici votre code de connexion au BackOffice du Forum, valable {{minutes}} minutes :\n\n{{code6}}\n\nVous pouvez aussi valider la connexion depuis ce lien : {{lien_validation}}\n\nSi vous n'êtes pas à l'origine de cette connexion, ignorez ce message et changez votre mot de passe.\n\nLe comité d'organisation",
+      bodyEn:
+        "Hello {{nom}},\n\nHere is your sign-in code for the Forum BackOffice, valid for {{minutes}} minutes:\n\n{{code6}}\n\nYou can also confirm the sign-in from this link: {{lien_validation}}\n\nIf you did not initiate this sign-in, ignore this message and change your password.\n\nThe organising committee",
+      variables: ["nom", "code6", "lien_validation", "minutes"],
+    },
+    {
       key: "magic_link",
-      subjectFr: "Votre lien d'accès à « Mes inscriptions »",
-      subjectEn: 'Your access link to "My registrations"',
+      subjectFr: "Votre lien d'accès à « Mon espace »",
+      subjectEn: 'Your access link to "My space"',
       bodyFr:
         "Bonjour,\n\nVoici votre lien d'accès à votre espace participant, valable 30 minutes : {{lien_connexion}}\n\nCode de secours : {{code6}}\n\nCordialement,\nLe comité d'organisation",
       bodyEn:
@@ -816,9 +828,9 @@ async function main() {
       subjectFr: "Le Forum ouvre dans une semaine",
       subjectEn: "The Forum opens in one week",
       bodyFr:
-        "Bonjour {{prenom}},\n\nLe Forum international sur les données ouvre dans une semaine, du 23 au 25 novembre 2026 au CICAD de Diamniadio.\n\nPensez à télécharger votre badge avant de venir : il vous sera demandé à l'entrée. Retrouvez-le dans votre espace : {{lien_espace}}\n\nÀ très bientôt,\nLe comité d'organisation",
+        "Bonjour {{prenom}},\n\nLe Forum international sur les données ouvre dans une semaine, du 23 au 25 novembre 2026 à l'Hôtel King Fahd Palace, à Dakar.\n\nPensez à télécharger votre badge avant de venir : il vous sera demandé à l'entrée. Retrouvez-le dans votre espace : {{lien_espace}}\n\nÀ très bientôt,\nLe comité d'organisation",
       bodyEn:
-        "Hello {{prenom}},\n\nThe International Data Forum opens in one week, from 23 to 25 November 2026 at CICAD, Diamniadio.\n\nPlease download your badge before you come: it will be checked at the entrance. Find it in your personal space: {{lien_espace}}\n\nSee you soon,\nThe organising committee",
+        "Hello {{prenom}},\n\nThe International Data Forum opens in one week, from 23 to 25 November 2026 at the King Fahd Palace Hotel in Dakar.\n\nPlease download your badge before you come: it will be checked at the entrance. Find it in your personal space: {{lien_espace}}\n\nSee you soon,\nThe organising committee",
       variables: ["prenom", "lien_espace"],
     },
     {
@@ -826,9 +838,9 @@ async function main() {
       subjectFr: "Le Forum, c'est demain",
       subjectEn: "The Forum starts tomorrow",
       bodyFr:
-        "Bonjour {{prenom}},\n\nLe Forum international sur les données ouvre demain matin au CICAD de Diamniadio. L'accueil est ouvert dès 8 h.\n\nPrésentez le QR de votre badge à l'entrée, sur votre téléphone ou imprimé : {{lien_espace}}\n\nBonne journée,\nLe comité d'organisation",
+        "Bonjour {{prenom}},\n\nLe Forum international sur les données ouvre demain matin à l'Hôtel King Fahd Palace, à Dakar. L'accueil est ouvert dès 8 h.\n\nPrésentez le QR de votre badge à l'entrée, sur votre téléphone ou imprimé : {{lien_espace}}\n\nBonne journée,\nLe comité d'organisation",
       bodyEn:
-        "Hello {{prenom}},\n\nThe International Data Forum opens tomorrow morning at CICAD, Diamniadio. The welcome desk opens at 8 a.m.\n\nShow your badge QR code at the entrance, on your phone or printed: {{lien_espace}}\n\nHave a good day,\nThe organising committee",
+        "Hello {{prenom}},\n\nThe International Data Forum opens tomorrow morning at the King Fahd Palace Hotel in Dakar. The welcome desk opens at 8 a.m.\n\nShow your badge QR code at the entrance, on your phone or printed: {{lien_espace}}\n\nHave a good day,\nThe organising committee",
       variables: ["prenom", "lien_espace"],
     },
     {
@@ -1336,24 +1348,24 @@ async function main() {
       en: "The International Data Forum is an initiative of Senegal's National Agency for Statistics and Demography (ANSD). It brings together African and international public statistics stakeholders in Dakar around the challenges of producing, sharing and using data for public policy.",
     },
     "practical.venue": {
-      fr: "CICAD, Diamniadio, à 35 km de Dakar par l'autoroute à péage. Parking et accès PMR disponibles.",
-      en: "CICAD, Diamniadio, 35 km from Dakar via the toll motorway. Parking and disabled access available.",
+      fr: "Hôtel King Fahd Palace. Route des Almadies, Dakar",
+      en: "King Fahd Palace Hotel. Almadies Road, Dakar",
     },
     "practical.arrival": {
-      fr: "Aéroport international Blaise Diagne (AIBD), à 15 minutes du CICAD. Navettes prévues pour les délégations sur présentation du badge.",
-      en: "Blaise Diagne International Airport (AIBD), 15 minutes from CICAD. Shuttles provided for delegations upon presentation of the badge.",
+      fr: "Aéroport international Blaise Diagne (AIBD). Navettes prévues pour les délégations sur présentation du badge.",
+      en: "Blaise Diagne International Airport (AIBD). Shuttles provided for delegations upon presentation of the badge.",
     },
     "practical.accommodation": {
-      fr: "Hôtels partenaires à Diamniadio et Dakar, tarifs négociés. Le code de réservation est envoyé après confirmation de votre inscription.",
-      en: "Partner hotels in Diamniadio and Dakar, negotiated rates. The booking code is sent after your registration is confirmed.",
+      fr: "Tarifs négociés à l'Hôtel King Fahd Palace, sur le lieu du Forum, et dans des hôtels partenaires de Dakar. Le code de réservation est envoyé après confirmation de votre inscription.",
+      en: "Negotiated rates at the King Fahd Palace Hotel, the Forum venue itself, and at partner hotels in Dakar. The booking code is sent after your registration is confirmed.",
     },
     "practical.visa": {
       fr: "Une lettre d'invitation officielle, générée depuis votre espace participant, facilite les démarches consulaires pour les participants internationaux.",
       en: "An official invitation letter, generated from your participant space, facilitates consular procedures for international participants.",
     },
     "practical.transport": {
-      fr: "Navettes hôtels ↔ CICAD le matin et le soir. Gare TER de Diamniadio à proximité du site.",
-      en: "Hotel ↔ CICAD shuttles in the morning and evening. Diamniadio TER train station near the venue.",
+      fr: "Navettes entre les hôtels partenaires et le King Fahd Palace, matin et soir. Parking sur place pour les participants.",
+      en: "Shuttles between partner hotels and the King Fahd Palace, morning and evening. On-site parking for participants.",
     },
     "practical.contacts": {
       fr: "forum@ansd.sn · +221 33 869 21 39 — Accréditation presse : presse@ansd.sn",
@@ -1365,8 +1377,8 @@ async function main() {
     // son délégué à la protection des données avant l'ouverture publique. Le
     // marqueur en tête du texte rend impossible une mise en ligne par oubli.
     "legal.privacy": {
-      fr: "[BROUILLON — À VALIDER PAR L'ANSD ET SON DÉLÉGUÉ À LA PROTECTION DES DONNÉES AVANT OUVERTURE PUBLIQUE]\n\nResponsable du traitement\nAgence nationale de la Statistique et de la Démographie (ANSD), Rocade Fann – Bel-Air – Cerf-volant, Dakar, Sénégal. Contact : forum@ansd.sn\n\nCadre légal\nLoi n° 2008-12 du 25 janvier 2008 sur la protection des données à caractère personnel. Le traitement fait l'objet des formalités requises auprès de la Commission de protection des données personnelles (CDP).\n\nDonnées collectées\n— Identité : civilité, prénom, nom, pays et ville de résidence.\n— Coordonnées : adresse e-mail, numéro de téléphone.\n— Situation professionnelle : organisation, fonction, domaine d'activité.\n— Participation : journées retenues, sessions réservées, dates d'arrivée et de départ.\n— Logistique, si vous en faites la demande : besoins d'hébergement ou de transport, régime alimentaire, besoins particuliers d'accessibilité.\n— Photographie, si vous en fournissez une pour votre badge.\n— Données techniques : adresse IP et horodatage des connexions, conservées pour la sécurité du service.\n\nFinalités\nGestion des inscriptions et des accréditations, production et contrôle des badges, organisation logistique, information des participants avant et pendant le Forum, et établissement de statistiques de participation.\n\nBase légale\nVotre consentement, recueilli lors de l'inscription et horodaté, ainsi que l'exécution des mesures nécessaires à l'organisation de l'événement.\n\nDestinataires\nLes données ne sont accessibles qu'au comité d'organisation du Forum et aux prestataires strictement nécessaires (hébergement, envoi d'e-mails), agissant sur instruction de l'ANSD. Elles ne sont ni vendues ni cédées à des tiers.\n\nCe qui est visible publiquement\nLa page de vérification d'un badge n'affiche que le prénom, le nom, l'organisation, le pays, la catégorie et la validité du badge. Ni votre adresse e-mail, ni votre téléphone, ni votre photographie n'y figurent.\n\nDurée de conservation\nLes données d'inscription sont conservées pendant la durée de l'édition, puis archivées pour les besoins de capitalisation et de statistiques. Les données de logistique et de santé (régime alimentaire, besoins d'accessibilité) sont supprimées à l'issue de l'événement.\n\nVos droits\nVous disposez d'un droit d'accès, de rectification, d'opposition et de suppression. L'accès et la rectification s'exercent directement depuis votre espace « Mes inscriptions ». La suppression se demande depuis ce même espace ou à forum@ansd.sn ; il y est répondu sous trente jours. Vous pouvez également saisir la CDP.\n\nCookies\nLe portail dépose uniquement des cookies nécessaires à son fonctionnement : session de connexion, langue choisie et thème d'affichage. Aucun cookie publicitaire ni de mesure d'audience tierce n'est utilisé.",
-      en: '[DRAFT — TO BE APPROVED BY ANSD AND ITS DATA PROTECTION OFFICER BEFORE PUBLIC LAUNCH]\n\nData controller\nAgence nationale de la Statistique et de la Démographie (ANSD), Rocade Fann – Bel-Air – Cerf-volant, Dakar, Senegal. Contact: forum@ansd.sn\n\nLegal framework\nSenegalese Law No. 2008-12 of 25 January 2008 on the protection of personal data. The processing is declared to the Commission de protection des données personnelles (CDP).\n\nData collected\n— Identity: title, first and last name, country and city of residence.\n— Contact details: e-mail address, phone number.\n— Professional details: organisation, job title, field of activity.\n— Participation: selected days, booked sessions, arrival and departure dates.\n— Logistics, where you request it: accommodation or transport needs, dietary requirements, accessibility needs.\n— A photograph, if you provide one for your badge.\n— Technical data: IP address and connection timestamps, kept for service security.\n\nPurposes\nManaging registrations and accreditation, producing and checking badges, organising logistics, informing participants before and during the Forum, and compiling attendance statistics.\n\nLegal basis\nYour consent, collected at registration and timestamped, together with the measures necessary to organise the event.\n\nRecipients\nData is accessible only to the Forum organising committee and to the strictly necessary providers (hosting, e-mail delivery), acting on ANSD\'s instructions. It is never sold or transferred to third parties.\n\nWhat is publicly visible\nThe badge verification page shows only first name, last name, organisation, country, category and badge validity. Neither your e-mail address, nor your phone number, nor your photograph appears there.\n\nRetention\nRegistration data is kept for the duration of the edition, then archived for reporting and statistical purposes. Logistics and health-related data (dietary requirements, accessibility needs) is deleted once the event has ended.\n\nYour rights\nYou have the right to access, correct, object to and delete your data. Access and correction are available directly from your "My registrations" space. Deletion can be requested from that same space or at forum@ansd.sn, and is answered within thirty days. You may also refer the matter to the CDP.\n\nCookies\nThe portal sets only cookies necessary for it to work: login session, chosen language and display theme. No advertising or third-party analytics cookies are used.',
+      fr: "[BROUILLON — À VALIDER PAR L'ANSD ET SON DÉLÉGUÉ À LA PROTECTION DES DONNÉES AVANT OUVERTURE PUBLIQUE]\n\nResponsable du traitement\nAgence nationale de la Statistique et de la Démographie (ANSD), Rocade Fann – Bel-Air – Cerf-volant, Dakar, Sénégal. Contact : forum@ansd.sn\n\nCadre légal\nLoi n° 2008-12 du 25 janvier 2008 sur la protection des données à caractère personnel. Le traitement fait l'objet des formalités requises auprès de la Commission de protection des données personnelles (CDP).\n\nDonnées collectées\n— Identité : civilité, prénom, nom, pays et ville de résidence.\n— Coordonnées : adresse e-mail, numéro de téléphone.\n— Situation professionnelle : organisation, fonction, domaine d'activité.\n— Participation : journées retenues, sessions réservées, dates d'arrivée et de départ.\n— Logistique, si vous en faites la demande : besoins d'hébergement ou de transport, régime alimentaire, besoins particuliers d'accessibilité.\n— Photographie, si vous en fournissez une pour votre badge.\n— Données techniques : adresse IP et horodatage des connexions, conservées pour la sécurité du service.\n\nFinalités\nGestion des inscriptions et des accréditations, production et contrôle des badges, organisation logistique, information des participants avant et pendant le Forum, et établissement de statistiques de participation.\n\nBase légale\nVotre consentement, recueilli lors de l'inscription et horodaté, ainsi que l'exécution des mesures nécessaires à l'organisation de l'événement.\n\nDestinataires\nLes données ne sont accessibles qu'au comité d'organisation du Forum et aux prestataires strictement nécessaires (hébergement, envoi d'e-mails), agissant sur instruction de l'ANSD. Elles ne sont ni vendues ni cédées à des tiers.\n\nCe qui est visible publiquement\nLa page de vérification d'un badge n'affiche que le prénom, le nom, l'organisation, le pays, la catégorie et la validité du badge. Ni votre adresse e-mail, ni votre téléphone, ni votre photographie n'y figurent.\n\nDurée de conservation\nLes données d'inscription sont conservées pendant la durée de l'édition, puis archivées pour les besoins de capitalisation et de statistiques. Les données de logistique et de santé (régime alimentaire, besoins d'accessibilité) sont supprimées à l'issue de l'événement.\n\nVos droits\nVous disposez d'un droit d'accès, de rectification, d'opposition et de suppression. L'accès et la rectification s'exercent directement depuis votre espace « Mon espace ». La suppression se demande depuis ce même espace ou à forum@ansd.sn ; il y est répondu sous trente jours. Vous pouvez également saisir la CDP.\n\nCookies\nLe portail dépose uniquement des cookies nécessaires à son fonctionnement : session de connexion, langue choisie et thème d'affichage. Aucun cookie publicitaire ni de mesure d'audience tierce n'est utilisé.",
+      en: '[DRAFT — TO BE APPROVED BY ANSD AND ITS DATA PROTECTION OFFICER BEFORE PUBLIC LAUNCH]\n\nData controller\nAgence nationale de la Statistique et de la Démographie (ANSD), Rocade Fann – Bel-Air – Cerf-volant, Dakar, Senegal. Contact: forum@ansd.sn\n\nLegal framework\nSenegalese Law No. 2008-12 of 25 January 2008 on the protection of personal data. The processing is declared to the Commission de protection des données personnelles (CDP).\n\nData collected\n— Identity: title, first and last name, country and city of residence.\n— Contact details: e-mail address, phone number.\n— Professional details: organisation, job title, field of activity.\n— Participation: selected days, booked sessions, arrival and departure dates.\n— Logistics, where you request it: accommodation or transport needs, dietary requirements, accessibility needs.\n— A photograph, if you provide one for your badge.\n— Technical data: IP address and connection timestamps, kept for service security.\n\nPurposes\nManaging registrations and accreditation, producing and checking badges, organising logistics, informing participants before and during the Forum, and compiling attendance statistics.\n\nLegal basis\nYour consent, collected at registration and timestamped, together with the measures necessary to organise the event.\n\nRecipients\nData is accessible only to the Forum organising committee and to the strictly necessary providers (hosting, e-mail delivery), acting on ANSD\'s instructions. It is never sold or transferred to third parties.\n\nWhat is publicly visible\nThe badge verification page shows only first name, last name, organisation, country, category and badge validity. Neither your e-mail address, nor your phone number, nor your photograph appears there.\n\nRetention\nRegistration data is kept for the duration of the edition, then archived for reporting and statistical purposes. Logistics and health-related data (dietary requirements, accessibility needs) is deleted once the event has ended.\n\nYour rights\nYou have the right to access, correct, object to and delete your data. Access and correction are available directly from your "My space" space. Deletion can be requested from that same space or at forum@ansd.sn, and is answered within thirty days. You may also refer the matter to the CDP.\n\nCookies\nThe portal sets only cookies necessary for it to work: login session, chosen language and display theme. No advertising or third-party analytics cookies are used.',
     },
     "legal.terms": {
       fr: "[BROUILLON — À COMPLÉTER PAR L'ANSD : HÉBERGEUR ET DIRECTEUR DE PUBLICATION]\n\nÉditeur\nAgence nationale de la Statistique et de la Démographie (ANSD), Rocade Fann – Bel-Air – Cerf-volant, Dakar, Sénégal. Téléphone : +221 33 869 21 39. Contact : forum@ansd.sn\n\nDirecteur de la publication\nÀ compléter.\n\nHébergeur\nÀ compléter (raison sociale, adresse et téléphone de l'hébergeur retenu).\n\nPropriété intellectuelle\nLes contenus du portail — textes, visuels, documents et supports de sessions — sont la propriété de l'ANSD ou de leurs auteurs respectifs. Leur réutilisation est soumise à autorisation préalable, sauf mention contraire portée sur le document concerné.\n\nConditions d'utilisation\nL'inscription est personnelle. Le badge délivré est nominatif et incessible : son prêt ou sa reproduction entraîne sa révocation immédiate et le refus d'accès au Forum.\n\nDisponibilité\nL'ANSD s'efforce d'assurer la disponibilité du portail sans pouvoir la garantir, notamment lors des opérations de maintenance.\n\nSignalement\nToute erreur ou difficulté d'accès peut être signalée à forum@ansd.sn.",

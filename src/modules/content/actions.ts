@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
@@ -10,6 +11,8 @@ import { contentBlockInputSchema, postInputSchema, type PostInput } from "./sche
 
 export interface ActionState {
   error?: string;
+  /** Confirmation à afficher : un écran muet laisse croire que rien n'est parti. */
+  message?: string;
 }
 
 async function requireSession() {
@@ -51,7 +54,7 @@ export async function saveContentBlockAction(
   // « À propos » vit désormais dans une section de l'accueil (§12).
   revalidatePath("/");
   revalidatePath("/infos-pratiques");
-  return {};
+  return { message: "Zone enregistrée." };
 }
 
 function parsePostForm(formData: FormData): PostInput {
@@ -85,7 +88,9 @@ export async function createPostAction(
   revalidatePath("/admin/contenus/actualites");
   revalidatePath("/actualites");
   revalidatePath("/");
-  return {};
+  // Créé, donc plus rien à faire ici : la liste est la suite naturelle, et
+  // rester sur un formulaire vide laissait croire que l'envoi avait échoué.
+  redirect("/admin/contenus/actualites");
 }
 
 /** Rafraîchit les surfaces où un article apparaît : liste, fiche et accueil. */
@@ -198,5 +203,5 @@ export async function updatePostAction(
   revalidatePath("/admin/contenus/actualites");
   revalidatePath("/actualites");
   revalidatePath("/");
-  return {};
+  return { message: "Article enregistré." };
 }

@@ -11,8 +11,9 @@ import {
   type ActionState,
 } from "../actions";
 import { IMAGE_ARTICLE_MAX_BYTES, type ImageGalerie } from "../schema";
-import { Plus, X } from "lucide-react";
+import { ImageUp, Plus, X } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import { ZoneDepot } from "@/components/ui/zone-depot";
 
 const etatInitial: ActionState = {};
 const CHAMP = "border-border bg-bg text-text rounded-lg border px-3 py-2.5 text-sm";
@@ -93,21 +94,20 @@ export function ImagesArticle({
           </p>
         )}
 
-        <form action={actionCouverture} className="flex flex-wrap items-center gap-2">
-          <input
-            type="file"
+        <form action={actionCouverture} className="flex flex-col gap-2">
+          <ZoneDepot
             name="image"
+            libelle="Fichier de couverture"
+            icone={ImageUp}
             accept="image/png,image/jpeg,image/webp"
             required
-            aria-label="Fichier de couverture"
-            className="text-text-2 text-sm"
+            aide={`JPEG, PNG ou WebP — ${MO} Mo maximum, format paysage conseillé`}
           />
-          <button type="submit" disabled={couvertureEnCours} className={BOUTON}>
-            {couvertureEnCours ? "Envoi…" : aUneCouverture ? "Remplacer" : "Téléverser"}
-          </button>
-          <span className="text-text-3 basis-full text-xs">
-            JPEG, PNG ou WebP, {MO} Mo maximum. Format paysage conseillé.
-          </span>
+          <div>
+            <button type="submit" disabled={couvertureEnCours} className={BOUTON}>
+              {couvertureEnCours ? "Envoi…" : aUneCouverture ? "Remplacer" : "Téléverser"}
+            </button>
+          </div>
         </form>
         {etatCouverture.error && (
           <p className="text-danger-text mt-2 text-sm">{etatCouverture.error}</p>
@@ -155,13 +155,14 @@ export function ImagesArticle({
         )}
 
         <form action={actionGalerie} className="flex flex-wrap items-end gap-2">
-          <input
-            type="file"
+          <ZoneDepot
             name="image"
+            libelle="Fichier à ajouter à la galerie"
+            icone={ImageUp}
             accept="image/png,image/jpeg,image/webp"
             required
-            aria-label="Fichier à ajouter à la galerie"
-            className="text-text-2 text-sm"
+            aide={`JPEG, PNG ou WebP — ${MO} Mo maximum`}
+            className="basis-full"
           />
           <input
             name="captionFr"

@@ -53,7 +53,7 @@ export default async function SponsorsPage() {
     <>
       <BandeauPage>
         <EnteteSection
-          marge={false}
+          bandeau
           niveau="h1"
           surtitre={en ? "They support the Forum" : "Ils soutiennent le Forum"}
           titre={t("sponsors")}

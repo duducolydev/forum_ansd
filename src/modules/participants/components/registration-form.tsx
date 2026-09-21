@@ -340,7 +340,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
         <PhotoField
           onChange={setPhoto}
           label="Photo (facultative)"
-          hint="Elle figurera sur votre badge et facilitera le contrôle à l'entrée. Vous pourrez l'ajouter plus tard depuis « Mes inscriptions »."
+          hint="Elle figurera sur votre badge et facilitera le contrôle à l'entrée. Vous pourrez l'ajouter plus tard depuis « Mon espace »."
         />
       </div>
 
@@ -429,7 +429,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
         <p className="border-warn-text bg-warn-soft text-warn-text rounded-lg border p-3.5 text-sm">
           Cette adresse e-mail est déjà inscrite. Utilisez{" "}
           <Link href="/mon-espace" className="font-semibold underline">
-            « Mes inscriptions »
+            « Mon espace »
           </Link>{" "}
           pour recevoir un lien d&apos;accès plutôt que de vous inscrire une seconde fois.
         </p>

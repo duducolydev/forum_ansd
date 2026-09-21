@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import argon2 from "argon2";
 import { prisma } from "../src/lib/db";
 import { ROLE_LABELS } from "../src/lib/permissions";
-import { ROLES_REQUIRING_TOTP } from "../src/modules/auth/service";
+import { exigeSecondFacteur } from "../src/modules/auth/service";
 
 /**
  * Comptes de démonstration, un par rôle (brief §12).
@@ -137,7 +137,7 @@ async function main(): Promise<void> {
     crees.push({
       ...compte,
       mdp,
-      deuxFacteurs: (ROLES_REQUIRING_TOTP as readonly string[]).includes(compte.role),
+      deuxFacteurs: exigeSecondFacteur(compte.role),
     });
   }
 
@@ -168,7 +168,7 @@ async function main(): Promise<void> {
   const autres = await prisma.user.findMany({
     where: { email: { notIn: crees.map((compte) => compte.email) } },
     orderBy: { email: "asc" },
-    select: { email: true, totpEnabled: true, role: { select: { name: true } } },
+    select: { email: true, role: { select: { name: true } } },
   });
 
   const largeurs = [30, 30, 20];
@@ -253,7 +253,7 @@ ${
         .map(
           (compte) =>
             `  ${compte.email.padEnd(32)}${(compte.role.name ?? "").padEnd(24)}` +
-            `${compte.totpEnabled ? "2FA active" : "2FA inactive"}`,
+            `${exigeSecondFacteur(compte.role.name) ? "code par e-mail" : "sans second facteur"}`,
         )
         .join("\n")
 }

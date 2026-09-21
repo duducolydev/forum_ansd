@@ -2,8 +2,9 @@
 
 import { useActionState, useRef, useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, RefreshCw, Save, Upload } from "lucide-react";
+import { FileText, ImageUp, RefreshCw, Save, Upload } from "lucide-react";
 import { BoutonSite } from "@/components/site/bouton-site";
+import { ZoneDepot } from "@/components/ui/zone-depot";
 import {
   consentementPresentationAction,
   deposerPhotoAction,
@@ -143,16 +144,16 @@ function DepotPresentation({ speaker }: { speaker: SpeakerVue }) {
         fichier est choisi.
       </p>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <input
-          ref={champFichier}
-          type="file"
+      <div className="flex flex-col gap-3">
+        <ZoneDepot
+          champRef={champFichier}
           name="presentation"
+          libelle="Choisir votre présentation (PDF)"
+          icone={FileText}
           accept="application/pdf"
-          aria-label="Choisir votre présentation (PDF)"
+          aide={`PDF uniquement — ${PRESENTATION_MAX_BYTES / 1024 / 1024} Mo au plus`}
           disabled={envoiEnCours}
           onChange={(evenement) => void envoyer(evenement)}
-          className="text-text-2 text-sm"
         />
         {speaker.aPresentation && (
           <a
@@ -345,12 +346,14 @@ export function SpeakerSpace({ speaker }: { speaker: SpeakerVue }) {
                 className="border-border h-16 w-16 rounded-full border object-cover"
               />
             )}
-            <input
-              type="file"
+            <ZoneDepot
               name="photo"
+              libelle="Choisir votre photo"
+              icone={ImageUp}
               accept="image/jpeg,image/png,image/webp"
               required
-              className="text-text-2 text-sm"
+              aide="JPEG, PNG ou WebP — 2 Mo au plus"
+              className="min-w-[14rem] flex-1"
             />
             <BoutonSite
               type="submit"

@@ -90,7 +90,7 @@ export default async function RegisterPage({
       <>
         <BandeauPage largeur="moyen">
           <EnteteSection
-            marge={false}
+            bandeau
             niveau="h1"
             surtitre={en ? "Registrations closed" : "Inscriptions fermées"}
             titre={t("register")}
@@ -135,6 +135,11 @@ export default async function RegisterPage({
    * n'apparaît que pour les catégories qui en demandent une : la page annonçait
    * « Cinq étapes » là où la barre de progression affichait « Étape 1 sur 4 ».
    * Une promesse démentie par l'écran suivant coûte plus qu'une promesse vague.
+   *
+   * Des **badges d'une ligne**, et non plus des cartes (PLAN.md §19) : les
+   * cartes repoussaient le formulaire sous la ligne de flottaison. Chaque badge
+   * garde l'essentiel de sa phrase d'explication — « sur cet appareil » surtout,
+   * sans quoi « enregistré » laisserait croire à une sauvegarde sur le serveur.
    */
   const etapesToujours = REGISTRATION_STEPS.filter((etape) => etape.key !== "logistics");
   const minimum = etapesToujours.length;
@@ -144,23 +149,16 @@ export default async function RegisterPage({
     {
       icone: UserPlus,
       titre: en ? `${minimum} to ${maximum} steps` : `${minimum} à ${maximum} étapes`,
-      texte: en
-        ? "Logistics is only asked of categories that need it."
-        : "La logistique n'est demandée qu'aux catégories concernées.",
       ton: "bg-blue-soft text-blue-text",
     },
     {
       icone: Clock,
-      titre: en ? "About four minutes" : "Environ quatre minutes",
-      texte: en ? "No document required at this stage." : "Aucune pièce à fournir à ce stade.",
+      titre: en ? "About 4 minutes" : "Environ 4 minutes",
       ton: "bg-accent-soft text-accent-text",
     },
     {
       icone: Save,
-      titre: en ? "Saved as you go" : "Enregistré au fil de l'eau",
-      texte: en
-        ? "Your progress stays on this device between steps."
-        : "Votre progression reste sur cet appareil entre deux étapes.",
+      titre: en ? "Progress kept on this device" : "Progression gardée sur cet appareil",
       ton: "bg-gold-soft text-gold-text",
     },
   ];
@@ -169,7 +167,7 @@ export default async function RegisterPage({
     <>
       <BandeauPage largeur="moyen">
         <EnteteSection
-          marge={false}
+          bandeau
           niveau="h1"
           surtitre={en ? "Join the Forum" : "Rejoindre le Forum"}
           titre={t("register")}
@@ -178,27 +176,26 @@ export default async function RegisterPage({
         />
       </BandeauPage>
 
-      <CorpsPage largeur="moyen">
+      <CorpsPage largeur="moyen" espacement="serre">
         <Reveal>
-          <div className="mb-10 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+          <ul data-testid="promesses-inscription" className="mb-6 flex flex-wrap gap-2">
             {promesses.map((promesse) => {
               const Icone = promesse.icone;
               return (
-                <div
+                <li
                   key={promesse.titre}
-                  className="border-border bg-surface carte-relief rounded-xl border p-4"
+                  className="border-border bg-surface text-heading inline-flex items-center gap-2 rounded-full border py-1 pr-3.5 pl-1 text-sm font-semibold"
                 >
                   <span
-                    className={`mb-2.5 grid h-9 w-9 place-items-center rounded-lg ${promesse.ton}`}
+                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${promesse.ton}`}
                   >
-                    <Icone aria-hidden size={17} strokeWidth={2.2} />
+                    <Icone aria-hidden size={15} strokeWidth={2.2} />
                   </span>
-                  <span className="text-heading block text-sm font-semibold">{promesse.titre}</span>
-                  <span className="text-text-3 mt-0.5 block text-sm">{promesse.texte}</span>
-                </div>
+                  {promesse.titre}
+                </li>
               );
             })}
-          </div>
+          </ul>
         </Reveal>
 
         <RegistrationForm

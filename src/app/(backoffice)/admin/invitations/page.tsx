@@ -8,7 +8,7 @@ import * as service from "@/modules/invitations/service";
 import * as participantsService from "@/modules/participants/service";
 import { InvitationStatusBadge } from "@/modules/invitations/components/status-badge";
 import { SendButton } from "@/modules/invitations/components/send-button";
-import { ReminderForm } from "@/modules/invitations/components/reminder-form";
+import { FormulaireEnvois } from "@/modules/invitations/components/formulaire-envois";
 import { Pagination } from "@/modules/participants/components/pagination";
 import { invitationSearchSchema } from "@/modules/invitations/schema";
 
@@ -26,9 +26,10 @@ export default async function InvitationsPage({
   const search = invitationSearchSchema.parse(sp);
   const edition = await getActiveEdition();
 
-  const [{ items, total }, categories] = await Promise.all([
+  const [{ items, total }, categories, enAttente] = await Promise.all([
     service.listInvitations(edition.id, search),
     participantsService.listCategories(edition.id),
+    service.countPendingInvitations(edition.id),
   ]);
 
   const canSend = can(session, "invitations.send");
@@ -55,7 +56,11 @@ export default async function InvitationsPage({
 
       {canSend && (
         <div className="border-border bg-surface mb-4 rounded-xl border p-4">
-          <ReminderForm categories={categories} />
+          <FormulaireEnvois
+            categories={categories}
+            enAttente={enAttente}
+            envoisParMinute={service.ENVOIS_PAR_MINUTE}
+          />
         </div>
       )}
 

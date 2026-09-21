@@ -45,7 +45,6 @@ export async function revaliderJeton(jeton: JWT): Promise<JWT | null> {
     select: {
       isActive: true,
       roleId: true,
-      totpEnabled: true,
       sessionVersion: true,
       role: { select: { name: true, permissions: true } },
     },

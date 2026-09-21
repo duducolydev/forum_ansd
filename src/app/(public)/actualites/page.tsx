@@ -24,7 +24,7 @@ export default async function NewsPage() {
     <>
       <BandeauPage>
         <EnteteSection
-          marge={false}
+          bandeau
           niveau="h1"
           surtitre={en ? "Keep up" : "Suivre le Forum"}
           titre={t("news")}

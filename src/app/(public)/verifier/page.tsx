@@ -44,14 +44,16 @@ export default async function VerifyBadgePage({
     <>
       <BandeauPage largeur="etroit">
         <div className="text-center">
-          <span
-            aria-hidden
-            className="bg-accent-soft text-accent-text mb-4 inline-grid h-14 w-14 place-items-center rounded-2xl"
-          >
-            <ShieldCheck size={26} strokeWidth={2.1} />
-          </span>
-          <h1 className="mb-2">{t("verifyBadge")}</h1>
-          <p className="text-text-2 mx-auto max-w-[46ch]">
+          <h1 className="mb-1 flex items-center justify-center gap-3">
+            <span
+              aria-hidden
+              className="bg-accent-soft text-accent-text inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl"
+            >
+              <ShieldCheck size={20} strokeWidth={2.1} />
+            </span>
+            {t("verifyBadge")}
+          </h1>
+          <p className="text-text-2 mx-auto max-w-[68ch]">
             Scannez le QR code d&apos;un badge, ou saisissez l&apos;identifiant imprimé dessus.
           </p>
         </div>

@@ -95,21 +95,6 @@ export async function reinitialiserMotDePasseAction(
   return { avis: "Mot de passe remplacé." };
 }
 
-export async function reinitialiserDeuxFacteursAction(
-  userId: string,
-  _etat: EtatAction,
-): Promise<EtatAction> {
-  try {
-    const acteur = await exigerGestionnaire();
-    await service.reinitialiserDeuxFacteurs(userId, acteur);
-  } catch (erreur) {
-    return { erreur: messageErreur(erreur) };
-  }
-
-  revalidatePath("/admin/utilisateurs");
-  return { avis: "Second facteur détaché : à réenrôler à la prochaine connexion." };
-}
-
 export async function enregistrerRoleAction(
   roleId: string,
   _etat: EtatAction,

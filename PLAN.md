@@ -278,7 +278,7 @@ Ordre recommandé (dépendances) : **1.7 → 1.1 → 1.2 → 1.3 → 1.4 → 1.5
 - [x] `CaptchaProvider` (`src/lib/captcha.ts`) : Turnstile si les clés sont fournies, sinon
       implémentation neutre (décision C4) ; honeypot (champ `fax` masqué) ; rate limit 5/min/IP
       via `src/lib/rate-limit.ts` (Redis quand disponible, repli mémoire) — **testé**.
-- [x] Doublon d'e-mail → message proposant le lien magique de « Mes inscriptions » plutôt qu'une
+- [x] Doublon d'e-mail → message proposant le lien magique de « Mon espace » plutôt qu'une
       seconde inscription — testé.
 - [x] Soumission : `REGISTERED`, ou `CONFIRMED` + badge mis en file si la catégorie auto-confirme ;
       e-mail `registration_received`/`registration_confirmed` mis en file (jamais synchrone).
@@ -870,7 +870,7 @@ journée (4.6). Un second gabarit aurait divergé du premier.
 
 **Vérification** : 18 tests unitaires dont celui de concurrence, et 6 tests de bout en bout, dont
 une réservation puis une annulation faites par un participant depuis la fiche publique, avec une
-vraie session « Mes inscriptions ».
+vraie session « Mon espace ».
 
 ### 4.6 Présences (`modules/attendance`) — **fait**
 
@@ -1154,7 +1154,7 @@ en gardant à l'esprit que le **gel fonctionnel est le 16 novembre**.
 | T22 | **Exploitation** : incident rencontré en dev — après une coupure de Redis, les tentatives de connexion avortées ont dépassé `max_connect_errors` (défaut : 100) et **MySQL a bloqué l'hôte applicatif** (`Aborted_connects` = 212), rendant l'app inutilisable jusqu'à un `mysqladmin flush-hosts`. En production, prévoir un `max_connect_errors` élevé (ex. 100000) dans la config MySQL du `docker-compose.prod.yml`, sinon un simple redémarrage de dépendance peut couper l'app durablement.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Haute     | 3.10 (mise en prod)               |
 | T21 | L'enregistrement des handlers de jobs est paresseux (à la première mise en file, côté Node). Conséquence : une instance qui ne met jamais de job en file ne consomme pas la file. Sans impact dans le déploiement prévu (une seule app qui produit et consomme), mais à revoir si un worker séparé est introduit — auquel cas prévoir un vrai point d'entrée worker.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Basse     | Architecture (à surveiller)       |
 | T23 | **À arbitrer** : brouillon d'inscription côté serveur (brief §5.3 « localStorage + serveur dès qu'un e-mail est saisi »). Non implémenté — cela suppose d'écrire une ligne depuis un formulaire public anonyme (surface de spam). Options : (a) s'en tenir au localStorage + reprise par lien magique (état actuel), (b) créer un `Participant` en `REGISTRATION_STARTED` dès l'e-mail saisi, protégé par captcha + rate limit, (c) table de brouillons dédiée avec purge automatique.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Moyenne   | 3.4 (à décider)                   |
-| T24 | ~~Photo de profil : téléversement et recadrage~~ — **fait**. Recadrage carré dans le navigateur (canvas, sortie 512 px en JPEG), proposé à l'inscription **et** dans « Mes inscriptions », où la photo peut être ajoutée, remplacée ou retirée après coup. Trois propriétés qui ne vont pas de soi : (1) le ré-encodage par le canvas **efface les métadonnées EXIF**, dont la géolocalisation que les téléphones inscrivent dans les photos — un fichier transmis tel quel aurait publié la position du domicile sur le badge ; (2) le serveur déduit le type des **octets du fichier**, jamais du `Content-Type` déclaré : un script renommé en `.jpg` est refusé, et un test le vérifie ; (3) le recadrage se règle à la souris **et au clavier**, un contrôle uniquement glissable étant inaccessible. La photo est servie par une route sous contrôle d'accès (participant concerné ou BackOffice), jamais depuis le webroot, et ne figure pas sur la page publique de vérification (§2.11). 9 tests unitaires ; le parcours E2E dépose une image et vérifie qu'elle arrive recadrée.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | —         | 3.6 (fait)                        |
+| T24 | ~~Photo de profil : téléversement et recadrage~~ — **fait**. Recadrage carré dans le navigateur (canvas, sortie 512 px en JPEG), proposé à l'inscription **et** dans « Mon espace », où la photo peut être ajoutée, remplacée ou retirée après coup. Trois propriétés qui ne vont pas de soi : (1) le ré-encodage par le canvas **efface les métadonnées EXIF**, dont la géolocalisation que les téléphones inscrivent dans les photos — un fichier transmis tel quel aurait publié la position du domicile sur le badge ; (2) le serveur déduit le type des **octets du fichier**, jamais du `Content-Type` déclaré : un script renommé en `.jpg` est refusé, et un test le vérifie ; (3) le recadrage se règle à la souris **et au clavier**, un contrôle uniquement glissable étant inaccessible. La photo est servie par une route sous contrôle d'accès (participant concerné ou BackOffice), jamais depuis le webroot, et ne figure pas sur la page publique de vérification (§2.11). 9 tests unitaires ; le parcours E2E dépose une image et vérifie qu'elle arrive recadrée.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | —         | 3.6 (fait)                        |
 | T25 | ~~Test bout-en-bout impossible ici~~ — **fait** : Playwright (`pnpm e2e`), branché sur l'image Docker de production plutôt que sur `next dev`. **17 tests** : la suite « sécurité » (10) verrouille les régressions du chantier 3.10 — en-têtes, CSP à nonce (dont un test vérifiant que le nonce _change_ à chaque requête) et garde de `/admin` ; le parcours d'inscription (7) couvre inscription → doublon refusé → confirmation par le comité → génération et téléchargement du badge → vérification publique sans donnée superflue. TOTP réimplémenté dans les tests (RFC 6238) plutôt que réutilisé depuis `otplib` : le chargeur de Playwright échouait dessus, et la 2FA se trouve ainsi validée contre une implémentation **indépendante** de la norme.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | —         | 3.10 (fait)                       |
 | T31 | Les textes de `/confidentialite` et `/mentions-legales` sont des **brouillons marqués comme tels** en tête de page. Ils engagent juridiquement l'ANSD : à relire et valider par le responsable de traitement et le délégué à la protection des données, et à compléter (directeur de publication, hébergeur) avant l'ouverture publique. Le marqueur rend une mise en ligne par oubli impossible à manquer.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Haute     | Avant ouverture publique          |
 | T30 | Le statut `BOUNCED` (rebond dur signalé par le serveur SMTP) est implémenté mais jamais rejoué : Mailpit accepte tout destinataire. À vérifier contre le SMTP institutionnel réel lors de la mise en production, en même temps que T2.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Basse     | 3.10 (mise en prod)               |
@@ -1179,6 +1179,7 @@ en gardant à l'esprit que le **gel fonctionnel est le 16 novembre**.
 | T47 | ~~Aucun test ne garantit qu'une entrée de menu mène quelque part~~ — **fait**. C'est ce qui avait laissé quatre 404 en place (§6 bis) : le menu était une liste écrite à la main que rien ne confrontait aux pages réellement présentes. La liste vit désormais dans `src/components/admin/nav.ts`, hors du composant — l'importer depuis le composant aurait entraîné `next/link` et un composant client dans le contexte Node de Playwright. Un test E2E **parcourt cette source** et exige un 200 sur chaque `href` : ajouter demain une entrée vers une page absente le fera échouer. Six tests unitaires complètent la garde : permissions issues du catalogue, aucune adresse en double, et le menu réellement obtenu par rôle.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | —         | §6 bis                            |
 | T48 | **Les réglages d'apparence et de pied de page sont mis en cache soixante secondes** (§8.3, §8.6). C'est voulu — ils sont lus au rendu de chaque page — et l'action serveur invalide l'étiquette, si bien qu'un enregistrement paraît tout de suite. Mais une écriture faite **hors de cet écran** (script, base) mettra jusqu'à une minute à se voir, ce qui déroute quand on ne le sait pas. Les décisions, elles, ne passent pas par ce cache (`parametresFrais`). À redire au moment de la reprise en main par l'ANSD.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Basse     | 8.3 (fait)                        |
 | T49 | **Une seule page est composable** : l'accueil. Le catalogue et le modèle `PageSection` portent déjà une colonne `page`, et `PAGES` n'a qu'une entrée ; ouvrir « à propos » ou « infos pratiques » revient à ajouter une entrée et à brancher le rendu. Non fait faute de demande précise : ces pages tirent aujourd'hui leur contenu des blocs `ContentBlock`, et les basculer sans raison ferait perdre ce qui y est déjà saisi.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Basse     | 8.4 (fait)                        |
+| T50 | **Les demandes de connexion consommées restent en base** (§23). `AdminLoginChallenge` ne se vide jamais : une demande utilisée ou expirée y reste, avec son code et l'adresse du poste. Sans conséquence pour la sécurité — ces codes ne valent plus rien — mais la table grossit d'une ligne par connexion d'administrateur. Les liens magiques des participants sont dans le même cas. Une purge commune (au-delà de 24 h) vaudrait mieux qu'un travail programmé pour chacune.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Basse     | 23                                |
 
 ---
 
@@ -3241,3 +3242,559 @@ identifiants de l'image et du conteneur identiques, migration appliquée par
 **À faire avant la mise en ligne** : renseigner les clés Turnstile (§18.6), et
 prévenir les utilisateurs du BackOffice qu'ils devront se reconnecter une fois
 après le déploiement (§18.1).
+
+## 19. Bandeaux resserrés, badges d'inscription, bande du haut en dégradé (17 septembre 2026)
+
+Trois demandes de forme du commanditaire.
+
+### 19.1 Bandeaux de titre des pages intérieures
+
+**Mesuré avant** : 243 px de haut sur écran de bureau (254 px sur téléphone) pour
+un sur-titre, un titre et une phrase. Sur un portable, le contenu de la page
+commençait sous la ligne de flottaison.
+
+- `BandeauPage` passe de `py-14` à `py-5`, et porte la classe `bandeau-page`.
+- Le titre y est plus petit (`.bandeau-page h1`, 2,15rem au plus contre 2,9rem),
+  en restant au-dessus des `h2` de section (1,85rem).
+- `EnteteSection` reçoit un paramètre `bandeau`, qui remplace `marge={false}` —
+  employé uniquement dans les bandeaux — et resserre sur-titre, icône et phrase.
+- Les bandeaux composés à la main (connexion, Mon espace, espace
+  intervenant, vérification de badge) posaient une tuile d'icône de 56 px
+  au-dessus du titre : elle passe à 40 px, **à côté** du titre. L'icône reste
+  décorative (`aria-hidden`), le nom accessible du titre est inchangé. Article et
+  session gardent leur composition, marges resserrées.
+
+### 19.2 Promesses de l'inscription en badges
+
+Les trois cartes deviennent **trois badges sur une ligne** (icône et libellé), et
+le corps de page passe à un espacement `serre` : le formulaire remonte.
+
+Les phrases d'explication disparaissent. Leur essentiel passe dans les libellés :
+« Environ 4 minutes », et surtout « Progression gardée **sur cet appareil** » —
+« Enregistré au fil de l'eau », seul, aurait laissé croire à une sauvegarde sur le
+serveur. « La logistique n'est demandée qu'aux catégories concernées » n'a plus de
+place : le compteur « Étape 1 sur 4 » du formulaire en rend compte. Sur téléphone,
+les badges passent à la ligne.
+
+### 19.3 Bande du haut : dégradé de bleus
+
+Dégradé à la manière du bandeau d'ansd.sn : `#0b4f8a` → `#1a66c2` → `#2468c9`,
+texte blanc. Le texte défile sur toute la largeur et passe donc sur chaque arrêt :
+le plus clair tient **5,39:1**. Un dégradé partant du blanc, comme sur ansd.sn,
+aurait rendu le texte illisible à une extrémité. Thème sombre : `#061d36` →
+`#0e3d70` → `#12498a`, texte `#e6eef7`, 7,65:1 au plus faible.
+
+**Défaut trouvé en chemin** : la bande utilisait `bg-ticker-bg text-ticker-text`,
+mais les jetons `--color-ticker-*` n'avaient jamais été déclarés dans `@theme`.
+Tailwind ne générait aucune règle : **la bande était transparente depuis sa
+création**, et ni le bleu nuit prévu en thème clair ni le vert du thème sombre
+n'ont jamais été affichés. Elle est désormais peinte par une classe dédiée,
+`.fond-ticker`, et `palette.test.ts` vérifie que le composant n'emploie plus ces
+utilitaires sans effet.
+
+### 19.4 Vérification
+
+Sur l'image de production reconstruite (`a9aff1700fe9`), conteneur recréé,
+`stack.sh etat` : code identique à l'image ; 34/34 pages générées.
+
+Mesures dans Chromium, avant → après :
+
+| Mesure                                       | Bureau (1440 px) | Téléphone (390 px) |
+| -------------------------------------------- | ---------------- | ------------------ |
+| Bandeau Programme, Partenaires, S'inscrire   | 243 → **139 px** | 254 → **153 px**   |
+| Bandeau Connexion                            | → 135 px         | → 175 px           |
+| Bandeau Vérifier un badge                    | → 110 px         | → 135 px           |
+| Haut du formulaire d'inscription             | 586 → **330 px** | 889 → **390 px**   |
+| Lignes occupées par les badges d'inscription | → **1**          | → 2                |
+
+La bande du haut porte le dégradé calculé dans les deux thèmes (texte
+`rgb(255, 255, 255)` en clair, `rgb(230, 238, 247)` en sombre), et aucune page
+mesurée ne déborde en largeur. Captures relues en clair, en sombre et sur
+téléphone.
+
+| Contrôle                                                           | Résultat                            |
+| ------------------------------------------------------------------ | ----------------------------------- |
+| Typage, lint, Prettier                                             | propres                             |
+| `palette.test.ts` (dont 4 nouveaux : contraste des arrêts, classe) | 42 passés                           |
+| Tests unitaires complets                                           | 472 passés sur 473, voir ci-dessous |
+| Suite E2E complète (première image)                                | 119 passés, 1 échec corrigé         |
+| Pages touchées, après correction                                   | **54 passés**                       |
+| Image finale : apparence, inscription, sécurité                    | **28 passés**                       |
+
+- **L'échec E2E** venait du nouveau test : le bandeau de connexion mesurait
+  159 px, au-dessus du plafond de 150. Sa phrase, bornée à 44 caractères de
+  large, s'étalait sur trois lignes ; les quatre bandeaux centrés ont été
+  élargis à 68 caractères. Connexion : 135 px.
+- **Tests unitaires** : deux passes, un échec **différent** à chaque fois, dans
+  des modules non touchés — un verrou mortel MySQL dans `access/service.test.ts`,
+  puis un compte décalé d'un participant dans `notifications/reminders.test.ts`
+  (11 au lieu de 10 : un autre fichier en créait un entre deux lectures). Chacun
+  passe seul (5/5 et 7/7). Les fichiers de tests tournent en parallèle sur la
+  même base : cette fragilité est antérieure à ce chantier et reste à traiter.
+- **Fins de ligne** : un script Python d'édition a réécrit quatre pages en CRLF
+  (`write_text` sous Windows). Prettier l'a signalé ; les fichiers ont été remis
+  en LF et l'image reconstruite. Aucun fichier texte du dépôt n'est en CRLF.
+
+## 20. En-tête en dégradé, logo officiel, accueil justifié (17 septembre 2026)
+
+### 20.1 Bande du haut et barre de navigation : un même dégradé
+
+La barre de navigation reprend le dégradé de la bande défilante (§19.3) : les deux
+portent la classe `.fond-entete` et le **même** dégradé horizontal, et se lisent
+comme un seul bloc, la barre restant seule à coller en haut au défilement. Les
+jetons sont renommés `--entete-*`. En thème sombre, le texte passe au blanc pur :
+8,95:1 au plus faible.
+
+Tout ce qui est posé sur ce bleu a été repris, contraste mesuré :
+
+- **Texte blanc sans voile clair.** Un fond blanc à 10 % sous le texte le fait
+  tomber à 4,46:1 sur l'arrêt le plus clair (#2468c9), sous le seuil. Liens et
+  boutons sont donc transparents, bordés de blanc, et le survol **assombrit**
+  (`bg-black/15`). La rubrique courante du menu se marque par ce même fond
+  assombri, un texte bleu y étant illisible.
+- **Contour de focus blanc.** L'or du reste du site ne tient que 1,6:1 sur ce
+  bleu, sous le seuil de 3:1 exigé pour un indicateur de focus ; le blanc tient
+  5,39:1. Les menus déroulants et le panneau mobile, sur fond clair, gardent l'or.
+- **Liseré blanc sur « S'inscrire ».** Le vert du bouton et le bleu clair du
+  dégradé ont presque la même clarté (1,23:1) : le bouton se fondait dans le
+  fond pour qui distingue mal les couleurs.
+- `LocaleSwitcher` et `ThemeToggle` prennent une `variante` (`entete` sur le
+  dégradé, `panneau` dans le menu mobile, sur fond clair). Langue active en
+  pastille blanche, texte bleu nuit : 14,18:1.
+
+### 20.2 Logo officiel
+
+`public/images/logo_forum.jpg` (2 560 × 1 210 px, 254 Ko) a été rogné de ses marges
+blanches et réduit à 180 px de haut : `logo-forum.webp`, 399 × 180 px, **19 Ko**,
+net jusqu'aux écrans 3x. L'original est conservé.
+
+Il remplace la pastille dessinée et le nom écrit, dans l'en-tête (44 px de haut) et
+dans le pied de page (56 px). Le logo porte un texte bleu sur fond blanc :
+**toujours sur une pastille blanche**, choix validé par le commanditaire. Le
+détourer aurait aussi rendu transparents les blancs du dessin (anneau du globe,
+intérieur du « O »). Dans l'en-tête, l'image est décorative (texte alternatif vide) : le
+lien porte le nom « Forum international sur les données — accueil ». Dans le pied
+de page, son texte alternatif restitue le nom.
+
+`next/image` en mode `unoptimized` : le fichier est déjà à sa taille, et
+l'optimiseur ajouterait une dépendance d'exécution (`sharp`).
+
+**Remplacé ensuite** par la version transparente fournie par le commanditaire,
+`public/images/logo_forum_transparent.png` (4 460 × 2 000 px, 1,48 Mo), **sans
+pastille** dans l'en-tête. À noter : le fichier pèse 1,48 Mo et se charge à chaque
+page pour un affichage de 44 px de haut. `logo-forum.webp` n'est plus utilisé.
+
+**Barre de navigation passée au bleu clair.** Transparent, le logo était illisible
+sur le dégradé foncé de la barre. Celle-ci prend un dégradé bleu clair
+(`#e6f1fb` → `#d9eaf7`, classe `.fond-navbar`), de la famille de l'océan du globe
+du logo (`#90c0d8` à `#b8d8e8`) mais plus pâle, pour que le globe s'en détache. La
+bande défilante garde son dégradé foncé.
+
+- Texte bleu du logo : 5,86:1 au plus faible ; liens et boutons en **bleu nuit**
+  (11,52:1), contour de focus bleu nuit (l'or n'y tient que 2,73:1), survol
+  éclairci (`bg-white/60`). Le liseré blanc de « S'inscrire » est retiré : le vert
+  s'y détache à 3,93:1.
+- Couleurs fixes, et non jetons de thème : **la barre reste claire en thème
+  sombre**, le logo portant un texte bleu et une devise noire.
+- **Pied de page** : le logo transparent y est posé **à même le fond bleu nuit**,
+  à la demande du commanditaire. Une plaque bleu clair avait été essayée, puis
+  retirée. Le texte bleu du logo y est donc peu contrasté ; le nom du Forum reste
+  porté par le texte alternatif de l'image, et par le titre de chaque colonne.
+
+Ces derniers changements n'ont été ni reconstruits ni passés en E2E. Vérifiés :
+typage, lint, `palette.test.ts` (45 passés, dont la barre bleu clair).
+
+### 20.3 Titre et chapeau de l'accueil : un seul bloc, chapeau justifié
+
+Le commanditaire a demandé un alignement justifié pour le titre et le chapeau du
+bandeau d'accueil, puis que le titre occupe toute la largeur du bloc, quitte à le
+centrer.
+
+- **Un seul bloc**, de la largeur du chapeau (54 caractères de sa police). Le titre
+  était borné à 16 caractères de la sienne et s'arrêtait à **427 px pour un
+  chapeau de 524** : il remplit désormais le bloc et s'aligne sur ses deux bords.
+- **Chapeau justifié**, et coupé selon la langue de la page (`hyphens-auto`) pour
+  limiter les blancs qu'un texte justifié creuse entre les mots. Le rendu est
+  régulier en français comme en anglais.
+- **Titre centré** dans cette largeur, lignes équilibrées. Il n'est pas justifié :
+  essayé, il s'affichait « Reliable⎵⎵⎵⎵⎵⎵data / for⎵⎵⎵⎵⎵⎵decisions » en anglais.
+  Avec deux ou trois mots par ligne, la justification n'a qu'un ou deux espaces à
+  étirer, et aucune règle CSS ne plafonne cet étirement.
+
+À savoir : la justification est déconseillée par le critère WCAG 1.4.8 (niveau
+AAA, non exigé ici), parce que les écarts irréguliers gênent certains lecteurs.
+La coupure des mots en atténue l'effet sur le chapeau.
+
+### 20.4 Vérification
+
+Image finale `c1238a23a16b`, conteneur recréé, `stack.sh etat` : code identique à
+l'image. Le logo est servi en 200, `image/webp`, 18 780 octets.
+
+| Contrôle                                                                    | Résultat       |
+| --------------------------------------------------------------------------- | -------------- |
+| Typage, lint, Prettier (tout `src` et `e2e`)                                | propres        |
+| Tests unitaires (dont le dégradé et le focus blanc de l'en-tête)            | **475 passés** |
+| Suite E2E complète (avant la reprise du bloc titre et chapeau de l'accueil) | **122 passés** |
+| Image finale : apparence, accueil, sections, paramètres                     | **27 passés**  |
+
+Mesuré dans Chromium : en-tête de 72 px, logo affiché en 98 × 44 px depuis
+399 × 180, liens de la barre en `rgb(255, 255, 255)`, aucun débordement
+horizontal. Titre de l'accueil : 427 → **524 px**, les mêmes bords que le chapeau
+sur bureau comme sur téléphone (342 px), centré, sur deux lignes en anglais et
+trois en français ; chapeau justifié. Captures relues : accueil en français
+(clair) et en anglais (sombre), menu déroulant ouvert, contour de focus blanc sur
+« Accueil », téléphone avec le menu mobile ouvert, pied de page.
+
+**Écarts de méthode, corrigés.** Deux fichiers écrits par un script Python ont
+été abîmés sans bruit :
+
+- un `\b` d'expression régulière est devenu un caractère de retour arrière, et un
+  `\s` a perdu son échappement : `palette.test.ts` passait encore, mais vérifiait
+  moins. Les doubles barres obliques arrivaient réduites dans le script.
+- La correction a été faite octet par octet, puis contrôlée : aucun caractère de
+  contrôle ni fin de ligne CRLF dans `src`, `e2e`, `prisma`, `scripts`, `docker` et
+  `messages`.
+
+**Remarqué, non traité** (hors demande) : sur la version anglaise, le compte à
+rebours affiche encore « jours, heures, minutes, secondes », et les noms de pays
+restent en français.
+
+## 21. Envoi des e-mails par le compte Gmail du Forum (18 septembre 2026)
+
+Le commanditaire a créé `forumansd@gmail.com` pour les notifications, les alertes
+et les invitations. Le SMTP institutionnel de l'ANSD restant attendu (décision
+C7), ce compte sert d'abord aux essais.
+
+Aucun code à changer : tout passe par `src/lib/mail.ts` et ses cinq variables.
+`smtp.gmail.com:587`, authentification par **mot de passe d'application** Google —
+le mot de passe du compte est refusé en SMTP —, et `SMTP_FROM` portant l'adresse du
+compte, faute de quoi Gmail réécrit l'expéditeur. Le port 465 demanderait une
+variable `SMTP_SECURE` : `mail.ts` ouvre la connexion en clair puis passe en TLS.
+
+Consigné dans le README (« Envoi des e-mails »), et préparé en commentaire dans
+`.env.docker`, hors dépôt : le mot de passe d'application est saisi par le
+commanditaire. Tant que Gmail est actif en local, les messages ne passent plus par
+Mailpit et **les tests E2E qui l'interrogent échouent**.
+
+**Essai réel, réussi.** Par le parcours public, et non par un envoi bricolé : un
+participant temporaire à l'adresse du Forum a demandé son lien de connexion depuis
+« Mes inscriptions ». Le journal des notifications l'a marqué **SENT**, avec un
+identifiant de message délivré par `gmail.com` (modèle `magic_link`). Le
+participant, ses liens et ses traces d'audit ont été effacés ensuite : zéro reste.
+
+Deux enseignements de cet essai :
+
+- **`./scripts/stack.sh` seul ne suffit pas** quand seule la configuration change :
+  l'image étant à jour, le script laisse tourner le conteneur existant, avec ses
+  anciennes variables. Il faut `--recreer`. Corrigé dans le README.
+- **Depuis le poste Windows, l'envoi échoue** (`ENETUNREACH` sur l'adresse IPv6 de
+  Gmail) : cette machine n'a pas de route IPv6. Sans incidence pour le portail, qui
+  envoie depuis le conteneur.
+
+**Limites à connaître avant la campagne d'invitations** : environ 500 destinataires
+par jour sur un compte gratuit, et des rafales que Google peut refuser — le portail
+met un message en file par destinataire, sans cadence. Au-delà, il faut le SMTP de
+l'ANSD ou un service d'envoi (Brevo, Mailjet, Amazon SES) sur le domaine `ansd.sn`.
+Deux ajouts restent possibles : `SMTP_SECURE` pour le port 465, et une cadence
+d'envoi dans la file — celle-ci a été faite au §22.
+
+## 22. Campagne d'invitations : envoi groupé et cadence (18 septembre 2026)
+
+Jusqu'ici, l'écran Invitations n'envoyait qu'**une invitation à la fois**, ligne
+par ligne. Avec un millier d'invités importés, la campagne était impraticable —
+le bouton « Relancer les non-répondants » ne touchant que celles déjà envoyées.
+
+### 22.1 Le bouton
+
+« Envoyer les invitations en attente (N) », à côté de la relance, avec les mêmes
+filtres — catégorie, pays — dans un seul formulaire.
+
+- **Seules les invitations jamais envoyées** partent : celles déjà envoyées
+  relèvent de la relance, les renvoyer ferait une seconde invitation à des gens
+  qui l'ont déjà reçue.
+- **Confirmation obligatoire**, qui annonce la cible et la cadence : mille
+  courriels partis ne se rappellent pas.
+- **Les filtres servent aussi de garde-fou** : lancer la campagne catégorie par
+  catégorie est le seul moyen de rester sous le quota quotidien d'une boîte
+  d'envoi ordinaire (§21). L'écran le dit sous le bouton.
+- Le libellé de la relance devient « Relancer les non-répondants (3 relances
+  maximum par personne) » : « max 3 » se lisait comme « trois personnes », alors
+  que l'action relance **tous** les non-répondants du filtre.
+
+### 22.2 La cadence
+
+`ENVOIS_PAR_MINUTE = 20` : chaque message est programmé trois secondes après le
+précédent (`momentEnvoi`, fonction pure, testée). Mille invitations s'écoulent
+donc en cinquante minutes au lieu de partir en rafale, ce qu'une boîte d'envoi
+refuse en bloc — sans qu'on sache lesquelles sont passées. La durée est annoncée
+à l'agent après le clic.
+
+### 22.3 Un défaut trouvé par le premier test
+
+Le test de la campagne a **dépassé les 30 secondes**, sur les 1 013 invitations
+en attente de la base. Cause : un job **et** une ligne d'audit par destinataire,
+soit plus de deux mille écritures dans une seule requête. Un agent aurait vu
+l'écran se figer, puis la requête échouer.
+
+Deux corrections :
+
+- **`enqueueMany` ajouté à la file** (`JobQueue`) : `createMany` d'une seule
+  écriture côté base, `addBulk` d'un seul aller-retour côté Redis. Les deux
+  implantations respectent l'idempotence — clé unique en base, `jobId` côté
+  BullMQ.
+- **Une trace d'audit par campagne**, et non par destinataire : mille lignes pour
+  un seul geste noieraient le journal, que l'on consulte pour retrouver qui a
+  lancé quoi. La relance en écrit une aussi (`invitation.reminders_queued`), qui
+  manquait après ce déplacement.
+
+Mesuré ensuite : **mille invitations mises en file en moins de dix secondes**,
+vérifié par un test qui échouerait si le défaut revenait.
+
+### 22.4 Vérification
+
+Sur l'image reconstruite (9 min 17 s), conteneur recréé, `stack.sh etat` : code
+identique à l'image. Conteneur repassé sur **Mailpit** avant les tests : sans
+cela, la suite aurait envoyé de vrais courriels par le compte Gmail (§21).
+
+| Contrôle                                                        | Résultat       |
+| --------------------------------------------------------------- | -------------- |
+| Typage, lint, Prettier                                          | propres        |
+| Tests unitaires (dont cadence et campagne de mille invitations) | **481 passés** |
+| Suite E2E complète                                              | **124 passés** |
+| Données de test restantes                                       | aucune         |
+
+Le parcours E2E lance une campagne depuis le bouton, sur **sa propre catégorie** :
+confirmation annonçant la cadence, message « 2 invitation(s) mise(s) en file »,
+une seule trace d'audit, et les invitations déjà envoyées écartées du second
+essai.
+
+**Deux incidents pendant la vérification**, sans rapport avec la fonction :
+
+- **Le poste s'est endormi** au milieu de la première suite : le maintien
+  d'éveil couvrait 50 minutes, la série en a duré 118 à cause des veilles
+  elles-mêmes. Dix tests ont échoué sur des erreurs réseau (`ERR_ABORTED`),
+  confirmées par le journal Windows (sorties de veille moderne à 17 h 07,
+  17 h 23 et 17 h 57). Relancée avec un maintien de deux heures : **124 passés
+  en 15 minutes**.
+- **Le nouveau test créait sa catégorie inactive** : le formulaire d'envoi ne
+  propose que les catégories actives, et la sélection échouait sur « did not find
+  some options ». Catégorie créée active, placée en fin de liste, supprimée
+  ensuite.
+
+**Ce que les tests des files ne peuvent pas casser** : `vitest.setup.ts` donne à
+chaque processus de test sa propre file Redis (`forum-ansd-test-<pid>`), qu'aucun
+worker de l'application ne consomme. Vérifié à cette occasion, alors que le
+premier test avait mis en file de vraies invitations pendant que la stack tournait
+sur Gmail : aucun envoi n'est parti, aucun statut n'a bougé. Les 7 112 clés
+laissées par ces files de test ont été supprimées de Redis.
+
+## 23. Second facteur par e-mail, en remplacement du TOTP (18 septembre 2026)
+
+Demande du commanditaire, après deux mises en garde écrites : le second facteur
+des comptes BackOffice n'est plus une application d'authentification, mais une
+**validation par e-mail**.
+
+**Ce que disent les deux documents.** Le cahier des charges de l'ANSD (§26,
+Sécurité) demande « authentification à deux facteurs pour les administrateurs »,
+sans imposer de méthode : il reste respecté. C'est le **brief** (§7, §2) qui
+imposait le TOTP ; ce point s'en écarte, et c'est consigné ici.
+
+**Ce que ce facteur vaut, et ce qu'il ne vaut pas.** La boîte mail de la personne
+devient la clé du BackOffice : qui y accède entre. Le TOTP, lui, tenait dans un
+téléphone, hors ligne. De plus, un SMTP en panne empêche désormais toute connexion
+administrateur — les rôles opérationnels (accueil, scanner) n'étant pas soumis au
+second facteur, l'accueil du jour J n'en dépend pas.
+
+### 23.1 Le parcours
+
+1. Adresse et mot de passe. S'ils sont bons et que le rôle est soumis au facteur,
+   la réponse n'est pas une session mais « un code vous a été envoyé ».
+2. Le message porte un **code à 6 chiffres**, à saisir dans la même fenêtre, et un
+   **lien de validation**, pour qui lit son courrier sur un autre appareil.
+3. Le code ou le lien ouvre la session.
+
+Le formulaire ne se vide pas entre les deux étapes : l'envoi passe par
+`useSoumissionSansRemiseAZero`, sans quoi React 19 effacerait l'adresse et le mot
+de passe au premier retour.
+
+### 23.2 Les garde-fous
+
+- **Dix minutes** de validité, **un seul usage**, consommation atomique : deux
+  requêtes simultanées ne peuvent pas ouvrir deux sessions avec le même code.
+- **Une demande annule la précédente** : un seul code valide à la fois, sans quoi
+  chaque demande ajouterait une chance de deviner.
+- **Cinq essais** par demande, puis le code est annulé ; chaque code faux compte
+  comme un échec de connexion, donc verrouille le compte au cinquième comme cinq
+  mots de passe faux.
+- **Trois demandes par minute** et par compte : le formulaire ne sert pas à inonder
+  une boîte.
+- Le **jeton du lien** est stocké en empreinte SHA-256 : une fuite de la base ne
+  donne pas de lien valide. Le code, lui, ne vit que le temps de la demande.
+- La page du lien **ne valide pas au chargement** : la validation part d'un envoi
+  de formulaire. Les antivirus de messagerie et les aperçus de liens visitent les
+  URL des messages ; une validation sur simple visite aurait consommé le jeton
+  avant son destinataire.
+
+### 23.3 Ce qui disparaît
+
+L'écran d'enrôlement `/admin/2fa/enroll`, la redirection du middleware qui
+l'imposait, le bouton « Détacher le 2FA » de l'écran des comptes, `src/lib/totp.ts`
+et la dépendance `otplib`. Les colonnes `User.totpSecret` et `User.totpEnabled`
+sont **conservées** le temps de valider le nouveau facteur en production, mais plus
+lues par le code : les supprimer effacerait des secrets qu'on ne peut pas
+reconstituer si l'on revenait en arrière.
+
+Nouvelle table `AdminLoginChallenge`. Le modèle de message `admin_login_code` est
+posé par le seed **et** par la migration : sans lui, plus personne ne se connecte
+au BackOffice, et une base existante ne rejoue pas le seed.
+
+### 23.4 Pas de plafond journalier, et pourquoi
+
+Le lien magique des participants plafonne à 3 par minute **et** 10 par jour. Ici,
+seule la minute compte. Un plafond journalier se retournerait contre le compte
+qu'il protège : qui détient déjà le mot de passe pourrait l'épuiser en une minute
+et fermer le BackOffice à son titulaire pour la journée. Sans plafond journalier,
+le même attaquant ne peut qu'encombrer une boîte mail — gênant, mais réversible,
+et visible dans le journal d'audit (`auth.second_facteur_envoye`).
+
+### 23.5 Ce que la vérification a trouvé
+
+La suite E2E a **échoué 51 fois sur une seule cause**, au premier envoi du
+formulaire : la page répondait « Code incorrect ou expiré » sans avoir jamais
+envoyé de code. `signIn` d'Auth.js sérialise ses options en `URLSearchParams`,
+où une valeur `undefined` devient le **texte** « undefined »
+(`new URLSearchParams({ code: undefined }).toString()` → `code=undefined`, mesuré
+en Node). Le fournisseur recevait donc un code non vide à chaque fois. Le champ
+part désormais toujours en chaîne, vide quand il n'est pas rempli.
+
+Ce défaut ne pouvait pas apparaître dans les tests unitaires, qui appellent
+`authenticateUser` directement : il vivait à la frontière entre l'action et
+Auth.js. C'est la suite E2E, sur l'image de production, qui l'a mis au jour.
+
+La correction faite, la suite est retombée sur un second mur, mais côté tests
+cette fois : quinze échecs sur « Trop de demandes de code ». La suite ouvre plus
+de cent sessions d'administration sur **un seul compte**, soit environ quatre par
+minute — le plafond de trois par minute faisait son travail. Le produit n'a pas
+bougé : c'est le parcours de test qui traverse désormais le second facteur une
+fois, puis réinjecte les cookies obtenus dans les contextes suivants
+(`e2e/helpers/comptes.ts`). Les deux chemins du facteur gardent leurs tests
+dédiés, et une session caduque refait le parcours complet. La suite y gagne au
+passage : 125 tests en 8 minutes contre 24 auparavant.
+
+**Vérification finale** : 480 tests unitaires (46 fichiers), 125 tests E2E, tous
+passés sur l'image de production `fb659ea30e41`, conteneur recréé et identité
+d'image vérifiée. Aucune demande de connexion ne reste ouverte en base.
+
+## 24. Le Forum change de lieu : Hôtel King Fahd Palace, Dakar (21 septembre 2026)
+
+Le brief (§1) et le cahier des charges situent le Forum au CICAD de Diamniadio.
+Le commanditaire annonce le 21 septembre que les trois journées se tiendront à
+l'**Hôtel King Fahd Palace, Route des Almadies, à Dakar**. Les dates ne bougent
+pas.
+
+### 24.1 Où le lieu était écrit
+
+| Où                                            | Quoi                                                                                      |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `Edition.venue` (base)                        | bandeau des pages, en-tête du programme, tableau de bord du BackOffice, bandeau d'accueil |
+| `ContentBlock practical.*` (base)             | les six cartes d'infos pratiques, FR et EN                                                |
+| `NotificationTemplate reminder_j7/j1` (base)  | rappels J-7 et J-1, FR et EN                                                              |
+| `prisma/seed.ts`                              | les mêmes textes, pour une installation neuve                                             |
+| `src/components/site/ticker.tsx`              | bandeau défilant, écrit en dur                                                            |
+| `README.md`, `docs/guide-agents-accueil.html` | en-têtes de documents                                                                     |
+
+Et nulle part ailleurs : ni badge, ni PDF, ni salle, ni session ne porte le lieu
+— vérifié table par table avant d'écrire quoi que ce soit.
+
+### 24.2 Une migration de données, pas un seed rejoué
+
+`edition.upsert` a un `update: {}` : rejouer le seed ne corrige **pas** une base
+déjà en service. Le changement passe donc par une migration
+(`20260921090000_lieu_king_fahd_palace`), qui a deux propriétés :
+
+- chaque mise à jour est **conditionnée à l'ancien texte** — un contenu déjà
+  corrigé depuis le BackOffice n'est pas écrasé ;
+- les rappels sont modifiés par `REPLACE` sur la seule mention du lieu, ce qui
+  laisse intacts la date, les consignes de badge et la signature.
+
+Le serveur de l'ANSD l'appliquera au prochain déploiement, sans intervention.
+
+### 24.3 Ce que le portail n'affirme plus
+
+Trois phrases décrivaient le CICAD et sont devenues fausses aux Almadies : « à 15
+minutes du CICAD », « hôtels partenaires à Diamniadio », « gare TER de Diamniadio
+à proximité ». Elles n'ont pas été remplacées par d'autres chiffres inventés :
+faute de pouvoir vérifier le temps de trajet depuis l'AIBD, **la durée
+disparaît** au lieu d'être remplacée par une estimation. Les trois textes
+retenus, choisis par le commanditaire, annoncent l'aéroport et les navettes des
+délégations, les tarifs négociés au King Fahd Palace et dans des hôtels
+partenaires de Dakar, et les navettes hôtels ↔ site avec le parking.
+
+### 24.4 Vérification
+
+Image de production reconstruite (`e72c3fcf29df`, conteneur recréé, identité
+d'image vérifiée), migration appliquée. En base : zéro mention résiduelle de
+CICAD ou de Diamniadio dans les contenus comme dans les modèles de message. Sur
+les pages servies (`/`, `/infos-pratiques`, `/programme`) : le nouveau lieu, zéro
+ancienne mention, accents intacts (`U+00F4` pour le « ô » d'Hôtel).
+
+## 25. Une section ajoutée n'apparaissait pas sur le site (21 septembre 2026)
+
+Trouvé en vérifiant le changement de lieu : trois tests de bout en bout
+échouaient, tous sur la même propriété — une section créée depuis le BackOffice
+ne se voyait pas sur la page d'accueil. Ils passaient encore en §22.
+
+### 25.1 Ce que la mesure a montré
+
+Le défaut n'était ni dans l'écriture ni dans le rendu :
+
+- une **sonde en base**, lancée pendant le test, a vu la ligne arriver
+  correctement : `page=accueil`, `type=appel`, `isVisible=1`, titre rempli ;
+- une section **écrite directement en base** apparaissait sur le site en 15
+  secondes, rendue en `<h2>` comme attendu ;
+- la même section **enregistrée depuis l'écran** ne paraissait toujours pas après
+  **90 secondes** de sollicitations — ni par `fetch` sans cookie, ni par le
+  navigateur connecté, ni par le client HTTP des tests ;
+- l'en-tête de la page servie (`cache-control: private, no-cache, no-store`)
+  établit qu'elle est rendue à chaque requête : le seul cache en jeu était celui
+  des données.
+
+Autrement dit, le cache faisait **pire que rien** : sans lui, la lecture aurait
+montré la nouvelle section ; avec lui, l'invalidation par étiquette
+(`revalidateTag("sections-page")`, pourtant appelée après l'écriture) ne reprenait
+pas la main, et la page restait figée bien au-delà des 60 secondes annoncées.
+
+### 25.2 La correction
+
+`sectionsVisibles` lit désormais la base directement, et filtre `isVisible` en
+SQL. Le cache et son étiquette disparaissent ; `revalidatePath` reste pour
+l'écran du BackOffice, qui, lui, est gardé en cache par Next.
+
+Ce que cela coûte : une requête indexée de quelques lignes, dans une page déjà
+rendue à chaque visite. Ce que cela règle : un administrateur qui publie une
+section la voit sur le site tout de suite — et ce que promet l'écran redevient
+vrai. Les trois tests qui échouaient passent, et le fichier entier tient
+désormais en 56 secondes contre 2 min 30 (les échecs coûtaient des attentes de
+dix secondes).
+
+### 25.3 Ce que ce défaut apprend sur les autres caches
+
+Les réglages d'apparence et le pied de page utilisent le même mécanisme (T48).
+Rien ne prouve pour l'instant qu'ils souffrent du même mal — le test du pied de
+page passe, et il est écrit exprès pour traverser l'action serveur plutôt que la
+base. Mais la propriété n'est vérifiée que pour lui : c'est à surveiller si un
+réglage tarde un jour à s'appliquer.
+
+### 25.4 Un test qui pariait sur le calme de la base
+
+La même vérification a fait tomber, une fois sur deux, le test « ETag stable
+entre deux générations identiques » du manifeste du scanner. Le manifeste couvre
+**toute l'édition**, et la suite unitaire tourne à plusieurs fichiers de front
+sur la même base : comparer deux lectures successives revenait à parier qu'aucun
+autre fichier ne crée un badge entre les deux. Le produit n'était pas en cause —
+le test seul passait, le test en compagnie échouait.
+
+La propriété visée est que **l'horodatage n'entre pas dans le calcul de l'ETag**,
+sans quoi le 304 ne servirait jamais. Elle se vérifie sur une seule lecture dont
+on ne change que l'heure, ce qui la met hors d'atteinte des écritures
+concurrentes. Suite unitaire : 480 tests, 46 fichiers, verte.

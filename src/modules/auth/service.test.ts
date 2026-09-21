@@ -1,9 +1,8 @@
+import { createHash } from "node:crypto";
 import argon2 from "argon2";
-import { generate } from "otplib";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/db";
-import { generateTotpSecret } from "@/lib/totp";
-import { authenticateUser, enableTotp } from "./service";
+import { authenticateByChallenge, authenticateUser } from "./service";
 
 /*
  * argon2 est **volontairement** coûteux : c'est ce qui protège les mots de
@@ -19,8 +18,8 @@ const PASSWORD = "Test-Password-123!";
 describe("authenticateUser (règles métier — brief §7)", () => {
   const userIds: string[] = [];
 
-  async function createUser(overrides: Partial<{ totpEnabled: boolean; totpSecret: string }> = {}) {
-    const role = await prisma.role.findFirstOrThrow({ where: { name: "LECTEUR" } });
+  async function createUser(roleName = "LECTEUR") {
+    const role = await prisma.role.findFirstOrThrow({ where: { name: roleName } });
     const user = await prisma.user.create({
       data: {
         email: `test-auth-${crypto.randomUUID()}@example.test`,
@@ -28,7 +27,6 @@ describe("authenticateUser (règles métier — brief §7)", () => {
         passwordHash: await argon2.hash(PASSWORD, { type: argon2.argon2id }),
         roleId: role.id,
         isActive: true,
-        ...overrides,
       },
     });
     userIds.push(user.id);
@@ -85,71 +83,113 @@ describe("authenticateUser (règles métier — brief §7)", () => {
     expect(refreshed.failedAttempts).toBe(0);
   });
 
-  it("requires a TOTP code when 2FA is enabled, and validates it", async () => {
-    const secret = generateTotpSecret();
-    const user = await createUser({ totpEnabled: true, totpSecret: secret });
-
-    const withoutCode = await authenticateUser(user.email, PASSWORD);
-    expect(withoutCode.status).toBe("TOTP_REQUIRED");
-
-    const withWrongCode = await authenticateUser(user.email, PASSWORD, "000000");
-    expect(withWrongCode.status).toBe("TOTP_INVALID");
-
-    // Le code TOTP change toutes les 30 secondes. `authenticateUser` vérifie un
-    // hachage argon2, qui peut prendre plusieurs secondes sous charge : sans
-    // marge, le code expirait entre sa génération et sa vérification et le test
-    // échouait au hasard. On attend donc le début d'un pas.
-    const secondesRestantes = 30 - (Math.floor(Date.now() / 1000) % 30);
-    if (secondesRestantes < 15) {
-      await new Promise((resolve) => setTimeout(resolve, (secondesRestantes + 1) * 1000));
+  /*
+   * Second facteur par e-mail (PLAN.md §23), en remplacement du TOTP.
+   *
+   * Les comptes soumis au second facteur sont ceux des rôles d'administration :
+   * le mot de passe seul n'ouvre plus rien, il déclenche l'envoi d'un code.
+   */
+  describe("second facteur par e-mail", () => {
+    /** Code en attente, tel que le message l'aurait porté. */
+    async function codeEnAttente(userId: string): Promise<string> {
+      const defi = await prisma.adminLoginChallenge.findFirstOrThrow({
+        where: { userId, usedAt: null },
+        orderBy: { createdAt: "desc" },
+      });
+      return defi.code6;
     }
 
-    const validCode = await generate({ secret });
-    const withValidCode = await authenticateUser(user.email, PASSWORD, validCode);
-    expect(withValidCode.status).toBe("OK");
-  });
+    it("n'ouvre pas la session sur le seul mot de passe : un code part par e-mail", async () => {
+      const user = await createUser("ADMIN_FORUM");
 
-  describe("enrôlement du second facteur (PLAN.md §18)", () => {
-    it("active le 2FA et ferme les autres sessions du compte", async () => {
-      const user = await createUser();
-      const secret = generateTotpSecret();
+      const premier = await authenticateUser(user.email, PASSWORD);
 
-      const resultat = await enableTotp(user.id, secret, await generate({ secret }));
-
-      expect(resultat).toBe("OK");
-      const apres = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
-      expect(apres.totpEnabled).toBe(true);
-      expect(apres.totpSecret).toBe(secret);
-      expect(apres.sessionVersion).toBe(user.sessionVersion + 1);
+      expect(premier.status).toBe("CODE_SENT");
+      const defi = await prisma.adminLoginChallenge.findFirstOrThrow({
+        where: { userId: user.id },
+      });
+      expect(defi.code6).toMatch(/^\d{6}$/);
+      // Le jeton du lien n'est pas stocké en clair.
+      expect(defi.tokenHash).toMatch(/^[a-f0-9]{64}$/);
+      const minutes = (defi.expiresAt.getTime() - Date.now()) / 60_000;
+      expect(minutes).toBeGreaterThan(8);
+      expect(minutes).toBeLessThanOrEqual(10);
     });
 
-    it("refuse de remplacer un second facteur déjà actif", async () => {
-      // Le défaut : depuis une session ouverte, même volée, la page
-      // d'enrôlement remplaçait le second facteur du compte par un autre.
-      const secretEnPlace = generateTotpSecret();
-      const user = await createUser({ totpEnabled: true, totpSecret: secretEnPlace });
-      const secretPirate = generateTotpSecret();
+    it("ouvre la session avec le code reçu, et ce code ne resert pas", async () => {
+      const user = await createUser("ADMIN_FORUM");
+      await authenticateUser(user.email, PASSWORD);
+      const code = await codeEnAttente(user.id);
 
-      const resultat = await enableTotp(
-        user.id,
-        secretPirate,
-        await generate({ secret: secretPirate }),
-      );
+      const connexion = await authenticateUser(user.email, PASSWORD, code);
+      expect(connexion.status).toBe("OK");
 
-      expect(resultat).toBe("DEJA_ACTIVE");
-      const apres = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
-      expect(apres.totpSecret).toBe(secretEnPlace);
-      expect(apres.sessionVersion).toBe(user.sessionVersion);
+      const rejoue = await authenticateUser(user.email, PASSWORD, code);
+      expect(rejoue.status).toBe("CODE_INVALID");
     });
 
-    it("refuse un code faux ou un secret qui n'est pas du base32", async () => {
-      const user = await createUser();
-      const secret = generateTotpSecret();
+    it("annule le code précédent quand un nouveau est demandé", async () => {
+      const user = await createUser("ADMIN_FORUM");
+      await authenticateUser(user.email, PASSWORD);
+      const premier = await codeEnAttente(user.id);
 
-      expect(await enableTotp(user.id, secret, "000000")).toBe("CODE_INVALIDE");
-      expect(await enableTotp(user.id, "pas un secret", "123456")).toBe("CODE_INVALIDE");
-      const apres = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
-      expect(apres.totpEnabled).toBe(false);
+      await authenticateUser(user.email, PASSWORD);
+      const second = await codeEnAttente(user.id);
+      expect(second).not.toBe(premier);
+
+      // Sans cette annulation, chaque demande ajouterait une chance de deviner.
+      expect((await authenticateUser(user.email, PASSWORD, premier)).status).toBe("CODE_INVALID");
+      expect((await authenticateUser(user.email, PASSWORD, second)).status).toBe("OK");
+    });
+
+    it("refuse un code expiré", async () => {
+      const user = await createUser("ADMIN_FORUM");
+      await authenticateUser(user.email, PASSWORD);
+      const code = await codeEnAttente(user.id);
+      await prisma.adminLoginChallenge.updateMany({
+        where: { userId: user.id, usedAt: null },
+        data: { expiresAt: new Date(Date.now() - 1000) },
+      });
+
+      expect((await authenticateUser(user.email, PASSWORD, code)).status).toBe("CODE_INVALID");
+    });
+
+    it("compte les codes faux comme des échecs, jusqu'au verrouillage", async () => {
+      const user = await createUser("ADMIN_FORUM");
+      await authenticateUser(user.email, PASSWORD);
+
+      for (let essai = 0; essai < 5; essai++) {
+        expect((await authenticateUser(user.email, PASSWORD, "000000")).status).toBe(
+          "CODE_INVALID",
+        );
+      }
+
+      // Le compte est verrouillé comme après cinq mots de passe faux.
+      expect((await authenticateUser(user.email, PASSWORD)).status).toBe("LOCKED");
+    });
+
+    it("ouvre la session par le lien reçu, une seule fois", async () => {
+      const user = await createUser("ADMIN_FORUM");
+      const jeton = "jeton-de-test-" + crypto.randomUUID();
+      await prisma.adminLoginChallenge.create({
+        data: {
+          userId: user.id,
+          tokenHash: createHash("sha256").update(jeton).digest("hex"),
+          code6: "123456",
+          expiresAt: new Date(Date.now() + 10 * 60_000),
+        },
+      });
+
+      expect((await authenticateByChallenge(jeton)).status).toBe("OK");
+      expect((await authenticateByChallenge(jeton)).status).toBe("CODE_INVALID");
+      expect((await authenticateByChallenge("jeton-inexistant")).status).toBe("CODE_INVALID");
+    });
+
+    it("laisse entrer directement les rôles sans second facteur", async () => {
+      // Les agents d'accueil scannent des badges : leur imposer un aller-retour
+      // par la boîte mail bloquerait l'accueil le jour J.
+      const agent = await createUser("AGENT_ACCUEIL");
+      expect((await authenticateUser(agent.email, PASSWORD)).status).toBe("OK");
     });
   });
 });

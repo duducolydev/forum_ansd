@@ -12,6 +12,13 @@ import type { ReactNode } from "react";
  * (mentions légales, article) se lit à 720–900 px, une grille de cartes occupe
  * les 1200 px de la maquette. Le bandeau doit reprendre celle du contenu qu'il
  * annonce, sinon le titre flotte au-dessus d'une colonne décalée.
+ *
+ * **Hauteur ramenée au strict nécessaire** (PLAN.md §19) : 243 px sur écran de
+ * bureau, mesurés, pour un sur-titre, un titre et une phrase — le contenu de la
+ * page commençait sous la ligne de flottaison des écrans portables. Le `py` est
+ * réduit, et le titre (`.bandeau-page h1`), le sur-titre et la phrase se
+ * resserrent : `EnteteSection bandeau` et les pages à bandeau composé le font
+ * chacune de leur côté.
  */
 export const LARGEURS = {
   large: "max-w-[1200px]",
@@ -29,7 +36,7 @@ export function BandeauPage({
   children: ReactNode;
 }) {
   return (
-    <section className="fond-bandeau border-border border-b py-14">
+    <section className="fond-bandeau bandeau-page border-border border-b py-5">
       <div className={`mx-auto px-6 ${LARGEURS[largeur]}`}>{children}</div>
     </section>
   );
@@ -44,6 +51,8 @@ export function BandeauPage({
  * qui tranchait. Un menu fermé évite silencieusement ce piège.
  */
 const ESPACEMENTS = {
+  /** Contenu qui doit remonter au plus près du bandeau : le formulaire d'inscription. */
+  serre: "py-6",
   compact: "py-12",
   normal: "py-14",
   ample: "py-16",

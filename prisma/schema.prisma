@@ -199,6 +199,9 @@ model User {
   passwordHash   String
   name           String
   roleId         String
+  /// Ancien second facteur par application d'authentification, remplacé par la
+  /// validation par e-mail (PLAN.md §23). Colonnes conservées le temps de valider
+  /// le nouveau facteur en production ; plus lues par le code.
   totpSecret     String?
   totpEnabled    Boolean   @default(false)
   isActive       Boolean   @default(true)
@@ -220,8 +223,31 @@ model User {
   updatedContentBlocks  ContentBlock[]            @relation("ContentBlockUpdatedBy")
   auditLogs             AuditLog[]                @relation("AuditActorUser")
   sessionsRapportees    SessionRapporteur[]
+  defisConnexion        AdminLoginChallenge[]
 
   @@index([roleId])
+}
+
+/// Second facteur des comptes BackOffice : code à 6 chiffres et lien de
+/// validation envoyés par e-mail après un mot de passe correct (PLAN.md §23).
+///
+/// Une ligne par tentative : le code n'est jamais stocké côté session, le jeton
+/// du lien l'est sous forme d'empreinte, et `failedAttempts` borne les essais.
+model AdminLoginChallenge {
+  id             String    @id @default(cuid())
+  userId         String
+  /// SHA-256 du jeton du lien : une fuite de la base ne donne pas de lien valide.
+  tokenHash      String    @unique
+  code6          String
+  expiresAt      DateTime
+  usedAt         DateTime?
+  failedAttempts Int       @default(0)
+  ip             String?
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Role {

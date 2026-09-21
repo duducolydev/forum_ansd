@@ -5,12 +5,11 @@ import { ROLE_LABELS } from "@/lib/permissions";
 import {
   deverrouillerAction,
   modifierUtilisateurAction,
-  reinitialiserDeuxFacteursAction,
   reinitialiserMotDePasseAction,
   type EtatAction,
 } from "../actions";
 import { GenerateurMotDePasse } from "./generateur-mdp";
-import { KeyRound, LockOpen, Save, ShieldOff } from "lucide-react";
+import { KeyRound, LockOpen, Save } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 
 const etatInitial: EtatAction = {};
@@ -20,7 +19,7 @@ export interface UtilisateurAffiche {
   email: string;
   name: string;
   isActive: boolean;
-  totpEnabled: boolean;
+  /** Le rôle impose une validation par e-mail à chaque connexion (PLAN.md §23). */
   exigeDeuxFacteurs: boolean;
   lastLoginAt: Date | null;
   lockedUntil: Date | null;
@@ -62,17 +61,12 @@ export function CarteUtilisateur({
     reinitialiserMotDePasseAction.bind(null, utilisateur.id),
     etatInitial,
   );
-  const [etat2fa, action2fa, deuxFaEnCours] = useActionState(
-    reinitialiserDeuxFacteursAction.bind(null, utilisateur.id),
-    etatInitial,
-  );
   const [etatVerrou, actionVerrou, verrouEnCours] = useActionState(
     deverrouillerAction.bind(null, utilisateur.id),
     etatInitial,
   );
 
   const verrouille = utilisateur.lockedUntil !== null && utilisateur.lockedUntil > new Date();
-  const enrolementDu = utilisateur.exigeDeuxFacteurs && !utilisateur.totpEnabled;
 
   return (
     <div data-testid="carte-utilisateur" className="border-border bg-surface rounded-xl border p-5">
@@ -86,8 +80,9 @@ export function CarteUtilisateur({
         ) : (
           <Pastille ton="bg-danger-soft text-danger-text">Désactivé</Pastille>
         )}
-        {utilisateur.totpEnabled && <Pastille ton="bg-gold-soft text-gold-text">2FA</Pastille>}
-        {enrolementDu && <Pastille ton="bg-warn-soft text-warn-text">2FA à enrôler</Pastille>}
+        {utilisateur.exigeDeuxFacteurs && (
+          <Pastille ton="bg-gold-soft text-gold-text">Code par e-mail</Pastille>
+        )}
         {verrouille && <Pastille ton="bg-danger-soft text-danger-text">Verrouillé</Pastille>}
       </div>
 
@@ -155,20 +150,6 @@ export function CarteUtilisateur({
           </Bouton>
         </form>
 
-        {utilisateur.totpEnabled && (
-          <form action={action2fa}>
-            <Bouton
-              ton="secondaire"
-              icone={ShieldOff}
-              type="submit"
-              disabled={deuxFaEnCours}
-              titre="À utiliser si la personne a perdu ou changé de téléphone."
-            >
-              {deuxFaEnCours ? "…" : "Détacher le 2FA"}
-            </Bouton>
-          </form>
-        )}
-
         {verrouille && (
           <form action={actionVerrou}>
             <Bouton
@@ -184,15 +165,11 @@ export function CarteUtilisateur({
         )}
       </div>
 
-      {(etatMdp.erreur ?? etat2fa.erreur ?? etatVerrou.erreur) && (
-        <p className="text-danger-text mt-2 text-sm">
-          {etatMdp.erreur ?? etat2fa.erreur ?? etatVerrou.erreur}
-        </p>
+      {(etatMdp.erreur ?? etatVerrou.erreur) && (
+        <p className="text-danger-text mt-2 text-sm">{etatMdp.erreur ?? etatVerrou.erreur}</p>
       )}
-      {(etatMdp.avis ?? etat2fa.avis ?? etatVerrou.avis) && (
-        <p className="text-accent-text mt-2 text-sm">
-          {etatMdp.avis ?? etat2fa.avis ?? etatVerrou.avis}
-        </p>
+      {(etatMdp.avis ?? etatVerrou.avis) && (
+        <p className="text-accent-text mt-2 text-sm">{etatMdp.avis ?? etatVerrou.avis}</p>
       )}
     </div>
   );

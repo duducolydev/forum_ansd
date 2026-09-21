@@ -5,8 +5,9 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { auClicConfirme } from "@/components/ui/confirmer";
 import { retirerSponsorAction, televerserLogoAction, type EtatAction } from "../actions";
 import { LOGO_MAX_BYTES } from "../constantes";
-import { AlertCircle, CircleCheck, Upload, X } from "lucide-react";
+import { AlertCircle, CircleCheck, ImageUp, Upload, X } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import { ZoneDepot } from "@/components/ui/zone-depot";
 import { urlVersionnee } from "@/lib/url-fichier";
 
 const etatInitial: EtatAction = {};
@@ -27,15 +28,16 @@ export function PanneauLogo({
     etatInitial,
   );
   const formulaire = useRef<HTMLFormElement>(null);
-  const champ = useRef<HTMLInputElement>(null);
 
   /*
-   * Le champ est vidé après un envoi réussi. Sans cela, le nom du fichier reste
-   * affiché à côté d'un aperçu déjà à jour, ce qui laisse croire qu'il reste
-   * quelque chose à envoyer.
+   * La zone de dépôt est remontée après un envoi réussi — c'est ce que fait
+   * changer sa `key`. Sans cela, le fichier retenu reste affiché à côté d'un
+   * aperçu déjà à jour, ce qui laisse croire qu'il reste quelque chose à
+   * envoyer.
    */
+  const [versionChamp, setVersionChamp] = useState(0);
   useEffect(() => {
-    if (etatLogo.avis && champ.current) champ.current.value = "";
+    if (etatLogo.avis) setVersionChamp((version) => version + 1);
   }, [etatLogo.avis]);
 
   const [erreurRetrait, setErreurRetrait] = useState<string | null>(null);
@@ -74,23 +76,22 @@ export function PanneauLogo({
        * et pour le cas sans JavaScript, mais il n'est plus le seul chemin.
        */}
       <form ref={formulaire} action={actionLogo} className="flex flex-col gap-2">
-        <input
-          ref={champ}
-          type="file"
+        <ZoneDepot
+          key={versionChamp}
           name="logo"
+          libelle="Fichier du logo"
+          icone={ImageUp}
           accept="image/png,image/jpeg,image/webp,image/svg+xml"
           required
-          aria-label="Fichier du logo"
-          className="text-text-2 text-sm"
+          aide={`SVG, PNG, JPEG ou WebP — ${LOGO_MAX_BYTES / 1024 / 1024} Mo maximum`}
           onChange={(evenement) => {
             if (evenement.currentTarget.files?.length)
               evenement.currentTarget.form?.requestSubmit();
           }}
         />
         <p className="text-text-3 text-xs">
-          SVG, PNG, JPEG ou WebP, {LOGO_MAX_BYTES / 1024 / 1024} Mo maximum. L&apos;envoi part dès
-          que le fichier est choisi. Le SVG donne le meilleur rendu : il reste net à toutes les
-          tailles.
+          L&apos;envoi part dès que le fichier est choisi. Le SVG donne le meilleur rendu : il reste
+          net à toutes les tailles.
         </p>
         <div>
           <Bouton ton="secondaire" icone={Upload} type="submit" disabled={logoEnCours}>

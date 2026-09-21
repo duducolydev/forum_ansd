@@ -98,16 +98,4 @@ describe("revalidation des sessions du BackOffice", () => {
     expect(revalide?.permissions).toEqual(agent.permissions);
     expect(revalide?.permissions).toContain("scan.use");
   });
-
-  it("relit l'obligation d'enrôler le second facteur", async () => {
-    const compte = await creerCompte("ADMIN_FORUM");
-    const jeton = jetonDe(compte);
-    expect(jeton.requiresTotpEnrollment).toBe(true);
-
-    await prisma.user.update({ where: { id: compte.id }, data: { totpEnabled: true } });
-
-    const revalide = await revaliderJeton(jeton);
-    expect(revalide?.requiresTotpEnrollment).toBe(false);
-    expect(revalide?.totpEnabled).toBe(true);
-  });
 });

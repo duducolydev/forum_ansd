@@ -20,6 +20,35 @@ export interface Actor {
 
 const MAX_REMINDERS = 3;
 
+/**
+ * Cadence d'envoi (PLAN.md §22).
+ *
+ * Une campagne d'invitations met un message en file **par destinataire**. Sans
+ * cadence, mille invitations partent en quelques secondes : une boîte d'envoi
+ * ordinaire — celle du Forum est un compte Gmail — coupe alors le robinet, et
+ * les messages suivants sont refusés en bloc, sans qu'on sache lesquels sont
+ * passés. Les envois sont donc programmés à intervalle régulier.
+ *
+ * Vingt par minute : assez lent pour ne pas ressembler à une rafale, assez
+ * rapide pour écouler un millier d'invitations en moins d'une heure.
+ */
+export const ENVOIS_PAR_MINUTE = 20;
+
+/**
+ * Moment d'envoi du n-ième message d'une campagne.
+ *
+ * Fonction pure, et exportée pour cela : c'est l'étalement qui protège la boîte
+ * d'envoi, et il se vérifie sans file ni base.
+ */
+export function momentEnvoi(index: number, depart: Date): Date {
+  return new Date(depart.getTime() + Math.round((index * 60_000) / ENVOIS_PAR_MINUTE));
+}
+
+/** Durée d'écoulement d'une campagne, en minutes, arrondie au supérieur. */
+export function dureeCampagneMinutes(nombre: number): number {
+  return nombre <= 1 ? 0 : Math.ceil((nombre - 1) / ENVOIS_PAR_MINUTE);
+}
+
 export function generateInvitationToken(): string {
   return randomBytes(24).toString("base64url");
 }
@@ -265,12 +294,16 @@ export function registerInvitationJobs(): void {
   });
 }
 
-export async function sendInvitation(invitationId: string, actor: Actor): Promise<void> {
+export async function sendInvitation(
+  invitationId: string,
+  actor: Actor,
+  runAt?: Date,
+): Promise<void> {
   registerInvitationJobs();
   await jobQueue.enqueue(
     "invitation.send",
     { invitationId },
-    { idempotencyKey: `invitation-send-${invitationId}-${Date.now()}` },
+    { idempotencyKey: `invitation-send-${invitationId}-${Date.now()}`, runAt },
   );
   await audit.log({
     actorType: actor.type,
@@ -281,27 +314,98 @@ export async function sendInvitation(invitationId: string, actor: Actor): Promis
   });
 }
 
-export async function sendInvitationsBulk(invitationIds: string[], actor: Actor): Promise<void> {
-  for (const id of invitationIds) {
-    await sendInvitation(id, actor);
-  }
+/**
+ * Campagne d'envoi : un job par destinataire, **étalés** selon `ENVOIS_PAR_MINUTE`.
+ *
+ * Un job par personne et non un job qui boucle : un échec isolé n'interrompt pas
+ * la campagne, et chaque envoi se rejoue seul. L'étalement, lui, protège la boîte
+ * d'envoi.
+ */
+export async function sendInvitationsBulk(
+  invitationIds: string[],
+): Promise<{ queued: number; dureeMinutes: number }> {
+  registerInvitationJobs();
+  const depart = new Date();
+  const horodatage = depart.getTime();
+
+  /*
+   * Une seule mise en file pour toute la campagne, et **une seule** ligne
+   * d'audit (écrite par l'appelant). Un job et une trace par destinataire
+   * faisaient plus de deux mille écritures pour mille invitations : mesuré,
+   * l'action dépassait 30 s, donc le temps d'une requête.
+   */
+  await jobQueue.enqueueMany(
+    "invitation.send",
+    invitationIds.map((invitationId, index) => ({
+      payload: { invitationId },
+      options: {
+        idempotencyKey: `invitation-send-${invitationId}-${horodatage}`,
+        runAt: momentEnvoi(index, depart),
+      },
+    })),
+  );
+
+  return { queued: invitationIds.length, dureeMinutes: dureeCampagneMinutes(invitationIds.length) };
+}
+
+/**
+ * Envoi groupé des invitations **jamais envoyées** (statut « À envoyer »).
+ *
+ * Les invitations déjà parties relèvent de la relance (`sendReminders`) : les
+ * renvoyer ici ferait une seconde invitation à des gens qui l'ont déjà reçue.
+ */
+export async function sendPendingInvitations(
+  editionId: string,
+  filters: ReminderFilters,
+  actor: Actor,
+): Promise<{ queued: number; dureeMinutes: number }> {
+  const invitations = await repo.listPendingInvitations(editionId, {
+    categoryId: filters.categoryId || undefined,
+    country: filters.country || undefined,
+  });
+  const resultat = await sendInvitationsBulk(invitations.map((invitation) => invitation.id));
+
+  await audit.log({
+    actorType: actor.type,
+    actorUserId: actor.userId,
+    action: "invitation.bulk_send_queued",
+    entity: "Edition",
+    entityId: editionId,
+    after: { ...resultat, cadence: ENVOIS_PAR_MINUTE, filtres: filters },
+  });
+
+  return resultat;
+}
+
+export async function countPendingInvitations(editionId: string): Promise<number> {
+  return repo.countPendingInvitations(editionId);
 }
 
 export async function sendReminders(
   editionId: string,
   filters: ReminderFilters,
   actor: Actor,
-): Promise<{ queued: number }> {
+): Promise<{ queued: number; dureeMinutes: number }> {
   const invitations = await repo.listRemindableInvitations(
     editionId,
     { categoryId: filters.categoryId || undefined, country: filters.country || undefined },
     MAX_REMINDERS,
   );
-  await sendInvitationsBulk(
-    invitations.map((invitation) => invitation.id),
-    actor,
-  );
-  return { queued: invitations.length };
+  const resultat = await sendInvitationsBulk(invitations.map((invitation) => invitation.id));
+
+  // Une trace par campagne, et non par destinataire : mille lignes d'audit pour
+  // un seul geste noieraient le journal, que l'on consulte pour retrouver qui a
+  // lancé quoi.
+  await audit.log({
+    actorType: actor.type,
+    actorUserId: actor.userId,
+    action: "invitation.reminders_queued",
+    entity: "Edition",
+    entityId: editionId,
+    after: { ...resultat, cadence: ENVOIS_PAR_MINUTE, filtres: filters },
+  });
+
+  return resultat;
 }
 
 // ---------------------------------------------------------------------------

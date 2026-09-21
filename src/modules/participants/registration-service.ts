@@ -186,7 +186,7 @@ export async function registerPublicParticipant(options: {
    *
    * Un échec ici n'annule pas l'inscription — un format refusé ne doit pas
    * faire perdre un formulaire de cinq étapes ; le participant pourra ajouter
-   * sa photo depuis « Mes inscriptions ».
+   * sa photo depuis « Mon espace ».
    */
   if (photo && photo.size > 0) {
     await saveParticipantPhoto(participant.id, photo).catch(() => undefined);

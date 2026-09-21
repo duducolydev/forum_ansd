@@ -87,8 +87,21 @@
   --chart-ordinal-3: #2f7fd1;
   --chart-ordinal-4: #1f5da0;
   --chart-ordinal-5: #133f70;
-  --ticker-bg: #082c4e;
-  --ticker-text: #c9daec;
+  /* En-tête du site — bande défilante et barre de navigation — : dégradé de
+     bleus, à la manière du bandeau d'ansd.sn (PLAN.md §19, §20). Textes et
+     contrôles passent sur chaque arrêt : tous tiennent 4,5:1 avec le texte —
+     le plus clair, #2468c9, à 5,39:1. */
+  /* Barre de navigation : bleu clair de la famille de l'océan du globe du logo
+     (#90c0d8 à #b8d8e8), plus pâle pour que le globe s'en détache (PLAN.md §20).
+     Le même dans les deux thèmes : le logo transparent porte un texte bleu et une
+     devise noire, illisibles sur un fond sombre. Texte bleu du logo : 5,86:1 au
+     plus faible ; bleu nuit des liens : 11,52:1. */
+  --navbar-debut: #e6f1fb;
+  --navbar-fin: #d9eaf7;
+  --entete-debut: #0b4f8a;
+  --entete-milieu: #1a66c2;
+  --entete-fin: #2468c9;
+  --entete-texte: #ffffff;
   --grid-line: #d7dee5;
   --shadow: 0 30px 60px -30px rgba(8, 44, 78, 0.45);
   --chart-bar: #0b4f8a;
@@ -145,8 +158,10 @@
     --dark-panel-muted: #9db4cc;
     --dark-panel-line: #1a4270;
     --fond-sombre: #03101f;
-    --ticker-bg: #3dbb6e;
-    --ticker-text: #06261a;
+    --entete-debut: #061d36;
+    --entete-milieu: #0e3d70;
+    --entete-fin: #12498a;
+    --entete-texte: #ffffff;
     --grid-line: #123a64;
     --shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.7);
     --chart-bar: #2f7fd1;
@@ -204,8 +219,10 @@
   --dark-panel-text: #fff;
   --dark-panel-muted: #9db4cc;
   --dark-panel-line: #1a4270;
-  --ticker-bg: #3dbb6e;
-  --ticker-text: #06261a;
+  --entete-debut: #061d36;
+  --entete-milieu: #0e3d70;
+  --entete-fin: #12498a;
+  --entete-texte: #ffffff;
   --grid-line: #123a64;
   --shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.7);
   --chart-bar: #2f7fd1;
@@ -336,6 +353,14 @@
     font-size: clamp(1.95rem, 1.35rem + 2.4vw, 2.9rem);
     font-weight: 700;
     letter-spacing: -0.02em;
+  }
+  /*
+   * Titre d'une page intérieure, dans son bandeau. Le bandeau a été ramené au
+   * strict nécessaire (PLAN.md §19) : un titre de 46 px y occupait à lui seul
+   * la moitié de la hauteur. Il reste au-dessus des `h2` de section (1,85rem).
+   */
+  .bandeau-page h1 {
+    font-size: clamp(1.55rem, 1.25rem + 1.2vw, 2.15rem);
   }
   h2 {
     font-size: clamp(1.4rem, 1.15rem + 1vw, 1.85rem);
@@ -503,6 +528,37 @@
       transparent 70%
     ),
     linear-gradient(to bottom, var(--bg-2), var(--bg));
+}
+
+/*
+ * Bande défilante du haut de page, en dégradé de bleus (PLAN.md §19, §20).
+ *
+ * Classe dédiée, et non des utilitaires `bg-*` : la bande utilisait
+ * `bg-ticker-bg text-ticker-text`, qui supposaient des jetons `--color-ticker-*`
+ * jamais déclarés dans `@theme`, et ne produisaient donc **aucune règle**. Elle
+ * s'affichait transparente depuis sa création.
+ */
+.fond-entete {
+  background: linear-gradient(
+    90deg,
+    var(--entete-debut),
+    var(--entete-milieu) 55%,
+    var(--entete-fin)
+  );
+  color: var(--entete-texte);
+}
+
+/*
+ * Barre de navigation, sur un dégradé de bleu clair (PLAN.md §20).
+ *
+ * Elle portait d'abord le dégradé foncé de la bande défilante ; posé dessus, le
+ * logo transparent devenait illisible. Couleurs fixes, et non des jetons de
+ * thème : le fond reste clair en thème sombre, et ses textes doivent rester
+ * foncés.
+ */
+.fond-navbar {
+  background: linear-gradient(90deg, var(--navbar-debut), var(--navbar-fin));
+  color: var(--ansd-bleu-nuit);
 }
 
 /* Filet coloré en haut d'une carte mise en avant. */

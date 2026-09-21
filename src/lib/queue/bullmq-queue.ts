@@ -1,6 +1,6 @@
 import { Queue, Worker, type Job as BullJob } from "bullmq";
 import IORedis from "ioredis";
-import type { EnqueueOptions, JobHandler, JobQueue } from "./types";
+import type { EnqueueEntry, EnqueueOptions, JobHandler, JobQueue } from "./types";
 
 /**
  * Nom de la file. Paramétrable pour **cloisonner** plusieurs consommateurs
@@ -38,6 +38,27 @@ export class BullMqJobQueue implements JobQueue {
       removeOnComplete: true,
       removeOnFail: 1000,
     });
+  }
+
+  /** `addBulk` : un seul aller-retour Redis pour toute la série (PLAN.md §22). */
+  async enqueueMany<T>(type: string, entrees: EnqueueEntry<T>[]): Promise<void> {
+    if (entrees.length === 0) return;
+    await this.queue.addBulk(
+      entrees.map((entree) => ({
+        name: type,
+        data: entree.payload,
+        opts: {
+          jobId: entree.options?.idempotencyKey?.replaceAll(":", "_"),
+          delay: entree.options?.runAt
+            ? Math.max(0, entree.options.runAt.getTime() - Date.now())
+            : undefined,
+          attempts: 3,
+          backoff: { type: "exponential" as const, delay: 5000 },
+          removeOnComplete: true,
+          removeOnFail: 1000,
+        },
+      })),
+    );
   }
 
   process<T>(type: string, handler: JobHandler<T>): void {

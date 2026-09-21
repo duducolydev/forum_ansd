@@ -5,7 +5,14 @@ import { useTranslations } from "next-intl";
 import { Moon, Sun } from "lucide-react";
 import { setServerTheme, type Theme } from "@/lib/theme";
 
-export function ThemeToggle({ initialTheme }: { initialTheme: Theme | null }) {
+/** `entete` : sur la barre de navigation bleu clair (PLAN.md §20) ; `panneau` : menu mobile. */
+export function ThemeToggle({
+  initialTheme,
+  variante = "panneau",
+}: {
+  initialTheme: Theme | null;
+  variante?: "entete" | "panneau";
+}) {
   const t = useTranslations("theme");
   const [theme, setTheme] = useState<Theme | null>(initialTheme);
   const [, startTransition] = useTransition();
@@ -34,7 +41,11 @@ export function ThemeToggle({ initialTheme }: { initialTheme: Theme | null }) {
     <button
       type="button"
       onClick={toggle}
-      className="border-border bg-surface text-text-2 hover:border-link hover:text-blue-text transition-tout grid h-[38px] w-[38px] place-items-center rounded-lg border"
+      className={`transition-tout grid h-[38px] w-[38px] place-items-center rounded-lg border ${
+        variante === "entete"
+          ? "border-ansd-bleu-nuit/25 text-ansd-bleu-nuit focus-visible:outline-ansd-bleu-nuit hover:bg-white/60"
+          : "border-border bg-surface text-text-2 hover:border-link hover:text-blue-text"
+      }`}
       aria-label={isDark ? t("toggleToLight") : t("toggleToDark")}
       title={isDark ? t("toggleToLight") : t("toggleToDark")}
     >

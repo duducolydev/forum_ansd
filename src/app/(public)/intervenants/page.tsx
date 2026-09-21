@@ -27,7 +27,7 @@ export default async function SpeakersPage() {
     <>
       <BandeauPage>
         <EnteteSection
-          marge={false}
+          bandeau
           niveau="h1"
           surtitre={en ? "They speak" : "Ils interviennent"}
           titre={t("speakers")}

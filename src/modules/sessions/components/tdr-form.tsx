@@ -4,8 +4,9 @@ import { useActionState, useState, useTransition } from "react";
 import { auClicConfirme } from "@/components/ui/confirmer";
 import { useRouter } from "next/navigation";
 import { removeTdrAction, uploadTdrAction, type ActionState } from "../actions";
-import { Upload, X } from "lucide-react";
+import { FileText, Upload, X } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import { ZoneDepot } from "@/components/ui/zone-depot";
 
 const initialState: ActionState = {};
 
@@ -32,18 +33,21 @@ export function TdrForm({ id, present }: { id: string; present: boolean }) {
       </p>
 
       <div className="flex flex-wrap items-center gap-3">
-        <form action={formAction} className="flex flex-wrap items-center gap-3">
+        <form action={formAction} className="flex min-w-[16rem] flex-col gap-3">
           <input type="hidden" name="id" value={id} />
-          <input
-            type="file"
+          <ZoneDepot
             name="tdr"
+            libelle="Fichier des termes de référence"
+            icone={FileText}
             accept="application/pdf"
             required
-            className="text-text-2 text-sm"
+            aide="PDF uniquement — 8 Mo au plus"
           />
-          <Bouton ton="secondaire" icone={Upload} type="submit" disabled={pending}>
-            {pending ? "Envoi…" : present ? "Remplacer" : "Déposer"}
-          </Bouton>
+          <div>
+            <Bouton ton="secondaire" icone={Upload} type="submit" disabled={pending}>
+              {pending ? "Envoi…" : present ? "Remplacer" : "Déposer"}
+            </Bouton>
+          </div>
         </form>
 
         {present && (

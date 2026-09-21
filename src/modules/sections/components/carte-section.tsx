@@ -10,12 +10,13 @@ import {
   type EtatAction,
 } from "../actions";
 import type { BoutonSection, ChampContenu, TypeSection } from "../catalogue";
-import { Save, Trash2 } from "lucide-react";
+import { ImageUp, Save, Trash2 } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 import { reduirePourEnvoi, tailleLisible } from "@/lib/redimensionner-image";
 import { urlVersionnee } from "@/lib/url-fichier";
 import { IMAGE_SECTION_MAX_BYTES } from "../constantes";
-import { EditeurTexteRiche } from "./editeur-texte-riche";
+import { EditeurTexteRiche } from "@/components/ui/editeur-texte-riche";
+import { ZoneDepot } from "@/components/ui/zone-depot";
 
 const etatInitial: EtatAction = {};
 const CHAMP = "border-border bg-bg text-text rounded-lg border px-3 py-2.5 text-sm";
@@ -214,14 +215,13 @@ function ChampIllustration({
         <span className="text-text-3 text-sm">Aucune illustration.</span>
       )}
 
-      <input
-        ref={champ}
-        type="file"
+      <ZoneDepot
+        champRef={champ}
         name={`fichier-${cle}`}
+        libelle={`${label} : choisir un fichier`}
+        icone={ImageUp}
         accept="image/png,image/jpeg,image/webp,image/svg+xml"
-        aria-label={`${label} : choisir un fichier`}
         onChange={(evenement) => void auChoix(evenement)}
-        className="text-text-2 text-sm"
       />
 
       {enCours && <span className="text-text-3 text-xs">Préparation de l&apos;image…</span>}

@@ -185,13 +185,6 @@ export default auth((request) => {
       connexion.searchParams.set("callbackUrl", request.nextUrl.href);
       return applySecurityHeaders(NextResponse.redirect(connexion), csp);
     }
-
-    // 2FA obligatoire pour SUPER_ADMIN/ADMIN_FORUM (brief §7) : tant qu'elle
-    // n'est pas activée, seule la page d'enrôlement est accessible.
-    if (user.requiresTotpEnrollment && pathname !== "/admin/2fa/enroll") {
-      const enroll = new URL("/admin/2fa/enroll", request.nextUrl);
-      return applySecurityHeaders(NextResponse.redirect(enroll), csp);
-    }
   }
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });

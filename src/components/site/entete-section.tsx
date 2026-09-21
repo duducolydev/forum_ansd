@@ -22,7 +22,7 @@ export function EnteteSection({
   niveau = "h2",
   action,
   centre = false,
-  marge = true,
+  bandeau = false,
 }: {
   surtitre?: string;
   titre: string;
@@ -33,38 +33,45 @@ export function EnteteSection({
   action?: ReactNode;
   centre?: boolean;
   /**
-   * Marge sous l'en-tête. À couper dans un bandeau, dont le `py` fournit déjà
-   * la respiration : les deux cumulés laissaient un vide net sous le titre.
+   * En-tête posé dans un `BandeauPage` : sans marge dessous — le `py` du
+   * bandeau fournit la respiration —, et resserré, le bandeau étant ramené au
+   * strict nécessaire (PLAN.md §19).
    *
    * Un booléen plutôt qu'une classe passée par `className` : `mb-8` et `mb-0`
    * sont deux utilitaires de la même propriété, et c'est l'ordre de la feuille
    * de style — pas celui de l'attribut — qui trancherait.
    */
-  marge?: boolean;
+  bandeau?: boolean;
 }) {
   const Titre = niveau;
 
   return (
     <div
-      className={`flex flex-wrap items-end gap-4 ${marge ? "mb-8" : ""} ${
+      className={`flex flex-wrap items-end gap-4 ${bandeau ? "" : "mb-8"} ${
         centre ? "flex-col items-center text-center" : "justify-between"
       }`}
     >
       <div className={centre ? "max-w-[62ch]" : "max-w-[62ch]"}>
         {surtitre && (
-          <span className={`surtitre mb-3 ${centre ? "justify-center" : ""}`}>{surtitre}</span>
+          <span
+            className={`surtitre ${bandeau ? "mb-1" : "mb-3"} ${centre ? "justify-center" : ""}`}
+          >
+            {surtitre}
+          </span>
         )}
         <Titre className="flex items-center gap-3">
           {Icone && (
             <Icone
               aria-hidden
-              size={niveau === "h1" ? 28 : 22}
+              size={bandeau ? 24 : niveau === "h1" ? 28 : 22}
               className="text-accent-text shrink-0"
             />
           )}
           {titre}
         </Titre>
-        {description && <p className="text-text-2 mt-3 text-lg">{description}</p>}
+        {description && (
+          <p className={bandeau ? "text-text-2 mt-1" : "text-text-2 mt-3 text-lg"}>{description}</p>
+        )}
       </div>
       {action}
     </div>

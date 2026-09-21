@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  useActionState,
-  useEffect,
-  useRef,
-  useState,
-  useTransition,
-  type ChangeEvent,
-} from "react";
+import { useActionState, useEffect, useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Contribution } from "@prisma/client";
 import {
@@ -15,6 +8,7 @@ import {
   ArrowUp,
   Check,
   FileText,
+  ImageUp,
   Link2,
   Lock,
   Plus,
@@ -26,6 +20,7 @@ import {
 } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 import { auClicConfirme } from "@/components/ui/confirmer";
+import { ZoneDepot } from "@/components/ui/zone-depot";
 import { useSoumissionSansRemiseAZero } from "@/lib/soumission";
 import {
   creerContributionAction,
@@ -78,7 +73,10 @@ function DepotFichier({
   aUnFichier: boolean;
   attendu: "document" | "image";
 }) {
-  const champ = useRef<HTMLInputElement>(null);
+  // La zone de dépôt est remontée pour se vider : sa `key` change, et le
+  // fichier retenu disparaît avec elle.
+  const [versionChamp, setVersionChamp] = useState(0);
+  const viderChamp = () => setVersionChamp((version) => version + 1);
   const [etat, setEtat] = useState<{ ton: "info" | "erreur"; texte: string } | null>(null);
   const [enCours, setEnCours] = useState(false);
   const router = useRouter();
@@ -92,7 +90,7 @@ function DepotFichier({
         ton: "erreur",
         texte: `Fichier trop lourd (maximum ${DOCUMENT_MAX_BYTES / 1024 / 1024} Mo).`,
       });
-      if (champ.current) champ.current.value = "";
+      viderChamp();
       return;
     }
 
@@ -108,12 +106,12 @@ function DepotFichier({
 
       if (!reponse.ok) {
         setEtat({ ton: "erreur", texte: corps.erreur ?? "Dépôt impossible." });
-        if (champ.current) champ.current.value = "";
+        viderChamp();
         return;
       }
 
       setEtat({ ton: "info", texte: "Fichier déposé." });
-      if (champ.current) champ.current.value = "";
+      viderChamp();
       router.refresh();
     } catch {
       setEtat({ ton: "erreur", texte: "Le dépôt n'a pas abouti. Réessayez." });
@@ -133,20 +131,20 @@ function DepotFichier({
 
       <LienFichier contributionId={contributionId} aUnFichier={aUnFichier} />
 
-      <input
-        ref={champ}
-        type="file"
+      <ZoneDepot
+        key={versionChamp}
+        name="fichier"
+        libelle="Choisir un fichier"
+        icone={attendu === "image" ? ImageUp : FileText}
         accept={accept}
-        aria-label="Choisir un fichier"
+        aide={
+          attendu === "image"
+            ? "PNG, JPEG, WebP ou SVG"
+            : `PDF ou PPTX — ${DOCUMENT_MAX_BYTES / 1024 / 1024} Mo maximum`
+        }
         onChange={(evenement) => void envoyer(evenement)}
-        className="text-text-2 text-sm"
       />
-      <span className="text-text-3 text-xs">
-        {attendu === "image"
-          ? "PNG, JPEG, WebP ou SVG."
-          : `PDF ou PPTX, ${DOCUMENT_MAX_BYTES / 1024 / 1024} Mo maximum.`}{" "}
-        L&apos;envoi part dès que le fichier est choisi.
-      </span>
+      <span className="text-text-3 text-xs">L&apos;envoi part dès que le fichier est choisi.</span>
 
       {enCours && <span className="text-text-3 text-xs">Envoi en cours…</span>}
       {etat && (

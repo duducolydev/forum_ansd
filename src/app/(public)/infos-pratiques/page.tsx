@@ -11,6 +11,7 @@ import {
 import { getActiveEdition } from "@/lib/edition";
 import { getContentText } from "@/modules/content/service";
 import { EnteteSection } from "@/components/site/entete-section";
+import { TexteRiche } from "@/components/site/texte-riche";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
 import { Reveal } from "@/components/site/reveal";
 
@@ -82,7 +83,7 @@ export default async function PracticalInfoPage() {
     <>
       <BandeauPage>
         <EnteteSection
-          marge={false}
+          bandeau
           niveau="h1"
           surtitre={locale === "en" ? "Before you come" : "Avant de venir"}
           titre={t("practicalInfo")}
@@ -105,9 +106,14 @@ export default async function PracticalInfoPage() {
                   <h2 className="text-heading font-display mb-1.5 text-base font-semibold">
                     {locale === "en" ? card.labelEn : card.labelFr}
                   </h2>
-                  <p className="text-text-2 text-sm leading-relaxed whitespace-pre-line">
-                    {values[index] || "—"}
-                  </p>
+                  {values[index] ? (
+                    <TexteRiche
+                      valeur={values[index]}
+                      className="text-text-2 text-sm leading-relaxed"
+                    />
+                  ) : (
+                    <p className="text-text-2 text-sm leading-relaxed">—</p>
+                  )}
                 </div>
               </Reveal>
             );

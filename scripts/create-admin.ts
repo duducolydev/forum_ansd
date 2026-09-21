@@ -3,6 +3,7 @@ import argon2 from "argon2";
 import { prisma } from "../src/lib/db";
 import { audit } from "../src/lib/audit";
 import { ROLE_LABELS } from "../src/lib/permissions";
+import { exigeSecondFacteur } from "../src/modules/auth/service";
 
 /**
  * Création (ou remise à niveau) d'un compte BackOffice.
@@ -69,14 +70,14 @@ async function main(): Promise<void> {
     after: { email: normalisedEmail, role: roleName },
   });
 
-  const requiresTotp = roleName === "SUPER_ADMIN" || roleName === "ADMIN_FORUM";
+  const secondFacteur = exigeSecondFacteur(roleName);
 
   console.log("");
   console.log(existing ? "Compte mis à jour." : "Compte créé.");
   console.log(`  E-mail    : ${normalisedEmail}`);
   console.log(`  Rôle      : ${roleName} (${ROLE_LABELS[roleName] ?? roleName})`);
   console.log(
-    `  2FA       : ${user.totpEnabled ? "déjà activée (conservée)" : requiresTotp ? "à activer à la première connexion" : "facultative"}`,
+    `  2FA       : ${secondFacteur ? "code envoyé par e-mail à chaque connexion" : "aucune"}`,
   );
   console.log("");
 

@@ -37,14 +37,16 @@ export default async function EspaceIntervenantPage({
       <>
         <BandeauPage largeur="etroit">
           <div className="text-center">
-            <span
-              aria-hidden
-              className="bg-blue-soft text-blue-text mb-4 inline-grid h-14 w-14 place-items-center rounded-2xl"
-            >
-              <Mic size={26} strokeWidth={2.1} />
-            </span>
-            <h1 className="mb-2">Espace intervenant</h1>
-            <p className="text-text-2 mx-auto max-w-[52ch]">
+            <h1 className="mb-1 flex items-center justify-center gap-3">
+              <span
+                aria-hidden
+                className="bg-blue-soft text-blue-text inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl"
+              >
+                <Mic size={20} strokeWidth={2.1} />
+              </span>
+              Espace intervenant
+            </h1>
+            <p className="text-text-2 mx-auto max-w-[68ch]">
               Déposez votre photo, votre biographie et votre présentation. Indiquez l&apos;adresse à
               laquelle le comité vous a écrit : vous recevrez un lien d&apos;accès valable 30
               minutes.
@@ -91,7 +93,7 @@ export default async function EspaceIntervenantPage({
   return (
     <>
       <BandeauPage largeur="moyen">
-        <span className="surtitre mb-3">Espace intervenant</span>
+        <span className="surtitre mb-1">Espace intervenant</span>
         <h1 className="mb-1 flex items-center gap-3">
           <Mic aria-hidden size={26} className="text-accent-text shrink-0" />
           {vue.nom}

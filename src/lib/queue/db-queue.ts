@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../db";
-import type { EnqueueOptions, JobHandler, JobQueue } from "./types";
+import type { EnqueueEntry, EnqueueOptions, JobHandler, JobQueue } from "./types";
 
 const MAX_ATTEMPTS = 3;
 
@@ -23,6 +23,24 @@ export class DbJobQueue implements JobQueue {
         runAt: options.runAt ?? new Date(),
         idempotencyKey: options.idempotencyKey,
       },
+    });
+  }
+
+  /**
+   * Une seule écriture pour toute la série. `skipDuplicates` tient le rôle du
+   * contrôle d'idempotence fait un par un dans `enqueue` : la clé est unique en
+   * base, un doublon est ignoré au lieu de faire échouer la série entière.
+   */
+  async enqueueMany<T>(type: string, entrees: EnqueueEntry<T>[]): Promise<void> {
+    if (entrees.length === 0) return;
+    await prisma.job.createMany({
+      data: entrees.map((entree) => ({
+        type,
+        payload: entree.payload as Prisma.InputJsonValue,
+        runAt: entree.options?.runAt ?? new Date(),
+        idempotencyKey: entree.options?.idempotencyKey,
+      })),
+      skipDuplicates: true,
     });
   }
 

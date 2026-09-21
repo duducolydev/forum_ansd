@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { parametresPourGabarit } from "@/modules/settings/service";
 import { RESEAUX_LABELS, type Reseau } from "@/modules/settings/schema";
+import { LogoForum } from "./logo-forum";
 
 /**
  * Pied de page (§8.6, habillage §10).
@@ -64,19 +65,12 @@ export async function SiteFooter() {
 
       <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-10 px-6 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
         <div>
-          <div className="mb-4 flex items-center gap-3">
-            <span
-              aria-hidden
-              className="bg-ansd-bleu-nuit grid h-10 w-10 grid-cols-3 items-end gap-[3px] rounded-[10px] p-[5px]"
-            >
-              <i className="block h-[40%] rounded-sm bg-[#7FB3E6]" />
-              <i className="bg-ansd-vert-vif block h-[70%] rounded-sm" />
-              <i className="block h-full rounded-sm bg-white" />
-            </span>
-            <span>
-              <b className="font-display block text-white">Forum international sur les données</b>
-              <small>Une initiative de l&apos;ANSD</small>
-            </span>
+          {/* Logo officiel transparent, posé à même le fond, à la demande du
+              commanditaire (PLAN.md §20). Il porte le nom du Forum, que son texte
+              alternatif restitue. */}
+          <div className="mb-4 flex flex-col items-start gap-2">
+            <LogoForum alt="Forum international sur les données" hauteur="h-14" />
+            <small>Une initiative de l&apos;ANSD</small>
           </div>
 
           {piedDePage.organisation && (

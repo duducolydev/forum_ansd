@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import { Check, Eye } from "lucide-react";
+import { Check, Eye, FileSpreadsheet } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import { ZoneDepot } from "@/components/ui/zone-depot";
 import {
   confirmImportAction,
   previewImportAction,
@@ -38,13 +39,14 @@ export function ImportWizard() {
           <label htmlFor="file" className="text-heading text-sm font-semibold">
             Fichier Excel/CSV
           </label>
-          <input
+          <ZoneDepot
             id="file"
             name="file"
-            type="file"
+            libelle="Fichier Excel/CSV"
+            icone={FileSpreadsheet}
             accept=".xlsx,.xls,.csv"
             required
-            className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
+            aide="Classeur .xlsx, .xls ou fichier .csv"
           />
           <p className="text-text-3 text-xs">
             Colonnes attendues : email, prenom, nom, organisation (optionnel), pays (optionnel),

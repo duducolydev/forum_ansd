@@ -128,6 +128,117 @@ test("les pages reprises ouvrent bien sur un bandeau", async ({ page }) => {
   }
 });
 
+test("les bandeaux restent compacts et la bande du haut porte son dégradé", async ({ page }) => {
+  /*
+   * PLAN.md §19. Mesuré avant : 243 px de bandeau sur écran de bureau, et une
+   * bande du haut transparente — ses utilitaires Tailwind ne produisaient
+   * aucune règle.
+   */
+  await page.setViewportSize({ width: 1440, height: 900 });
+  for (const chemin of ["/programme", "/sponsors", "/inscription", "/verifier", "/connexion"]) {
+    await page.goto(chemin);
+    const hauteur = await page
+      .locator("main .bandeau-page")
+      .first()
+      .evaluate((element) => element.getBoundingClientRect().height);
+    expect(hauteur, `hauteur du bandeau de ${chemin}`).toBeLessThanOrEqual(150);
+  }
+
+  // Bande défilante en dégradé foncé, texte blanc ; barre de navigation en
+  // dégradé bleu clair, texte bleu nuit (§20).
+  for (const [selecteur, couleur] of [
+    ["div.fond-entete", "rgb(255, 255, 255)"],
+    ["header.fond-navbar", "rgb(8, 44, 78)"],
+  ] as const) {
+    const style = await page
+      .locator(selecteur)
+      .first()
+      .evaluate((element) => {
+        const calcule = getComputedStyle(element);
+        return { image: calcule.backgroundImage, couleur: calcule.color };
+      });
+    expect(style.image, selecteur).toContain("linear-gradient");
+    expect(style.couleur, selecteur).toBe(couleur);
+  }
+});
+
+test("l'en-tête porte le logo officiel et des liens lisibles sur le bleu clair", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  // Le logo est bien chargé, dans l'en-tête comme dans le pied de page.
+  for (const logo of [
+    page.locator('header img[src="/images/logo_forum_transparent.png"]'),
+    page.locator('footer img[src="/images/logo_forum_transparent.png"]'),
+  ]) {
+    await logo.scrollIntoViewIfNeeded();
+    await expect
+      .poll(() => logo.evaluate((image: HTMLImageElement) => image.naturalWidth))
+      .toBeGreaterThan(0);
+  }
+  await expect(
+    page.getByRole("link", { name: "Forum international sur les données — accueil" }),
+  ).toBeVisible();
+
+  // Liens de la barre en bleu nuit sur le bleu clair (11,52:1 au plus faible).
+  const lien = page.locator("header nav").getByRole("link").first();
+  expect(await lien.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(8, 44, 78)");
+});
+
+test("le titre de l'accueil occupe toute la largeur du chapeau justifié", async ({ page }) => {
+  /*
+   * PLAN.md §20. Le titre s'arrêtait à 427 px pour un chapeau de 524 : il
+   * remplit désormais le même bloc, lignes centrées. Il n'est pas justifié :
+   * deux ou trois mots par ligne s'étiraient en trous (« Reliable      data »).
+   */
+  for (const largeur of [1440, 390]) {
+    await page.setViewportSize({ width: largeur, height: 900 });
+    await page.goto("/");
+    const titre = page.locator("main h1").first();
+    const chapeau = titre.locator("xpath=following-sibling::*[1]");
+
+    const boite = async (element: typeof titre) =>
+      element.evaluate((noeud) => {
+        const r = noeud.getBoundingClientRect();
+        return { gauche: Math.round(r.left), droite: Math.round(r.right) };
+      });
+    expect(await boite(titre), `bords du titre à ${largeur} px`).toEqual(await boite(chapeau));
+
+    expect(await titre.evaluate((noeud) => getComputedStyle(noeud).textAlign)).toBe("center");
+    const style = await chapeau.evaluate((noeud) => {
+      const calcule = getComputedStyle(noeud);
+      return { alignement: calcule.textAlign, coupure: calcule.hyphens };
+    });
+    expect(style).toEqual({ alignement: "justify", coupure: "auto" });
+  }
+});
+
+test("les promesses de l'inscription tiennent sur une ligne, formulaire juste dessous", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/inscription");
+
+  const badges = page.getByTestId("promesses-inscription").getByRole("listitem");
+  await expect(badges).toHaveCount(3);
+  const hauts = await badges.evaluateAll((elements) =>
+    elements.map((element) => Math.round(element.getBoundingClientRect().top)),
+  );
+  expect(Math.max(...hauts) - Math.min(...hauts), "badges sur une même ligne").toBeLessThanOrEqual(
+    2,
+  );
+
+  // Le formulaire commençait à 586 px du haut de page : il doit tenir dans le
+  // premier écran, avec son premier champ.
+  const formulaire = await page
+    .locator("main form")
+    .first()
+    .evaluate((element) => element.getBoundingClientRect().top + window.scrollY);
+  expect(formulaire).toBeLessThanOrEqual(400);
+});
+
 test("« À propos » vit dans l'accueil, et son ancienne adresse y mène", async ({ page }) => {
   /*
    * La page « À propos » a été absorbée par l'accueil (§12). Trois choses

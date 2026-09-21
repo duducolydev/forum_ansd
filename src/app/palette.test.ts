@@ -252,3 +252,91 @@ describe("fond des sections sombres", () => {
     expect(bloc).not.toContain("--fond-sombre");
   });
 });
+
+/**
+ * Bande défilante du haut de page (PLAN.md §19, §20).
+ *
+ * Son texte défile sur toute la largeur : il passe sur **chaque** arrêt du
+ * dégradé, et doit tenir le seuil sur chacun, pas seulement en moyenne.
+ */
+describe("dégradé de la bande défilante", () => {
+  const ARRETS = ["entete-debut", "entete-milieu", "entete-fin"] as const;
+
+  it.each([["clair"], ["sombre"]] as const)(
+    "garde le texte lisible sur chaque arrêt du dégradé en thème %s",
+    (theme) => {
+      const texte = jeton("entete-texte")[theme];
+      for (const arret of ARRETS) {
+        const fond = jeton(arret)[theme];
+        expect(ratioContraste(texte, fond), `${texte} sur ${fond}`).toBeGreaterThanOrEqual(
+          AA_TEXTE,
+        );
+      }
+    },
+  );
+
+  it("déclare les mêmes couleurs pour le réglage du système et pour l'interrupteur", () => {
+    for (const nom of [...ARRETS, "entete-texte"]) {
+      const valeurs = [...CSS.matchAll(new RegExp(`--${nom}:\\s*([^;]+);`, "g"))].map((m) =>
+        m[1]!.trim(),
+      );
+      expect(valeurs, nom).toHaveLength(3);
+      expect(valeurs[1], nom).toBe(valeurs[2]);
+    }
+  });
+
+  it("peint la bande par une classe réellement définie", () => {
+    /*
+     * Le défaut d'origine : `bg-ticker-bg text-ticker-text` supposaient des
+     * jetons `--color-ticker-*` jamais déclarés dans `@theme`. Tailwind ne
+     * générait aucune règle, et la bande est restée transparente sans que rien
+     * ne le signale.
+     */
+    const lire = (fichier: string) =>
+      readFileSync(join(process.cwd(), "src/components/site", fichier), "utf8");
+    expect(lire("ticker.tsx")).toContain("fond-entete");
+    expect(lire("site-header.tsx")).toContain("fond-navbar");
+    for (const fichier of ["ticker.tsx", "site-header.tsx"]) {
+      expect(lire(fichier), fichier).not.toMatch(/\b(bg|text)-ticker-/);
+    }
+    expect(CSS).toMatch(/\.fond-entete\s*\{[^}]*linear-gradient/);
+    expect(CSS).toMatch(/\.fond-navbar\s*\{[^}]*linear-gradient/);
+  });
+});
+
+/**
+ * Barre de navigation bleu clair (PLAN.md §20).
+ *
+ * Le fond est le même dans les deux thèmes, pour le logo transparent : ses
+ * textes et son contour de focus, en bleu nuit, doivent tenir sur chaque arrêt.
+ */
+describe("barre de navigation bleu clair", () => {
+  const ARRETS = ["navbar-debut", "navbar-fin"] as const;
+  const BLEU_NUIT = jeton("ansd-bleu-nuit").clair;
+
+  it("garde le texte bleu nuit lisible sur chaque arrêt", () => {
+    for (const arret of ARRETS) {
+      const fond = jeton(arret).clair;
+      expect(ratioContraste(BLEU_NUIT, fond), fond).toBeGreaterThanOrEqual(AA_TEXTE);
+    }
+  });
+
+  it("garde lisible le texte bleu du logo transparent", () => {
+    // Bleu de « INTERNATIONAL SUR LES DONNÉES », relevé dans le fichier du logo.
+    for (const arret of ARRETS) {
+      expect(ratioContraste("#0b57a4", jeton(arret).clair)).toBeGreaterThanOrEqual(AA_TEXTE);
+    }
+  });
+
+  it("voit le contour de focus bleu nuit, et non l'or du site", () => {
+    /*
+     * L'or (`--ansd-or`) ne tient que 2,73:1 sur ce bleu clair : c'est pourquoi
+     * les contrôles de la barre portent `focus-visible:outline-ansd-bleu-nuit`.
+     */
+    const plusFonce = jeton("navbar-fin").clair;
+    expect(ratioContraste(jeton("ansd-or").clair, plusFonce)).toBeLessThan(AA_NON_TEXTE);
+    for (const arret of ARRETS) {
+      expect(ratioContraste(BLEU_NUIT, jeton(arret).clair)).toBeGreaterThanOrEqual(AA_NON_TEXTE);
+    }
+  });
+});

@@ -109,7 +109,7 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
       <>
         <BandeauPage>
           <EnteteSection
-            marge={false}
+            bandeau
             niveau="h1"
             surtitre="Trois journées"
             titre={t("program")}
@@ -165,7 +165,7 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
     <>
       <BandeauPage>
         <EnteteSection
-          marge={false}
+          bandeau
           niveau="h1"
           surtitre="Trois journées"
           titre={t("program")}

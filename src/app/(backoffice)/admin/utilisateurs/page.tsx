@@ -52,7 +52,6 @@ export default async function UtilisateursPage() {
               email: utilisateur.email,
               name: utilisateur.name,
               isActive: utilisateur.isActive,
-              totpEnabled: utilisateur.totpEnabled,
               exigeDeuxFacteurs: service.exigeDeuxFacteurs(utilisateur.role.name),
               lastLoginAt: utilisateur.lastLoginAt,
               lockedUntil: utilisateur.lockedUntil,
@@ -80,7 +79,9 @@ export default async function UtilisateursPage() {
                 </span>
                 <span className="text-text-3 text-xs">
                   {permissions} permission{permissions > 1 ? "s" : ""}
-                  {service.exigeDeuxFacteurs(role.name) ? " — second facteur obligatoire" : ""}
+                  {service.exigeDeuxFacteurs(role.name)
+                    ? " — code de connexion envoyé par e-mail à chaque session"
+                    : ""}
                 </span>
               </div>
             );

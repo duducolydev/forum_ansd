@@ -21,8 +21,6 @@ export const authConfig = {
         token.roleId = user.roleId;
         token.roleName = user.roleName;
         token.permissions = user.permissions;
-        token.totpEnabled = user.totpEnabled;
-        token.requiresTotpEnrollment = user.requiresTotpEnrollment;
         token.sessionVersion = user.sessionVersion;
       }
       return token;
@@ -36,8 +34,6 @@ export const authConfig = {
         roleId: token.roleId,
         roleName: token.roleName,
         permissions: token.permissions,
-        totpEnabled: token.totpEnabled,
-        requiresTotpEnrollment: token.requiresTotpEnrollment,
       });
       return session;
     },

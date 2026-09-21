@@ -100,6 +100,26 @@ export async function updateInvitation(id: string, data: Prisma.InvitationUpdate
   return prisma.invitation.update({ where: { id }, data });
 }
 
+/** Invitations créées mais jamais envoyées (statut « À envoyer »). */
+export async function listPendingInvitations(
+  editionId: string,
+  filters: { categoryId?: string; country?: string },
+) {
+  return prisma.invitation.findMany({
+    where: {
+      editionId,
+      status: "PENDING",
+      ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+      ...(filters.country ? { country: filters.country } : {}),
+    },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
+export async function countPendingInvitations(editionId: string): Promise<number> {
+  return prisma.invitation.count({ where: { editionId, status: "PENDING" } });
+}
+
 export async function listRemindableInvitations(
   editionId: string,
   filters: { categoryId?: string; country?: string },

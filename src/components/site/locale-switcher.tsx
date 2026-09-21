@@ -7,7 +7,13 @@ import { locales, type Locale } from "@/i18n/config";
 import { useRouter } from "next/navigation";
 import { Languages } from "lucide-react";
 
-export function LocaleSwitcher() {
+/**
+ * `entete` : posé sur la barre de navigation bleu clair (PLAN.md §20) — texte et
+ * contour de focus bleu nuit, langue active en pastille bleu nuit. `panneau` :
+ * dans le menu mobile.
+ */
+export function LocaleSwitcher({ variante = "panneau" }: { variante?: "entete" | "panneau" }) {
+  const surEntete = variante === "entete";
   const locale = useLocale();
   const t = useTranslations("locale");
   const router = useRouter();
@@ -23,10 +29,16 @@ export function LocaleSwitcher() {
 
   return (
     <div
-      className="border-border flex items-center overflow-hidden rounded-lg border"
+      className={`flex items-center overflow-hidden rounded-lg border ${
+        surEntete ? "border-ansd-bleu-nuit/25" : "border-border"
+      }`}
       aria-label={t("switchTo", { locale: "" })}
     >
-      <Languages aria-hidden size={15} className="text-text-3 ml-2 shrink-0" />
+      <Languages
+        aria-hidden
+        size={15}
+        className={`ml-2 shrink-0 ${surEntete ? "text-ansd-bleu-nuit" : "text-text-3"}`}
+      />
       {locales.map((l) => (
         <button
           key={l}
@@ -35,7 +47,15 @@ export function LocaleSwitcher() {
           disabled={isPending}
           aria-pressed={locale === l}
           className={`transition-tout px-2.5 py-1.5 text-xs font-semibold ${
-            locale === l ? "bg-blue-soft text-blue-text" : "text-text-2"
+            surEntete
+              ? `focus-visible:outline-ansd-bleu-nuit focus-visible:-outline-offset-4 ${
+                  locale === l
+                    ? "bg-ansd-bleu-nuit text-white"
+                    : "text-ansd-bleu-nuit hover:bg-white/60"
+                }`
+              : locale === l
+                ? "bg-blue-soft text-blue-text"
+                : "text-text-2"
           }`}
         >
           {t(l)}

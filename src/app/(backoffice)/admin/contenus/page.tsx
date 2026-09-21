@@ -31,13 +31,15 @@ export default async function ContentBlocksPage() {
       </div>
 
       <div className="flex flex-col gap-4">
-        {CONTENT_BLOCK_KEYS.map(({ key, label }) => {
+        {CONTENT_BLOCK_KEYS.map(({ key, label, riche, max }) => {
           const block = byKey.get(key);
           return (
             <ContentBlockForm
               key={key}
               contentKey={key}
               label={label}
+              riche={riche}
+              max={max}
               valueFr={typeof block?.valueFr === "string" ? block.valueFr : ""}
               valueEn={typeof block?.valueEn === "string" ? block.valueEn : ""}
             />

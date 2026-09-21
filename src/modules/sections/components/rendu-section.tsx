@@ -207,13 +207,31 @@ export function RenduSection({ section, donnees, locale }: Props) {
                 {edition.venue}
               </span>
 
-              <h1 className="mb-5 max-w-[16ch] text-balance">
-                {texte(section, "titre", locale) || edition.title}
-              </h1>
-              <TexteRiche
-                valeur={texte(section, "chapo", locale) || edition.theme || ""}
-                className="text-text-2 mb-8 max-w-[54ch] text-lg leading-relaxed"
-              />
+              {/*
+               * Titre et chapeau forment un seul bloc, de la largeur du chapeau
+               * (PLAN.md §20). Le `ch` se mesure dans la police du texte courant
+               * agrandi (`text-lg`), celle du chapeau : le titre, qui remplit le
+               * bloc, s'aligne donc exactement sur ses deux bords. Il était
+               * borné à 16 caractères de sa propre police et s'arrêtait à 427 px
+               * pour un chapeau de 524.
+               *
+               * - Chapeau **justifié**, à la demande du commanditaire, et coupé
+               *   selon la langue de la page (`hyphens-auto`) pour limiter les
+               *   blancs entre les mots.
+               * - Titre **centré** dans cette largeur, lignes équilibrées. Justifié,
+               *   il s'affichait « Reliable⎵⎵⎵⎵⎵⎵data / for⎵⎵⎵⎵⎵⎵decisions » : deux ou
+               *   trois mots par ligne ne laissent qu'un ou deux espaces à étirer,
+               *   et aucune règle CSS ne plafonne cet étirement.
+               */}
+              <div className="max-w-[54ch] text-lg">
+                <h1 className="mb-5 text-center text-balance">
+                  {texte(section, "titre", locale) || edition.title}
+                </h1>
+                <TexteRiche
+                  valeur={texte(section, "chapo", locale) || edition.theme || ""}
+                  className="text-text-2 mb-8 text-justify leading-relaxed hyphens-auto"
+                />
+              </div>
               <Boutons boutons={lireBoutons(lireReglage(section, "boutons"))} locale={locale} />
             </Reveal>
 

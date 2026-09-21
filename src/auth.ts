@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
-import { authenticateUser } from "./modules/auth/service";
+import { authenticateByChallenge, authenticateUser } from "./modules/auth/service";
 import { revaliderJeton } from "./modules/auth/revalidation";
 import { AuthStatusError } from "./lib/auth-errors";
 
@@ -26,22 +26,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email" },
         password: { label: "Mot de passe", type: "password" },
-        code: { label: "Code TOTP" },
+        code: { label: "Code reçu par e-mail" },
+        jeton: { label: "Jeton du lien de validation" },
+        ip: { label: "Adresse du poste" },
       },
+      /**
+       * Deux chemins pour le second facteur (PLAN.md §23) : le **code** saisi
+       * dans la fenêtre où la connexion a commencé, ou le **jeton** du lien reçu
+       * par e-mail. Le jeton se suffit à lui-même : il n'existe que parce qu'un
+       * mot de passe correct l'a fait créer.
+       */
       authorize: async (credentials) => {
-        const email = typeof credentials?.email === "string" ? credentials.email : undefined;
-        const password =
-          typeof credentials?.password === "string" ? credentials.password : undefined;
-        const code =
-          typeof credentials?.code === "string" && credentials.code.length > 0
-            ? credentials.code
-            : undefined;
+        const texte = (valeur: unknown) =>
+          typeof valeur === "string" && valeur.length > 0 ? valeur : undefined;
 
+        const jeton = texte(credentials?.jeton);
+        if (jeton) {
+          const parLien = await authenticateByChallenge(jeton);
+          if (parLien.status !== "OK") throw new AuthStatusError(parLien.status);
+          return parLien.user;
+        }
+
+        const email = texte(credentials?.email);
+        const password = texte(credentials?.password);
         if (!email || !password) {
           throw new AuthStatusError("INVALID_CREDENTIALS");
         }
 
-        const result = await authenticateUser(email, password, code);
+        const result = await authenticateUser(
+          email,
+          password,
+          texte(credentials?.code),
+          texte(credentials?.ip),
+        );
         if (result.status !== "OK") {
           throw new AuthStatusError(result.status);
         }
