@@ -185,6 +185,27 @@ describe("authenticateUser (règles métier — brief §7)", () => {
       expect((await authenticateByChallenge("jeton-inexistant")).status).toBe("CODE_INVALID");
     });
 
+    it("refuse une quatrième demande de code dans la même minute", async () => {
+      /*
+       * Trois par minute et par compte (PLAN.md §23) : le formulaire ne doit
+       * pas servir à inonder une boîte aux lettres. Le parcours de test
+       * remet ce compteur à zéro entre deux connexions — c'est ici, et nulle
+       * part ailleurs, que la règle est vérifiée.
+       */
+      const user = await createUser("ADMIN_FORUM");
+
+      for (let demande = 0; demande < 3; demande++) {
+        expect((await authenticateUser(user.email, PASSWORD)).status).toBe("CODE_SENT");
+      }
+
+      const quatrieme = await authenticateUser(user.email, PASSWORD);
+      expect(quatrieme.status).toBe("CODE_THROTTLED");
+      if (quatrieme.status === "CODE_THROTTLED") {
+        expect(quatrieme.retryAfterSeconds).toBeGreaterThan(0);
+        expect(quatrieme.retryAfterSeconds).toBeLessThanOrEqual(60);
+      }
+    });
+
     it("laisse entrer directement les rôles sans second facteur", async () => {
       // Les agents d'accueil scannent des badges : leur imposer un aller-retour
       // par la boîte mail bloquerait l'accueil le jour J.

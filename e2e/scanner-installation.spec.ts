@@ -71,6 +71,20 @@ test("le scanner est installable comme application, sans obstacle signalé par C
     expect(reponse.headers()["content-type"]).toContain("image/png");
   } finally {
     await contexte.close();
-    rmSync(profil, { recursive: true, force: true });
+    /*
+     * Effacement tolérant : sous Windows, Chrome garde brièvement des fichiers
+     * de son profil ouverts après la fermeture du contexte, et `rmSync` échoue
+     * alors sur `ENOTEMPTY` — ce qui faisait tomber un test par ailleurs
+     * réussi. Trois essais espacés, puis on abandonne le répertoire au système :
+     * il est dans le dossier temporaire, et le test n'a rien à prouver de plus.
+     */
+    for (let essai = 0; essai < 3; essai++) {
+      try {
+        rmSync(profil, { recursive: true, force: true });
+        break;
+      } catch {
+        await new Promise((suite) => setTimeout(suite, 500));
+      }
+    }
   }
 });

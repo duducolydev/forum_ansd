@@ -71,6 +71,39 @@ services:
     depends_on:
       - app
 
+  # Outils d'exploitation : migrations, données de référence, création d'un
+  # compte d'administration.
+  #
+  # L'image de production ne les embarque pas — elle ne contient que le serveur
+  # Next compilé, sans le client Prisma en ligne de commande ni `tsx` (voir le
+  # Dockerfile, étage `runner`). Ce service reprend l'étage `builder`, qui les a
+  # tous, et ne démarre **jamais** avec la pile : son profil le réserve à un
+  # `run --rm`, le temps d'une commande.
+  #
+  #   docker compose -f docker-compose.prod.yml run --rm outils pnpm prisma migrate deploy
+  #   docker compose -f docker-compose.prod.yml run --rm outils pnpm db:seed
+  #   docker compose -f docker-compose.prod.yml run --rm outils pnpm create:admin …
+  outils:
+    profiles: ["outils"]
+    build:
+      context: .
+      target: builder
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      STORAGE_DRIVER: ${STORAGE_DRIVER}
+      STORAGE_LOCAL_PATH: /app/storage
+      AUTH_SECRET: ${AUTH_SECRET}
+      MAGIC_LINK_SECRET: ${MAGIC_LINK_SECRET}
+      BADGE_HMAC_SECRET: ${BADGE_HMAC_SECRET}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+    volumes:
+      - storage_data:/app/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: "no"
+
   # Renouvellement automatique du certificat (émission initiale : voir README.md).
   certbot:
     image: certbot/certbot

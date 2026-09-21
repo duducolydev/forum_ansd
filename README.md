@@ -42,6 +42,11 @@ rechargement à chaud, + MySQL, Redis, Mailpit, MinIO en option). `docker-compos
 est celui de **production** (image buildée en mode standalone, + MySQL, Redis, nginx +
 Let's Encrypt, sans Mailpit/MinIO) — cf. `PLAN.md` décision C5.
 
+**Déployer sur un serveur** : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md) donne la
+procédure complète, de l'installation de Docker à la bascule HTTPS, en passant par les
+sauvegardes. Le déploiement interne sans domaine utilise en plus
+`docker-compose.interne.yml`.
+
 ## Démarrer la stack locale (image de production)
 
 Un seul script construit l'image si le code a changé, démarre MySQL, Redis, Mailpit puis

@@ -1,5 +1,6 @@
 import "dotenv/config";
 import argon2 from "argon2";
+import IORedis from "ioredis";
 import { expect, type BrowserContext, type Page } from "@playwright/test";
 import { prisma } from "../../src/lib/db";
 
@@ -50,7 +51,38 @@ export async function ensureAdminE2E(): Promise<string> {
     },
   });
 
+  await libererLaCadenceDesCodes(compte.id);
   return compte.id;
+}
+
+/**
+ * Remet à zéro le compteur de demandes de code du compte de test.
+ *
+ * Le second facteur plafonne les demandes à **trois par minute** (PLAN.md §23).
+ * La suite dépasse ce rythme dès qu'elle rejoue plusieurs connexions complètes
+ * — et deux exécutions lancées coup sur coup tombent dans la même fenêtre : un
+ * test sans rapport échouait alors sur « Trop de demandes de code ».
+ *
+ * Le garde-fou n'est pas désactivé pour autant : il garde son propre test
+ * (`src/modules/auth/service.test.ts`), qui vérifie qu'une quatrième demande
+ * est bien refusée. Ce que l'on retire ici, c'est le temps d'attente, pas la
+ * règle.
+ */
+async function libererLaCadenceDesCodes(userId: string): Promise<void> {
+  if (!process.env.REDIS_URL) return;
+  const redis = new IORedis(process.env.REDIS_URL, {
+    maxRetriesPerRequest: null,
+    lazyConnect: true,
+  });
+  try {
+    await redis.connect();
+    await redis.del(`ratelimit:admin-2fa:${userId}`);
+  } catch {
+    // Redis absent : le compteur vit alors dans la mémoire du serveur, hors
+    // d'atteinte d'ici. Rien à faire, et rien à signaler.
+  } finally {
+    redis.disconnect();
+  }
 }
 
 /**

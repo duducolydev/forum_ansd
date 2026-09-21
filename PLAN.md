@@ -3798,3 +3798,130 @@ La propriété visée est que **l'horodatage n'entre pas dans le calcul de l'ETa
 sans quoi le 304 ne servirait jamais. Elle se vérifie sur une seule lecture dont
 on ne change que l'heure, ce qui la met hors d'atteinte des écritures
 concurrentes. Suite unitaire : 480 tests, 46 fichiers, verte.
+
+## 26. Éditeur mis en forme partout, et zones de dépôt (21 septembre 2026)
+
+Demande du commanditaire : les zones d'édition des **contenus** et des
+**actualités** doivent être les mêmes que celles des sections, et les champs de
+fichier doivent devenir des zones de dépôt modernes, partout.
+
+### 26.1 Un seul éditeur pour tout le BackOffice
+
+`EditeurTexteRiche` quitte le module des sections pour `src/components/ui` : il
+équipe désormais les douze zones éditoriales et le corps des actualités. Une
+personne qui a appris à écrire une section sait écrire une actualité.
+
+Ce qui reste en texte simple, et pourquoi :
+
+- **les titres** (`home.hero.title`) : ils sortent dans un `<h1>`, où une liste à
+  puces n'aurait aucun sens ;
+- **le chapô d'une actualité** : il part dans la balise `description` de la page
+  et dans les aperçus partagés sur les réseaux, où le balisage n'a pas sa place.
+
+C'est la **clé** qui décide, pas le formulaire : chaque zone déclare dans
+`keys.ts` si elle est riche et jusqu'où va son texte. La longueur se mesure sur
+le texte **visible**, balisage exclu — sans quoi trois mots en gras compteraient
+pour cent signes. Le serveur renettoie ce que l'éditeur a déjà nettoyé
+(`normaliserBlocContenu`, `normaliserArticle`), parce qu'un champ caché se
+falsifie.
+
+Côté public, `TexteRiche` rend les six cartes d'infos pratiques, les mentions
+légales, la confidentialité et le corps des articles. Aucun HTML n'est injecté :
+une balise tapée à la main s'affiche comme le texte qu'elle est. Les anciennes
+valeurs, écrites en texte brut, restent lisibles telles quelles — rien à migrer.
+
+### 26.2 Deux écrans qui ne disaient rien
+
+Trouvés en écrivant le parcours de test : l'écran des contenus **ne confirmait
+pas** l'enregistrement, et la création d'une actualité laissait un formulaire
+vide, sans un mot. Dans les deux cas, la personne pouvait croire à un échec et
+recommencer. L'un annonce maintenant « Zone enregistrée. », l'autre ramène à la
+liste des articles.
+
+### 26.3 Les zones de dépôt
+
+Un composant unique, `ZoneDepot`, remplace les `<input type="file">` nus dans
+huit écrans : logo de partenaire, termes de référence, contributions, import
+Excel, couverture et galerie d'article, illustration de section, présentation et
+photo d'intervenant. Il annonce les formats acceptés et le poids maximal —
+trois informations que l'on n'avait jusqu'ici qu'après le refus du serveur —,
+montre le fichier retenu avec sa taille et un bouton pour le retirer, et accepte
+le **glisser-déposer**.
+
+Le champ reste un vrai `<input type="file">`, masqué à l'œil (`sr-only`) mais ni
+au clavier ni aux lecteurs d'écran : le formulaire l'envoie comme avant, la
+tabulation l'atteint, et les parcours de test qui le visent par son nom n'ont
+pas bougé. Le dépôt par glisser se contente de poser les fichiers dans ce champ
+puis de déclencher son `change` : un seul chemin d'entrée, donc un seul
+comportement à vérifier.
+
+La photo du participant fait exception : son cadrage rond, son zoom et son
+appel à la caméra font plus que choisir un fichier. Elle garde son widget, et
+gagne seulement le dépôt par glisser.
+
+### 26.4 Ce que la vérification a coûté
+
+Trois passes, et deux défauts **dans les tests** plutôt que dans le produit :
+
+- le parcours de l'actualité attendait l'URL `/admin/contenus/actualites`, que
+  la page de création satisfaisait déjà : un refus de l'action passait pour un
+  succès ;
+- deux exécutions lancées coup sur coup tombaient dans la même minute, et le
+  plafond de trois demandes de code (§23) faisait échouer un test sans rapport.
+  Le parcours remet ce compteur à zéro avant de se connecter ; la règle, elle,
+  garde son propre test unitaire — une quatrième demande dans la minute est
+  refusée.
+
+S'y ajoute un effacement de profil Chrome devenu tolérant : sous Windows, le
+navigateur garde brièvement des fichiers ouverts après la fermeture du contexte,
+et `ENOTEMPTY` faisait tomber un test par ailleurs réussi.
+
+**Vérification** : 480 tests unitaires, **128 tests E2E** (trois nouveaux : un
+texte éditorial mis en forme paraît aussitôt sur le site, une actualité s'écrit
+avec le même éditeur, un fichier glissé est pris comme un fichier choisi), sur
+l'image de production `a4dfe42ffe15`, conteneur recréé et identité vérifiée.
+
+## 27. Déploiement sur le serveur de l'ANSD (21 septembre 2026)
+
+Le portail doit tourner sur un serveur Linux interne (`10.7.200.41`), puis
+s'ouvrir au public sur `forum.ansd.sn`. Choix arrêtés avec le commanditaire :
+recette en interne d'abord, MySQL du compose, construction de l'image sur le
+serveur.
+
+### 27.1 Ce que le dépôt gagne
+
+- `docker-compose.interne.yml` : surcouche qui sert en clair sur le port 80 et
+  met certbot en veille sous un profil `tls` ;
+- `docker/nginx-interne.conf` : le même proxy que la production, sans TLS, et
+  avec la même règle d'adresse cliente (`X-Real-IP` écrasée, jamais complétée —
+  §18) ;
+- un service `outils` dans `docker-compose.prod.yml` ;
+- `docs/DEPLOIEMENT.md` : la procédure, de l'installation de Docker à la
+  bascule HTTPS, avec la liste de contrôle d'avant-ouverture.
+
+### 27.2 Pourquoi un service « outils »
+
+L'image de production ne contient que le serveur Next compilé : ni la ligne de
+commande Prisma, ni `tsx`. `docker compose exec app prisma migrate deploy` aurait
+échoué sur un « command not found » difficile à relier à sa cause. Le service
+`outils` reprend l'étage `builder`, qui les a, ne démarre jamais avec la pile
+(profil `outils`) et vit le temps d'un `run --rm`.
+
+### 27.3 Ce que le HTTP interne coûte
+
+- **Le scanner ne peut pas allumer la caméra** : les navigateurs réservent
+  `getUserMedia` aux origines sécurisées. La recherche par nom prend le relais,
+  mais une répétition d'accueil suppose la bascule HTTPS.
+- Les mots de passe du BackOffice circulent en clair sur le réseau local.
+
+Les deux points sont écrits en tête du document plutôt qu'en note de bas de
+page : ce sont eux qui décident du calendrier de la bascule.
+
+### 27.4 Deux pièges désamorcés d'avance
+
+- **Secrets en hexadécimal** : un `$` dans un fichier `.env` est interprété par
+  Compose, et un mot de passe amputé de sa fin produit une erreur de connexion
+  dont la cause ne saute pas aux yeux.
+- **SMTP d'abord** : sans envoi de courriel, plus aucun administrateur ne se
+  connecte (§23). Le document donne la commande qui teste le port 587 depuis le
+  serveur, avant que la question ne se pose un dimanche soir.

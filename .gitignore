@@ -57,3 +57,7 @@ next-env.d.ts
 # Sauf le guide des agents d'accueil : livrable du brief §14 et source de
 # `pnpm guide:agents`, il doit rester versionné.
 !/docs/guide-agents-accueil.html
+# Sauf la procédure de déploiement : elle se lit **sur le serveur**, après un
+# clone du dépôt. L'exclure reviendrait à la laisser là où personne ne l'a au
+# moment où elle sert.
+!/docs/DEPLOIEMENT.md

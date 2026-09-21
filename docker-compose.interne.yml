@@ -1,0 +1,27 @@
+# Surcouche pour un déploiement **interne**, sans domaine ni TLS (PLAN.md §27).
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.interne.yml up -d
+#
+# Elle ne remplace pas la production : elle l'ajuste sur deux points, le temps
+# de la recette sur le réseau de l'ANSD.
+#
+#   - nginx sert en clair sur le port 80, avec `docker/nginx-interne.conf` ;
+#   - certbot ne démarre pas : il n'a ni domaine public à valider, ni port 80
+#     joignable depuis Internet. Il reste disponible sous le profil `tls`,
+#     pour le jour où le portail passera sur `forum.ansd.sn`.
+#
+# Le port 443 reste publié par la définition de production — une surcouche
+# Compose complète une liste de ports, elle ne la raccourcit pas. Rien n'écoute
+# derrière tant que le TLS n'est pas en place : une connexion y est refusée,
+# ce qui est le comportement attendu et non un incident.
+name: forum-ansd
+
+services:
+  nginx:
+    volumes:
+      - ./docker/nginx-interne.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+
+  certbot:
+    profiles: ["tls"]
