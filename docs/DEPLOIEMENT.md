@@ -322,8 +322,7 @@ qu'elle vaut quelque chose :
 
 ```bash
 chmod +x scripts/*.sh        # sur un clone où le bit d'exécution s'est perdu
-set -a && . ./.env && set +a
-COMPOSE_FILE="docker-compose.prod.yml" ./scripts/backup.sh
+( set -a && . ./.env && set +a && COMPOSE_FILE="docker-compose.prod.yml" ./scripts/backup.sh )
 ls -lh backups/
 ```
 
@@ -338,20 +337,31 @@ disque externe) fait partie de la procédure, pas du script.
 
 ## 4. Vivre avec le portail
 
-| Besoin                   | Commande                                            |
-| ------------------------ | --------------------------------------------------- |
-| Voir l'état              | `forum ps`                                          |
-| Suivre les journaux      | `forum logs -f app`                                 |
-| Redémarrer l'application | `forum restart app`                                 |
-| Arrêter tout             | `forum down` (les données restent dans les volumes) |
-| Mettre à jour            | voir ci-dessous                                     |
+| Besoin                       | Commande                                            |
+| ---------------------------- | --------------------------------------------------- |
+| Voir l'état                  | `forum ps`                                          |
+| Suivre les journaux          | `forum logs -f app`                                 |
+| Redémarrer l'application     | `forum restart app`                                 |
+| Arrêter tout                 | `forum down` (les données restent dans les volumes) |
+| Changer une valeur du `.env` | `forum up -d app` — voir l'avertissement plus bas   |
+| Mettre à jour                | voir ci-dessous                                     |
+
+Changer un secret ou une adresse dans le `.env` ne demande **aucune
+reconstruction** : les valeurs sont injectées au démarrage du conteneur, pas
+au moment de la construction de l'image. Un `forum up -d app` suffit. Si
+Compose répond « Running » au lieu de « Recreated », il n'a rien vu changer —
+lire l'avertissement sur les parenthèses, quelques lignes plus bas, et vérifier
+dans le conteneur plutôt que dans le fichier :
+
+```bash
+forum exec app printenv SMTP_HOST SMTP_USER SMTP_FROM
+```
 
 Mise à jour après une évolution du code :
 
 ```bash
 cd /opt/forum-ansd
-set -a && . ./.env && set +a              # le script de sauvegarde lit MYSQL_*
-./scripts/backup.sh                       # d'abord la sauvegarde
+( set -a && . ./.env && set +a && ./scripts/backup.sh )   # d'abord la sauvegarde
 git pull
 forum build app
 forum up -d app
@@ -361,10 +371,19 @@ forum run --rm outils pnpm prisma migrate deploy
 L'ordre compte : la sauvegarde d'abord, les migrations après le démarrage de la
 nouvelle image — elles sont écrites pour elle.
 
-La première ligne n'est pas facultative : `backup.sh` s'arrête net sans
+Le chargement du `.env` n'est pas facultatif : `backup.sh` s'arrête net sans
 `MYSQL_DATABASE`, `MYSQL_USER` et `MYSQL_PASSWORD`, qu'un shell interactif ne
 connaît pas de lui-même. Les migrations, elles, sont idempotentes : la commande
 ne coûte rien quand la mise à jour n'en apporte aucune.
+
+**Les parenthèses ne sont pas décoratives.** Chargé dans le shell courant, le
+`.env` y **exporte** toutes ses valeurs — et Docker Compose fait passer les
+variables du shell **avant** le fichier `.env`. Un `forum up` lancé ensuite
+résout donc l'ancien contenu, ne voit aucun changement et laisse le conteneur
+en place : la modification paraît appliquée alors qu'elle ne l'est pas.
+Constaté le 22 septembre 2026 sur un changement de `SMTP_PASSWORD`, où Compose
+répondait « Running » au lieu de « Recreated ». Le sous-shell meurt avec la
+sauvegarde et n'en laisse rien derrière lui.
 
 ---
 
