@@ -8,6 +8,7 @@ import { ecrireEtatMenu, type EtatMenu } from "@/lib/sidebar";
 import { utiliseLaCamera } from "@/lib/pages-camera";
 import { menuPour, type NavGroup } from "./nav";
 import { MenuUtilisateur } from "./menu-utilisateur";
+import { LogoForum } from "../site/logo-forum";
 
 /**
  * Navigation du BackOffice : repliable, en rubriques dépliables.
@@ -78,16 +79,27 @@ export function AdminSidebar({
     >
       <div className={`mb-3 flex items-center ${replie ? "justify-center" : "justify-between"}`}>
         {!replie && (
-          <Link href="/admin" className="flex items-center gap-2.5 px-1">
-            <span
-              aria-hidden
-              className="bg-ansd-bleu-nuit grid h-8 w-8 grid-cols-3 items-end gap-[2px] rounded-lg p-[4px]"
-            >
-              <i className="block h-[40%] rounded-sm bg-[#7FB3E6]" />
-              <i className="bg-ansd-vert-vif block h-[70%] rounded-sm" />
-              <i className="block h-full rounded-sm bg-white" />
-            </span>
-            <b className="font-display text-[0.92rem] text-white">Forum ANSD</b>
+          /*
+           * Logo officiel plutôt que la pastille de barres qui tenait cette
+           * place, et sans le libellé « Forum ANSD » qui le doublait : le logo
+           * porte déjà le nom.
+           *
+           * Il est posé sur un fond **clair**, et non directement sur le
+           * panneau : son texte est en bleu nuit, illisible sur le bleu foncé
+           * de la barre latérale. C'est la même raison qui garde la barre du
+           * site public en fond clair, thème sombre compris.
+           *
+           * Un seul lien, vers le tableau de bord. Un second lien vers
+           * l'accueil, imbriqué dans celui-ci, ne serait pas du HTML valide :
+           * le navigateur fermerait le premier en rencontrant le second, et
+           * React signalerait une erreur d'hydratation à chaque chargement.
+           */
+          <Link
+            href="/admin"
+            aria-label="Forum ANSD — tableau de bord"
+            className="flex items-center rounded-lg bg-white/95 px-2.5 py-1.5"
+          >
+            <LogoForum alt="" hauteur="h-11" prioritaire />
           </Link>
         )}
         <button

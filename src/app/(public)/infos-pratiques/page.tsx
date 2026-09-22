@@ -3,6 +3,7 @@ import {
   Bed,
   Building2,
   BusFront,
+  Info,
   Mail,
   PlaneLanding,
   StampIcon,
@@ -87,6 +88,7 @@ export default async function PracticalInfoPage() {
           niveau="h1"
           surtitre={locale === "en" ? "Before you come" : "Avant de venir"}
           titre={t("practicalInfo")}
+          icone={Info}
           description={`${edition.venue} · ${edition.city}`}
         />
       </BandeauPage>

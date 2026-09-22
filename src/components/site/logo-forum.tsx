@@ -22,7 +22,7 @@ export function LogoForum({
   /** Vide quand le lien qui l'entoure porte déjà le nom (en-tête). */
   alt: string;
   /** Classe de hauteur de l'image, la largeur suit le rapport du logo. */
-  hauteur: "h-11" | "h-14";
+  hauteur: "h-11" | "h-14" | "h-16";
   prioritaire?: boolean;
 }) {
   return (

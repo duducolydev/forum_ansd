@@ -35,6 +35,21 @@ import type { DonneesSections } from "../donnees";
  * déjà vérifiés en contraste ; les dégradés décoratifs ne portent aucun texte.
  */
 
+/**
+ * Statistiques de participation du bandeau d'accueil : masquées (demande du
+ * commanditaire, 22 septembre 2026), le temps que les inscriptions démarrent.
+ *
+ * Un compteur qui annonce douze confirmés sur une page d'accueil publiée avant
+ * l'ouverture dessert le Forum plus qu'il ne le sert. Le compte à rebours, lui,
+ * reste : il dit la même chose sans chiffre à comparer.
+ *
+ * Un interrupteur plutôt qu'un bloc mis en commentaire : le code reste compilé,
+ * relu par TypeScript et par ESLint, donc encore juste le jour où il faudra le
+ * rallumer — repasser cette constante à `true` suffit, et rien d'autre n'est à
+ * retrouver.
+ */
+const STATS_ACCUEIL_VISIBLES: boolean = false;
+
 interface Props {
   section: PageSection;
   donnees: DonneesSections;
@@ -155,6 +170,7 @@ export function RenduSection({ section, donnees, locale }: Props) {
         timeZone: "Africa/Dakar",
       });
       const stats = donnees.stats;
+      const accroche = texte(section, "titre", locale);
       const avecCompteur = section.variant === "avec-compteur" && stats;
       const maxPays = Math.max(1, ...(stats?.topCountries.map((row) => row.count) ?? [1]));
 
@@ -189,8 +205,25 @@ export function RenduSection({ section, donnees, locale }: Props) {
               }}
             />
           )}
+          {/*
+           * Nom du Forum, en tête du bandeau et sur toute la largeur du cadre
+           * (demande du commanditaire, 22 septembre 2026) — donc au-dessus du
+           * repère de dates et de lieu, et hors de la grille : logé dans la
+           * colonne de gauche, il tenait sur une demi-largeur et se cassait en
+           * deux lignes à côté du compte à rebours.
+           *
+           * Il porte le `h1` de la page : l'accroche qui suit est un `h2`, pour
+           * que la hiérarchie des titres reste celle que lisent les navigations
+           * par titres. Les capitales sont celles du logo officiel, affiché
+           * quelques centimètres plus haut — deux graphies du même nom sur le
+           * même écran se remarquent.
+           */}
+          <Reveal className={`${CADRE} relative pt-14`}>
+            <h1 className="titre-forum">{edition.title}</h1>
+          </Reveal>
+
           <div
-            className={`${CADRE} grid items-center gap-13 py-20 ${
+            className={`${CADRE} relative grid items-center gap-13 pt-8 pb-20 ${
               avecCompteur
                 ? decorAGauche
                   ? "grid-cols-1 lg:grid-cols-[0.9fr_1.1fr]"
@@ -224,9 +257,9 @@ export function RenduSection({ section, donnees, locale }: Props) {
                *   et aucune règle CSS ne plafonne cet étirement.
                */}
               <div className="max-w-[54ch] text-lg">
-                <h1 className="mb-5 text-center text-balance">
-                  {texte(section, "titre", locale) || edition.title}
-                </h1>
+                {accroche && accroche !== edition.title && (
+                  <h2 className="mb-5 text-center text-balance">{accroche}</h2>
+                )}
                 <TexteRiche
                   valeur={texte(section, "chapo", locale) || edition.theme || ""}
                   className="text-text-2 mb-8 text-justify leading-relaxed hyphens-auto"
@@ -250,39 +283,43 @@ export function RenduSection({ section, donnees, locale }: Props) {
 
                   <Countdown targetIso={edition.startDate.toISOString()} />
 
-                  <div className="border-dark-panel-line mt-5 flex items-end gap-3 border-t pt-4">
-                    <Users aria-hidden size={20} className="text-ansd-vert-vif mb-1 shrink-0" />
-                    <b className="num font-display text-[2.1rem] leading-none font-extrabold">
-                      {stats.confirmedParticipants}
-                    </b>
-                    <span className="text-dark-panel-muted pb-1 text-sm">
-                      {en ? "confirmed" : "confirmés"}
-                      <span aria-hidden className="mx-1.5">
-                        ·
-                      </span>
-                      <Globe2 aria-hidden size={13} className="mb-0.5 inline" />{" "}
-                      {stats.countryCount} {en ? "countries" : "pays"}
-                    </span>
-                  </div>
-
-                  {stats.topCountries.length > 0 && (
-                    <div className="mt-4 flex flex-col gap-2">
-                      {stats.topCountries.map((row) => (
-                        <div
-                          key={row.country}
-                          className="text-dark-panel-muted flex items-center gap-2.5 text-xs"
-                        >
-                          <span className="w-20 shrink-0 truncate">{row.country}</span>
-                          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-                            <span
-                              className="from-ansd-vert-vif to-ansd-bleu-vif block h-full rounded-full bg-gradient-to-r"
-                              style={{ width: `${Math.max(6, (row.count / maxPays) * 100)}%` }}
-                            />
+                  {STATS_ACCUEIL_VISIBLES && (
+                    <>
+                      <div className="border-dark-panel-line mt-5 flex items-end gap-3 border-t pt-4">
+                        <Users aria-hidden size={20} className="text-ansd-vert-vif mb-1 shrink-0" />
+                        <b className="num font-display text-[2.1rem] leading-none font-extrabold">
+                          {stats.confirmedParticipants}
+                        </b>
+                        <span className="text-dark-panel-muted pb-1 text-sm">
+                          {en ? "confirmed" : "confirmés"}
+                          <span aria-hidden className="mx-1.5">
+                            ·
                           </span>
-                          <span className="w-6 text-right tabular-nums">{row.count}</span>
+                          <Globe2 aria-hidden size={13} className="mb-0.5 inline" />{" "}
+                          {stats.countryCount} {en ? "countries" : "pays"}
+                        </span>
+                      </div>
+
+                      {stats.topCountries.length > 0 && (
+                        <div className="mt-4 flex flex-col gap-2">
+                          {stats.topCountries.map((row) => (
+                            <div
+                              key={row.country}
+                              className="text-dark-panel-muted flex items-center gap-2.5 text-xs"
+                            >
+                              <span className="w-20 shrink-0 truncate">{row.country}</span>
+                              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                                <span
+                                  className="from-ansd-vert-vif to-ansd-bleu-vif block h-full rounded-full bg-gradient-to-r"
+                                  style={{ width: `${Math.max(6, (row.count / maxPays) * 100)}%` }}
+                                />
+                              </span>
+                              <span className="w-6 text-right tabular-nums">{row.count}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      )}
+                    </>
                   )}
                 </div>
               </Reveal>

@@ -33,9 +33,18 @@ export function EnteteSection({
   action?: ReactNode;
   centre?: boolean;
   /**
-   * En-tête posé dans un `BandeauPage` : sans marge dessous — le `py` du
-   * bandeau fournit la respiration —, et resserré, le bandeau étant ramené au
-   * strict nécessaire (PLAN.md §19).
+   * En-tête posé dans un `BandeauPage` : **le titre seul**, sans marge dessous
+   * — le `py` du bandeau fournit la respiration.
+   *
+   * `surtitre` et `description` sont alors **ignorés** (demande du
+   * commanditaire, 22 septembre 2026). Un bandeau de trois niveaux repoussait
+   * la liste des intervenants, la grille du programme ou le formulaire
+   * d'inscription sous la ligne de flottaison : le visiteur arrivait sur une
+   * page dont il ne voyait que le nom, qu'il venait de cliquer.
+   *
+   * Les deux propriétés restent acceptées et continuent d'être passées par les
+   * pages : c'est ici, en un seul endroit, qu'on décide de les afficher ou non
+   * — les rallumer plus tard ne demandera pas de retrouver onze textes effacés.
    *
    * Un booléen plutôt qu'une classe passée par `className` : `mb-8` et `mb-0`
    * sont deux utilitaires de la même propriété, et c'est l'ordre de la feuille
@@ -44,6 +53,8 @@ export function EnteteSection({
   bandeau?: boolean;
 }) {
   const Titre = niveau;
+  const surtitreVisible = bandeau ? undefined : surtitre;
+  const descriptionVisible = bandeau ? undefined : description;
 
   return (
     <div
@@ -52,11 +63,9 @@ export function EnteteSection({
       }`}
     >
       <div className={centre ? "max-w-[62ch]" : "max-w-[62ch]"}>
-        {surtitre && (
-          <span
-            className={`surtitre ${bandeau ? "mb-1" : "mb-3"} ${centre ? "justify-center" : ""}`}
-          >
-            {surtitre}
+        {surtitreVisible && (
+          <span className={`surtitre mb-3 ${centre ? "justify-center" : ""}`}>
+            {surtitreVisible}
           </span>
         )}
         <Titre className="flex items-center gap-3">
@@ -69,9 +78,7 @@ export function EnteteSection({
           )}
           {titre}
         </Titre>
-        {description && (
-          <p className={bandeau ? "text-text-2 mt-1" : "text-text-2 mt-3 text-lg"}>{description}</p>
-        )}
+        {descriptionVisible && <p className="text-text-2 mt-3 text-lg">{descriptionVisible}</p>}
       </div>
       {action}
     </div>

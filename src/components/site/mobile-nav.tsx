@@ -37,7 +37,7 @@ export function MobileNav({
       </button>
       {open && (
         <nav
-          className="border-border bg-bg absolute inset-x-0 top-[72px] flex max-h-[calc(100vh-72px)] flex-col gap-1 overflow-y-auto border-b p-3"
+          className="border-border bg-bg absolute inset-x-0 top-[80px] flex max-h-[calc(100vh-80px)] flex-col gap-1 overflow-y-auto border-b p-3"
           aria-label={t("menu")}
         >
           {entries.map((entry) =>

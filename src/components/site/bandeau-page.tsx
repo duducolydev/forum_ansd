@@ -13,12 +13,12 @@ import type { ReactNode } from "react";
  * les 1200 px de la maquette. Le bandeau doit reprendre celle du contenu qu'il
  * annonce, sinon le titre flotte au-dessus d'une colonne décalée.
  *
- * **Hauteur ramenée au strict nécessaire** (PLAN.md §19) : 243 px sur écran de
- * bureau, mesurés, pour un sur-titre, un titre et une phrase — le contenu de la
- * page commençait sous la ligne de flottaison des écrans portables. Le `py` est
- * réduit, et le titre (`.bandeau-page h1`), le sur-titre et la phrase se
- * resserrent : `EnteteSection bandeau` et les pages à bandeau composé le font
- * chacune de leur côté.
+ * **Hauteur ramenée au strict nécessaire** (PLAN.md §19, puis demande du
+ * commanditaire le 22 septembre 2026) : le bandeau ne porte plus que le titre.
+ * Le sur-titre et la phrase d'explication ont été retirés de `EnteteSection`
+ * en mode bandeau, et le `py` descend à sa dernière marche — le contenu de la
+ * page commençait sous la ligne de flottaison sur écran portable, et c'est lui
+ * que le visiteur vient chercher, pas la redite du nom de la page.
  */
 export const LARGEURS = {
   large: "max-w-[1200px]",
@@ -36,7 +36,7 @@ export function BandeauPage({
   children: ReactNode;
 }) {
   return (
-    <section className="fond-bandeau bandeau-page border-border border-b py-5">
+    <section className="fond-bandeau bandeau-page border-border border-b py-3">
       <div className={`mx-auto px-6 ${LARGEURS[largeur]}`}>{children}</div>
     </section>
   );

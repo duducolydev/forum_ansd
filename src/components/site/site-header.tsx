@@ -42,7 +42,15 @@ export async function SiteHeader() {
 
   return (
     <header className="fond-navbar sticky top-0 z-50 shadow-[0_1px_0_rgb(8_44_78/0.12)]">
-      <div className="mx-auto flex h-[72px] max-w-[1200px] items-center justify-between gap-3 px-6">
+      {/*
+        Barre portée de 72 à 80 px pour un logo nettement plus grand (demande du
+        commanditaire, 22 septembre 2026). Le logo occupe 64 des 80 px : le
+        reste est la respiration minimale au-dessus et au-dessous, sans quoi il
+        touche le bord de la barre. Huit pixels de plus sur une barre collante
+        se paient sur toutes les pages — c'est le contrepoids des bandeaux de
+        page resserrés au même moment.
+      */}
+      <div className="mx-auto flex h-[80px] max-w-[1200px] items-center justify-between gap-3 px-6">
         {/* Le logo officiel porte déjà le nom du Forum : le lien reçoit un nom
             accessible explicite et l'image, décorative ici, un texte vide. */}
         <Link
@@ -50,7 +58,7 @@ export async function SiteHeader() {
           aria-label="Forum international sur les données — accueil"
           className="focus-visible:outline-ansd-bleu-nuit shrink-0 rounded-xl"
         >
-          <LogoForum alt="" hauteur="h-11" prioritaire />
+          <LogoForum alt="" hauteur="h-16" prioritaire />
         </Link>
 
         <nav className="hidden shrink-0 items-center gap-0.5 lg:flex" aria-label={t("menu")}>
