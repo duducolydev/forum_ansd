@@ -1,7 +1,7 @@
 # Déployer le portail sur un serveur Linux
 
 Procédure suivie pour le serveur interne de l'ANSD (`10.7.200.41`), puis pour
-l'ouverture au public sur `forum.ansd.sn`. Chaque commande se lance **sur le
+l'ouverture au public sur `forum2026.ansd.sn`. Chaque commande se lance **sur le
 serveur**, dans une session SSH, sauf mention contraire.
 
 Ce que la pile installe : l'application (image construite depuis ce dépôt),
@@ -136,7 +136,7 @@ MYSQL_ROOT_PASSWORD="$(openssl rand -hex 16)"
 
 cat > .env <<EOF
 # --- Adresse du portail ---------------------------------------------------
-# Recette interne. À remplacer par https://forum.ansd.sn à l'ouverture (§5).
+# Recette interne. À remplacer par https://forum2026.ansd.sn à l'ouverture (§5).
 PUBLIC_BASE_URL="http://10.7.200.41"
 AUTH_URL="http://10.7.200.41"
 
@@ -387,43 +387,126 @@ sauvegarde et n'en laisse rien derrière lui.
 
 ---
 
-## 5. Passer en HTTPS sur `forum.ansd.sn`
+## 5. Passer en HTTPS sur `forum2026.ansd.sn`
 
 À faire avant toute ouverture au public, et avant la première répétition
-d'accueil avec le scanner.
+d'accueil avec le scanner : le navigateur réserve la caméra aux origines
+sécurisées, donc le scanner de badges ne lit aucun QR tant que le portail est
+servi en clair.
 
-1. **DNS et pare-feu** : faire pointer `forum.ansd.sn` sur l'adresse publique du
-   serveur, ouvrir 80 et 443 depuis Internet. Vérifier :
-   `dig +short forum.ansd.sn` puis, depuis l'extérieur, `curl -I http://forum.ansd.sn/`.
+Le domaine a été arrêté le 22 septembre 2026. Il est déjà écrit dans
+`docker/nginx.conf` : il n'y a rien à y modifier.
 
-2. **Adresse du portail** : dans `/opt/forum-ansd/.env`, remplacer les deux
-   premières lignes par `https://forum.ansd.sn`.
+### 5.1 La question à régler avec la DSI avant tout le reste
 
-3. **Certificat** : émettre le premier certificat, nginx servant encore en HTTP.
+Tout dépend d'une chose : **le serveur est-il joignable depuis Internet ?**
+
+Let's Encrypt vérifie qu'on possède bien le domaine en venant lire un fichier
+sur le port 80, **depuis l'extérieur**. Le serveur porte aujourd'hui une adresse
+privée (`10.7.200.41`), qui n'est joignable de nulle part ailleurs que du réseau
+de l'ANSD. Deux chemins, donc, et ils n'ont rien de commun :
+
+| Situation                                               | Chemin                              |
+| ------------------------------------------------------- | ----------------------------------- |
+| Le portail s'ouvre au public, 80 et 443 depuis Internet | Let's Encrypt par le web (§5.3)     |
+| Le portail reste sur le réseau de l'ANSD                | certificat fourni par la DSI (§5.4) |
+
+Poser la question dans ces termes : « `forum2026.ansd.sn` doit-il résoudre vers
+une adresse publique, et les ports 80 et 443 sont-ils ouverts depuis Internet
+vers ce serveur ? » La réponse décide de la suite.
+
+### 5.2 Dans les deux cas : DNS et adresse du portail
+
+1. **DNS** : faire créer par la DSI un enregistrement `A` pour
+   `forum2026.ansd.sn`, vers l'adresse publique du serveur si le portail
+   s'ouvre, vers `10.7.200.41` s'il reste interne. Vérifier depuis un poste du
+   réseau : `dig +short forum2026.ansd.sn`.
+
+2. **Adresse du portail** : dans `/opt/forum-ansd/.env`, passer les deux
+   premières lignes à `https://forum2026.ansd.sn`.
 
    ```bash
    cd /opt/forum-ansd
-   forum run --rm --entrypoint certbot certbot certonly --webroot \
-     -w /var/www/certbot -d forum.ansd.sn --agree-tos -m forum@ansd.sn --no-eff-email
+   sed -i 's|^PUBLIC_BASE_URL=.*|PUBLIC_BASE_URL="https://forum2026.ansd.sn"|' .env
+   sed -i 's|^AUTH_URL=.*|AUTH_URL="https://forum2026.ansd.sn"|' .env
+   grep -E '^(PUBLIC_BASE_URL|AUTH_URL)=' .env
    ```
 
-4. **Bascule** : repasser sur la configuration HTTPS du dépôt
-   (`docker/nginx.conf`, déjà écrite pour `forum.ansd.sn`), en laissant tomber la
-   surcouche interne :
+   Aucune reconstruction n'est nécessaire, ces valeurs sont lues au démarrage du
+   conteneur. Attention en revanche au piège des variables du shell décrit au
+   §4 : si le `.env` a été chargé dans la session courante, ouvrir un nouveau
+   terminal avant la bascule, ou `unset PUBLIC_BASE_URL AUTH_URL`.
 
-   ```bash
-   docker compose -f docker-compose.prod.yml up -d
-   ```
+### 5.3 Portail public : certificat Let's Encrypt
 
-   Le service `certbot` renouvelle alors le certificat tous les douze heures
-   sans intervention.
+Vérifier d'abord, **depuis un poste hors du réseau de l'ANSD**, que le serveur
+répond : `curl -I http://forum2026.ansd.sn/`. Sans cela l'émission échouera, et
+Let's Encrypt limite le nombre d'échecs par domaine et par heure.
 
-5. **Vérifier** : `curl -I https://forum.ansd.sn/` doit répondre 200, et
-   `http://` rediriger en 301. Le scanner allume la caméra à partir de là.
+```bash
+cd /opt/forum-ansd
+forum run --rm --entrypoint certbot certbot certonly --webroot \
+  -w /var/www/certbot -d forum2026.ansd.sn --agree-tos -m forum@ansd.sn --no-eff-email
+```
 
-6. **Reconnexion obligatoire** : le changement d'adresse invalide les sessions
-   ouvertes. Prévenir les personnes concernées plutôt que de les laisser croire
-   à une panne.
+nginx sert encore en clair à ce moment-là, et c'est voulu : la configuration
+interne répond elle aussi au défi ACME sur `/.well-known/acme-challenge/`.
+
+### 5.4 Portail interne : certificat fourni par la DSI
+
+Let's Encrypt est ici hors de portée par le web. Deux solutions, dans cet ordre
+de préférence :
+
+- un certificat émis par l'autorité interne de l'ANSD, déjà reconnue par les
+  postes du parc, donc aucun avertissement pour les utilisateurs ;
+- un certificat public obtenu par validation **DNS**, qui ne demande pas que le
+  serveur soit joignable, mais l'accès à la zone `ansd.sn` chez l'hébergeur DNS.
+
+Dans les deux cas, déposer les deux fichiers là où nginx les attend, puis couper
+le renouvellement automatique, qui n'aurait rien à renouveler :
+
+```bash
+cd /opt/forum-ansd    # fullchain.pem et privkey.pem déposés ici
+docker run --rm -v forum-ansd_certbot_conf:/c -v "$PWD":/src alpine sh -c \
+  'mkdir -p /c/live/forum2026.ansd.sn && cp /src/fullchain.pem /src/privkey.pem /c/live/forum2026.ansd.sn/'
+docker compose -f docker-compose.prod.yml up -d --scale certbot=0
+```
+
+**Noter la date d'expiration dans un agenda partagé.** Un certificat de la DSI
+ne se renouvelle pas tout seul, et il expire toujours un vendredi soir.
+
+### 5.5 Bascule, dans les deux cas
+
+Repasser sur la configuration HTTPS du dépôt en laissant tomber la surcouche
+interne, c'est-à-dire en ne passant plus que le fichier de production :
+
+```bash
+cd /opt/forum-ansd
+docker compose -f docker-compose.prod.yml up -d
+```
+
+L'alias `forum` charge les deux fichiers : il sert la recette interne, pas la
+production HTTPS. Le mettre à jour une fois la bascule faite :
+
+```bash
+sed -i '/alias forum=/d' ~/.bashrc
+echo "alias forum='docker compose -f /opt/forum-ansd/docker-compose.prod.yml'" >> ~/.bashrc
+```
+
+### 5.6 Vérifier
+
+```bash
+curl -I https://forum2026.ansd.sn/     # 200 attendu
+curl -I http://forum2026.ansd.sn/      # 301 vers https
+```
+
+Le scanner allume la caméra à partir de là. C'est le moment de la répétition
+d'accueil.
+
+### 5.7 Reconnexion obligatoire
+
+Le changement d'adresse invalide les sessions ouvertes du BackOffice. Prévenir
+les personnes concernées plutôt que de les laisser croire à une panne.
 
 ---
 

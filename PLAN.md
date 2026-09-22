@@ -153,7 +153,8 @@ Ces points n'empêchent pas de démarrer le Lot 0 : aucun ne remet en cause l'ar
       lui-même (le conteneur `app` en mode dev n'a pas été relancé après validation de l'image
       de prod) ; le comportement de chaque service pris isolément a néanmoins été validé.
 - [x] `docker-compose.prod.yml` : app (image `runner`), mysql, redis, nginx + certbot
-      (`docker/nginx.conf`, domaine `forum.ansd.sn` en placeholder — cf. décision C6).
+      (`docker/nginx.conf`, domaine `forum2026.ansd.sn` — décision C6, arrêtée le
+      22 septembre 2026).
 - [x] `healthcheck` `/api/health` (`src/app/api/health/route.ts`) : vérifie une requête DB réelle.
 - [x] `.env.example` commenté (DB, Redis, SMTP, secrets, CAPTCHA, domaine).
 
@@ -3884,7 +3885,7 @@ l'image de production `a4dfe42ffe15`, conteneur recréé et identité vérifiée
 ## 27. Déploiement sur le serveur de l'ANSD (21 septembre 2026)
 
 Le portail doit tourner sur un serveur Linux interne (`10.7.200.41`), puis
-s'ouvrir au public sur `forum.ansd.sn`. Choix arrêtés avec le commanditaire :
+s'ouvrir au public sur `forum2026.ansd.sn`. Choix arrêtés avec le commanditaire :
 recette en interne d'abord, MySQL du compose, construction de l'image sur le
 serveur.
 

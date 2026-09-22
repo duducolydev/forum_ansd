@@ -8,7 +8,7 @@
 #   - nginx sert en clair sur le port 80, avec `docker/nginx-interne.conf` ;
 #   - certbot ne démarre pas : il n'a ni domaine public à valider, ni port 80
 #     joignable depuis Internet. Il reste disponible sous le profil `tls`,
-#     pour le jour où le portail passera sur `forum.ansd.sn`.
+#     pour le jour où le portail passera sur `forum2026.ansd.sn`.
 #
 # Le port 443 reste publié par la définition de production — une surcouche
 # Compose complète une liste de ports, elle ne la raccourcit pas. Rien n'écoute
