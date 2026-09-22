@@ -350,6 +350,7 @@ Mise à jour après une évolution du code :
 
 ```bash
 cd /opt/forum-ansd
+set -a && . ./.env && set +a              # le script de sauvegarde lit MYSQL_*
 ./scripts/backup.sh                       # d'abord la sauvegarde
 git pull
 forum build app
@@ -359,6 +360,11 @@ forum run --rm outils pnpm prisma migrate deploy
 
 L'ordre compte : la sauvegarde d'abord, les migrations après le démarrage de la
 nouvelle image — elles sont écrites pour elle.
+
+La première ligne n'est pas facultative : `backup.sh` s'arrête net sans
+`MYSQL_DATABASE`, `MYSQL_USER` et `MYSQL_PASSWORD`, qu'un shell interactif ne
+connaît pas de lui-même. Les migrations, elles, sont idempotentes : la commande
+ne coûte rien quand la mise à jour n'en apporte aucune.
 
 ---
 
