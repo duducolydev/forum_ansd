@@ -32,21 +32,30 @@ risque est assumé ; il ne l'est plus dès que le portail est joignable au-delà
 docker --version && docker compose version
 ```
 
-Si l'une des deux commandes échoue, installer Docker Engine et son plugin
-Compose (dépôt officiel Docker, Debian/Ubuntu) :
+Si l'une des deux commandes échoue, installer les paquets de la distribution —
+**les trois à la fois** :
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl gnupg
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/$(. /etc/os-release && echo "$ID")/gpg \
-  | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-https://download.docker.com/linux/$(. /etc/os-release && echo "$ID") \
-$(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
-  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo apt-get install -y docker.io docker-compose-v2 docker-buildx
+```
+
+`docker.io` seul ne suffit pas, et c'est le piège : le moteur s'installe,
+`docker --version` répond, puis `docker compose` échoue sur un
+« unknown command ». Compose v2 et buildx sont deux paquets séparés, que l'`apt`
+d'Ubuntu se contente de mentionner parmi ses suggestions. Buildx n'est pas
+facultatif non plus : `docker compose build` passe par BuildKit, et le service
+`outils` vise un étage précis du Dockerfile.
+
+> Le dépôt officiel de Docker (`download.docker.com`) reste une option sur les
+> versions d'Ubuntu qu'il publie. Il n'en avait aucune pour Ubuntu 25.10
+> (« resolute ») lors de cette installation : les paquets de la distribution
+> sont alors la voie la plus courte.
+
+Vérifier les trois :
+
+```bash
+docker --version && docker compose version && docker buildx version
 ```
 
 Puis autoriser l'utilisateur courant à piloter Docker sans `sudo` — **se
@@ -55,6 +64,13 @@ l'ouverture de session :
 
 ```bash
 sudo usermod -aG docker "$USER"
+```
+
+Une fois reconnecté, un seul essai vérifie à la fois l'accès au démon et la
+sortie vers Internet, dont dépend toute la construction :
+
+```bash
+docker run --rm hello-world
 ```
 
 ### 1.2 Vérifier la place et la mémoire
@@ -90,15 +106,33 @@ cd /opt/forum-ansd
 Le chemin `/opt/forum-ansd` n'est pas arbitraire : c'est celui qu'attend la
 tâche de sauvegarde (`scripts/backup.cron`).
 
+Le dernier argument de `git clone` compte : sans lui, git crée un sous-dossier
+`forum_ansd`, et toutes les commandes suivantes cherchent les fichiers un cran
+trop haut. Si c'est arrivé, remonter le contenu plutôt que tout recommencer :
+
+```bash
+cd /opt/forum-ansd
+shopt -s dotglob && mv forum_ansd/* . && rmdir forum_ansd && shopt -u dotglob
+```
+
 ### 2.2 Écrire le fichier `.env`
 
 Les secrets sont **générés sur le serveur** : ceux de `.env.example` sont des
 exemples publiés, et ceux du poste de développement n'ont rien à faire ici.
 
+Les deux mots de passe MySQL sont tirés **avant** le fichier, parce que le même
+mot de passe doit figurer dans `MYSQL_PASSWORD` et dans `DATABASE_URL`. D'où le
+garde-fou de la troisième ligne : sans lui, un bloc collé à moitié écrit un
+`.env` aux mots de passe vides, et la panne ne se manifeste que deux étapes plus
+loin, sur un conteneur MySQL « unhealthy » qui refuse de s'initialiser.
+
+Coller **tout le bloc d'un seul tenant** :
+
 ```bash
 cd /opt/forum-ansd
 MYSQL_PASSWORD="$(openssl rand -hex 16)"
 MYSQL_ROOT_PASSWORD="$(openssl rand -hex 16)"
+: "${MYSQL_PASSWORD:?génération échouée}" "${MYSQL_ROOT_PASSWORD:?génération échouée}"
 
 cat > .env <<EOF
 # --- Adresse du portail ---------------------------------------------------
@@ -140,6 +174,15 @@ TURNSTILE_SECRET_KEY=""
 EOF
 
 chmod 600 .env
+```
+
+Puis **vérifier que les cinq secrets sont bien là**, sans les afficher : chaque
+commande doit répondre le nombre indiqué en commentaire.
+
+```bash
+grep -cE '^(MYSQL_PASSWORD|MYSQL_ROOT_PASSWORD)="[0-9a-f]{32}"$' .env              # 2
+grep -cE '^(AUTH_SECRET|MAGIC_LINK_SECRET|BADGE_HMAC_SECRET)="[0-9a-f]{64}"$' .env # 3
+grep -cE '^DATABASE_URL="mysql://forum:[0-9a-f]{32}@mysql:3306/forum_ansd"$' .env  # 1
 ```
 
 Les secrets sont tirés en **hexadécimal** : un `$` dans un fichier `.env` est
@@ -196,9 +239,40 @@ modèles de messages. Il est idempotent : le rejouer ne duplique rien.
 
 ### 2.5 Créer le premier administrateur
 
+**`prenom.nom@ansd.sn` et `MotDePasseLongEtUnique` sont des exemples à
+remplacer**, pas des valeurs à coller. L'adresse doit être une boîte réelle et
+relevée : la 2FA envoie un code à chaque connexion, et un compte dont l'adresse
+n'existe pas est un compte dont personne ne pourra jamais ouvrir la session. Le
+mot de passe, lui, est publié ici — c'est donc le contraire d'un secret.
+
+Les deux valeurs sont d'abord posées dans des variables, ce qui rend l'oubli
+impossible : un placeholder laissé en l'état arrête la commande au lieu de
+créer le compte.
+
 ```bash
-forum run --rm outils pnpm create:admin \
-  prenom.nom@ansd.sn 'UnMotDePasseLongEtUnique' SUPER_ADMIN
+ADMIN_EMAIL="prenom.nom@ansd.sn"          # ← la vraie adresse
+ADMIN_PASSWORD='MotDePasseLongEtUnique'   # ← le vrai mot de passe, 12 car. minimum
+case "$ADMIN_EMAIL$ADMIN_PASSWORD" in *prenom.nom*|*MotDePasseLongEtUnique*)
+  echo "Exemples non remplacés — commande abandonnée." ;; *)
+  forum run --rm outils pnpm create:admin "$ADMIN_EMAIL" "$ADMIN_PASSWORD" SUPER_ADMIN ;;
+esac
+unset ADMIN_PASSWORD
+```
+
+L'appel à `create:admin` tient sur **une seule ligne** : coupée par un `\`, elle
+part sans ses arguments dès que la première moitié est collée seule, et le
+script se contente d'afficher son aide.
+
+Les guillemets **simples** autour du mot de passe ne sont pas décoratifs : entre
+guillemets doubles, un `!` déclenche l'expansion d'historique de bash et modifie
+le mot de passe sans rien dire.
+
+Si un compte a malgré tout été créé avec les valeurs d'exemple, le supprimer —
+il n'a rien fait dont le journal d'audit doive garder la trace :
+
+```bash
+forum exec mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" \
+  -e "DELETE FROM User WHERE email = \"prenom.nom@ansd.sn\";"'
 ```
 
 Puis **neutraliser le compte de démonstration** posé par le seed, dont les
@@ -236,18 +310,26 @@ est fournie ; elle écrit dans `/opt/forum-ansd/backups`.
 
 ```bash
 cd /opt/forum-ansd
-sudo touch /var/log/forum-backup.log && sudo chown "$USER" /var/log/forum-backup.log
 crontab -l 2>/dev/null | cat - scripts/backup.cron | crontab -
+crontab -l | tail -1        # vérifier que la ligne est bien là
 ```
+
+Aucun `sudo` : la tâche écrit son journal dans `backups/backup.log`, que
+l'utilisateur du déploiement possède déjà.
 
 Lancer une sauvegarde tout de suite, et **la restaurer une fois** pour vérifier
 qu'elle vaut quelque chose :
 
 ```bash
+chmod +x scripts/*.sh        # sur un clone où le bit d'exécution s'est perdu
 set -a && . ./.env && set +a
 COMPOSE_FILE="docker-compose.prod.yml" ./scripts/backup.sh
 ls -lh backups/
 ```
+
+`Permission denied` sur `./scripts/backup.sh` veut dire exactement cela : le
+fichier est là, mais sans le bit d'exécution. Le `chmod` ci-dessus le remet, et
+la tâche cron, qui appelle le script de la même manière, en dépend aussi.
 
 Les sauvegardes restent sur le serveur : les copier ailleurs (partage ANSD,
 disque externe) fait partie de la procédure, pas du script.

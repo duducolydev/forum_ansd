@@ -8,4 +8,10 @@
 #
 # Le `.env` est chargé explicitement : cron ne dispose pas de l'environnement du
 # shell interactif, et le script échoue volontairement sans MYSQL_*.
-10 3 * * * cd /opt/forum-ansd && set -a && . ./.env && set +a && ./scripts/backup.sh >> /var/log/forum-backup.log 2>&1
+#
+# Le journal est écrit à côté des sauvegardes, et non dans `/var/log` : il
+# appartient ainsi à l'utilisateur du déploiement, sans `sudo` ni droits à
+# demander à la DSI. La redirection est mise en place par le shell **avant** le
+# script, d'où le `mkdir -p` : sans lui, la toute première exécution échoue sur
+# un répertoire qui n'existe pas encore.
+10 3 * * * cd /opt/forum-ansd && mkdir -p backups && set -a && . ./.env && set +a && ./scripts/backup.sh >> backups/backup.log 2>&1

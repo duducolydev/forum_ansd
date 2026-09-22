@@ -31,7 +31,13 @@ services:
       redis:
         condition: service_started
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      # 127.0.0.1 plutôt que `localhost` : dans le conteneur, `/etc/hosts` associe
+      # `localhost` à 127.0.0.1 **et** à ::1. Le wget de BusyBox retient la
+      # première adresse renvoyée — ::1 — et n'essaie jamais l'autre, alors que
+      # Next écoute sur 0.0.0.0, donc en IPv4 seulement. La sonde échouait ainsi
+      # indéfiniment (conteneur « unhealthy ») sur une application par ailleurs
+      # saine, que nginx servait sans broncher.
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/api/health"]
       interval: 30s
       timeout: 5s
       retries: 5
