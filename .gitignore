@@ -44,6 +44,13 @@ next-env.d.ts
 /storage/*
 !/storage/.gitkeep
 
+# Sauvegardes (`scripts/backup.sh`, qui écrit dans `./backups` par défaut).
+# Le dump contient l'intégralité des données personnelles des inscrits : un
+# `git add -A` lancé sur le serveur de production l'enverrait tel quel sur le
+# dépôt distant. Constaté le 22 septembre 2026 — le commit n'est resté local
+# que parce que le `git push` a échoué faute d'identifiants.
+/backups/
+
 # Playwright
 /test-results/
 /playwright-report/
