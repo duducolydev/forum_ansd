@@ -15,7 +15,7 @@ const { auth } = NextAuth(authConfig);
  * scripts que nous émettons — Next le reprend automatiquement dès qu'il le
  * trouve dans l'en-tête posé sur la requête.
  */
-function buildCsp(nonce: string, isDev: boolean): string {
+function buildCsp(nonce: string, isDev: boolean, enHttps: boolean): string {
   const directives = [
     "default-src 'self'",
     // `'strict-dynamic'` laisse les scripts chargés par un script de confiance
@@ -40,14 +40,37 @@ function buildCsp(nonce: string, isDev: boolean): string {
     "form-action 'self'",
     // Remplace X-Frame-Options, qu'on garde par ailleurs pour les vieux clients.
     "frame-ancestors 'none'",
-    "upgrade-insecure-requests",
   ];
+  /*
+   * `upgrade-insecure-requests` réécrit en HTTPS **toutes** les sous-ressources
+   * de la page. Sur un portail servi en clair — la recette interne sur adresse
+   * IP, PLAN.md §27 — le navigateur va donc chercher feuilles de style,
+   * scripts et images sur un port 443 où rien n'écoute, et la page arrive en
+   * HTML brut, sans style ni images. Constaté le 22 septembre 2026 sur
+   * `http://10.7.200.41/`. La directive n'a de sens que là où le TLS existe.
+   */
+  if (enHttps) directives.push("upgrade-insecure-requests");
   return directives.join("; ");
+}
+
+/**
+ * Protocole réellement vu par le visiteur.
+ *
+ * nginx **écrase** `X-Forwarded-Proto` à chaque requête (`docker/nginx.conf` et
+ * `docker/nginx-interne.conf`) : un client ne peut donc pas se l'attribuer pour
+ * déclencher HSTS sur une origine en clair. Sans en-tête — appel direct au
+ * conteneur, développement local — on retombe sur le protocole de l'URL.
+ */
+function estServiEnHttps(request: NextRequest): boolean {
+  const transmis = request.headers.get("x-forwarded-proto");
+  if (transmis) return transmis.split(",")[0]!.trim() === "https";
+  return request.nextUrl.protocol === "https:";
 }
 
 function applySecurityHeaders(
   response: NextResponse,
   csp: string,
+  enHttps: boolean,
   autoriserCamera = false,
 ): NextResponse {
   response.headers.set("Content-Security-Policy", csp);
@@ -82,8 +105,9 @@ function applySecurityHeaders(
   );
   // HSTS : posé uniquement derrière HTTPS. L'envoyer en HTTP clair n'aurait
   // aucun effet, et le poser en développement rendrait `localhost` inaccessible
-  // en HTTP pendant toute la durée du max-age.
-  if (process.env.NODE_ENV === "production") {
+  // en HTTP pendant toute la durée du max-age. La condition portait jusqu'ici
+  // sur le seul `NODE_ENV`, ce qui l'envoyait aussi sur la recette en clair.
+  if (enHttps && process.env.NODE_ENV === "production") {
     response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
   return response;
@@ -136,9 +160,10 @@ function sertUnFichierDepose(pathname: string): boolean {
 
 export default auth((request) => {
   const nonce = crypto.randomUUID().replaceAll("-", "");
+  const enHttps = estServiEnHttps(request);
   const csp = sertUnFichierDepose(request.nextUrl.pathname)
     ? CSP_FICHIER_DEPOSE
-    : buildCsp(nonce, process.env.NODE_ENV !== "production");
+    : buildCsp(nonce, process.env.NODE_ENV !== "production", enHttps);
 
   // Le nonce doit voyager sur la **requête** : c'est là que Next le lit pour en
   // marquer ses propres balises `<script>`.
@@ -174,7 +199,7 @@ export default auth((request) => {
   if (estScanner && !request.auth?.user) {
     const connexion = new URL("/connexion", request.nextUrl);
     connexion.searchParams.set("callbackUrl", request.nextUrl.href);
-    return applySecurityHeaders(NextResponse.redirect(connexion), csp, true);
+    return applySecurityHeaders(NextResponse.redirect(connexion), csp, enHttps, true);
   }
 
   if (pathname.startsWith("/admin")) {
@@ -183,12 +208,12 @@ export default auth((request) => {
     if (!user) {
       const connexion = new URL("/connexion", request.nextUrl);
       connexion.searchParams.set("callbackUrl", request.nextUrl.href);
-      return applySecurityHeaders(NextResponse.redirect(connexion), csp);
+      return applySecurityHeaders(NextResponse.redirect(connexion), csp, enHttps);
     }
   }
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  return applySecurityHeaders(response, csp, utiliseCamera);
+  return applySecurityHeaders(response, csp, enHttps, utiliseCamera);
 }) as unknown as (request: NextRequest) => Promise<Response>;
 
 export const config = {
