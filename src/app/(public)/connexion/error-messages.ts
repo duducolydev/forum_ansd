@@ -17,6 +17,14 @@ export function loginErrorMessage(code: string | undefined): string | null {
       return "Code incorrect ou expiré. Demandez-en un nouveau en vous reconnectant.";
     case "CODE_THROTTLED":
       return "Trop de demandes de code. Patientez une minute avant de réessayer.";
+    /*
+     * Étape, et non échec : le mot de passe a été accepté et un code est parti.
+     * Sans ce cas, `CODE_SENT` tombait dans le `default` et le formulaire
+     * affichait « Un code vient de vous être envoyé » **et** « Une erreur est
+     * survenue » l'un sous l'autre. Le message d'en-tête de ce fichier le disait
+     * déjà, le code ne le faisait pas. Constaté le 23 septembre 2026.
+     */
+    case "CODE_SENT":
     case undefined:
       return null;
     default:
