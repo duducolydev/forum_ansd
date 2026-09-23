@@ -397,103 +397,145 @@ servi en clair.
 Le domaine a été arrêté le 22 septembre 2026. Il est déjà écrit dans
 `docker/nginx.conf` : il n'y a rien à y modifier.
 
-### 5.1 La question à régler avec la DSI avant tout le reste
+### 5.1 L'ordre imposé par la DSI, et ce qu'il implique
 
-Tout dépend d'une chose : **le serveur est-il joignable depuis Internet ?**
+Décision de la DSI, 22 septembre 2026 : le serveur **reste interne** jusqu'à ce
+que le certificat soit en place et que les tests de sécurité soient validés.
+L'ouverture au public vient après.
 
-Let's Encrypt vérifie qu'on possède bien le domaine en venant lire un fichier
-sur le port 80, **depuis l'extérieur**. Le serveur porte aujourd'hui une adresse
-privée (`10.7.200.41`), qui n'est joignable de nulle part ailleurs que du réseau
-de l'ANSD. Deux chemins, donc, et ils n'ont rien de commun :
+Cet ordre écarte la voie habituelle. Let's Encrypt vérifie d'ordinaire qu'on
+possède le domaine en venant lire un fichier sur le port 80, **depuis
+Internet** — c'est le défi « HTTP ». Or le serveur porte une adresse privée
+(`10.7.200.41`), injoignable de l'extérieur : le certificat est demandé avant
+l'ouverture qui le rendrait vérifiable, et l'ouverture attend le certificat.
 
-| Situation                                               | Chemin                              |
-| ------------------------------------------------------- | ----------------------------------- |
-| Le portail s'ouvre au public, 80 et 443 depuis Internet | Let's Encrypt par le web (§5.3)     |
-| Le portail reste sur le réseau de l'ANSD                | certificat fourni par la DSI (§5.4) |
+La sortie est le défi **DNS**. Let's Encrypt demande alors non pas un fichier
+sur le serveur, mais un enregistrement `TXT` dans la zone `ansd.sn`. Rien n'a
+besoin d'être joignable. C'est la seule voie qui donne **dès aujourd'hui** un
+certificat reconnu par tous les navigateurs, donc encore valable le jour de
+l'ouverture publique, sans rien réémettre.
 
-Poser la question dans ces termes : « `forum2026.ansd.sn` doit-il résoudre vers
-une adresse publique, et les ports 80 et 443 sont-ils ouverts depuis Internet
-vers ce serveur ? » La réponse décide de la suite.
+Ce qu'il faut demander à la DSI tient en une phrase : « pouvez-vous créer un
+enregistrement `TXT` sur `_acme-challenge.forum2026.ansd.sn`, avec une valeur
+que je vous donnerai, et rester disponible quelques minutes ensuite ? »
 
-### 5.2 Dans les deux cas : DNS et adresse du portail
+| Voie                              | Utilisable aujourd'hui | Valable en public |
+| --------------------------------- | ---------------------- | ----------------- |
+| Let's Encrypt, défi DNS (§5.4)    | oui                    | oui               |
+| Autorité interne de l'ANSD (§5.5) | oui                    | **non**           |
+| Let's Encrypt, défi HTTP (§5.9)   | non                    | oui               |
 
-1. **DNS** : faire créer par la DSI un enregistrement `A` pour
-   `forum2026.ansd.sn`, vers l'adresse publique du serveur si le portail
-   s'ouvre, vers `10.7.200.41` s'il reste interne. Vérifier depuis un poste du
-   réseau : `dig +short forum2026.ansd.sn`.
+L'autorité interne ne sert qu'à dépanner la recette : ses certificats sont
+reconnus par les postes du parc et par eux seuls. Un visiteur extérieur verrait
+un avertissement de sécurité en pleine page le jour de l'ouverture.
 
-2. **Adresse du portail** : dans `/opt/forum-ansd/.env`, passer les deux
-   premières lignes à `https://forum2026.ansd.sn`.
+**Le calendrier joue en votre faveur.** Un certificat Let's Encrypt vaut
+quatre-vingt-dix jours. Émis fin septembre 2026, il expire vers le 21 décembre,
+soit près d'un mois après le Forum des 23 au 25 novembre. Une seule émission
+manuelle couvre donc tout l'événement, et le renouvellement automatique se remet
+en place tranquillement après l'ouverture (§5.9).
 
-   ```bash
-   cd /opt/forum-ansd
-   sed -i 's|^PUBLIC_BASE_URL=.*|PUBLIC_BASE_URL="https://forum2026.ansd.sn"|' .env
-   sed -i 's|^AUTH_URL=.*|AUTH_URL="https://forum2026.ansd.sn"|' .env
-   grep -E '^(PUBLIC_BASE_URL|AUTH_URL)=' .env
-   ```
+### 5.2 DNS
 
-   Aucune reconstruction n'est nécessaire, ces valeurs sont lues au démarrage du
-   conteneur. Attention en revanche au piège des variables du shell décrit au
-   §4 : si le `.env` a été chargé dans la session courante, ouvrir un nouveau
-   terminal avant la bascule, ou `unset PUBLIC_BASE_URL AUTH_URL`.
+Faire créer par la DSI un enregistrement `A` pour `forum2026.ansd.sn` vers
+`10.7.200.41`, le temps de la phase interne. Il pointera vers l'adresse publique
+le jour de l'ouverture. Vérifier depuis un poste du réseau :
 
-### 5.3 Portail public : certificat Let's Encrypt
+```bash
+dig +short forum2026.ansd.sn
+```
 
-Vérifier d'abord, **depuis un poste hors du réseau de l'ANSD**, que le serveur
-répond : `curl -I http://forum2026.ansd.sn/`. Sans cela l'émission échouera, et
-Let's Encrypt limite le nombre d'échecs par domaine et par heure.
+### 5.3 Adresse du portail
+
+Dans `/opt/forum-ansd/.env`, passer les deux premières lignes à
+`https://forum2026.ansd.sn`.
 
 ```bash
 cd /opt/forum-ansd
-forum run --rm --entrypoint certbot certbot certonly --webroot \
-  -w /var/www/certbot -d forum2026.ansd.sn --agree-tos -m forum@ansd.sn --no-eff-email
+sed -i 's|^PUBLIC_BASE_URL=.*|PUBLIC_BASE_URL="https://forum2026.ansd.sn"|' .env
+sed -i 's|^AUTH_URL=.*|AUTH_URL="https://forum2026.ansd.sn"|' .env
+grep -E '^(PUBLIC_BASE_URL|AUTH_URL)=' .env
 ```
 
-nginx sert encore en clair à ce moment-là, et c'est voulu : la configuration
-interne répond elle aussi au défi ACME sur `/.well-known/acme-challenge/`.
+Aucune reconstruction n'est nécessaire, ces valeurs sont lues au démarrage du
+conteneur. Attention en revanche au piège des variables du shell décrit au §4 :
+si le `.env` a été chargé dans la session courante, ouvrir un nouveau terminal
+avant la bascule, ou `unset PUBLIC_BASE_URL AUTH_URL`.
 
-### 5.4 Portail interne : certificat fourni par la DSI
+**Ne faire cette étape qu'une fois le certificat obtenu** (§5.4). Entre les
+deux, le portail annoncerait une adresse en `https` qu'il ne sait pas encore
+servir.
 
-Let's Encrypt est ici hors de portée par le web. Deux solutions, dans cet ordre
-de préférence :
+### 5.4 Certificat Let's Encrypt par le défi DNS
 
-- un certificat émis par l'autorité interne de l'ANSD, déjà reconnue par les
-  postes du parc, donc aucun avertissement pour les utilisateurs ;
-- un certificat public obtenu par validation **DNS**, qui ne demande pas que le
-  serveur soit joignable, mais l'accès à la zone `ansd.sn` chez l'hébergeur DNS.
+La commande s'arrête et attend : elle affiche la valeur à faire publier, et ne
+reprend qu'une fois que vous appuyez sur Entrée. Prévoir donc d'avoir la DSI au
+téléphone, ou de lancer la commande **pendant** qu'elle est disponible — le défi
+expire au bout de quelques dizaines de minutes.
 
-Dans les deux cas, déposer les deux fichiers là où nginx les attend, puis couper
-le renouvellement automatique, qui n'aurait rien à renouveler :
+```bash
+cd /opt/forum-ansd
+docker compose -f docker-compose.prod.yml run --rm --entrypoint certbot certbot \
+  certonly --manual --preferred-challenges dns \
+  -d forum2026.ansd.sn --agree-tos -m forum@ansd.sn --no-eff-email
+```
+
+Certbot affiche une chaîne. La DSI crée l'enregistrement
+`_acme-challenge.forum2026.ansd.sn`, de type `TXT`, avec cette valeur exacte.
+**Vérifier avant d'appuyer sur Entrée**, depuis le serveur :
+
+```bash
+dig +short TXT _acme-challenge.forum2026.ansd.sn @8.8.8.8
+```
+
+Tant que cette commande ne renvoie pas la chaîne attendue, ne pas continuer :
+une validation lancée trop tôt échoue, et Let's Encrypt limite le nombre
+d'échecs par domaine et par heure.
+
+Le certificat atterrit dans le volume `certbot_conf`, exactement là où
+`docker/nginx.conf` le cherche. Rien à copier.
+
+Le renouvellement automatique n'a aucune prise sur un certificat obtenu ainsi :
+certbot devrait republier un enregistrement DNS, ce qu'il ne sait pas faire sans
+accès à la zone. Le service est donc mis en sommeil à la bascule (§5.6), et la
+**date d'expiration est à noter dans un agenda partagé**.
+
+### 5.5 Dépannage seulement : autorité interne de l'ANSD
+
+À n'employer que si le défi DNS est refusé, et en sachant que ce certificat
+devra être remplacé avant l'ouverture au public : il n'est reconnu que par les
+postes du parc ANSD.
 
 ```bash
 cd /opt/forum-ansd    # fullchain.pem et privkey.pem déposés ici
 docker run --rm -v forum-ansd_certbot_conf:/c -v "$PWD":/src alpine sh -c \
   'mkdir -p /c/live/forum2026.ansd.sn && cp /src/fullchain.pem /src/privkey.pem /c/live/forum2026.ansd.sn/'
-docker compose -f docker-compose.prod.yml up -d --scale certbot=0
 ```
 
-**Noter la date d'expiration dans un agenda partagé.** Un certificat de la DSI
-ne se renouvelle pas tout seul, et il expire toujours un vendredi soir.
-
-### 5.5 Bascule, dans les deux cas
+### 5.6 Bascule
 
 Repasser sur la configuration HTTPS du dépôt en laissant tomber la surcouche
-interne, c'est-à-dire en ne passant plus que le fichier de production :
+interne, c'est-à-dire en ne passant plus que le fichier de production. Le
+service `certbot` reste en sommeil tant que le renouvellement automatique est
+hors de portée (§5.4) :
 
 ```bash
 cd /opt/forum-ansd
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d --scale certbot=0
 ```
 
 L'alias `forum` charge les deux fichiers : il sert la recette interne, pas la
-production HTTPS. Le mettre à jour une fois la bascule faite :
+production HTTPS. Le mettre à jour une fois la bascule faite, sans quoi vous
+continueriez à servir en clair sans le voir :
 
 ```bash
 sed -i '/alias forum=/d' ~/.bashrc
 echo "alias forum='docker compose -f /opt/forum-ansd/docker-compose.prod.yml'" >> ~/.bashrc
 ```
 
-### 5.6 Vérifier
+### 5.7 Vérifier
+
+Depuis un poste du réseau de l'ANSD, tant que le portail est interne :
 
 ```bash
 curl -I https://forum2026.ansd.sn/     # 200 attendu
@@ -501,18 +543,41 @@ curl -I http://forum2026.ansd.sn/      # 301 vers https
 ```
 
 Le scanner allume la caméra à partir de là. C'est le moment de la répétition
-d'accueil.
+d'accueil, et celui de passer les tests de sécurité de la DSI.
 
-### 5.7 Reconnexion obligatoire
+### 5.8 Reconnexion obligatoire
 
 Le changement d'adresse invalide les sessions ouvertes du BackOffice. Prévenir
 les personnes concernées plutôt que de les laisser croire à une panne.
+
+### 5.9 Après l'ouverture publique : renouvellement automatique
+
+Une fois les tests de sécurité validés et les ports 80 et 443 ouverts depuis
+Internet, le défi HTTP redevient possible, et avec lui le renouvellement sans
+intervention. Vérifier d'abord, **depuis un poste hors du réseau de l'ANSD**,
+que le serveur répond : `curl -I http://forum2026.ansd.sn/`. Puis :
+
+```bash
+cd /opt/forum-ansd
+docker compose -f docker-compose.prod.yml run --rm --entrypoint certbot certbot \
+  certonly --webroot -w /var/www/certbot \
+  -d forum2026.ansd.sn --agree-tos -m forum@ansd.sn --no-eff-email --force-renewal
+docker compose -f docker-compose.prod.yml up -d certbot
+```
+
+Le service `certbot` reprend alors son cycle de douze heures, et la date notée
+dans l'agenda peut être effacée.
 
 ---
 
 ## 6. Avant l'ouverture au public — liste de contrôle
 
 - [ ] HTTPS en place (§5), redirection depuis HTTP vérifiée
+- [ ] certificat **reconnu publiquement** et non émis par l'autorité interne de
+      l'ANSD, qui n'est connue que des postes du parc (§5.1)
+- [ ] date d'expiration du certificat notée dans un agenda partagé, tant que le
+      renouvellement automatique n'est pas rétabli (§5.9)
+- [ ] tests de sécurité de la DSI passés, avant l'ouverture des ports
 - [ ] compte de démonstration supprimé, administrateurs réels créés
 - [ ] `.env` en `chmod 600`, secrets générés sur le serveur, jamais versionnés
 - [ ] envoi d'e-mails vérifié depuis le serveur (un code de connexion reçu)
