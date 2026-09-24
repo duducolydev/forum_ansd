@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { ROLE_LABELS } from "@/lib/permissions";
 import { enregistrerRoleAction, type EtatAction } from "../actions";
 import { CATALOGUE } from "../permissions-catalogue";
+import { GestionRole } from "./gestion-role";
 import { Save } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 
@@ -12,6 +12,10 @@ const etatInitial: EtatAction = {};
 export interface RoleAffiche {
   id: string;
   name: string;
+  /** Déjà résolu par le serveur : registre du code, ou libellé en base. */
+  libelle: string;
+  /** Rôle du brief, donc nommé dans le code : ni renommable ni supprimable. */
+  integre: boolean;
   permissions: string[];
   comptes: number;
   comptesActifs: number;
@@ -36,13 +40,12 @@ export function CarteRole({ role, estMonRole }: { role: RoleAffiche; estMonRole:
   return (
     <details className="border-border bg-surface rounded-xl border p-5">
       <summary className="cursor-pointer">
-        <span className="text-heading text-sm font-semibold">
-          {ROLE_LABELS[role.name] ?? role.name}
-        </span>
+        <span className="text-heading text-sm font-semibold">{role.libelle}</span>
         <span className="text-text-3 ml-3 text-xs">
           {cochees.size} droit{cochees.size > 1 ? "s" : ""} · {role.comptesActifs} compte
           {role.comptesActifs > 1 ? "s" : ""} actif{role.comptesActifs > 1 ? "s" : ""}
           {estMonRole ? " · votre rôle" : ""}
+          {role.integre ? "" : " · rôle créé ici"}
         </span>
       </summary>
 
@@ -99,6 +102,15 @@ export function CarteRole({ role, estMonRole }: { role: RoleAffiche; estMonRole:
           {etat.erreur && <p className="text-danger-text mt-2 text-sm">{etat.erreur}</p>}
           {etat.avis && <p className="text-accent-text mt-2 text-sm">{etat.avis}</p>}
         </form>
+      )}
+
+      {/*
+        Renommage et suppression : les rôles créés en BackOffice seulement.
+        Ceux du brief sont nommés dans le code, et le service refuse les deux
+        opérations — ne pas les proposer évite d'offrir un geste voué au refus.
+      */}
+      {!role.integre && (
+        <GestionRole roleId={role.id} label={role.libelle} comptes={role.comptes} />
       )}
     </details>
   );

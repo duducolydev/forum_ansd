@@ -199,14 +199,21 @@ async function main() {
   // ---------------------------------------------------------------------
   // Zones d'accès (docx §15)
   // ---------------------------------------------------------------------
+  /*
+   * Trois zones depuis le 24 septembre 2026 (décision du commanditaire) :
+   * l'entrée et les deux salles du King Fahd Palace. Les espaces VIP, sponsors
+   * et restauration ne sont plus des zones contrôlées — il n'y a plus de point
+   * de contrôle à leur entrée, et une zone que personne ne scanne donne
+   * l'illusion d'un contrôle qui n'existe pas.
+   *
+   * Les codes sont stables : ce sont eux que la matrice ci-dessous et les
+   * points de contrôle référencent. Ajouter, renommer ou retirer une zone
+   * reste possible en BackOffice.
+   */
   const zonesData = [
     { code: "ENTREE", name: "Entrée principale" },
-    { code: "PLENIERE", name: "Salle plénière" },
-    { code: "PANEL_1", name: "Salle Panel 1" },
-    { code: "PANEL_2", name: "Salle Panel 2" },
-    { code: "VIP", name: "Espace VIP" },
-    { code: "SPONSORS", name: "Espace sponsors" },
-    { code: "RESTAURATION", name: "Restauration" },
+    { code: "OUVERTURE", name: "Salle d'Ouverture" },
+    { code: "PLENIERE", name: "Salle de Plénière" },
   ] as const;
 
   const zones: Record<string, { id: string }> = {};
@@ -218,20 +225,51 @@ async function main() {
     });
   }
 
-  // Matrice catégorie × zone — valeurs par défaut, ajustables en BackOffice (brief §2.6)
+  /*
+   * Zones d'une liste précédente : retirées, mais **seulement** si aucun point
+   * de contrôle ne les vise. Les autorisations par catégorie et les
+   * dérogations individuelles disparaissent avec elles, par cascade — ce sont
+   * des droits sur une zone qui n'existe plus.
+   *
+   * Un point de contrôle, lui, a été posé physiquement quelque part : le seed
+   * ne le défait pas, il le signale.
+   */
+  const zonesObsoletes = await prisma.zone.findMany({
+    where: { editionId: edition.id, code: { notIn: zonesData.map((z) => z.code) } },
+    include: { _count: { select: { checkpoints: true } } },
+  });
+  for (const zone of zonesObsoletes) {
+    if (zone._count.checkpoints > 0) {
+      console.warn(
+        `[seed] zone « ${zone.name} » conservée : ${zone._count.checkpoints} point(s) de contrôle la visent.`,
+      );
+      continue;
+    }
+    await prisma.zone.delete({ where: { id: zone.id } });
+  }
+
+  /*
+   * Matrice catégorie × zone — valeurs par défaut, ajustables en BackOffice
+   * (brief §2.6).
+   *
+   * Avec trois zones, presque toutes les catégories ont accès à tout : c'est la
+   * réalité d'un forum à deux salles, et le contrôle porte désormais sur
+   * l'entrée plus que sur la circulation intérieure. Le prestataire reste
+   * l'exception — il entre, il ne s'installe pas dans une séance.
+   */
   const allZones = Object.keys(zones);
   const categoryZoneMatrix: Record<string, string[]> = {
     AUTORITE_VIP: allZones,
-    PARTICIPANT_NATIONAL: ["ENTREE", "PLENIERE", "PANEL_1", "PANEL_2", "RESTAURATION"],
-    PARTICIPANT_INTERNATIONAL: ["ENTREE", "PLENIERE", "PANEL_1", "PANEL_2", "RESTAURATION"],
-    INS: ["ENTREE", "PLENIERE", "PANEL_1", "PANEL_2", "RESTAURATION"],
-    ORG_INTERNATIONALE: ["ENTREE", "PLENIERE", "PANEL_1", "PANEL_2", "RESTAURATION"],
-    PTF: ["ENTREE", "PLENIERE", "PANEL_1", "PANEL_2", "RESTAURATION"],
-    SPONSOR: ["ENTREE", "PLENIERE", "SPONSORS", "RESTAURATION"],
-    MEDIA: ["ENTREE", "PLENIERE", "PANEL_1", "PANEL_2", "RESTAURATION"],
+    PARTICIPANT_NATIONAL: allZones,
+    PARTICIPANT_INTERNATIONAL: allZones,
+    INS: allZones,
+    ORG_INTERNATIONALE: allZones,
+    PTF: allZones,
+    SPONSOR: allZones,
+    MEDIA: allZones,
     PERSONNEL_ANSD: allZones,
-    PRESTATAIRE: ["ENTREE", "RESTAURATION"],
-    INVITE_SPECIAL: ["ENTREE", "PLENIERE", "PANEL_1", "PANEL_2", "VIP", "RESTAURATION"],
+    PRESTATAIRE: ["ENTREE"],
+    INVITE_SPECIAL: allZones,
   };
 
   for (const [categoryCode, zoneCodes] of Object.entries(categoryZoneMatrix)) {
@@ -252,11 +290,18 @@ async function main() {
   // ---------------------------------------------------------------------
   // Salles, intervenants et programme [DEMO] (brief §11, §5.8)
   // ---------------------------------------------------------------------
+  /*
+   * Deux salles depuis le 24 septembre 2026 (décision du commanditaire) : le
+   * King Fahd Palace n'en met que deux à disposition du Forum. Le programme de
+   * démonstration ci-dessous a été redistribué sur ces deux salles, sans
+   * qu'aucune séance n'en occupe une déjà prise — vérifié séance par séance.
+   *
+   * Ajouter, renommer ou retirer une salle reste possible en BackOffice : cette
+   * liste est un point de départ, pas une contrainte.
+   */
   const roomsData = [
-    { name: "Salle plénière", capacity: 600, floor: "Niveau 0" },
-    { name: "Salle Panel 1", capacity: 150, floor: "Niveau 1" },
-    { name: "Salle Panel 2", capacity: 120, floor: "Niveau 1" },
-    { name: "Salle des ateliers", capacity: 60, floor: "Niveau 1" },
+    { name: "Salle d'Ouverture", capacity: 400, floor: "Niveau 0" },
+    { name: "Salle de Plénière", capacity: 600, floor: "Niveau 0" },
   ] as const;
 
   const rooms: Record<string, { id: string }> = {};
@@ -353,7 +398,7 @@ async function main() {
         titleEn: "Inaugural lecture: data for public policy",
         start: "10:00",
         end: "11:00",
-        room: "Salle plénière",
+        room: "Salle de Plénière",
         theme: "Gouvernance des données",
         speakers: [["Paul Tchoua", "KEYNOTE"]],
       },
@@ -370,7 +415,7 @@ async function main() {
         titleEn: "Panel 1 — Censuses and administrative registers",
         start: "11:30",
         end: "13:00",
-        room: "Salle Panel 1",
+        room: "Salle de Plénière",
         theme: "Sources de données",
         capacity: 150,
         registrationOpen: true,
@@ -386,7 +431,7 @@ async function main() {
         titleEn: "Panel 2 — Climate data and resilience",
         start: "11:30",
         end: "13:00",
-        room: "Salle Panel 2",
+        room: "Salle d'Ouverture",
         theme: "Données et climat",
         capacity: 120,
         registrationOpen: true,
@@ -402,7 +447,7 @@ async function main() {
         titleEn: "Panel 3 — Statistical quality and dissemination",
         start: "14:30",
         end: "16:00",
-        room: "Salle Panel 1",
+        room: "Salle de Plénière",
         theme: "Qualité des données",
         capacity: 150,
         registrationOpen: true,
@@ -417,7 +462,7 @@ async function main() {
         titleEn: "Workshop — Microdata anonymisation",
         start: "14:30",
         end: "16:00",
-        room: "Salle des ateliers",
+        room: "Salle d'Ouverture",
         theme: "Protection des données",
         capacity: 60,
         registrationOpen: true,
@@ -436,7 +481,7 @@ async function main() {
         titleEn: "Day one wrap-up",
         start: "16:30",
         end: "17:30",
-        room: "Salle plénière",
+        room: "Salle de Plénière",
         speakers: [["Oumar Ba", "MODERATOR"]],
       },
     ],
@@ -447,7 +492,7 @@ async function main() {
         titleEn: "Plenary — National statistical systems",
         start: "09:00",
         end: "10:30",
-        room: "Salle plénière",
+        room: "Salle de Plénière",
         theme: "Gouvernance des données",
         speakers: [
           ["Paul Tchoua", "MODERATOR"],
@@ -467,7 +512,7 @@ async function main() {
         titleEn: "Panel 4 — Demographic data and projections",
         start: "11:00",
         end: "12:30",
-        room: "Salle Panel 1",
+        room: "Salle de Plénière",
         theme: "Sources de données",
         capacity: 150,
         registrationOpen: true,
@@ -482,7 +527,7 @@ async function main() {
         titleEn: "Panel 5 — AI and official statistics",
         start: "11:00",
         end: "12:30",
-        room: "Salle Panel 2",
+        room: "Salle d'Ouverture",
         theme: "Innovation",
         capacity: 120,
         registrationOpen: true,
@@ -498,7 +543,7 @@ async function main() {
         titleEn: "Panel 6 — Funding statistical systems",
         start: "14:00",
         end: "15:30",
-        room: "Salle Panel 1",
+        room: "Salle de Plénière",
         theme: "Gouvernance des données",
         capacity: 150,
         registrationOpen: true,
@@ -513,7 +558,7 @@ async function main() {
         titleEn: "Workshop — Register interoperability",
         start: "14:00",
         end: "15:30",
-        room: "Salle des ateliers",
+        room: "Salle d'Ouverture",
         theme: "Innovation",
         capacity: 60,
         registrationOpen: true,
@@ -532,7 +577,7 @@ async function main() {
         titleEn: "Panel 7 — Open data and accountability",
         start: "16:00",
         end: "17:30",
-        room: "Salle Panel 2",
+        room: "Salle d'Ouverture",
         theme: "Qualité des données",
         capacity: 120,
         registrationOpen: true,
@@ -544,7 +589,7 @@ async function main() {
         titleEn: "Day two wrap-up",
         start: "17:30",
         end: "18:00",
-        room: "Salle plénière",
+        room: "Salle de Plénière",
         speakers: [["Oumar Ba", "MODERATOR"]],
       },
     ],
@@ -555,7 +600,7 @@ async function main() {
         titleEn: "Plenary — Regional outlook",
         start: "09:00",
         end: "10:30",
-        room: "Salle plénière",
+        room: "Salle de Plénière",
         theme: "Gouvernance des données",
         speakers: [
           ["Paul Tchoua", "MODERATOR"],
@@ -575,7 +620,7 @@ async function main() {
         titleEn: "Panel 8 — Sector statistics: health and education",
         start: "11:00",
         end: "12:30",
-        room: "Salle Panel 1",
+        room: "Salle de Plénière",
         theme: "Sources de données",
         capacity: 150,
         registrationOpen: true,
@@ -590,7 +635,7 @@ async function main() {
         titleEn: "Panel 9 — Capacity building",
         start: "11:00",
         end: "12:30",
-        room: "Salle Panel 2",
+        room: "Salle d'Ouverture",
         theme: "Innovation",
         capacity: 120,
         registrationOpen: true,
@@ -603,7 +648,7 @@ async function main() {
         titleEn: "Workshop — Mapping and geospatial data",
         start: "14:00",
         end: "15:00",
-        room: "Salle des ateliers",
+        room: "Salle d'Ouverture",
         theme: "Innovation",
         capacity: 60,
         registrationOpen: true,
@@ -615,7 +660,7 @@ async function main() {
         titleEn: "Synthesis and recommendations",
         start: "15:00",
         end: "16:00",
-        room: "Salle plénière",
+        room: "Salle de Plénière",
         speakers: [
           ["Oumar Ba", "MODERATOR"],
           ["Ibrahima Koné", "PANELIST"],
@@ -627,7 +672,7 @@ async function main() {
         titleEn: "Statistics awards",
         start: "16:00",
         end: "16:45",
-        room: "Salle plénière",
+        room: "Salle de Plénière",
         speakers: [["Oulimata Sarr", "KEYNOTE"]],
       },
       {
@@ -647,7 +692,7 @@ async function main() {
         titleEn: "Visit to the ANSD data centre",
         start: "17:30",
         end: "18:30",
-        room: "Salle des ateliers",
+        room: "Salle d'Ouverture",
         theme: "Innovation",
         capacity: 40,
         registrationOpen: true,
@@ -715,6 +760,32 @@ async function main() {
     }
   }
 
+  /*
+   * Salles d'une liste précédente : retirées, mais **seulement** si aucune
+   * séance ne s'y tient.
+   *
+   * Ce nettoyage vient **après** le programme, et non juste après la création
+   * des salles : à cet endroit-là, les séances de démonstration pointaient
+   * encore sur les anciennes salles, qui étaient donc toutes conservées. Le
+   * seed converge ainsi vers la liste de référence sans jamais détruire ce
+   * qu'il n'a pas créé — une salle ajoutée en BackOffice et utilisée par une
+   * vraie séance reste en place, et le cas est signalé plutôt que tranché en
+   * silence.
+   */
+  const sallesObsoletes = await prisma.room.findMany({
+    where: { editionId: edition.id, name: { notIn: roomsData.map((r) => r.name) } },
+    include: { _count: { select: { sessions: true } } },
+  });
+  for (const salle of sallesObsoletes) {
+    if (salle._count.sessions > 0) {
+      console.warn(
+        `[seed] salle « ${salle.name} » conservée : ${salle._count.sessions} séance(s) s'y tiennent.`,
+      );
+      continue;
+    }
+    await prisma.room.delete({ where: { id: salle.id } });
+  }
+
   // ---------------------------------------------------------------------
   // Niveaux de sponsors (docx §12 / brief §5.9)
   // ---------------------------------------------------------------------
@@ -735,6 +806,116 @@ async function main() {
       update: level,
       create: { ...level, editionId: edition.id },
     });
+  }
+
+  // ---------------------------------------------------------------------
+  // Hébergement et contacts pratiques [DEMO] (§29)
+  //
+  // Deux hôtels et trois contacts : de quoi exercer la page de détail, ses
+  // tableaux de tarifs et le tri par distance, sans prétendre à un état réel
+  // des accords — ils portent la mention [DEMO], comme les participants.
+  // ---------------------------------------------------------------------
+  const hotelsData = [
+    {
+      name: "Hôtel King Fahd Palace [DEMO]",
+      category: "5 étoiles",
+      address: "Route des Almadies, Dakar",
+      district: "Almadies",
+      distanceKm: 0,
+      phone: "+221 33 869 69 69",
+      email: "reservation@kingfahdpalace.demo",
+      website: "https://example.test/king-fahd-palace",
+      descriptionFr:
+        "Sur le lieu même du Forum : aucun trajet, et les salles de session sont au rez-de-chaussée.",
+      descriptionEn:
+        "At the Forum venue itself: no commute, and the session rooms are on the ground floor.",
+      amenities: ["Wifi", "Petit-déjeuner", "Piscine", "Salle de sport", "Parking"],
+      bookingCode: "FID2026-KFP",
+      isPublished: true,
+      sortOrder: 0,
+      rates: [
+        { roomType: "Chambre simple", price: 85000, conditions: "Petit-déjeuner inclus" },
+        { roomType: "Chambre double", price: 110000, conditions: "Petit-déjeuner inclus" },
+        { roomType: "Suite", price: null, conditions: "Sur demande, minimum deux nuits" },
+      ],
+    },
+    {
+      name: "Résidence des Almadies [DEMO]",
+      category: "Appart-hôtel",
+      address: "Rue des Ambassades, Dakar",
+      district: "Almadies",
+      distanceKm: 2.4,
+      phone: "+221 33 820 11 11",
+      website: "https://example.test/residence-almadies",
+      descriptionFr: "Studios équipés, navette matin et soir vers le King Fahd Palace.",
+      descriptionEn:
+        "Serviced studios, with a morning and evening shuttle to the King Fahd Palace.",
+      amenities: ["Wifi", "Navette", "Cuisine équipée"],
+      bookingCode: "FID2026-RDA",
+      isPublished: true,
+      sortOrder: 1,
+      rates: [
+        { roomType: "Studio", price: 45000, conditions: "Nettoyage quotidien" },
+        { roomType: "Appartement deux pièces", price: 68000, conditions: null },
+      ],
+    },
+  ] as const;
+
+  for (const { rates, ...hotel } of hotelsData) {
+    const existant = await prisma.hotel.findFirst({
+      where: { editionId: edition.id, name: hotel.name },
+    });
+    const enregistre = existant
+      ? await prisma.hotel.update({ where: { id: existant.id }, data: hotel })
+      : await prisma.hotel.create({ data: { ...hotel, editionId: edition.id } });
+
+    // Les tarifs sont réécrits en bloc : ils n'ont pas de clé naturelle, et
+    // rejouer le seed ne doit pas les empiler.
+    await prisma.hotelRate.deleteMany({ where: { hotelId: enregistre.id } });
+    await prisma.hotelRate.createMany({
+      data: rates.map((rate, index) => ({
+        hotelId: enregistre.id,
+        roomType: rate.roomType,
+        price: rate.price,
+        currency: "XOF",
+        conditions: rate.conditions,
+        sortOrder: index,
+      })),
+    });
+  }
+
+  const contactsPratiques = [
+    {
+      labelFr: "Inscriptions et accréditations",
+      labelEn: "Registration and accreditation",
+      name: "Comité d'organisation",
+      email: "forum@ansd.sn",
+      phone: "+221 33 869 21 39",
+      sortOrder: 0,
+    },
+    {
+      labelFr: "Accréditation presse",
+      labelEn: "Press accreditation",
+      email: "presse@ansd.sn",
+      sortOrder: 1,
+    },
+    {
+      labelFr: "Hébergement et logistique",
+      labelEn: "Accommodation and logistics",
+      email: "logistique@ansd.sn",
+      sortOrder: 2,
+    },
+  ];
+
+  for (const contact of contactsPratiques) {
+    const existant = await prisma.practicalContact.findFirst({
+      where: { editionId: edition.id, labelFr: contact.labelFr },
+    });
+    if (existant) {
+      await prisma.practicalContact.update({ where: { id: existant.id }, data: contact });
+    } else {
+      await prisma.practicalContact.create({ data: { ...contact, editionId: edition.id } });
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -776,10 +957,13 @@ async function main() {
       subjectFr: "Votre participation au Forum est confirmée",
       subjectEn: "Your participation in the Forum is confirmed",
       bodyFr:
-        "Bonjour {{prenom}},\n\nVotre participation au Forum international sur les données est confirmée. Retrouvez vos informations dans votre espace : {{lien_espace}}\n\nCordialement,\nLe comité d'organisation",
+        "Bonjour {{prenom}},\n\nVotre participation au Forum international sur les données est confirmée. Retrouvez vos informations dans votre espace : {{lien_espace}}\n{{referent_bloc}}\n\nCordialement,\nLe comité d'organisation",
       bodyEn:
-        "Hello {{prenom}},\n\nYour participation in the International Data Forum is confirmed. Find your details in your personal space: {{lien_espace}}\n\nBest regards,\nThe organising committee",
-      variables: ["prenom", "lien_espace"],
+        "Hello {{prenom}},\n\nYour participation in the International Data Forum is confirmed. Find your details in your personal space: {{lien_espace}}\n{{referent_bloc}}\n\nBest regards,\nThe organising committee",
+      // `referent_bloc` est un paragraphe entier, composé côté serveur et vide
+      // quand le participant n'a pas de délégation : le moteur ne sait pas
+      // conditionner, et une phrase à trous aurait été envoyée telle quelle.
+      variables: ["prenom", "lien_espace", "referent_bloc"],
     },
     {
       key: "badge_ready",
@@ -862,6 +1046,57 @@ async function main() {
       bodyEn:
         "Hello {{prenom}},\n\nThank you for taking part in the International Data Forum. The Forum proceedings will soon be available on the portal.\n\nBest regards,\nThe organising committee",
       variables: ["prenom"],
+    },
+    /*
+     * Annonce d'une newsletter (§34).
+     *
+     * Une **annonce avec lien**, jamais le texte intégral : les messageries
+     * d'entreprise bloquent les images distantes, et Gmail tronque les longs
+     * messages en masquant précisément ce qu'on voulait faire lire. Les images
+     * et la mise en forme vivent sur le site, où elles s'affichent.
+     */
+    {
+      key: "newsletter_published",
+      subjectFr: "{{titre}}",
+      subjectEn: "{{titre}}",
+      bodyFr:
+        "Bonjour {{prenom}},\n\n{{titre}}\n\n{{chapo}}\n\nLire l'information complète, avec les illustrations, et la télécharger en PDF :\n{{lien_newsletter}}\n\nCordialement,\nLe comité d'organisation",
+      bodyEn:
+        "Hello {{prenom}},\n\n{{titre}}\n\n{{chapo}}\n\nRead the full text with illustrations, and download it as a PDF:\n{{lien_newsletter}}\n\nBest regards,\nThe organising committee",
+      variables: ["prenom", "titre", "chapo", "lien_newsletter"],
+    },
+    /*
+     * Alertes du référent d'une délégation (§28). Destinataire : un membre du
+     * comité d'organisation de l'ANSD, d'où le français des deux côtés — la
+     * version anglaise existe parce que la colonne l'exige, pas parce qu'elle
+     * sert.
+     */
+    {
+      key: "delegation_referent_assigned",
+      subjectFr: "Vous accompagnez : {{delegation_nom}}",
+      subjectEn: "You are the contact for: {{delegation_nom}}",
+      bodyFr:
+        "Bonjour {{referent_nom}},\n\nVous êtes désigné(e) référent pour {{delegation_nom}} ({{delegation_pays}}), au Forum international sur les données.\n\nElle compte aujourd'hui {{effectif}} membre(s) :\n{{liste_membres}}\n\nVos coordonnées leur sont communiquées, et vous serez prévenu(e) à chaque nouvelle inscription.\n\nCordialement,\nLe comité d'organisation",
+      bodyEn:
+        "Hello {{referent_nom}},\n\nYou have been designated as the contact for {{delegation_nom}} ({{delegation_pays}}) at the International Data Forum.\n\nIt currently has {{effectif}} member(s):\n{{liste_membres}}\n\nYour details are shared with them, and you will be notified of each new registration.\n\nBest regards,\nThe organising committee",
+      variables: ["referent_nom", "delegation_nom", "delegation_pays", "effectif", "liste_membres"],
+    },
+    {
+      key: "delegation_member_added",
+      subjectFr: "{{delegation_nom}} : {{membre_nom}} vient de s'inscrire",
+      subjectEn: "{{delegation_nom}}: {{membre_nom}} has just registered",
+      bodyFr:
+        "Bonjour {{referent_nom}},\n\n{{membre_nom}} ({{membre_organisation}}) vient de rejoindre {{delegation_nom}}.\n\nContact : {{membre_email}}\nElle compte désormais {{effectif}} membre(s).\n\nCordialement,\nLe comité d'organisation",
+      bodyEn:
+        "Hello {{referent_nom}},\n\n{{membre_nom}} ({{membre_organisation}}) has joined {{delegation_nom}}.\n\nContact: {{membre_email}}\nThe delegation now has {{effectif}} member(s).\n\nBest regards,\nThe organising committee",
+      variables: [
+        "referent_nom",
+        "delegation_nom",
+        "membre_nom",
+        "membre_email",
+        "membre_organisation",
+        "effectif",
+      ],
     },
   ] as const;
 

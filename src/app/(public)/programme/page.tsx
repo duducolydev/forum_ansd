@@ -85,7 +85,7 @@ function RangeeFiltres({
 }) {
   return (
     <nav aria-label={libelle} className="flex flex-wrap items-center gap-2">
-      <span className="text-text-3 flex w-20 shrink-0 items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
+      <span className="text-text-2 flex w-20 shrink-0 items-center gap-1.5 text-xs font-bold tracking-wide uppercase">
         <Icone aria-hidden size={13} />
         {libelle}
       </span>

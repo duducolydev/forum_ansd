@@ -3,6 +3,8 @@
 import { useState, type ReactNode } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { ImageNewsletter } from "@/modules/newsletters/components/noeud-image";
+import { BarreImages } from "@/modules/newsletters/components/barre-images";
 import {
   Bold,
   CornerDownLeft,
@@ -175,6 +177,36 @@ function BarreOutils({
   );
 }
 
+/**
+ * Images du corps, quand l'objet édité en porte (§34).
+ *
+ * Seules les newsletters en ont : ailleurs, la propriété est absente, le nœud
+ * image n'est pas chargé, et la barre d'outils n'affiche rien de plus. Un
+ * éditeur qui proposerait d'insérer une image là où rien ne sait l'afficher
+ * serait une promesse non tenue.
+ */
+export interface ConfigurationImages {
+  /** Préfixe des URL, sans le rang : `/api/v1/newsletters/<id>/image`. */
+  urlBase: string;
+  /** Rangs disponibles, dans l'ordre d'ajout. */
+  cles: number[];
+  /** Téléverse un fichier et renvoie le rang obtenu, ou `null` en cas d'échec. */
+  televerser: (fichier: File) => Promise<number | null>;
+}
+
+/** Attributs de l'image sélectionnée, ou `null` si la sélection n'en est pas une. */
+function attributsImage(
+  editor: Editor,
+): { alignement: string; largeur: number; alt: string } | null {
+  if (!editor.isActive("image")) return null;
+  const attrs = editor.getAttributes("image");
+  return {
+    alignement: String(attrs.alignement ?? "centre"),
+    largeur: Number(attrs.largeur ?? 100),
+    alt: String(attrs.alt ?? ""),
+  };
+}
+
 export function EditeurTexteRiche({
   id,
   name,
@@ -182,6 +214,7 @@ export function EditeurTexteRiche({
   libelle,
   valeurInitiale,
   max,
+  images,
 }: {
   id: string;
   name: string;
@@ -190,20 +223,32 @@ export function EditeurTexteRiche({
   libelle: string;
   valeurInitiale: string;
   max: number;
+  images?: ConfigurationImages;
 }) {
-  const documentInitial = lireTexteRiche(valeurInitiale);
+  const documentInitial = lireTexteRiche(valeurInitiale, { images: Boolean(images) });
   // Sans rien écrire, la valeur envoyée est déjà la forme normalisée : un champ
   // non touché ne perd rien, même si l'éditeur n'a pas pu se charger.
   const [valeur, setValeur] = useState(() => serialiserTexteRiche(documentInitial));
   const [longueur, setLongueur] = useState(() => texteBrut(documentInitial).length);
   const [saisieLien, setSaisieLien] = useState<string | null>(null);
   const [erreurLien, setErreurLien] = useState<string | null>(null);
+  /*
+   * Attributs de l'image sélectionnée. Relus à chaque changement de sélection
+   * plutôt que gardés en état local : la barre doit montrer ce qui est
+   * réellement dans le document, y compris après une annulation.
+   */
+  const [imageActive, setImageActive] = useState<{
+    alignement: string;
+    largeur: number;
+    alt: string;
+  } | null>(null);
 
   const editor = useEditor({
     // Rendu côté client seulement : l'éditeur n'a pas d'équivalent serveur, et
     // le rendre au serveur produirait un écart d'hydratation.
     immediatelyRender: false,
     extensions: [
+      ...(images ? [ImageNewsletter.configure({ urlBase: images.urlBase })] : []),
       StarterKit.configure({
         heading: false,
         blockquote: false,
@@ -234,9 +279,13 @@ export function EditeurTexteRiche({
       },
     },
     onUpdate: ({ editor: e }) => {
-      const doc = nettoyerDoc(e.getJSON());
+      const doc = nettoyerDoc(e.getJSON(), { images: Boolean(images) });
       setValeur(serialiserTexteRiche(doc));
       setLongueur(texteBrut(doc).length);
+      if (images) setImageActive(attributsImage(e));
+    },
+    onSelectionUpdate: ({ editor: e }) => {
+      if (images) setImageActive(attributsImage(e));
     },
   });
 
@@ -280,6 +329,10 @@ export function EditeurTexteRiche({
         />
       ) : (
         <div className="border-border bg-surface-2 h-10 rounded-t-lg border border-b-0" />
+      )}
+
+      {images && editor && (
+        <BarreImages editor={editor} televerser={images.televerser} imageActive={imageActive} />
       )}
 
       {saisieLien !== null && (

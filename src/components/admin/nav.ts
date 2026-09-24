@@ -8,8 +8,10 @@ import {
   FileStack,
   FileText,
   Handshake,
+  Hotel,
   LayoutDashboard,
   Mail,
+  Mails,
   Megaphone,
   Mic,
   QrCode,
@@ -18,6 +20,7 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  UserRoundCheck,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -94,6 +97,12 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icone: Handshake,
         permissions: ["delegations.read"],
       },
+      {
+        href: "/admin/referents",
+        label: "Référents",
+        icone: UserRoundCheck,
+        permissions: ["delegations.read"],
+      },
       { href: "/admin/badges", label: "Badges", icone: BadgeCheck, permissions: ["badges.print"] },
     ],
   },
@@ -157,12 +166,43 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icone: FileText,
         permissions: ["content.read"],
       },
+      {
+        href: "/admin/newsletters",
+        label: "Newsletters",
+        icone: Mails,
+        permissions: ["content.read"],
+      },
       { href: "/admin/sponsors", label: "Sponsors", icone: Award, permissions: ["sponsors.write"] },
       {
         href: "/admin/notifications",
         label: "Notifications",
         icone: Megaphone,
         permissions: ["notifications.manage"],
+      },
+    ],
+  },
+  /*
+   * Infos pratiques (§29) : le périmètre du gestionnaire des hôtels.
+   *
+   * Un groupe à part et non une entrée sous « Communication » : c'est le seul
+   * que ce rôle voit, et l'enfouir dans une rubrique dont il n'a aucune autre
+   * entrée lui aurait donné un menu à un seul niveau visible.
+   */
+  {
+    label: "Infos pratiques",
+    icone: Hotel,
+    items: [
+      {
+        href: "/admin/hotels",
+        label: "Hôtels",
+        icone: Hotel,
+        permissions: ["hotels.manage"],
+      },
+      {
+        href: "/admin/contacts-pratiques",
+        label: "Contacts",
+        icone: Mail,
+        permissions: ["hotels.manage"],
       },
     ],
   },

@@ -178,6 +178,9 @@ model Edition {
   participants          Participant[]
   invitations           Invitation[]
   delegations           Delegation[]
+  referents             Referent[]
+  hotels                Hotel[]
+  practicalContacts     PracticalContact[]
   zones                 Zone[]
   checkpoints           Checkpoint[]
   rooms                 Room[]
@@ -187,6 +190,7 @@ model Edition {
   sponsors              Sponsor[]
   documents             Document[]
   posts                 Post[]
+  newsletters           Newsletter[]
   contentBlocks         ContentBlock[]
   pageSections          PageSection[]
   notificationTemplates NotificationTemplate[]
@@ -252,7 +256,17 @@ model AdminLoginChallenge {
 
 model Role {
   id          String   @id @default(cuid())
+  /// Identifiant technique, en capitales : c'est lui que le code compare
+  /// (`exigeSecondFacteur`, `ROLE_LABELS`, le seed). Il ne change plus une fois
+  /// le rôle créé — un rôle intégré ne se renomme pas, cf. `modules/users`.
   name        String   @unique
+  /// Libellé lisible, affiché partout où un humain lit un rôle.
+  ///
+  /// Vide pour les rôles du brief : le leur vient de `ROLE_LABELS`, et le
+  /// dupliquer en base aurait créé deux vérités qui divergent. Il n'est
+  /// renseigné que pour les rôles créés depuis le BackOffice, qui n'ont aucune
+  /// entrée dans ce registre.
+  label       String?
   permissions Json // string[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -392,13 +406,55 @@ model Delegation {
   country           String?
   institution       String?
   headParticipantId String?  @unique
+  /// Référent interne qui guide cette délégation. Facultatif : une délégation
+  /// existe avant qu'on lui en désigne un.
+  referentId        String?
   maxMembers        Int?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   edition         Edition       @relation(fields: [editionId], references: [id], onDelete: Cascade)
   headParticipant Participant?  @relation("DelegationHead", fields: [headParticipantId], references: [id])
+  referent        Referent?     @relation(fields: [referentId], references: [id], onDelete: SetNull)
   members         Participant[] @relation("DelegationMembers")
+
+  @@index([referentId])
+}
+
+/// Référent interne : le membre du comité d'organisation qui guide une
+/// délégation, et dont les coordonnées sont communiquées à ses participants.
+///
+/// Table dédiée plutôt que trois colonnes sur `Delegation` : un même référent
+/// suit souvent plusieurs délégations, et corriger un numéro de téléphone doit
+/// le corriger partout d'un coup. C'est aussi ce qui permet de tenir un
+/// annuaire, consultable avant même qu'une délégation existe.
+///
+/// Pas de lien vers `User` : un référent n'a pas de raison d'avoir un compte
+/// BackOffice, et en exiger un aurait fait créer des comptes qui ne servent
+/// qu'à porter un nom — des comptes qui restent ouverts après le Forum.
+model Referent {
+  id        String   @id @default(cuid())
+  editionId String
+  name      String
+  email     String
+  phone     String?
+  /// Fonction au sein du comité, affichée aux participants : « Protocole »,
+  /// « Logistique »… Facultative, et libre : les intitulés changent d'une
+  /// édition à l'autre.
+  role      String?
+  /// Un référent qui quitte le comité est désactivé, jamais supprimé : les
+  /// délégations qu'il a suivies gardent la trace de qui les accompagnait.
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  edition     Edition      @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  delegations Delegation[]
+
+  /// Une adresse par édition : c'est elle qui identifie une personne, et deux
+  /// fiches pour la même adresse feraient partir deux fois chaque alerte.
+  @@unique([editionId, email])
+  @@index([editionId])
 }
 
 // ---------------------------------------------------------------------------
@@ -661,6 +717,14 @@ model Sponsor {
   standNumber   String?
   contactName   String?
   contactEmail  String?
+  /// Rang d'affichage sur la page publique, tous niveaux confondus (§32).
+  ///
+  /// Le site groupait les partenaires par niveau, ce qui imposait l'ordre du
+  /// barème : un partenaire institutionnel décisif passait après trois
+  /// sponsors d'un échelon supérieur. Le comité décide désormais lui-même de
+  /// la succession, et le niveau redevient ce qu'il est — une mention sur la
+  /// carte, pas un plan de page.
+  sortOrder     Int       @default(0)
   isPublished   Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -668,6 +732,8 @@ model Sponsor {
 
   edition Edition      @relation(fields: [editionId], references: [id], onDelete: Cascade)
   level   SponsorLevel @relation(fields: [levelId], references: [id])
+
+  @@index([editionId, sortOrder])
 }
 
 // ---------------------------------------------------------------------------
@@ -710,6 +776,109 @@ model SessionRapporteur {
   @@index([userId])
 }
 
+// ---------------------------------------------------------------------------
+// Infos pratiques : hébergement et contacts (§29)
+// ---------------------------------------------------------------------------
+
+/// Hôtel partenaire, présenté sur la page « Infos pratiques » et sa page de
+/// détail.
+///
+/// Données structurées et non texte libre : un participant compare des prix,
+/// des distances et des prestations, et cherche celui qui a une navette. Un
+/// paragraphe rédigé aurait servi la rédaction, pas la comparaison — qui est
+/// exactement ce que le visiteur vient faire.
+model Hotel {
+  id            String    @id @default(cuid())
+  editionId     String
+  name          String
+  /// Catégorie affichée telle quelle : « 5 étoiles », « Résidence »… Libre,
+  /// parce que les classements varient d'un pays à l'autre.
+  category      String?
+  address       String?
+  district      String?
+  /// Distance du lieu du Forum, en kilomètres. Le critère de choix numéro un
+  /// pour trois jours de navettes matin et soir.
+  distanceKm    Decimal?  @db.Decimal(5, 2)
+  phone         String?
+  email         String?
+  website       String?
+  /// Lien vers une carte. Stocké plutôt que composé : les adresses de Dakar
+  /// sont mal géocodées, et un lien vérifié vaut mieux qu'une recherche.
+  mapUrl        String?
+  descriptionFr String?   @db.Text
+  descriptionEn String?   @db.Text
+  /// Prestations, en `string[]` : navette, wifi, petit-déjeuner, piscine…
+  /// Un tableau plutôt qu'une table dédiée — ce sont des étiquettes, sans
+  /// attribut propre, et elles changent d'une édition à l'autre.
+  amenities     Json
+  /// Code de réservation négocié par le comité, envoyé après confirmation.
+  bookingCode   String?
+  bookingUrl    String?
+  photoPath     String?
+  /// Un hôtel se prépare avant d'être montré : tarifs à saisir, accord à
+  /// obtenir. Rien n'est public tant que cette case n'est pas cochée.
+  isPublished   Boolean   @default(false)
+  sortOrder     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  edition Edition     @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  rates   HotelRate[]
+
+  @@index([editionId])
+}
+
+/// Tarif d'un hôtel, par type de chambre.
+///
+/// Table séparée parce qu'un hôtel en propose plusieurs, et que le participant
+/// choisit entre eux. Les aplatir en colonnes aurait plafonné leur nombre et
+/// rendu la comparaison impossible.
+model HotelRate {
+  id         String   @id @default(cuid())
+  hotelId    String
+  /// « Chambre simple », « Chambre double », « Suite »…
+  roomType   String
+  /// En unité entière de la devise : les tarifs hôteliers de Dakar sont en
+  /// francs CFA, sans centimes, et un flottant sur un prix invite l'erreur
+  /// d'arrondi.
+  price      Int?
+  currency   String   @default("XOF")
+  /// Ce que le tarif comprend, ou ses restrictions : petit-déjeuner inclus,
+  /// minimum deux nuits…
+  conditions String?  @db.Text
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@index([hotelId])
+}
+
+/// Contact du comité publié sur la page « Infos pratiques ».
+///
+/// Structuré plutôt que noyé dans un paragraphe : un participant cherche « qui
+/// appelle-t-on pour les visas », et une liste répond quand un texte suivi
+/// oblige à le relire en entier.
+model PracticalContact {
+  id        String   @id @default(cuid())
+  editionId String
+  /// Objet du contact : « Accréditation presse », « Logistique »…
+  labelFr   String
+  labelEn   String?
+  name      String?
+  email     String?
+  phone     String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  edition Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+
+  @@index([editionId])
+}
+
 model Document {
   id        String           @id @default(cuid())
   editionId String
@@ -721,6 +890,52 @@ model Document {
   updatedAt DateTime         @updatedAt
 
   edition Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+}
+
+/// Newsletter : une information publiée sur le site et envoyée aux participants
+/// (§34).
+///
+/// Table à part des actualités, bien que les deux se ressemblent : une
+/// actualité se publie, une newsletter **s'envoie**. Elle porte donc un cycle
+/// que l'actualité n'a pas — brouillon, publiée, envoyée — et l'envoi est
+/// irréversible : mille messages partis ne se rappellent pas. Les mélanger
+/// aurait fait cohabiter deux objets dont l'un a un bouton sans retour.
+model Newsletter {
+  id        String  @id @default(cuid())
+  editionId String
+  slug      String
+  titleFr   String
+  titleEn   String
+  /// Chapô : repris dans l'e-mail d'annonce et dans la liste. Distinct du
+  /// corps, parce qu'un e-mail ne reprend pas le texte intégral (§34).
+  excerptFr String  @db.Text
+  excerptEn String  @db.Text
+  /// Corps mis en forme, document structuré sérialisé (`lib/texte-riche.ts`).
+  /// Jamais du HTML : voir l'en-tête de ce module pour la raison.
+  bodyFr    String  @db.Text
+  bodyEn    String  @db.Text
+  coverPath String?
+  /// Images du corps : `[{ path }]`. Le document ne référence que leur **rang**
+  /// dans cette liste, jamais un chemin — un chemin accepté depuis l'extérieur
+  /// se transforme vite en lecture arbitraire du volume de stockage.
+  images    Json?
+
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  /// Date du premier envoi. Non nulle, la newsletter a été expédiée : le bouton
+  /// disparaît, et une modification ultérieure ne rattrape pas les messages
+  /// déjà partis.
+  sentAt      DateTime?
+  /// Nombre de destinataires au moment de l'envoi, pour le journal.
+  sentCount   Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  edition Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+
+  @@unique([editionId, slug])
+  @@index([editionId, publishedAt])
 }
 
 model Post {

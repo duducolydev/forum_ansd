@@ -77,7 +77,14 @@ export function AdminSidebar({
         replie ? "w-[68px] px-2" : "w-[236px] px-3.5"
       }`}
     >
-      <div className={`mb-3 flex items-center ${replie ? "justify-center" : "justify-between"}`}>
+      {/*
+        Déplié, le logo occupe sa propre ligne, centré, et le bouton de repli
+        passe en dessous, aligné à droite. Côte à côte, il ne restait au logo
+        qu'une centaine de pixels, où son texte devenait illisible ; étiré sur
+        toute la largeur, il mangeait le haut d'une barre qui défile déjà.
+        Replié, il ne reste que le bouton, centré.
+      */}
+      <div className={`mb-3 flex ${replie ? "justify-center" : "flex-col gap-2"}`}>
         {!replie && (
           /*
            * Logo officiel plutôt que la pastille de barres qui tenait cette
@@ -97,9 +104,9 @@ export function AdminSidebar({
           <Link
             href="/admin"
             aria-label="Forum ANSD — tableau de bord"
-            className="flex items-center rounded-lg bg-white/95 px-2.5 py-1.5"
+            className="self-center rounded-lg bg-white/95 px-3 py-2"
           >
-            <LogoForum alt="" hauteur="h-11" prioritaire />
+            <LogoForum alt="" taille="h-14" prioritaire />
           </Link>
         )}
         <button
@@ -107,7 +114,9 @@ export function AdminSidebar({
           onClick={basculerRepli}
           aria-label={replie ? "Déplier le menu" : "Replier le menu"}
           title={replie ? "Déplier le menu" : "Replier le menu"}
-          className="transition-tout text-dark-panel-muted grid h-8 w-8 shrink-0 place-items-center rounded-lg hover:bg-white/10 hover:text-white"
+          className={`transition-tout text-dark-panel-muted grid h-8 w-8 shrink-0 place-items-center rounded-lg hover:bg-white/10 hover:text-white ${
+            replie ? "" : "self-end"
+          }`}
         >
           {replie ? (
             <PanelLeftOpen aria-hidden size={18} />

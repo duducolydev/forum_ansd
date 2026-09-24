@@ -121,6 +121,7 @@ export async function listDelegations(editionId: string) {
     where: { editionId },
     include: {
       headParticipant: { select: { id: true, firstName: true, lastName: true } },
+      referent: { select: { id: true, name: true, email: true, phone: true, role: true } },
       _count: { select: { members: true } },
     },
     orderBy: { name: "asc" },
@@ -132,6 +133,7 @@ export async function findDelegationById(id: string) {
     where: { id },
     include: {
       headParticipant: { select: { id: true, firstName: true, lastName: true } },
+      referent: { select: { id: true, name: true, email: true, phone: true, role: true } },
       members: {
         select: { id: true, publicId: true, firstName: true, lastName: true, status: true },
         orderBy: { lastName: "asc" },

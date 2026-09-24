@@ -41,6 +41,7 @@ export const NAV_ENTRIES: readonly NavEntry[] = [
     children: [
       { href: "/infos-pratiques", key: "practicalInfo" },
       { href: "/actualites", key: "news" },
+      { href: "/newsletters", key: "newsletters" },
       { href: "/verifier", key: "verifyBadge" },
     ],
   },

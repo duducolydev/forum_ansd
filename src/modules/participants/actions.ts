@@ -221,6 +221,7 @@ function parseDelegationForm(formData: FormData): DelegationInput {
     name: formData.get("name"),
     country: formData.get("country") ?? undefined,
     institution: formData.get("institution") ?? undefined,
+    referentId: formData.get("referentId") ?? undefined,
     maxMembers: formData.get("maxMembers") || undefined,
   });
 }

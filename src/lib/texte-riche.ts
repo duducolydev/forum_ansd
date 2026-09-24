@@ -52,7 +52,35 @@ export interface ElementListeRiche {
   content: BlocRiche[];
 }
 
-export type BlocRiche = ParagrapheRiche | ListeRiche;
+/**
+ * Image insérée dans le corps (§34).
+ *
+ * `cle` est un **rang** dans la liste d'images de l'objet qui porte ce
+ * document, jamais un chemin de fichier. C'est la même règle que pour les
+ * images d'article : un chemin accepté depuis l'extérieur se transforme vite en
+ * lecture arbitraire du volume de stockage. Le serveur résout le rang en URL au
+ * moment du rendu.
+ *
+ * L'alignement et la largeur sont bornés par le nettoyage : une largeur libre
+ * laisserait poser une image de 4 000 pixels dans une colonne de 700, et un
+ * alignement libre finirait en attribut de style.
+ */
+export interface ImageRiche {
+  type: "image";
+  attrs: {
+    cle: number;
+    alt: string;
+    alignement: "gauche" | "centre" | "droite";
+    /** Pourcentage de la largeur de la colonne. */
+    largeur: number;
+  };
+}
+
+export type BlocRiche = ParagrapheRiche | ListeRiche | ImageRiche;
+
+/** Largeurs proposées, et seules acceptées : quatre choix suffisent à composer. */
+export const LARGEURS_IMAGE = [25, 50, 75, 100] as const;
+export const ALIGNEMENTS_IMAGE = ["gauche", "centre", "droite"] as const;
 
 export interface DocRiche {
   type: "doc";
@@ -134,13 +162,48 @@ function nettoyerEnLigne(brut: unknown): EnLigneRiche[] {
   return resultat;
 }
 
-function nettoyerBlocs(brut: unknown, profondeur: number): BlocRiche[] {
+/** Nœud image réduit à ses valeurs permises, ou `null` s'il n'en reste rien. */
+function nettoyerImage(noeud: unknown): ImageRiche | null {
+  const attrs = champ(noeud, "attrs");
+  const cle = Number(champ(attrs, "cle"));
+  // Un rang absent, négatif ou non entier ne désigne aucune image : le nœud
+  // est écarté plutôt que rendu sur une image manquante.
+  if (!Number.isInteger(cle) || cle < 0) return null;
+
+  const alignementBrut = String(champ(attrs, "alignement") ?? "centre");
+  const alignement = (ALIGNEMENTS_IMAGE as readonly string[]).includes(alignementBrut)
+    ? (alignementBrut as ImageRiche["attrs"]["alignement"])
+    : "centre";
+
+  const largeurBrute = Number(champ(attrs, "largeur"));
+  const largeur = (LARGEURS_IMAGE as readonly number[]).includes(largeurBrute) ? largeurBrute : 100;
+
+  const altBrut = champ(attrs, "alt");
+  // Alternative textuelle plafonnée : elle décrit une image, elle ne raconte
+  // pas une histoire, et un texte sans fin dans un attribut sert surtout à
+  // faire enfler le document.
+  const alt = typeof altBrut === "string" ? altBrut.slice(0, 300) : "";
+
+  return { type: "image", attrs: { cle, alt, alignement, largeur } };
+}
+
+function nettoyerBlocs(brut: unknown, profondeur: number, images: boolean): BlocRiche[] {
   if (!Array.isArray(brut) || profondeur > PROFONDEUR_MAX) return [];
   const blocs: BlocRiche[] = [];
 
   for (const noeud of brut) {
     const type = champ(noeud, "type");
     const contenu = champ(noeud, "content");
+
+    if (type === "image") {
+      // Hors newsletter, une image n'a pas de liste où puiser : le nœud est
+      // simplement ignoré, et le reste du texte passe intact.
+      if (images) {
+        const image = nettoyerImage(noeud);
+        if (image) blocs.push(image);
+      }
+      continue;
+    }
 
     if (type === "paragraph" || type === "heading") {
       // Un titre devient un paragraphe : la section porte déjà son titre.
@@ -153,23 +216,33 @@ function nettoyerBlocs(brut: unknown, profondeur: number): BlocRiche[] {
         .filter((element) => champ(element, "type") === "listItem")
         .map((element) => ({
           type: "listItem" as const,
-          content: nettoyerBlocs(champ(element, "content"), profondeur + 1),
+          content: nettoyerBlocs(champ(element, "content"), profondeur + 1, images),
         }))
         .filter((element) => element.content.length > 0);
       if (elements.length > 0) blocs.push({ type, content: elements });
     } else if (type === "blockquote") {
       // Citation : le texte est gardé, la forme non.
-      blocs.push(...nettoyerBlocs(contenu, profondeur + 1));
+      blocs.push(...nettoyerBlocs(contenu, profondeur + 1, images));
     }
   }
 
   return blocs;
 }
 
-/** Réduit un document quelconque à la liste fermée des nœuds et marques permis. */
-export function nettoyerDoc(brut: unknown): DocRiche {
+/**
+ * Réduit un document quelconque à la liste fermée des nœuds et marques permis.
+ *
+ * `images` est **désactivé par défaut** : seules les newsletters portent une
+ * liste d'images où un rang trouve sa cible. Une section de page qui recevrait
+ * un nœud image n'aurait rien à afficher, et l'autoriser partout aurait obligé
+ * chaque rendu du site à savoir résoudre un rang qu'il n'a pas.
+ */
+export function nettoyerDoc(brut: unknown, options?: { images?: boolean }): DocRiche {
   if (champ(brut, "type") !== "doc") return vide();
-  return { type: "doc", content: nettoyerBlocs(champ(brut, "content"), 0) };
+  return {
+    type: "doc",
+    content: nettoyerBlocs(champ(brut, "content"), 0, options?.images ?? false),
+  };
 }
 
 /** Lit un texte brut saisi avant l'éditeur : ligne vide = paragraphe, retour = saut de ligne. */
@@ -197,14 +270,17 @@ export function docDepuisTexteBrut(texte: string): DocRiche {
  * Lit la valeur stockée d'un champ mis en forme, quelle qu'elle soit : document
  * structuré, texte brut ancien, ou rien.
  */
-export function lireTexteRiche(brut: string | null | undefined): DocRiche {
+export function lireTexteRiche(
+  brut: string | null | undefined,
+  options?: { images?: boolean },
+): DocRiche {
   const valeur = (brut ?? "").trim();
   if (!valeur) return vide();
 
   if (valeur.startsWith("{")) {
     try {
       const analyse: unknown = JSON.parse(valeur);
-      if (champ(analyse, "type") === "doc") return nettoyerDoc(analyse);
+      if (champ(analyse, "type") === "doc") return nettoyerDoc(analyse, options);
     } catch {
       // Un texte brut peut commencer par une accolade : il est lu comme tel.
     }
@@ -217,11 +293,17 @@ function enLigneVersTexte(noeuds: EnLigneRiche[] | undefined): string {
 }
 
 function blocsVersTexte(blocs: BlocRiche[]): string[] {
-  return blocs.flatMap((bloc) =>
-    bloc.type === "paragraph"
-      ? [enLigneVersTexte(bloc.content)]
-      : bloc.content.flatMap((element) => blocsVersTexte(element.content)),
-  );
+  return blocs.flatMap((bloc) => {
+    if (bloc.type === "paragraph") return [enLigneVersTexte(bloc.content)];
+    /*
+     * Une image ne compte pas dans la longueur du texte : son alternative
+     * décrit ce qu'on voit, elle ne fait pas partie de ce qu'on écrit, et la
+     * faire peser sur le plafond de caractères reviendrait à punir une
+     * illustration bien décrite.
+     */
+    if (bloc.type === "image") return [];
+    return bloc.content.flatMap((element) => blocsVersTexte(element.content));
+  });
 }
 
 /** Texte sans mise en forme : ce qui se compte, et ce qui dit si le champ est vide. */

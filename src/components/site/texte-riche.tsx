@@ -63,14 +63,53 @@ function enLigne(noeuds: EnLigneRiche[] | undefined, cle: string, classeLien: st
   });
 }
 
-function blocs(noeuds: BlocRiche[], cle: string, classeLien: string): ReactNode[] {
+/**
+ * Alignement d'une image dans la colonne.
+ *
+ * Des marges automatiques plutôt qu'un `float` : le texte ne s'enroule pas
+ * autour de l'image, et c'est voulu. Sur téléphone, où la colonne fait quelques
+ * centaines de pixels, un habillage réduit le texte à deux mots par ligne.
+ */
+const ALIGNEMENT: Record<string, string> = {
+  gauche: "me-auto",
+  centre: "mx-auto",
+  droite: "ms-auto",
+};
+
+function blocs(
+  noeuds: BlocRiche[],
+  cle: string,
+  classeLien: string,
+  urlImage?: (cle: number) => string | null,
+): ReactNode[] {
   return noeuds.map((bloc, rang) => {
     const k = `${cle}-${rang}`;
     if (bloc.type === "paragraph") return <p key={k}>{enLigne(bloc.content, k, classeLien)}</p>;
 
+    if (bloc.type === "image") {
+      /*
+       * Sans résolveur, l'image n'est pas rendue : le rang ne désigne rien
+       * hors de l'objet qui porte la liste. Le reste du texte s'affiche quand
+       * même — un document ne doit pas disparaître parce qu'une illustration
+       * manque.
+       */
+      const src = urlImage?.(bloc.attrs.cle);
+      if (!src) return null;
+      return (
+        /* eslint-disable-next-line @next/next/no-img-element -- servie par une route contrôlée, dimensions variables */
+        <img
+          key={k}
+          src={src}
+          alt={bloc.attrs.alt}
+          style={{ width: `${bloc.attrs.largeur}%` }}
+          className={`block h-auto rounded-lg ${ALIGNEMENT[bloc.attrs.alignement] ?? "mx-auto"}`}
+        />
+      );
+    }
+
     const elements = bloc.content.map((element, rangElement) => (
       <li key={`${k}-${rangElement}`}>
-        {blocs(element.content, `${k}-${rangElement}`, classeLien)}
+        {blocs(element.content, `${k}-${rangElement}`, classeLien, urlImage)}
       </li>
     ));
     return bloc.type === "orderedList" ? (
@@ -96,9 +135,16 @@ export function TexteRiche({
   valeur,
   className = "",
   classeLien = CLASSE_LIEN,
+  urlImage,
 }: {
   valeur: string;
   className?: string;
+  /**
+   * Résout le rang d'une image en URL. Seules les newsletters en fournissent
+   * un : ailleurs, le document ne contient pas de nœud image, et en accepter
+   * un obligerait chaque page du site à savoir où puiser.
+   */
+  urlImage?: (cle: number) => string | null;
   /**
    * Couleur des liens. Par défaut, celle du thème ; sur un panneau toujours
    * sombre posé dans une page claire (l'appel à l'action), le lien du thème
@@ -106,7 +152,9 @@ export function TexteRiche({
    */
   classeLien?: string;
 }) {
-  const doc = lireTexteRiche(valeur);
+  const doc = lireTexteRiche(valeur, { images: Boolean(urlImage) });
   if (doc.content.length === 0) return null;
-  return <div className={`${RYTHME} ${className}`}>{blocs(doc.content, "b", classeLien)}</div>;
+  return (
+    <div className={`${RYTHME} ${className}`}>{blocs(doc.content, "b", classeLien, urlImage)}</div>
+  );
 }

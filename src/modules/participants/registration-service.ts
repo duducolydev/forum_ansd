@@ -5,6 +5,8 @@ import { captchaProvider } from "@/lib/captcha";
 import { rateLimit } from "@/lib/rate-limit";
 import { enqueueNotification } from "@/modules/notifications/jobs";
 import { reconcileByEmail, getInvitationByToken } from "@/modules/invitations/service";
+import { blocReferent } from "@/modules/referents/service";
+import { CHAMPS_PUBLICS as CHAMPS_REFERENT } from "@/modules/referents/repository";
 import { parametresFrais } from "@/modules/settings/service";
 import { etatInscriptions } from "@/modules/settings/regles";
 import { enqueueBadgeGeneration, generateUniquePublicId } from "./service";
@@ -197,13 +199,35 @@ export async function registerPublicParticipant(options: {
   }
 
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
+
+  /*
+   * Coordonnées du référent de la délégation, reprises dans le message (§28).
+   *
+   * Le bloc est composé ici en une seule variable plutôt qu'en plusieurs : le
+   * moteur de modèles ne sait que substituer, pas conditionner, et un
+   * participant sans délégation aurait lu « Votre référent est , joignable
+   * au ». Vide, la variable ne laisse rien derrière elle.
+   */
+  const referent = participant.delegationId
+    ? await prisma.delegation
+        .findUnique({
+          where: { id: participant.delegationId },
+          select: { referent: { select: CHAMPS_REFERENT } },
+        })
+        .then((d) => d?.referent ?? null)
+    : null;
+
   await enqueueNotification(
     {
       editionId,
       templateKey: status === "CONFIRMED" ? "registration_confirmed" : "registration_received",
       to: participant.email,
       participantId: participant.id,
-      variables: { prenom: participant.firstName, lien_espace: `${baseUrl}/mon-espace` },
+      variables: {
+        prenom: participant.firstName,
+        lien_espace: `${baseUrl}/mon-espace`,
+        referent_bloc: blocReferent(referent, participant.locale === "en" ? "en" : "fr"),
+      },
     },
     `registration-${status.toLowerCase()}-${participant.id}`,
   );

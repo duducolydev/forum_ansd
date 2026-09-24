@@ -84,6 +84,16 @@ export const CATALOGUE: GroupePermissions[] = [
     ],
   },
   {
+    titre: "Infos pratiques",
+    permissions: [
+      {
+        cle: "hotels.manage",
+        label: "Gérer l'hébergement et les infos pratiques",
+        note: "Hôtels, tarifs et contacts publiés. N'ouvre pas le reste de l'éditorial.",
+      },
+    ],
+  },
+  {
     titre: "Pilotage",
     permissions: [
       { cle: "dashboard.read", label: "Voir le tableau de bord" },

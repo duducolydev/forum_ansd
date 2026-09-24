@@ -15,7 +15,8 @@
     "myRegistrations": "My space",
     "register": "Register",
     "menu": "Menu",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "newsletters": "Newsletters"
   },
   "theme": {
     "toggleToDark": "Switch to dark theme",

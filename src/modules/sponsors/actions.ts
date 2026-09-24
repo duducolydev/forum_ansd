@@ -122,6 +122,29 @@ export async function retirerSponsorAction(sponsorId: string): Promise<EtatActio
   redirect("/admin/sponsors");
 }
 
+/**
+ * Déplacement d'un partenaire dans l'ordre d'affichage (§32).
+ *
+ * Les deux pages sont revalidées ensemble : l'ordre du BackOffice **est**
+ * celui du site, et n'en rafraîchir qu'une donnerait deux classements
+ * différents pour la même donnée, le temps d'un cache.
+ */
+export async function deplacerSponsorAction(
+  sponsorId: string,
+  direction: "haut" | "bas",
+): Promise<EtatAction> {
+  try {
+    const { acteur, editionId } = await exigerRedaction();
+    await service.deplacerSponsor(editionId, sponsorId, direction, acteur);
+  } catch (erreur) {
+    return { erreur: messageErreur(erreur) };
+  }
+
+  revalidatePath("/admin/sponsors");
+  revalidatePath("/sponsors");
+  return {};
+}
+
 export async function enregistrerNiveauAction(
   niveauId: string | null,
   _etat: EtatAction,

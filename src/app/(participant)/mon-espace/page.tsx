@@ -11,6 +11,7 @@ import {
   LogOut,
   ShieldAlert,
   UserPen,
+  UserRoundCheck,
   Users,
 } from "lucide-react";
 import { getParticipantSession } from "@/modules/auth/participant-session";
@@ -250,6 +251,51 @@ export default async function MySpacePage({
             )}
           </Panneau>
         </Reveal>
+
+        {/*
+          Référent de la délégation, avant le bloc réservé au chef : c'est le
+          seul encart de cette page dont un participant a besoin en urgence, et
+          il ne doit pas être à chercher en bas.
+        */}
+        {participant.delegation?.referent && (
+          <Reveal delai={210}>
+            <Panneau icone={UserRoundCheck} ton="bg-blue-soft text-blue-text" titre="Mon référent">
+              <p className="text-text-3 mb-3 text-sm">
+                Votre interlocuteur au sein du comité d&apos;organisation pour la délégation{" "}
+                {participant.delegation.name}.
+              </p>
+              <p className="text-heading font-semibold">
+                {participant.delegation.referent.name}
+                {participant.delegation.referent.role && (
+                  <span className="text-text-3 font-normal">
+                    {" "}
+                    — {participant.delegation.referent.role}
+                  </span>
+                )}
+              </p>
+              <ul className="mt-2 flex flex-col gap-1 text-sm">
+                <li>
+                  <a
+                    href={`mailto:${participant.delegation.referent.email}`}
+                    className="text-link underline"
+                  >
+                    {participant.delegation.referent.email}
+                  </a>
+                </li>
+                {participant.delegation.referent.phone && (
+                  <li>
+                    <a
+                      href={`tel:${participant.delegation.referent.phone.replace(/\s/g, "")}`}
+                      className="text-link underline"
+                    >
+                      {participant.delegation.referent.phone}
+                    </a>
+                  </li>
+                )}
+              </ul>
+            </Panneau>
+          </Reveal>
+        )}
 
         {isDelegationHead && participant.delegation && (
           <Reveal delai={240}>

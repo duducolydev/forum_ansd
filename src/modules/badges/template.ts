@@ -9,6 +9,10 @@
  */
 export interface BadgeTemplateData {
   editionName: string;
+  /** Logo du Forum en `data:` URI (`modules/badges/logo.ts`), ou `null`. */
+  logoDataUrl?: string | null;
+  /** Dates du Forum, déjà mises en forme : « 23–25 novembre 2026 ». */
+  eventDates?: string | null;
   firstName: string;
   lastName: string;
   jobTitle: string | null;
@@ -71,13 +75,31 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
   /* flex:0 0 auto sur les blocs fixes — sans cela, un titre d'édition qui
      passe sur deux lignes fait déborder la colonne et Chromium écrase les
      enfants « fins » : le bandeau de couleur disparaissait du rendu. */
+  /*
+   * En-tête sur fond **clair**, et non sur le bleu nuit d'origine : le logo du
+   * Forum porte son texte en bleu nuit, qui disparaîtrait sur un fond de la
+   * même couleur. C'est la raison qui garde aussi la barre du site public en
+   * fond clair.
+   */
   .top {
     flex: 0 0 auto;
-    background: ${ANSD_BLEU_NUIT}; color: #fff;
-    padding: 2.4mm 3mm; font-size: 5.2pt; line-height: 1.25;
-    display: flex; justify-content: space-between; align-items: center; gap: 1.5mm;
+    background: #f2f7fc; color: ${ANSD_BLEU_NUIT};
+    border-bottom: 0.2mm solid #dbe7f3;
+    padding: 2mm 3mm; line-height: 1.2;
+    display: flex; align-items: center; gap: 2mm;
   }
-  .top b { font-size: 6.6pt; letter-spacing: 0.04em; }
+  /* Hauteur fixe, largeur libre : le rapport du logo est conservé, et une
+     future version plus large ne déformera pas l'en-tête. */
+  .top .logo { flex: 0 0 auto; height: 7mm; width: auto; display: block; }
+  .top .titres { min-width: 0; flex: 1 1 auto; }
+  /* Deux lignes au maximum, puis coupure : un titre d'édition très long ne
+     doit jamais pousser la photo ou le QR hors de la carte imprimée. */
+  .top .evenement {
+    font-size: 5.4pt; font-weight: 800; letter-spacing: 0.02em;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .top .dates { font-size: 4.8pt; color: #4e6a88; margin-top: 0.3mm; }
   .band {
     flex: 0 0 auto; height: 2mm;
     background: linear-gradient(90deg, ${ANSD_BLEU_VIF}, ${accent});
@@ -120,7 +142,13 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
 </head>
 <body>
   <div class="badge" data-capture>
-    <div class="top"><span>${escapeHtml(data.editionName)}</span><b>ANSD</b></div>
+    <div class="top">
+      ${data.logoDataUrl ? `<img class="logo" src="${data.logoDataUrl}" alt="" />` : ""}
+      <div class="titres">
+        <div class="evenement">${escapeHtml(data.editionName)}</div>
+        ${data.eventDates ? `<div class="dates">${escapeHtml(data.eventDates)}</div>` : ""}
+      </div>
+    </div>
     <div class="band"></div>
     <div class="body">
       ${avatar}

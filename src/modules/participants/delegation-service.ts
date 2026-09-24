@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
+import { alerterDesignation } from "@/modules/referents/notifications";
 import * as repo from "./repository";
 import type { DelegationInput } from "./schema";
 import type { Actor } from "./service";
@@ -11,6 +12,7 @@ export async function createDelegation(editionId: string, input: DelegationInput
     name: input.name,
     country: input.country || null,
     institution: input.institution || null,
+    referent: input.referentId ? { connect: { id: input.referentId } } : undefined,
     maxMembers: input.maxMembers ?? null,
   });
 
@@ -20,18 +22,24 @@ export async function createDelegation(editionId: string, input: DelegationInput
     action: "delegation.create",
     entity: "Delegation",
     entityId: delegation.id,
-    after: { name: delegation.name },
+    after: { name: delegation.name, referentId: delegation.referentId },
   });
+
+  // Après l'écriture, jamais pendant : un envoi qui échoue ne doit pas faire
+  // perdre la délégation qu'on vient de créer.
+  if (delegation.referentId) await alerterDesignation(delegation.id);
 
   return delegation;
 }
 
 export async function updateDelegation(id: string, input: DelegationInput, actor: Actor) {
   const before = await prisma.delegation.findUniqueOrThrow({ where: { id } });
+  const referentId = input.referentId || null;
   const updated = await repo.updateDelegation(id, {
     name: input.name,
     country: input.country || null,
     institution: input.institution || null,
+    referent: referentId ? { connect: { id: referentId } } : { disconnect: true },
     maxMembers: input.maxMembers ?? null,
   });
 
@@ -41,9 +49,16 @@ export async function updateDelegation(id: string, input: DelegationInput, actor
     action: "delegation.update",
     entity: "Delegation",
     entityId: id,
-    before: { name: before.name },
-    after: { name: updated.name },
+    before: { name: before.name, referentId: before.referentId },
+    after: { name: updated.name, referentId: updated.referentId },
   });
+
+  /*
+   * Alerte au seul **changement** de référent. Enregistrer le formulaire sans
+   * y toucher ne doit pas renvoyer le message : le référent finirait par les
+   * ignorer, et c'est précisément celui qui compte qu'il manquerait alors.
+   */
+  if (referentId && referentId !== before.referentId) await alerterDesignation(id);
 
   return updated;
 }

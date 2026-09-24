@@ -58,7 +58,7 @@ export async function SiteHeader() {
           aria-label="Forum international sur les données — accueil"
           className="focus-visible:outline-ansd-bleu-nuit shrink-0 rounded-xl"
         >
-          <LogoForum alt="" hauteur="h-16" prioritaire />
+          <LogoForum alt="" taille="h-16" prioritaire />
         </Link>
 
         <nav className="hidden shrink-0 items-center gap-0.5 lg:flex" aria-label={t("menu")}>

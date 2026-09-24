@@ -43,6 +43,9 @@ export default async function DelegationsPage() {
                 Chef de délégation
               </th>
               <th className="border-border bg-surface-2 text-text-3 border-b px-3.5 py-3 text-left text-xs font-semibold">
+                Référent
+              </th>
+              <th className="border-border bg-surface-2 text-text-3 border-b px-3.5 py-3 text-left text-xs font-semibold">
                 Membres
               </th>
               <th className="border-border bg-surface-2 border-b px-3.5 py-3"></th>
@@ -59,6 +62,9 @@ export default async function DelegationsPage() {
                   {delegation.headParticipant
                     ? `${delegation.headParticipant.firstName} ${delegation.headParticipant.lastName}`
                     : "—"}
+                </td>
+                <td className="border-border border-b px-3.5 py-3">
+                  {delegation.referent?.name ?? "—"}
                 </td>
                 <td className="border-border border-b px-3.5 py-3">
                   {delegation._count.members}
@@ -78,7 +84,7 @@ export default async function DelegationsPage() {
             ))}
             {delegations.length === 0 && (
               <tr>
-                <td colSpan={5} className="text-text-3 px-3.5 py-8 text-center">
+                <td colSpan={6} className="text-text-3 px-3.5 py-8 text-center">
                   Aucune délégation.
                 </td>
               </tr>

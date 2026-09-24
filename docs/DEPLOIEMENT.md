@@ -10,6 +10,20 @@ avec la machine.
 
 ---
 
+```bash
+cd /opt/forum-ansd
+( set -a && . ./.env && set +a && ./scripts/backup.sh )   # d'abord la sauvegarde
+git pull
+forum build app
+forum up -d app
+forum run --rm outils pnpm prisma migrate deploy
+```
+
+L'ordre compte : la sauvegarde d'abord, les migrations après le démarrage de la
+nouvelle image — elles sont écrites pour elle.
+
+---
+
 ## 0. Ce qu'il faut savoir avant de commencer
 
 **Le scanner de badges ne fonctionnera pas en HTTP.** Les navigateurs réservent

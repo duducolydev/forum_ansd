@@ -62,6 +62,13 @@ export const delegationInputSchema = z.object({
   name: z.string().trim().min(1, "Le nom de la délégation est requis").max(200),
   country: z.string().trim().max(100).optional().or(z.literal("")),
   institution: z.string().trim().max(200).optional().or(z.literal("")),
+  /*
+   * Référent interne (§28). La chaîne vide vaut « aucun » : c'est la valeur que
+   * renvoie un `<select>` dont l'option vide est choisie, et la traiter comme
+   * telle évite de faire porter au formulaire une distinction qui n'existe pas
+   * pour l'utilisateur.
+   */
+  referentId: z.string().trim().optional().or(z.literal("")),
   maxMembers: z.coerce.number().int().min(1).max(1000).optional(),
 });
 

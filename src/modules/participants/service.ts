@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { jobQueue } from "@/lib/queue";
 import { reconcileByEmail } from "@/modules/invitations/service";
+import { alerterNouveauMembre } from "@/modules/referents/notifications";
 import { registerBadgeJobs } from "@/modules/badges/jobs";
 import * as repo from "./repository";
 import type { ParticipantInput, ParticipantSearchInput } from "./schema";
@@ -186,6 +187,15 @@ export async function createParticipant(options: CreateParticipantOptions): Prom
   }
 
   await reconcileByEmail(editionId, participant.email, participant.id);
+
+  /*
+   * Le référent de la délégation est prévenu du nouveau venu (§28). Après
+   * l'inscription et hors de son chemin critique : le participant est inscrit
+   * même si l'alerte ne part pas, et l'inverse n'aurait aucun sens.
+   */
+  if (participant.delegationId) {
+    await alerterNouveauMembre(participant.delegationId, participant.id);
+  }
 
   return participant;
 }

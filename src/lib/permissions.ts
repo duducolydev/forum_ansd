@@ -27,6 +27,15 @@ export const PERMISSIONS = [
   "zones.manage",
   "content.read",
   "content.write",
+  /*
+   * Hébergement et infos pratiques (§29) : hôtels partenaires, tarifs,
+   * contacts, et les zones éditoriales des six rubriques.
+   *
+   * Un jeton distinct de `content.write`, qui ouvre **tout** l'éditorial du
+   * site : le gestionnaire des hôtels négocie des tarifs, il n'a pas à
+   * pouvoir réécrire la page d'accueil ni les mentions légales.
+   */
+  "hotels.manage",
   "sponsors.write",
   "contributions.write",
   "contributions.draft",
@@ -88,6 +97,14 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, readonly Permission[]> = {
     "notifications.send_bulk",
   ],
   GESTIONNAIRE_STATISTIQUES: ["dashboard.read", "reports.read", "reports.export"],
+  /**
+   * Gestionnaire des hôtels (§29), hors des huit rôles du brief : tient
+   * l'hébergement et les informations pratiques, et rien d'autre.
+   *
+   * `content.read` l'accompagne pour qu'il relise les rubriques dans le
+   * BackOffice sans pouvoir toucher au reste de l'éditorial.
+   */
+  GESTIONNAIRE_HOTELS: ["hotels.manage", "content.read"],
   LECTEUR: [
     "participants.read",
     "invitations.read",
@@ -115,6 +132,7 @@ export const ROLE_LABELS: Record<string, string> = {
   AGENT_ACCUEIL: "Agent Accueil",
   GESTIONNAIRE_PROGRAMME: "Gestionnaire Programme",
   GESTIONNAIRE_COMMUNICATION: "Gestionnaire Communication",
+  GESTIONNAIRE_HOTELS: "Gestionnaire des hôtels",
   GESTIONNAIRE_STATISTIQUES: "Gestionnaire Statistiques",
   LECTEUR: "Lecteur",
   RAPPORTEUR: "Rapporteur",

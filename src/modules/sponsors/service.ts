@@ -30,11 +30,92 @@ export async function listerNiveaux(editionId: string) {
   });
 }
 
+/**
+ * Ordre d'affichage, commun au site et au BackOffice (§32).
+ *
+ * `sortOrder` d'abord, le nom ensuite : deux partenaires au même rang restent
+ * classés de façon stable, ce qui évite qu'une page se réordonne d'un
+ * chargement à l'autre sans que rien ait changé.
+ */
+const ORDRE_AFFICHAGE = [{ sortOrder: "asc" as const }, { name: "asc" as const }];
+
 export async function listerSponsors(editionId: string) {
   return prisma.sponsor.findMany({
     where: { editionId, deletedAt: null },
-    orderBy: [{ level: { sortOrder: "asc" } }, { name: "asc" }],
+    orderBy: ORDRE_AFFICHAGE,
     include: { level: { select: { id: true, name: true, sortOrder: true } } },
+  });
+}
+
+/** Partenaires visibles du public, dans l'ordre décidé par le comité. */
+export async function listerSponsorsPublies(editionId: string) {
+  return prisma.sponsor.findMany({
+    where: { editionId, isPublished: true, deletedAt: null },
+    orderBy: ORDRE_AFFICHAGE,
+    // Projection explicite : `contactName` et `contactEmail` sont des données
+    // internes (§5.9) et ne doivent jamais atteindre la page publique, même en
+    // passant par le HTML rendu côté serveur.
+    select: {
+      id: true,
+      name: true,
+      logoPath: true,
+      website: true,
+      standNumber: true,
+      descriptionFr: true,
+      descriptionEn: true,
+      sortOrder: true,
+      level: { select: { id: true, name: true, sortOrder: true, logoMaxWidth: true } },
+    },
+  });
+}
+
+/**
+ * Déplace un partenaire d'un rang vers le haut ou vers le bas.
+ *
+ * L'échange se fait avec le **voisin dans la liste affichée**, et non par un
+ * calcul sur `sortOrder` : plusieurs partenaires partagent le même rang après
+ * la reprise des données, et incrémenter un nombre les aurait fait sauter
+ * par-dessus un groupe entier. Les rangs sont donc réécrits en entier, de 10 en
+ * 10, ce qui rend l'ordre lisible en base et laisse de la place pour insérer.
+ */
+export async function deplacerSponsor(
+  editionId: string,
+  sponsorId: string,
+  direction: "haut" | "bas",
+  acteur: Acteur,
+): Promise<void> {
+  const sponsors = await prisma.sponsor.findMany({
+    where: { editionId, deletedAt: null },
+    orderBy: ORDRE_AFFICHAGE,
+    select: { id: true, name: true },
+  });
+
+  const position = sponsors.findIndex((sponsor) => sponsor.id === sponsorId);
+  if (position === -1) throw new SponsorRuleError("Partenaire introuvable.");
+
+  const cible = direction === "haut" ? position - 1 : position + 1;
+  // Aux extrémités, la demande est sans objet : on ne la traite pas comme une
+  // erreur, le bouton correspondant étant déjà désactivé à l'écran.
+  if (cible < 0 || cible >= sponsors.length) return;
+
+  const reordonnes = [...sponsors];
+  const [deplace] = reordonnes.splice(position, 1);
+  reordonnes.splice(cible, 0, deplace!);
+
+  await prisma.$transaction(
+    reordonnes.map((sponsor, rang) =>
+      prisma.sponsor.update({ where: { id: sponsor.id }, data: { sortOrder: (rang + 1) * 10 } }),
+    ),
+  );
+
+  await audit.log({
+    actorType: "USER",
+    actorUserId: acteur.userId,
+    action: "sponsor.reordered",
+    entity: "Sponsor",
+    entityId: sponsorId,
+    before: { position: position + 1 },
+    after: { position: cible + 1, nom: deplace!.name },
   });
 }
 

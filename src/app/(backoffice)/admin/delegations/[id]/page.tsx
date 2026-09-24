@@ -38,6 +38,34 @@ export default async function DelegationDetailPage({
         )}
       </div>
 
+      {/*
+        Référent avant la liste des membres : c'est l'information qu'on vient
+        vérifier en ouvrant une délégation, et son absence est elle-même un
+        renseignement — d'où l'encart affiché même vide, plutôt que masqué.
+      */}
+      <div className="border-border bg-surface mb-5 rounded-xl border p-5">
+        <h3 className="text-heading mb-3 text-sm font-semibold">Référent</h3>
+        {delegation.referent ? (
+          <div className="text-sm">
+            <p className="text-heading font-semibold">
+              {delegation.referent.name}
+              {delegation.referent.role && (
+                <span className="text-text-3 font-normal"> — {delegation.referent.role}</span>
+              )}
+            </p>
+            <p className="text-text-2 mt-1">
+              {delegation.referent.email}
+              {delegation.referent.phone && ` · ${delegation.referent.phone}`}
+            </p>
+          </div>
+        ) : (
+          <p className="text-text-3 text-sm">
+            Aucun référent désigné. Les membres de cette délégation n&apos;ont personne à
+            joindre&nbsp;: rattachez-en un depuis « Modifier ».
+          </p>
+        )}
+      </div>
+
       <div className="border-border bg-surface rounded-xl border p-5">
         <h3 className="text-heading mb-3 text-sm font-semibold">
           Membres ({delegation.members.length}

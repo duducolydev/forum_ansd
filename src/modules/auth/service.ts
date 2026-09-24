@@ -16,8 +16,36 @@ const LOCK_DURATION_MS = 15 * 60 * 1000;
  */
 export const ROLES_A_DEUX_FACTEURS = ["SUPER_ADMIN", "ADMIN_FORUM"] as const;
 
-export function exigeSecondFacteur(roleName: string): boolean {
-  return (ROLES_A_DEUX_FACTEURS as readonly string[]).includes(roleName);
+/**
+ * Permissions qui imposent le second facteur, quel que soit le nom du rôle.
+ *
+ * Depuis que les rôles se créent en BackOffice (§30), la liste de noms
+ * ci-dessus ne suffit plus : un rôle inventé et doté de `users.manage`
+ * distribuerait tous les droits du portail **sans second facteur**, et ce
+ * serait le chemin le plus court pour contourner la règle du §26. Le critère
+ * porte donc aussi sur ce que le rôle permet, et pas seulement sur son nom.
+ *
+ * `users.manage` seul : c'est la permission qui donne prise sur toutes les
+ * autres. L'étendre à l'export des participants aurait imposé le facteur au
+ * gestionnaire des participants, qui ne l'a jamais eu — un durcissement réel,
+ * mais qui n'appartient pas à ce chantier.
+ */
+const PERMISSIONS_A_DEUX_FACTEURS = ["users.manage"] as const;
+
+/**
+ * Le rôle impose-t-il un second facteur ?
+ *
+ * `permissions` est facultatif pour les appelants qui n'ont que le nom sous la
+ * main — le script de création d'administrateur, par exemple. Les rôles du
+ * brief sont alors reconnus par leur nom, comme avant ; un rôle créé en
+ * BackOffice, lui, n'est correctement évalué que si ses permissions sont
+ * fournies. Le chemin de connexion les a toujours (`authenticateUser`).
+ */
+export function exigeSecondFacteur(roleName: string, permissions?: unknown): boolean {
+  if ((ROLES_A_DEUX_FACTEURS as readonly string[]).includes(roleName)) return true;
+
+  const accordees = Array.isArray(permissions) ? permissions.map(String) : [];
+  return PERMISSIONS_A_DEUX_FACTEURS.some((permission) => accordees.includes(permission));
 }
 
 /** Ce que la session porte des droits d'un compte. */
@@ -99,7 +127,7 @@ export async function authenticateUser(
     return { status: "INVALID_CREDENTIALS" };
   }
 
-  if (exigeSecondFacteur(user.role.name)) {
+  if (exigeSecondFacteur(user.role.name, user.role.permissions)) {
     if (!code) {
       const envoi = await creerDefi(user, ip);
       return envoi.status === "ENVOYE"

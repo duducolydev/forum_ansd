@@ -239,6 +239,16 @@ export function undeclaredVariables(template: {
 
 export interface BulkFilter {
   status?: string;
+  /**
+   * Plusieurs statuts à la fois (§34).
+   *
+   * `status` ne permettait qu'un seul choix, ce qui convient à une campagne
+   * ciblée — « relancer les inscrits » — mais pas à une newsletter, qui
+   * s'adresse à tous ceux qui ont manifesté leur intérêt, quel que soit
+   * l'avancement de leur dossier. Les deux champs cohabitent : `status` reste
+   * le filtre simple des écrans existants.
+   */
+  statuts?: string[];
   categoryId?: string;
   country?: string;
 }
@@ -248,6 +258,7 @@ export function bulkWhere(editionId: string, filter: BulkFilter): Prisma.Partici
     editionId,
     deletedAt: null,
     ...(filter.status ? { status: filter.status as never } : {}),
+    ...(filter.statuts?.length ? { status: { in: filter.statuts as never[] } } : {}),
     ...(filter.categoryId ? { categoryId: filter.categoryId } : {}),
     ...(filter.country ? { country: filter.country } : {}),
   };

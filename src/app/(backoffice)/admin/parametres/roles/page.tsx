@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { prisma } from "@/lib/db";
 import { CarteRole } from "@/modules/users/components/carte-role";
+import { CreationRole } from "@/modules/users/components/creation-role";
+import { estRoleIntegre, libelleRole } from "@/modules/users/roles-service";
 import { permissionsSansLibelle } from "@/modules/users/permissions-catalogue";
 
 export const metadata = { title: "Rôles et droits" };
@@ -56,6 +58,10 @@ export default async function RolesPage() {
         </p>
       )}
 
+      <div className="mb-3">
+        <CreationRole />
+      </div>
+
       <div className="flex flex-col gap-3">
         {roles.map((role) => (
           <CarteRole
@@ -64,6 +70,8 @@ export default async function RolesPage() {
             role={{
               id: role.id,
               name: role.name,
+              libelle: libelleRole(role),
+              integre: estRoleIntegre(role.name),
               permissions: (role.permissions as string[] | null) ?? [],
               comptes: role._count.users,
               comptesActifs: role.users.length,

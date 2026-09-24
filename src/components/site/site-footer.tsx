@@ -69,7 +69,7 @@ export async function SiteFooter() {
               commanditaire (PLAN.md §20). Il porte le nom du Forum, que son texte
               alternatif restitue. */}
           <div className="mb-4 flex flex-col items-start gap-2">
-            <LogoForum alt="Forum international sur les données" hauteur="h-14" />
+            <LogoForum alt="Forum international sur les données" taille="h-14" />
             <small>Une initiative de l&apos;ANSD</small>
           </div>
 

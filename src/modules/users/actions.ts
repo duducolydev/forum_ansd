@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import * as service from "./service";
+import * as rolesService from "./roles-service";
 import {
   creationUtilisateurSchema,
   modificationUtilisateurSchema,
@@ -111,6 +112,64 @@ export async function enregistrerRoleAction(
 
   revalidatePath("/admin/parametres/roles");
   return { avis: "Droits enregistrés — effectifs immédiatement pour les titulaires." };
+}
+
+/**
+ * Création d'un rôle (§30).
+ *
+ * Le nom technique est normalisé par le service, pas ici : deux formulaires
+ * différents produiraient sinon deux normalisations qui divergent, et c'est la
+ * base qui arbitrerait, par une contrainte d'unicité que l'utilisateur ne voit
+ * pas.
+ */
+export async function creerRoleAction(_etat: EtatAction, formData: FormData): Promise<EtatAction> {
+  try {
+    const acteur = await exigerGestionnaire();
+    await rolesService.creerRole(
+      {
+        name: String(formData.get("name") ?? ""),
+        label: String(formData.get("label") ?? ""),
+        permissions: formData.getAll("permission").map(String),
+      },
+      acteur,
+    );
+  } catch (erreur) {
+    return { erreur: messageErreur(erreur) };
+  }
+
+  revalidatePath("/admin/parametres/roles");
+  revalidatePath("/admin/utilisateurs");
+  return { avis: "Rôle créé." };
+}
+
+export async function renommerRoleAction(
+  roleId: string,
+  _etat: EtatAction,
+  formData: FormData,
+): Promise<EtatAction> {
+  try {
+    const acteur = await exigerGestionnaire();
+    await rolesService.renommerRole(roleId, String(formData.get("label") ?? ""), acteur);
+  } catch (erreur) {
+    return { erreur: messageErreur(erreur) };
+  }
+
+  revalidatePath("/admin/parametres/roles");
+  revalidatePath("/admin/utilisateurs");
+  return { avis: "Libellé enregistré." };
+}
+
+export async function supprimerRoleAction(roleId: string, _etat: EtatAction): Promise<EtatAction> {
+  try {
+    const acteur = await exigerGestionnaire();
+    await rolesService.supprimerRole(roleId, acteur);
+  } catch (erreur) {
+    return { erreur: messageErreur(erreur) };
+  }
+
+  revalidatePath("/admin/parametres/roles");
+  revalidatePath("/admin/utilisateurs");
+  return { avis: "Rôle supprimé." };
 }
 
 export async function deverrouillerAction(userId: string, _etat: EtatAction): Promise<EtatAction> {

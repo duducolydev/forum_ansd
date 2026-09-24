@@ -38,6 +38,10 @@ export async function getMySpaceData(participantId: string) {
       badges: { orderBy: { version: "desc" } },
       delegation: {
         include: {
+          // Référent interne (§28) : ses coordonnées sont montrées à **tous**
+          // les membres, pas au seul chef de délégation — c'est lui qu'on
+          // appelle quand on cherche une navette à six heures du matin.
+          referent: { select: { name: true, email: true, phone: true, role: true } },
           members: {
             select: { id: true, firstName: true, lastName: true, status: true, publicId: true },
             orderBy: { lastName: "asc" },

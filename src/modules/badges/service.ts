@@ -8,6 +8,8 @@ import { enqueueNotification } from "@/modules/notifications/jobs";
 import { markBadged, type Actor } from "@/modules/participants/service";
 import { InvalidParticipantTransitionError } from "@/modules/participants/errors";
 import { renderBadgeHtml } from "./template";
+import { logoBadgeDataUrl } from "./logo";
+import { datesDuForum } from "./dates";
 import { buildBadgeToken, hashBadgeToken, parseBadgeToken, verifyBadgeSignature } from "./token";
 
 /** Sélection minimale nécessaire au rendu — évite de charger tout le participant. */
@@ -25,7 +27,7 @@ const participantForBadge = {
   photoPath: true,
   editionId: true,
   category: { select: { labelFr: true, labelEn: true, color: true } },
-  edition: { select: { title: true } },
+  edition: { select: { title: true, startDate: true, endDate: true } },
 } satisfies Prisma.ParticipantSelect;
 
 async function photoDataUrl(photoPath: string | null): Promise<string | null> {
@@ -60,6 +62,10 @@ async function renderAndStore(badge: Badge): Promise<{ pdfPath: string; pngPath:
 
   const html = renderBadgeHtml({
     editionName: participant.edition.title,
+    // Logo lu une fois et gardé en mémoire (`logo.ts`) : 500 badges ne doivent
+    // pas coûter 500 lectures disque du même fichier.
+    logoDataUrl: await logoBadgeDataUrl(),
+    eventDates: datesDuForum(participant.edition.startDate, participant.edition.endDate),
     firstName: participant.firstName,
     lastName: participant.lastName,
     jobTitle: participant.jobTitle,

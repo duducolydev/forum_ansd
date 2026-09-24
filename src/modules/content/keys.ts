@@ -35,6 +35,19 @@ export const CONTENT_BLOCK_KEYS: readonly ZoneEditoriale[] = [
   { key: "practical.visa", label: "Infos pratiques — Visas", riche: true, max: 400 },
   { key: "practical.transport", label: "Infos pratiques — Transports", riche: true, max: 400 },
   { key: "practical.contacts", label: "Infos pratiques — Contacts", riche: true, max: 400 },
+  /*
+   * Pages de détail des « Infos pratiques » (§29). Les encarts de la page
+   * d'accueil de la rubrique tiennent en 400 signes ; ces textes-là sont ceux
+   * qu'on lit une fois, en préparant son voyage, et n'ont pas à être
+   * comprimés.
+   *
+   * Hébergement et Contacts n'en ont pas : leur détail est une liste
+   * structurée d'hôtels et de contacts, tenue hors de l'éditorial.
+   */
+  { key: "practical.venue.detail", label: "Détail — Lieu", riche: true, max: 6000 },
+  { key: "practical.arrival.detail", label: "Détail — Arrivée", riche: true, max: 6000 },
+  { key: "practical.visa.detail", label: "Détail — Visas", riche: true, max: 6000 },
+  { key: "practical.transport.detail", label: "Détail — Transports", riche: true, max: 6000 },
   {
     key: "legal.privacy",
     label: "Mentions — Politique de confidentialité",

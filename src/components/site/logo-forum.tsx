@@ -16,17 +16,29 @@ export const LOGO_FORUM = {
 
 export function LogoForum({
   alt,
-  hauteur,
+  taille,
   prioritaire = false,
 }: {
   /** Vide quand le lien qui l'entoure porte déjà le nom (en-tête). */
   alt: string;
-  /** Classe de hauteur de l'image, la largeur suit le rapport du logo. */
-  hauteur: "h-11" | "h-14" | "h-16";
+  /**
+   * Dimension de l'image.
+   *
+   * - `h-11`, `h-14`, `h-16` : hauteur fixe, la largeur suit le rapport du
+   *   logo. C'est la forme qui convient partout où la place horizontale est
+   *   disputée — une barre de navigation, un pied de page.
+   * - `pleine-largeur` : l'image prend toute la largeur offerte et sa hauteur
+   *   suit. Réservé aux conteneurs dont la largeur est **contrainte et connue**,
+   *   comme la barre latérale du BackOffice : ailleurs, un logo de 4 460 px de
+   *   large occuperait l'écran entier.
+   */
+  taille: "h-11" | "h-14" | "h-16" | "pleine-largeur";
   prioritaire?: boolean;
 }) {
+  const pleineLargeur = taille === "pleine-largeur";
+
   return (
-    <span className="inline-flex shrink-0">
+    <span className={`inline-flex ${pleineLargeur ? "w-full" : "shrink-0"}`}>
       <Image
         src={LOGO_FORUM.src}
         alt={alt}
@@ -34,7 +46,7 @@ export function LogoForum({
         height={LOGO_FORUM.hauteur}
         unoptimized
         priority={prioritaire}
-        className={`${hauteur} w-auto`}
+        className={pleineLargeur ? "h-auto w-full" : `${taille} w-auto`}
       />
     </span>
   );

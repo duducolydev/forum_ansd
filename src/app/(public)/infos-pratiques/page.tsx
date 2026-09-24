@@ -1,16 +1,9 @@
+import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
-import {
-  Bed,
-  Building2,
-  BusFront,
-  Info,
-  Mail,
-  PlaneLanding,
-  StampIcon,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight, Info } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
 import { getContentText } from "@/modules/content/service";
+import { RUBRIQUES, libelle } from "@/modules/hotels/rubriques";
 import { EnteteSection } from "@/components/site/entete-section";
 import { TexteRiche } from "@/components/site/texte-riche";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
@@ -22,62 +15,24 @@ export async function generateMetadata() {
 }
 
 /**
- * Chaque rubrique porte son icône : sur une grille de six encarts au texte
- * dense, c'est le repère qui permet de retrouver « Visas » ou « Transports »
- * d'un coup d'œil, sans relire les six intitulés.
+ * Les six rubriques pratiques, chacune menant à sa page de détail (§29).
+ *
+ * L'encart entier est le lien, et non un « en savoir plus » en bas : sur
+ * téléphone, une cible de la taille de la carte se touche sans viser, et rien
+ * n'indique mieux qu'une carte est cliquable que le fait qu'elle le soit
+ * partout.
+ *
+ * La liste des rubriques vit dans `modules/hotels/rubriques.ts`, partagée avec
+ * les pages de détail : un encart ne peut donc pas mener à une page qui
+ * n'existe pas.
  */
-const CARDS: { key: string; labelFr: string; labelEn: string; icone: LucideIcon; ton: string }[] = [
-  {
-    key: "practical.venue",
-    labelFr: "Lieu",
-    labelEn: "Venue",
-    icone: Building2,
-    ton: "bg-blue-soft text-blue-text",
-  },
-  {
-    key: "practical.arrival",
-    labelFr: "Arrivée",
-    labelEn: "Arrival",
-    icone: PlaneLanding,
-    ton: "bg-accent-soft text-accent-text",
-  },
-  {
-    key: "practical.accommodation",
-    labelFr: "Hébergement",
-    labelEn: "Accommodation",
-    icone: Bed,
-    ton: "bg-gold-soft text-gold-text",
-  },
-  {
-    key: "practical.visa",
-    labelFr: "Visas",
-    labelEn: "Visas",
-    icone: StampIcon,
-    ton: "bg-warn-soft text-warn-text",
-  },
-  {
-    key: "practical.transport",
-    labelFr: "Transports",
-    labelEn: "Transport",
-    icone: BusFront,
-    ton: "bg-blue-soft text-blue-text",
-  },
-  {
-    key: "practical.contacts",
-    labelFr: "Contacts",
-    labelEn: "Contacts",
-    icone: Mail,
-    ton: "bg-accent-soft text-accent-text",
-  },
-];
-
 export default async function PracticalInfoPage() {
   const t = await getTranslations("nav");
   const locale = (await getLocale()) as "fr" | "en";
   const edition = await getActiveEdition();
 
-  const values = await Promise.all(
-    CARDS.map((card) => getContentText(edition.id, card.key, locale)),
+  const valeurs = await Promise.all(
+    RUBRIQUES.map((rubrique) => getContentText(edition.id, rubrique.cle, locale)),
   );
 
   return (
@@ -95,28 +50,41 @@ export default async function PracticalInfoPage() {
 
       <CorpsPage>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {CARDS.map((card, index) => {
-            const Icone = card.icone;
+          {RUBRIQUES.map((rubrique, index) => {
+            const Icone = rubrique.icone;
             return (
-              <Reveal key={card.key} delai={index * 60} className="h-full">
-                <div className="border-border bg-surface carte-relief h-full rounded-xl border p-5.5">
-                  <span className={`mb-3 grid h-10 w-10 place-items-center rounded-xl ${card.ton}`}>
+              <Reveal key={rubrique.segment} delai={index * 60} className="h-full">
+                <Link
+                  href={`/infos-pratiques/${rubrique.segment}`}
+                  className="border-border bg-surface carte-relief hover:border-link focus-visible:outline-ansd-or group flex h-full flex-col rounded-xl border p-5.5 transition-colors"
+                >
+                  <span
+                    className={`mb-3 grid h-10 w-10 place-items-center rounded-xl ${rubrique.ton}`}
+                  >
                     <Icone aria-hidden size={19} strokeWidth={2.2} />
                   </span>
                   {/* `h2` : la page n'a qu'un `h1`, sauter au `h3` désoriente la
                       navigation par titres. */}
                   <h2 className="text-heading font-display mb-1.5 text-base font-semibold">
-                    {locale === "en" ? card.labelEn : card.labelFr}
+                    {libelle(rubrique, locale)}
                   </h2>
-                  {values[index] ? (
+                  {valeurs[index] ? (
                     <TexteRiche
-                      valeur={values[index]}
+                      valeur={valeurs[index]}
                       className="text-text-2 text-sm leading-relaxed"
                     />
                   ) : (
                     <p className="text-text-2 text-sm leading-relaxed">—</p>
                   )}
-                </div>
+                  <span className="text-link mt-auto flex items-center gap-1.5 pt-3 text-sm font-semibold">
+                    {locale === "en" ? "Read more" : "En savoir plus"}
+                    <ArrowRight
+                      aria-hidden
+                      size={15}
+                      className="transition-transform group-hover:translate-x-0.5"
+                    />
+                  </span>
+                </Link>
               </Reveal>
             );
           })}
