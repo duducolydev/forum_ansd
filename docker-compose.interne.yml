@@ -2,18 +2,24 @@
 #
 #   docker compose -f docker-compose.prod.yml -f docker-compose.interne.yml up -d
 #
-# Elle ne remplace pas la production : elle l'ajuste sur deux points, le temps
-# de la recette sur le réseau de l'ANSD.
+# ⚠ DÉPASSÉE DEPUIS LE 24 SEPTEMBRE 2026. Le portail est servi en HTTPS sur
+# `forum2026.ansd.sn`. Passer encore ce fichier remplace la configuration nginx
+# par celle sans TLS : le site retombe en clair, et il y retombe **sans rien
+# signaler**, puisque le port 80 répond normalement. L'alias `forum` posé
+# pendant la recette chargeait les deux fichiers, et c'est précisément le piège
+# que décrit le §5.6 du guide de déploiement.
 #
-#   - nginx sert en clair sur le port 80, avec `docker/nginx-interne.conf` ;
-#   - certbot ne démarre pas : il n'a ni domaine public à valider, ni port 80
-#     joignable depuis Internet. Il reste disponible sous le profil `tls`,
-#     pour le jour où le portail passera sur `forum2026.ansd.sn`.
+# Elle est conservée pour un seul cas : repartir en clair le temps de dépanner
+# un problème de certificat. Hors de là, on ne la passe plus.
+#
+# Ce qu'elle change, quand on la passe : nginx sert en clair sur le port 80 avec
+# `docker/nginx-interne.conf`. Le service certbot, lui, dort déjà sous le profil
+# `tls` dans la définition de production ; il n'y a plus rien à surcharger ici.
 #
 # Le port 443 reste publié par la définition de production — une surcouche
-# Compose complète une liste de ports, elle ne la raccourcit pas. Rien n'écoute
-# derrière tant que le TLS n'est pas en place : une connexion y est refusée,
-# ce qui est le comportement attendu et non un incident.
+# Compose complète une liste de ports, elle ne la raccourcit pas. Le certificat
+# reste monté, mais la configuration chargée n'ouvre aucun serveur TLS : une
+# connexion sur 443 est refusée, ce qui est attendu et non un incident.
 name: forum-ansd
 
 services:
@@ -22,6 +28,3 @@ services:
       - ./docker/nginx-interne.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "80:80"
-
-  certbot:
-    profiles: ["tls"]

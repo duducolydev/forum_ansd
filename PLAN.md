@@ -3926,3 +3926,51 @@ page : ce sont eux qui décident du calendrier de la bascule.
 - **SMTP d'abord** : sans envoi de courriel, plus aucun administrateur ne se
   connecte (§23). Le document donne la commande qui teste le port 587 depuis le
   serveur, avant que la question ne se pose un dimanche soir.
+
+### 27.5 Bascule HTTPS (24-25 septembre 2026) et ce qu'elle a appris
+
+La DSI n'a pas suivi la voie prévue au §5 du guide. Plutôt qu'un certificat
+Let's Encrypt propre au portail, elle a déposé le **joker `*.ansd.sn`** du parc,
+signé GlobalSign, dans `docker/certs`, et adapté à la main `docker/nginx.conf`
+et `docker-compose.prod.yml` sur le serveur. Ces deux fichiers étant versionnés,
+le dépôt et le serveur ont divergé sans que rien ne le signale : `git pull`
+répondait « Already up to date » tant qu'il n'y avait rien à tirer, et aurait
+refusé de s'exécuter au premier vrai correctif. Les modifications sont reprises
+ici, et `docker/certs` ajouté au `.gitignore` — le dossier porte la clé privée
+du domaine, pas seulement celle du portail.
+
+**Le défaut qui a suivi.** Le certificat posé, le site public fonctionnait et le
+BackOffice bouclait. `PUBLIC_BASE_URL` était resté sur `http://10.7.200.41`, et
+`docker-compose.prod.yml` en dérive `AUTH_URL`. Auth.js tient cette valeur pour
+la seule origine légitime : il renvoyait vers l'IP après connexion et y déposait
+son cookie de session, nginx redirigeait cette adresse en clair vers HTTPS sur
+l'IP, où le certificat porte le nom de domaine et ne correspond plus.
+
+Ce que l'épisode montre : **un certificat ne suffit pas à changer l'adresse d'un
+portail**. Trois choses doivent bouger ensemble — ce que nginx sert, ce que le
+DNS résout, et ce que l'application croit être. La troisième est la seule qui ne
+produise aucune erreur au démarrage, donc la seule qu'on oublie. La même
+variable commande les liens des courriels : laissée sur une adresse interne,
+elle fabrique des liens qu'aucun destinataire extérieur ne peut ouvrir, en
+silence.
+
+**La date qui compte.** Le joker expire le **20 novembre 2026** ; le Forum se
+tient du 23 au 25. Trois jours de retard sur l'événement, sur un certificat que
+l'ANSD renouvelle pour tout son parc et que le portail ne commande pas. Sans
+remplacement, chaque visiteur reçoit un avertissement de sécurité en pleine page
+pendant les trois jours du Forum. C'est le risque d'exploitation le plus sérieux
+à ce jour ; il est porté en tête de la liste de contrôle du guide, avec une
+échéance au 13 novembre pour garder dix jours de marge.
+
+**Certbot passe sous profil plutôt qu'en commentaire.** La DSI l'avait commenté
+sur le serveur. Un service commenté se périme en silence, au fil des versions
+d'image et des options qui changent ; sous profil `tls`, il ne démarre pas avec
+la pile mais reste une définition que Compose vérifie, et qu'un `run --rm`
+réveille le jour où le portail reprendrait un certificat à lui.
+
+**La surcouche interne est devenue un piège.** L'alias `forum` posé pendant la
+recette chargeait les deux fichiers Compose. Le passer aujourd'hui remplace la
+configuration nginx par celle sans TLS et remet le portail en clair — sans rien
+signaler, puisque le port 80 répond et que le site s'affiche. L'avertissement
+est écrit en tête de `docker-compose.interne.yml`, là où on le lit avant de
+lancer la commande, et non dans le guide seul.

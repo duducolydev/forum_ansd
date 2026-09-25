@@ -401,91 +401,177 @@ sauvegarde et n'en laisse rien derrière lui.
 
 ---
 
-## 5. Passer en HTTPS sur `forum2026.ansd.sn`
+## 5. HTTPS sur `forum2026.ansd.sn`
 
-À faire avant toute ouverture au public, et avant la première répétition
-d'accueil avec le scanner : le navigateur réserve la caméra aux origines
-sécurisées, donc le scanner de badges ne lit aucun QR tant que le portail est
-servi en clair.
+En place depuis le 24 septembre 2026. Cette section décrit ce qui tourne, la
+date qu'il faut surveiller, et les pièges rencontrés en chemin.
 
-Le domaine a été arrêté le 22 septembre 2026. Il est déjà écrit dans
-`docker/nginx.conf` : il n'y a rien à y modifier.
+### 5.1 Ce qui sert le portail aujourd'hui
 
-### 5.1 L'ordre imposé par la DSI, et ce qu'il implique
+Le domaine a été arrêté le 22 septembre 2026, et la DSI a fourni le certificat
+deux jours plus tard. Ce n'est pas un certificat propre au portail : c'est le
+**joker `*.ansd.sn` de l'ANSD**, signé par GlobalSign, celui qui couvre déjà les
+autres services de la maison. Il est reconnu par tous les navigateurs, ce qui
+règle la question de l'ouverture au public.
 
-Décision de la DSI, 22 septembre 2026 : le serveur **reste interne** jusqu'à ce
-que le certificat soit en place et que les tests de sécurité soient validés.
-L'ouverture au public vient après.
+| Élément              | Valeur                                        |
+| -------------------- | --------------------------------------------- |
+| Nom couvert          | `*.ansd.sn`, donc `forum2026.ansd.sn`         |
+| Autorité             | GlobalSign GCC R3 DV TLS CA 2020              |
+| Emplacement          | `/opt/forum-ansd/docker/certs/ansd.{crt,key}` |
+| Monté dans nginx sur | `/etc/nginx/certs`, en lecture seule          |
+| Expiration           | **20 novembre 2026, 15h15 UTC**               |
 
-Cet ordre écarte la voie habituelle. Let's Encrypt vérifie d'ordinaire qu'on
-possède le domaine en venant lire un fichier sur le port 80, **depuis
-Internet** — c'est le défi « HTTP ». Or le serveur porte une adresse privée
-(`10.7.200.41`), injoignable de l'extérieur : le certificat est demandé avant
-l'ouverture qui le rendrait vérifiable, et l'ouverture attend le certificat.
+Le dossier `docker/certs` est **exclu du dépôt** : il porte la clé privée du
+domaine, et pas seulement celle du portail. Une clé divulguée ne se corrige pas,
+elle se révoque, et la révocation touche tous les services qui s'en servent.
 
-La sortie est le défi **DNS**. Let's Encrypt demande alors non pas un fichier
-sur le serveur, mais un enregistrement `TXT` dans la zone `ansd.sn`. Rien n'a
-besoin d'être joignable. C'est la seule voie qui donne **dès aujourd'hui** un
-certificat reconnu par tous les navigateurs, donc encore valable le jour de
-l'ouverture publique, sans rien réémettre.
+Let's Encrypt n'est donc plus dans la boucle. Le service `certbot` dort sous le
+profil `tls` de `docker-compose.prod.yml` (§5.9).
 
-Ce qu'il faut demander à la DSI tient en une phrase : « pouvez-vous créer un
-enregistrement `TXT` sur `_acme-challenge.forum2026.ansd.sn`, avec une valeur
-que je vous donnerai, et rester disponible quelques minutes ensuite ? »
+### 5.2 La date à surveiller, et pourquoi elle est un problème
 
-| Voie                              | Utilisable aujourd'hui | Valable en public |
-| --------------------------------- | ---------------------- | ----------------- |
-| Let's Encrypt, défi DNS (§5.4)    | oui                    | oui               |
-| Autorité interne de l'ANSD (§5.5) | oui                    | **non**           |
-| Let's Encrypt, défi HTTP (§5.9)   | non                    | oui               |
+**Le certificat expire le 20 novembre 2026. Le Forum ouvre le 23.** Il manque
+trois jours.
 
-L'autorité interne ne sert qu'à dépanner la recette : ses certificats sont
-reconnus par les postes du parc et par eux seuls. Un visiteur extérieur verrait
-un avertissement de sécurité en pleine page le jour de l'ouverture.
+Sans remplacement, le portail affichera à chaque visiteur un avertissement de
+sécurité en pleine page, pendant les trois jours de l'événement, sur le site où
+l'on vient justement chercher son badge. C'est le risque le plus sérieux qui
+pèse aujourd'hui sur l'exploitation.
 
-**Le calendrier joue en votre faveur.** Un certificat Let's Encrypt vaut
-quatre-vingt-dix jours. Émis fin septembre 2026, il expire vers le 21 décembre,
-soit près d'un mois après le Forum des 23 au 25 novembre. Une seule émission
-manuelle couvre donc tout l'événement, et le renouvellement automatique se remet
-en place tranquillement après l'ouverture (§5.9).
+Le renouvellement n'est pas à notre main : le joker appartient au parc, et c'est
+la DSI qui le commande. Le message à lui passer tient en une phrase, et il vaut
+mieux le passer tôt : « le certificat `*.ansd.sn` expire le 20 novembre, or le
+Forum international sur les données se tient du 23 au 25 ; pouvez-vous nous
+remettre le certificat renouvelé avant le 13 novembre ? »
 
-### 5.2 DNS
+Le 13 novembre, et non le 20 : dix jours de marge laissent le temps de
+découvrir un problème et de le résoudre, ce qu'une bascule la veille interdit.
 
-Faire créer par la DSI un enregistrement `A` pour `forum2026.ansd.sn` vers
-`10.7.200.41`, le temps de la phase interne. Il pointera vers l'adresse publique
-le jour de l'ouverture. Vérifier depuis un poste du réseau :
+**Porter cette date dans un agenda partagé, pas seulement ici.** Un fichier de
+procédure ne réveille personne.
 
-```bash
-dig +short forum2026.ansd.sn
-```
+### 5.3 Remplacer le certificat
 
-### 5.3 Adresse du portail
-
-Dans `/opt/forum-ansd/.env`, passer les deux premières lignes à
-`https://forum2026.ansd.sn`.
+Deux copies et un rechargement. Aucune coupure : `nginx -s reload` laisse les
+connexions en cours se terminer et ne redémarre pas le conteneur.
 
 ```bash
 cd /opt/forum-ansd
+cp /chemin/vers/nouveau.crt docker/certs/ansd.crt
+cp /chemin/vers/nouveau.key docker/certs/ansd.key
+chmod 600 docker/certs/ansd.key
+docker compose -f docker-compose.prod.yml exec nginx nginx -t
+docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
+```
+
+Le `nginx -t` avant le rechargement n'est pas une politesse : nginx refuse de
+recharger une configuration invalide, mais il accepterait sans broncher une clé
+qui ne correspond pas au certificat, et l'échec ne se verrait qu'à la première
+visite.
+
+Vérifier ensuite ce qui est réellement servi, depuis le serveur :
+
+```bash
+echo | openssl s_client -connect forum2026.ansd.sn:443 \
+  -servername forum2026.ansd.sn 2>/dev/null \
+  | openssl x509 -noout -subject -issuer -enddate
+```
+
+### 5.4 Droits sur la clé privée
+
+La clé a été déposée en `rw-rw-r--`, donc lisible par tout compte du serveur.
+Elle doit l'être par son seul propriétaire :
+
+```bash
+chmod 600 /opt/forum-ansd/docker/certs/ansd.key
+ls -l /opt/forum-ansd/docker/certs
+```
+
+Le conteneur nginx n'en souffre pas : il lit le fichier en root à travers le
+montage. Les tests de sécurité de la DSI, eux, relèveront le point.
+
+### 5.5 Adresse du portail — l'étape qu'on oublie
+
+Le certificat ne suffit pas. Tant que `/opt/forum-ansd/.env` annonce l'ancienne
+adresse, le portail continue de se croire à cette adresse-là.
+
+```bash
+cd /opt/forum-ansd
+unset PUBLIC_BASE_URL AUTH_URL
 sed -i 's|^PUBLIC_BASE_URL=.*|PUBLIC_BASE_URL="https://forum2026.ansd.sn"|' .env
 sed -i 's|^AUTH_URL=.*|AUTH_URL="https://forum2026.ansd.sn"|' .env
 grep -E '^(PUBLIC_BASE_URL|AUTH_URL)=' .env
+docker compose -f docker-compose.prod.yml up -d --force-recreate app
 ```
 
-Aucune reconstruction n'est nécessaire, ces valeurs sont lues au démarrage du
-conteneur. Attention en revanche au piège des variables du shell décrit au §4 :
-si le `.env` a été chargé dans la session courante, ouvrir un nouveau terminal
-avant la bascule, ou `unset PUBLIC_BASE_URL AUTH_URL`.
+Aucune reconstruction : ces valeurs sont lues au démarrage du conteneur. Le
+`unset` traite le piège du §4, où une variable déjà exportée dans le shell prime
+sur le fichier et fait répondre « Running » à Compose au lieu de « Recreated ».
 
-**Ne faire cette étape qu'une fois le certificat obtenu** (§5.4). Entre les
-deux, le portail annoncerait une adresse en `https` qu'il ne sait pas encore
-servir.
+**Ce qu'elle coûte quand on l'oublie.** Constaté le 24 septembre 2026, entre la
+pose du certificat et le lendemain : le site public fonctionnait, le BackOffice
+était inaccessible. Auth.js tient `AUTH_URL` pour la seule origine légitime. Il
+renvoyait donc vers `http://10.7.200.41` après connexion et y déposait son
+cookie de session ; nginx redirigeait cette adresse en clair vers HTTPS sur
+l'IP, où le certificat porte le nom de domaine et ne correspond plus. La boucle
+se refermait là.
 
-### 5.4 Certificat Let's Encrypt par le défi DNS
+La même variable commande les liens des courriels — code de connexion, badge,
+newsletter, invitations. Laissée sur une adresse interne, elle produit des liens
+qu'un destinataire extérieur ne peut pas ouvrir, sans qu'aucune erreur
+n'apparaisse nulle part.
 
-La commande s'arrête et attend : elle affiche la valeur à faire publier, et ne
-reprend qu'une fois que vous appuyez sur Entrée. Prévoir donc d'avoir la DSI au
-téléphone, ou de lancer la commande **pendant** qu'elle est disponible — le défi
-expire au bout de quelques dizaines de minutes.
+### 5.6 Vérifier
+
+```bash
+curl -I https://forum2026.ansd.sn/       # 200 attendu
+curl -I http://forum2026.ansd.sn/        # 301 vers https
+curl -sI https://forum2026.ansd.sn/admin | grep -i '^location'
+```
+
+La dernière ligne doit renvoyer vers `/connexion` **sur le domaine**. Si elle
+mentionne une adresse IP, le §5.5 n'a pas été fait, ou le conteneur `app` n'a
+pas été recréé.
+
+Le scanner de badges allume sa caméra à partir de là : les navigateurs réservent
+`getUserMedia` aux origines sécurisées, et la lecture des QR était impossible
+tant que le portail était servi en clair. C'est le moment de la répétition
+d'accueil.
+
+### 5.7 L'alias `forum`, et le piège qu'il tend
+
+Pendant la recette interne, l'alias chargeait **deux** fichiers Compose, dont la
+surcouche `docker-compose.interne.yml`. Celle-ci remplace la configuration nginx
+par une version sans TLS. La passer aujourd'hui remet le portail en clair, et
+sans rien signaler : le port 80 répond normalement, le site s'affiche, seule
+l'adresse a perdu son cadenas.
+
+L'alias ne doit donc plus charger que la production :
+
+```bash
+sed -i '/alias forum=/d' ~/.bashrc
+echo "alias forum='docker compose -f /opt/forum-ansd/docker-compose.prod.yml'" >> ~/.bashrc
+source ~/.bashrc
+alias forum
+```
+
+### 5.8 Reconnexion obligatoire
+
+Le changement d'adresse invalide les sessions ouvertes du BackOffice. Prévenir
+les personnes concernées plutôt que de les laisser croire à une panne.
+
+### 5.9 Repli : un certificat propre au portail
+
+À n'employer que si le joker de la DSI venait à manquer — non renouvelé à
+temps, ou retiré. Let's Encrypt délivre en quelques minutes un certificat
+reconnu de tous, valable quatre-vingt-dix jours.
+
+Tant que le serveur n'est pas joignable depuis Internet, seul le défi **DNS**
+fonctionne : Let's Encrypt ne demande alors aucun fichier sur le serveur, mais
+un enregistrement `TXT` dans la zone. La commande s'interrompt et attend ; il
+faut donc avoir la DSI disponible au même moment, le défi expirant au bout de
+quelques dizaines de minutes.
 
 ```bash
 cd /opt/forum-ansd
@@ -494,105 +580,53 @@ docker compose -f docker-compose.prod.yml run --rm --entrypoint certbot certbot 
   -d forum2026.ansd.sn --agree-tos -m forum@ansd.sn --no-eff-email
 ```
 
-Certbot affiche une chaîne. La DSI crée l'enregistrement
-`_acme-challenge.forum2026.ansd.sn`, de type `TXT`, avec cette valeur exacte.
-**Vérifier avant d'appuyer sur Entrée**, depuis le serveur :
+Certbot affiche une chaîne. La DSI crée `_acme-challenge.forum2026.ansd.sn`, de
+type `TXT`, avec cette valeur exacte. **Vérifier avant d'appuyer sur Entrée** :
 
 ```bash
 dig +short TXT _acme-challenge.forum2026.ansd.sn @8.8.8.8
 ```
 
-Tant que cette commande ne renvoie pas la chaîne attendue, ne pas continuer :
-une validation lancée trop tôt échoue, et Let's Encrypt limite le nombre
+Une validation lancée trop tôt échoue, et Let's Encrypt limite le nombre
 d'échecs par domaine et par heure.
 
-Le certificat atterrit dans le volume `certbot_conf`, exactement là où
-`docker/nginx.conf` le cherche. Rien à copier.
+Le certificat atterrit dans le volume `certbot_conf`. Il reste à faire pointer
+`docker/nginx.conf` vers `/etc/letsencrypt/live/forum2026.ansd.sn/`, les deux
+chemins étant rappelés en commentaire juste au-dessus de ceux en service, puis à
+recharger nginx (§5.3).
 
-Le renouvellement automatique n'a aucune prise sur un certificat obtenu ainsi :
-certbot devrait republier un enregistrement DNS, ce qu'il ne sait pas faire sans
-accès à la zone. Le service est donc mis en sommeil à la bascule (§5.6), et la
-**date d'expiration est à noter dans un agenda partagé**.
-
-### 5.5 Dépannage seulement : autorité interne de l'ANSD
-
-À n'employer que si le défi DNS est refusé, et en sachant que ce certificat
-devra être remplacé avant l'ouverture au public : il n'est reconnu que par les
-postes du parc ANSD.
+Une fois le serveur ouvert depuis Internet, le défi **HTTP** redevient possible,
+et avec lui le renouvellement sans intervention. Le vérifier d'abord depuis un
+poste hors du réseau de l'ANSD, puis :
 
 ```bash
-cd /opt/forum-ansd    # fullchain.pem et privkey.pem déposés ici
-docker run --rm -v forum-ansd_certbot_conf:/c -v "$PWD":/src alpine sh -c \
-  'mkdir -p /c/live/forum2026.ansd.sn && cp /src/fullchain.pem /src/privkey.pem /c/live/forum2026.ansd.sn/'
-```
-
-### 5.6 Bascule
-
-Repasser sur la configuration HTTPS du dépôt en laissant tomber la surcouche
-interne, c'est-à-dire en ne passant plus que le fichier de production. Le
-service `certbot` reste en sommeil tant que le renouvellement automatique est
-hors de portée (§5.4) :
-
-```bash
-cd /opt/forum-ansd
-docker compose -f docker-compose.prod.yml up -d --scale certbot=0
-```
-
-L'alias `forum` charge les deux fichiers : il sert la recette interne, pas la
-production HTTPS. Le mettre à jour une fois la bascule faite, sans quoi vous
-continueriez à servir en clair sans le voir :
-
-```bash
-sed -i '/alias forum=/d' ~/.bashrc
-echo "alias forum='docker compose -f /opt/forum-ansd/docker-compose.prod.yml'" >> ~/.bashrc
-```
-
-### 5.7 Vérifier
-
-Depuis un poste du réseau de l'ANSD, tant que le portail est interne :
-
-```bash
-curl -I https://forum2026.ansd.sn/     # 200 attendu
-curl -I http://forum2026.ansd.sn/      # 301 vers https
-```
-
-Le scanner allume la caméra à partir de là. C'est le moment de la répétition
-d'accueil, et celui de passer les tests de sécurité de la DSI.
-
-### 5.8 Reconnexion obligatoire
-
-Le changement d'adresse invalide les sessions ouvertes du BackOffice. Prévenir
-les personnes concernées plutôt que de les laisser croire à une panne.
-
-### 5.9 Après l'ouverture publique : renouvellement automatique
-
-Une fois les tests de sécurité validés et les ports 80 et 443 ouverts depuis
-Internet, le défi HTTP redevient possible, et avec lui le renouvellement sans
-intervention. Vérifier d'abord, **depuis un poste hors du réseau de l'ANSD**,
-que le serveur répond : `curl -I http://forum2026.ansd.sn/`. Puis :
-
-```bash
-cd /opt/forum-ansd
 docker compose -f docker-compose.prod.yml run --rm --entrypoint certbot certbot \
   certonly --webroot -w /var/www/certbot \
   -d forum2026.ansd.sn --agree-tos -m forum@ansd.sn --no-eff-email --force-renewal
-docker compose -f docker-compose.prod.yml up -d certbot
+docker compose -f docker-compose.prod.yml --profile tls up -d certbot
 ```
 
-Le service `certbot` reprend alors son cycle de douze heures, et la date notée
-dans l'agenda peut être effacée.
+Le service reprend alors son cycle de douze heures, et la date notée dans
+l'agenda peut être effacée.
 
 ---
 
 ## 6. Avant l'ouverture au public — liste de contrôle
 
-- [ ] HTTPS en place (§5), redirection depuis HTTP vérifiée
-- [ ] certificat **reconnu publiquement** et non émis par l'autorité interne de
-      l'ANSD, qui n'est connue que des postes du parc (§5.1)
-- [ ] date d'expiration du certificat notée dans un agenda partagé, tant que le
-      renouvellement automatique n'est pas rétabli (§5.9)
+- [x] HTTPS en place (§5), redirection depuis HTTP vérifiée — 24 septembre 2026
+- [x] certificat **reconnu publiquement** : joker `*.ansd.sn` signé GlobalSign,
+      et non l'autorité interne de l'ANSD, qui n'est connue que du parc (§5.1)
+- [ ] **certificat renouvelé avant le 13 novembre 2026** : celui en service
+      expire le 20 novembre, trois jours avant l'ouverture du Forum (§5.2)
+- [ ] date d'expiration portée dans un agenda partagé, et non dans ce seul
+      fichier, tant que le renouvellement automatique n'est pas rétabli (§5.2)
+- [ ] clé privée en `chmod 600` — déposée en `rw-rw-r--` (§5.4)
+- [ ] alias `forum` ramené au seul fichier de production, sans quoi un
+      `forum up -d` remet le portail en clair sans le signaler (§5.7)
 - [ ] tests de sécurité de la DSI passés, avant l'ouverture des ports
 - [ ] compte de démonstration supprimé, administrateurs réels créés
+- [ ] mot de passe du compte super-administrateur changé depuis celui saisi au
+      déploiement (§2.5)
 - [ ] `.env` en `chmod 600`, secrets générés sur le serveur, jamais versionnés
 - [ ] envoi d'e-mails vérifié depuis le serveur (un code de connexion reçu)
 - [ ] sauvegarde quotidienne active **et restaurée une fois** pour de vrai
