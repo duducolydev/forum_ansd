@@ -17,6 +17,20 @@ const PERIODE_ENVOI_MS = 30 * 1000;
 /** Décodage limité : inutile d'analyser 60 images par seconde pour un QR. */
 const PERIODE_DECODAGE_MS = 120;
 
+/**
+ * Zone retenue par défaut à l'ouverture du scanner.
+ *
+ * Le gros du travail se fait à l'entrée : c'est là que tout le monde passe, et
+ * que les appareils sont les plus nombreux. Prendre le premier point de la
+ * liste, classée par nom, désignait un point de salle au hasard de
+ * l'alphabet — un agent d'accueil enregistrait alors ses passages sur la
+ * mauvaise porte sans rien remarquer.
+ *
+ * Ce code est celui du seed, et il est stable (`prisma/seed.ts`). S'il venait à
+ * disparaître d'une édition, la sélection retombe sur le premier point.
+ */
+const ZONE_PAR_DEFAUT = "ENTREE";
+
 const COULEURS = {
   VERT: "bg-[#0F7B3E] text-white",
   ORANGE: "bg-[#B45309] text-white",
@@ -107,6 +121,25 @@ export function ScannerApp({ nomAgent }: { nomAgent: string }) {
 
   const point = meta?.checkpoints.find((candidat) => candidat.id === checkpointId) ?? null;
 
+  /*
+   * Avertissement permanent plutôt que message à la première tentative :
+   * l'agent doit savoir que l'appareil n'enregistrera rien **avant** d'avoir
+   * laissé passer quelqu'un, et non après.
+   *
+   * Les deux cas appellent des gestes différents. Une liste vide se règle dans
+   * le BackOffice et se termine par une synchronisation ; une liste garnie mais
+   * sans sélection se règle sur place, dans le sélecteur juste au-dessus.
+   *
+   * Conditionné à `meta` : tant que le manifeste n'est pas lu, l'absence de
+   * point ne veut rien dire et le bandeau clignoterait au démarrage.
+   */
+  const sansPoint =
+    meta && !point
+      ? meta.checkpoints.length === 0
+        ? "Aucun point de contrôle actif. Créez-en un dans le BackOffice, page des zones d'accès, puis appuyez sur Synchroniser."
+        : "Choisissez un point de contrôle ci-dessus : aucun passage ne sera enregistré tant qu'il n'est pas défini."
+      : null;
+
   const rafraichirCompteurs = useCallback(async () => {
     setEnFile(await compterFile());
     setMeta(await lireMeta());
@@ -126,9 +159,14 @@ export function ScannerApp({ nomAgent }: { nomAgent: string }) {
       if (!vivant) return;
       setMeta(chargee);
 
+      // Le choix de l'agent prime — il a posé son appareil à une porte précise
+      // et n'a pas à le redire à chaque ouverture. À défaut, l'entrée.
       const memorise = localStorage.getItem("scan.checkpoint");
       const valide = chargee?.checkpoints.some((candidat) => candidat.id === memorise);
-      setCheckpointId(valide && memorise ? memorise : (chargee?.checkpoints[0]?.id ?? ""));
+      const parDefaut =
+        chargee?.checkpoints.find((candidat) => candidat.zoneCode === ZONE_PAR_DEFAUT) ??
+        chargee?.checkpoints[0];
+      setCheckpointId(valide && memorise ? memorise : (parDefaut?.id ?? ""));
       setEnFile(await compterFile());
     }
 
@@ -163,7 +201,26 @@ export function ScannerApp({ nomAgent }: { nomAgent: string }) {
   // --- Traitement d'un badge ----------------------------------------------
   const scanner = useCallback(
     async (empreinte: string, entree: EntreeManifeste | null) => {
-      if (!point || traitementRef.current) return;
+      if (traitementRef.current) return;
+
+      /*
+       * Un passage se rattache à une porte : sans point de contrôle, il n'a
+       * nulle part où s'inscrire. Le traitement sortait ici **en silence**, et
+       * l'agent enchaînait les badges devant un écran immobile, sans rien pour
+       * le mettre sur la voie. Constaté le 25 septembre 2026, sur une base où
+       * aucun point n'avait encore été créé — le seed n'en posait aucun.
+       *
+       * Le bandeau permanent explique quoi faire ; ce message-ci répond à la
+       * tentative elle-même, et dit surtout ce qui compte : rien n'a été
+       * enregistré.
+       */
+      if (!point) {
+        setMessage(
+          "Badge lu, mais aucun point de contrôle n'est choisi : rien n'a été enregistré.",
+        );
+        return;
+      }
+
       traitementRef.current = true;
 
       try {
@@ -382,6 +439,17 @@ export function ScannerApp({ nomAgent }: { nomAgent: string }) {
           </button>
         ))}
       </div>
+
+      {/*
+        Rouge, et au-dessus du message ordinaire : tant qu'il s'affiche,
+        l'appareil ne sert à rien. `alert` plutôt que `status` — un lecteur
+        d'écran doit l'annoncer sans attendre la fin de ce qu'il lisait.
+      */}
+      {sansPoint && (
+        <p role="alert" data-testid="sans-point" className="bg-[#9B1C22] px-4 py-2 text-sm">
+          {sansPoint}
+        </p>
+      )}
 
       {message && (
         <p role="status" className="bg-[#B45309] px-4 py-2 text-sm">

@@ -249,6 +249,47 @@ async function main() {
   }
 
   /*
+   * Points de contrôle — un par zone (brief §5.6).
+   *
+   * ## Le défaut que cela ferme
+   *
+   * Le seed posait les zones et s'arrêtait là. Or un scan se rattache à une
+   * porte : sans point de contrôle, le scanner refuse d'enregistrer quoi que ce
+   * soit. Une installation neuve livrait donc un scanner qui lisait les QR sans
+   * jamais rien inscrire, et la cause n'était visible nulle part — le sélecteur
+   * affichait « Aucun point actif », ce qui se lit comme une information et non
+   * comme un blocage. Constaté le 25 septembre 2026, sur le serveur de l'ANSD,
+   * pendant une répétition d'accueil.
+   *
+   * ## Ce que ces valeurs sont, et ne sont pas
+   *
+   * Un point de départ, pas un plan de salle. Le jour J, l'ANSD en ajoutera
+   * autant que de portes réellement tenues, avec les libellés d'appareil qui
+   * vont avec — tout cela se règle en BackOffice, page des zones d'accès.
+   *
+   * `isActive` n'est posé qu'à la création : un point désactivé à dessein ne
+   * doit pas se rallumer au prochain seed. Le nom sert de clé, faute de
+   * contrainte d'unicité sur la table.
+   */
+  const checkpointsData = [
+    { name: "Accueil", zoneCode: "ENTREE" },
+    { name: "Porte Ouverture", zoneCode: "OUVERTURE" },
+    { name: "Porte Plénière", zoneCode: "PLENIERE" },
+  ] as const;
+
+  for (const point of checkpointsData) {
+    const existant = await prisma.checkpoint.findFirst({
+      where: { editionId: edition.id, name: point.name },
+    });
+    const donnees = { name: point.name, zoneId: zones[point.zoneCode]!.id };
+    if (existant) {
+      await prisma.checkpoint.update({ where: { id: existant.id }, data: donnees });
+    } else {
+      await prisma.checkpoint.create({ data: { ...donnees, editionId: edition.id } });
+    }
+  }
+
+  /*
    * Matrice catégorie × zone — valeurs par défaut, ajustables en BackOffice
    * (brief §2.6).
    *

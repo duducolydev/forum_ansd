@@ -221,19 +221,32 @@ passe par la boîte mail (PLAN.md §23).
 
 ```bash
 cd /opt/forum-ansd
-docker compose -f docker-compose.prod.yml -f docker-compose.interne.yml build
-docker compose -f docker-compose.prod.yml -f docker-compose.interne.yml up -d
+docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 La construction dure une dizaine de minutes la première fois. Pour éviter de la
 retaper, poser un alias une fois pour toutes :
 
 ```bash
-echo "alias forum='docker compose -f /opt/forum-ansd/docker-compose.prod.yml -f /opt/forum-ansd/docker-compose.interne.yml'" >> ~/.bashrc
+echo "alias forum='docker compose -f /opt/forum-ansd/docker-compose.prod.yml'" >> ~/.bashrc
 source ~/.bashrc
 ```
 
 La suite de ce document utilise cet alias.
+
+> **Un seul `-f`, et c'est important.** Pendant la recette interne, ces
+> commandes passaient en plus `docker-compose.interne.yml`, qui remplace la
+> configuration nginx par une version sans TLS. Le portail étant servi en HTTPS
+> depuis le 24 septembre 2026, ajouter cette surcouche coupe le port 443 : les
+> visiteurs reçoivent `ERR_CONNECTION_REFUSED`, et le serveur, lui, ne signale
+> rien puisque tous les conteneurs démarrent normalement. Constaté le
+> 25 septembre 2026, sur un redéploiement fait en recopiant l'ancienne version
+> de ce paragraphe. Si le cas se reproduit :
+>
+> ```bash
+> docker compose -f docker-compose.prod.yml up -d --force-recreate nginx
+> ```
 
 ### 2.4 Créer le schéma et les données de référence
 
@@ -250,6 +263,28 @@ disparaît dès la commande terminée (`--rm`).
 
 Le seed pose l'édition, les rôles, les catégories, les zones d'accès et les
 modèles de messages. Il est idempotent : le rejouer ne duplique rien.
+
+Deux réserves à cette idempotence, l'une et l'autre constatées le 25 septembre 2026.
+
+**Le seed reconnaît les enregistrements à leur identité, pas à leur contenu.**
+Un participant est retrouvé par son adresse, un intervenant par son nom. Changer
+l'un ou l'autre dans `prisma/seed.ts` ne corrige donc pas la fiche existante :
+elle reste, et une seconde est créée à côté. Pour corriger une fiche déjà en
+base, passer par le BackOffice — le seed ne sert qu'aux installations neuves.
+
+**`run` n'utilise pas le code que vous venez de tirer.** Le service `outils`
+embarque une copie du dépôt figée au moment où son image a été construite, et
+`docker compose run` réutilise cette image sans la reconstruire. Un `git pull`
+suivi d'un `forum run --rm outils pnpm db:seed` rejoue donc l'ancien seed, en
+silence et sans erreur. Reconstruire d'abord :
+
+```bash
+forum build outils
+forum run --rm outils pnpm db:seed
+```
+
+La remarque vaut autant pour `prisma migrate deploy` : une migration tirée à
+l'instant n'est pas dans l'image tant qu'elle n'a pas été reconstruite.
 
 ### 2.5 Créer le premier administrateur
 
