@@ -316,7 +316,7 @@ async function main() {
 
   const speakersData = [
     ["Oulimata", "Sarr", "Ministre", "Ministère de l'Économie et du Plan", "Sénégal"],
-    ["Oumar", "Ba", "Directeur général", "ANSD", "Sénégal"],
+    ["Abdou", "Diouf", "Directeur général", "ANSD", "Sénégal"],
     ["Ibrahima", "Koné", "Directeur général", "INSTAT Mali", "Mali"],
     ["Mariam", "Diallo", "Cheffe de service Recensement", "ANStat", "Côte d'Ivoire"],
     ["Kwame", "Osei", "Deputy Government Statistician", "Ghana Statistical Service", "Ghana"],
@@ -389,7 +389,7 @@ async function main() {
         end: "10:00",
         speakers: [
           ["Oulimata Sarr", "KEYNOTE"],
-          ["Oumar Ba", "MODERATOR"],
+          ["Abdou Diouf", "MODERATOR"],
         ],
       },
       {
@@ -453,7 +453,7 @@ async function main() {
         registrationOpen: true,
         speakers: [
           ["Kwame Osei", "MODERATOR"],
-          ["Oumar Ba", "PANELIST"],
+          ["Abdou Diouf", "PANELIST"],
         ],
       },
       {
@@ -482,7 +482,7 @@ async function main() {
         start: "16:30",
         end: "17:30",
         room: "Salle de Plénière",
-        speakers: [["Oumar Ba", "MODERATOR"]],
+        speakers: [["Abdou Diouf", "MODERATOR"]],
       },
     ],
     "2026-11-24": [
@@ -590,7 +590,7 @@ async function main() {
         start: "17:30",
         end: "18:00",
         room: "Salle de Plénière",
-        speakers: [["Oumar Ba", "MODERATOR"]],
+        speakers: [["Abdou Diouf", "MODERATOR"]],
       },
     ],
     "2026-11-25": [
@@ -662,7 +662,7 @@ async function main() {
         end: "16:00",
         room: "Salle de Plénière",
         speakers: [
-          ["Oumar Ba", "MODERATOR"],
+          ["Abdou Diouf", "MODERATOR"],
           ["Ibrahima Koné", "PANELIST"],
         ],
       },
@@ -683,7 +683,7 @@ async function main() {
         end: "17:30",
         speakers: [
           ["Oulimata Sarr", "KEYNOTE"],
-          ["Oumar Ba", "MODERATOR"],
+          ["Abdou Diouf", "MODERATOR"],
         ],
       },
       {
@@ -1148,9 +1148,9 @@ async function main() {
       source: "ONLINE",
     },
     {
-      firstName: "Oumar",
-      lastName: "Ba",
-      email: "demo.oumar.ba@ansd.sn",
+      firstName: "Abdou",
+      lastName: "Diouf",
+      email: "abdou.diouf@ansd.sn",
       country: "Sénégal",
       organization: "ANSD",
       jobTitle: "Directeur général",

@@ -68,6 +68,10 @@ next-env.d.ts
 # clone du dépôt. L'exclure reviendrait à la laisser là où personne ne l'a au
 # moment où elle sert.
 !/docs/DEPLOIEMENT.md
+# Sauf la fiche du certificat, pour la même raison : elle sera ouverte sur le
+# serveur, en novembre, par qui remplacera le certificat avant qu'il n'expire.
+# Un document de procédure resté sur un poste de développement n'aide personne.
+!/docs/CERTIFICAT.md
 
 # Certificat TLS déposé par la DSI sur le serveur (`docker/certs`, monté en
 # lecture seule sur nginx). `*.pem` plus haut n'en couvre qu'une partie : une

@@ -406,6 +406,11 @@ sauvegarde et n'en laisse rien derrière lui.
 En place depuis le 24 septembre 2026. Cette section décrit ce qui tourne, la
 date qu'il faut surveiller, et les pièges rencontrés en chemin.
 
+> **Le certificat a sa propre fiche : `docs/CERTIFICAT.md`.** Elle porte le
+> remplacement, le retour en arrière, les contrôles et le repli Let's Encrypt.
+> C'est elle qu'on ouvre en novembre, quand il s'agira de renouveler. Ce
+> chapitre-ci raconte la bascule et ce qu'elle a coûté.
+
 ### 5.1 Ce qui sert le portail aujourd'hui
 
 Le domaine a été arrêté le 22 septembre 2026, et la DSI a fourni le certificat
@@ -453,30 +458,12 @@ procédure ne réveille personne.
 
 ### 5.3 Remplacer le certificat
 
-Deux copies et un rechargement. Aucune coupure : `nginx -s reload` laisse les
-connexions en cours se terminer et ne redémarre pas le conteneur.
+La procédure complète est au chapitre 3 de `docs/CERTIFICAT.md` : sauvegarde de
+l'ancien, installation du nouveau, contrôle que la clé correspond bien au
+certificat, rechargement sans coupure, et retour en arrière si besoin.
 
-```bash
-cd /opt/forum-ansd
-cp /chemin/vers/nouveau.crt docker/certs/ansd.crt
-cp /chemin/vers/nouveau.key docker/certs/ansd.key
-chmod 600 docker/certs/ansd.key
-docker compose -f docker-compose.prod.yml exec nginx nginx -t
-docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
-```
-
-Le `nginx -t` avant le rechargement n'est pas une politesse : nginx refuse de
-recharger une configuration invalide, mais il accepterait sans broncher une clé
-qui ne correspond pas au certificat, et l'échec ne se verrait qu'à la première
-visite.
-
-Vérifier ensuite ce qui est réellement servi, depuis le serveur :
-
-```bash
-echo | openssl s_client -connect forum2026.ansd.sn:443 \
-  -servername forum2026.ansd.sn 2>/dev/null \
-  | openssl x509 -noout -subject -issuer -enddate
-```
+Elle n'est pas reprise ici. Deux copies d'une même procédure finissent toujours
+par diverger, et c'est celle qu'on n'a pas relue qui sera ouverte le jour venu.
 
 ### 5.4 Droits sur la clé privée
 
@@ -563,51 +550,10 @@ les personnes concernées plutôt que de les laisser croire à une panne.
 
 ### 5.9 Repli : un certificat propre au portail
 
-À n'employer que si le joker de la DSI venait à manquer — non renouvelé à
-temps, ou retiré. Let's Encrypt délivre en quelques minutes un certificat
-reconnu de tous, valable quatre-vingt-dix jours.
-
-Tant que le serveur n'est pas joignable depuis Internet, seul le défi **DNS**
-fonctionne : Let's Encrypt ne demande alors aucun fichier sur le serveur, mais
-un enregistrement `TXT` dans la zone. La commande s'interrompt et attend ; il
-faut donc avoir la DSI disponible au même moment, le défi expirant au bout de
-quelques dizaines de minutes.
-
-```bash
-cd /opt/forum-ansd
-docker compose -f docker-compose.prod.yml run --rm --entrypoint certbot certbot \
-  certonly --manual --preferred-challenges dns \
-  -d forum2026.ansd.sn --agree-tos -m forum@ansd.sn --no-eff-email
-```
-
-Certbot affiche une chaîne. La DSI crée `_acme-challenge.forum2026.ansd.sn`, de
-type `TXT`, avec cette valeur exacte. **Vérifier avant d'appuyer sur Entrée** :
-
-```bash
-dig +short TXT _acme-challenge.forum2026.ansd.sn @8.8.8.8
-```
-
-Une validation lancée trop tôt échoue, et Let's Encrypt limite le nombre
-d'échecs par domaine et par heure.
-
-Le certificat atterrit dans le volume `certbot_conf`. Il reste à faire pointer
-`docker/nginx.conf` vers `/etc/letsencrypt/live/forum2026.ansd.sn/`, les deux
-chemins étant rappelés en commentaire juste au-dessus de ceux en service, puis à
-recharger nginx (§5.3).
-
-Une fois le serveur ouvert depuis Internet, le défi **HTTP** redevient possible,
-et avec lui le renouvellement sans intervention. Le vérifier d'abord depuis un
-poste hors du réseau de l'ANSD, puis :
-
-```bash
-docker compose -f docker-compose.prod.yml run --rm --entrypoint certbot certbot \
-  certonly --webroot -w /var/www/certbot \
-  -d forum2026.ansd.sn --agree-tos -m forum@ansd.sn --no-eff-email --force-renewal
-docker compose -f docker-compose.prod.yml --profile tls up -d certbot
-```
-
-Le service reprend alors son cycle de douze heures, et la date notée dans
-l'agenda peut être effacée.
+Si la DSI ne renouvelait pas le joker à temps, ou le retirait, Let's Encrypt
+délivre un certificat propre au portail, reconnu de tous. Le défi DNS, le défi
+HTTP et le réveil du service `certbot` sont décrits au chapitre 9 de
+`docs/CERTIFICAT.md`.
 
 ---
 
