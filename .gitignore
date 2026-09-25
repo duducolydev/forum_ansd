@@ -68,3 +68,11 @@ next-env.d.ts
 # clone du dépôt. L'exclure reviendrait à la laisser là où personne ne l'a au
 # moment où elle sert.
 !/docs/DEPLOIEMENT.md
+
+# Certificat TLS déposé par la DSI sur le serveur (`docker/certs`, monté en
+# lecture seule sur nginx). `*.pem` plus haut n'en couvre qu'une partie : une
+# clé livrée en `.key` ou un certificat en `.crt` passait au travers, et un
+# `git add -A` sur le serveur aurait publié la clé privée du domaine. Même
+# classe d'incident que le dump de base du 22 septembre 2026, en pire : une
+# clé divulguée se révoque, elle ne se change pas d'un `sed`.
+/docker/certs/
