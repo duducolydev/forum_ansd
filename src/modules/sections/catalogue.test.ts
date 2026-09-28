@@ -54,7 +54,10 @@ describe("catalogue des sections", () => {
     expect([...besoinsDe(["texte"])]).toEqual([]);
     expect([...besoinsDe(["actualites"])]).toEqual(["actualites"]);
     // Deux sections qui réclament la même donnée ne la chargent qu'une fois.
-    expect([...besoinsDe(["hero", "chiffres"])]).toEqual(["stats"]);
+    expect([...besoinsDe(["chiffres", "chiffres"])]).toEqual(["stats"]);
+    // Le bandeau ne charge plus les statistiques (brief « Constellation » : pas
+    // de chiffres), seulement l'heure d'ouverture du compte à rebours.
+    expect([...besoinsDe(["hero", "chiffres"])]).toEqual(["ouverture", "stats"]);
   });
 });
 
