@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Système d'animations du site public (brief « Constellation »). */
+@import "./constellation.css";
 
 /* ============================================================
    Design tokens — repris de docs/Template_final_Forum_ANSD_clair_sombre.html
@@ -585,20 +587,7 @@
    par le bloc du BackOffice plus haut : un seul interrupteur pour tout le site.
 --------------------------------------------------------------------------- */
 
-/* Apparition au défilement. L'état de départ n'est appliqué que lorsque le
-   script a pris la main (`data-revele="0"`), pour qu'une page sans JavaScript
-   affiche son contenu au lieu de le laisser invisible. */
-[data-revele="0"] {
-  opacity: 0;
-  transform: translateY(14px);
-}
-[data-revele="1"] {
-  opacity: 1;
-  transform: none;
-  transition:
-    opacity calc(var(--duree-animation) * 3) var(--courbe-animation),
-    transform calc(var(--duree-animation) * 3) var(--courbe-animation);
-}
+/* L'apparition au défilement (`Reveal`) vit dans constellation.css. */
 
 /* Fond de bandeau : dégradé doux plus deux halos. Décoratif et sans texte
    posé dessus, donc hors du contrôle de contraste. */

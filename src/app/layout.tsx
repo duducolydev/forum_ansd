@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Sora, Inter, Source_Sans_3, IBM_Plex_Sans } from "next/font/google";
+import { Sora, Inter, Outfit, Space_Grotesk, Source_Sans_3, IBM_Plex_Sans } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import { headers } from "next/headers";
 import { getServerTheme } from "@/lib/theme";
 import { parametresPourGabarit } from "@/modules/settings/service";
 import { cssDuTheme } from "@/modules/settings/theme-css";
@@ -17,6 +18,25 @@ const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
+});
+
+/*
+ * Polices du site public (brief « Constellation », 28 septembre 2026) : Outfit
+ * pour les titres et le texte, Space Grotesk pour les dates et les étiquettes.
+ * Elles ne remplacent Sora et Inter que sous `.site-public` (constellation.css)
+ * : le BackOffice garde les siennes.
+ */
+const outfit = Outfit({
+  variable: "--font-outfit",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-grotesk",
+  subsets: ["latin"],
+  weight: ["500", "700"],
+  display: "swap",
 });
 
 /*
@@ -73,10 +93,34 @@ export default async function RootLayout({
   const parametres = await parametresPourGabarit();
 
   const classePolice = CLASSES_POLICE[parametres.theme.police] ?? inter.variable;
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   return (
-    <html lang={locale} data-theme={theme ?? undefined}>
+    <html
+      lang={locale}
+      data-theme={theme ?? undefined}
+      // « Animations : aucune » (§8.3) coupe aussi les animations en JavaScript,
+      // qui lisent cet attribut comme un `prefers-reduced-motion`.
+      data-animations={parametres.theme.animation}
+      // `data-motion` est posé par le script ci-dessous, avant l'hydratation.
+      suppressHydrationWarning
+    >
       <head>
+        {/*
+          Animations autorisées ? La réponse est posée sur `<html>` avant le
+          premier affichage : les blocs animés partent masqués d'emblée, au lieu
+          d'apparaître, disparaître puis réapparaître à l'hydratation. Sans
+          JavaScript, le script ne tourne pas et tout reste visible.
+        */}
+        <script
+          nonce={nonce}
+          // Le navigateur masque la valeur du nonce une fois lu (sécurité) : le
+          // client voit un attribut vide, React signalerait un écart à tort.
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var d=document.documentElement;if(!matchMedia("(prefers-reduced-motion: reduce)").matches&&d.getAttribute("data-animations")!=="aucune")d.setAttribute("data-motion","")}catch(e){}})();`,
+          }}
+        />
         {/*
           Apparence de l'édition, injectée avant le premier rendu pour éviter
           le clignotement d'une page repeinte après coup. La CSP autorise les
@@ -85,7 +129,9 @@ export default async function RootLayout({
         */}
         <style id="theme-edition">{cssDuTheme(parametres.theme)}</style>
       </head>
-      <body className={`${sora.variable} ${classePolice} antialiased`}>
+      <body
+        className={`${sora.variable} ${outfit.variable} ${spaceGrotesk.variable} ${classePolice} antialiased`}
+      >
         <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
         </NextIntlClientProvider>

@@ -1,0 +1,562 @@
+/* ===========================================================================
+   « Constellation » — système d'animations du site public
+   (docs/BRIEF-integration-animations.md, référence docs/forum-variante-A-v2.html)
+
+   Tout est cantonné à `.site-public`, posé par `PublicShell` : le BackOffice,
+   le scanner et les badges gardent leur palette et n'ont aucun de ces effets
+   (arbitrage du 28 septembre 2026).
+
+   Trois règles, valables pour tout ce fichier :
+
+   1. Sans JavaScript, tout est visible. Les états de départ masqués
+      (`[data-reveal]`, cartes, frise) ne s'appliquent que sous
+      `html[data-motion]`, posé par le script une fois monté — et jamais sous
+      `prefers-reduced-motion` ni « Animations : aucune » (§8.3).
+   2. On n'anime que `transform`, `opacity`, `filter` et `clip-path`.
+   3. Les décors (canvas, halo, curseur, ondes) ne portent aucun texte : les
+      contrastes mesurés ne dépendent d'aucune de ces couches.
+   =========================================================================== */
+
+@property --ang {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* ---------------------------------------------------------------------------
+   Jetons (brief §2.1), branchés sur les jetons existants du site : les
+   utilitaires Tailwind (`bg-bg`, `text-heading`…) prennent donc la palette du
+   template sans qu'aucun composant ait à changer de classe.
+
+   Contrastes mesurés (constellation.test.ts). Deux teintes du template ont
+   été assombries, faute de tenir 4,5:1 : le vert des étiquettes (#2f8a3e,
+   3,90:1 sur --surface-2 → #287a37, 4,79:1) et le fond des boutons verts sous
+   texte blanc (#3c9f4d, 3,36:1 → dégradé #237033 → #287a37, 5,34:1 au pire).
+--------------------------------------------------------------------------- */
+
+.site-public {
+  --navy: #1d4f91;
+  --navy-2: #163a6b;
+  --deep: #081a33;
+  --green: #2f8a3e;
+  --green-2: #4cb46a;
+  --gold: #e8b931;
+  --red: #d64541;
+  --sky: #3b7dd8;
+  --radius: 22px;
+  --ease: cubic-bezier(0.77, 0, 0.18, 1);
+
+  --line: #dde6f1;
+  --title: #1d4f91;
+  --muted: #5b6b82;
+  /* Vert des textes courts (étiquettes, dates) : 4,79:1 au pire. */
+  --green-text: #287a37;
+  --glow: rgba(59, 125, 216, 0.12);
+  --glow-blend: multiply;
+
+  /* Jetons du site, à la palette du template. */
+  --bg: #f4f7fb;
+  --bg-2: #eef3fa;
+  --bg-3: #e4ecf6;
+  --surface: #ffffff;
+  --surface-2: #eef3fa;
+  --border: #dde6f1;
+  --text: #25344c;
+  --text-2: #5b6b82;
+  --text-3: #5b6b82;
+  --heading: #1d4f91;
+
+  /* Polices : Outfit remplace Sora et Inter sous `.site-public`. Une police
+     choisie en BackOffice autre qu'Inter (§8.3) reste respectée : elle passe
+     par `--font-body`, qui ne pointe sur `--font-inter` que par défaut. */
+  --font-sora: var(--font-outfit);
+  --font-inter: var(--font-outfit);
+  font-family: var(--font-body);
+  background: var(--deep);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .site-public {
+    --line: #1c3354;
+    --title: #8fbaff;
+    --muted: #93a6c1;
+    --green-text: #4cb46a;
+    --glow: rgba(76, 180, 106, 0.1);
+    --glow-blend: screen;
+    --bg: #08131f;
+    --bg-2: #0c1a2d;
+    --bg-3: #132840;
+    --surface: #0f1f35;
+    --surface-2: #0c1a2d;
+    --border: #1c3354;
+    --text: #dfe8f5;
+    --text-2: #93a6c1;
+    --text-3: #93a6c1;
+    --heading: #8fbaff;
+  }
+}
+
+:root[data-theme="dark"] .site-public,
+.site-public [data-theme="dark"] {
+  --line: #1c3354;
+  --title: #8fbaff;
+  --muted: #93a6c1;
+  --green-text: #4cb46a;
+  --glow: rgba(76, 180, 106, 0.1);
+  --glow-blend: screen;
+  --bg: #08131f;
+  --bg-2: #0c1a2d;
+  --bg-3: #132840;
+  --surface: #0f1f35;
+  --surface-2: #0c1a2d;
+  --border: #1c3354;
+  --text: #dfe8f5;
+  --text-2: #93a6c1;
+  --text-3: #93a6c1;
+  --heading: #8fbaff;
+}
+
+/* Dates et étiquettes. */
+.police-grotesk {
+  font-family: var(--font-grotesk), var(--font-body);
+}
+
+/* ---------------------------------------------------------------------------
+   Rideau et pied de page révélé (brief §3).
+
+   Le contenu glisse au-dessus d'un pied de page collé en bas. Le collage n'est
+   posé que par le script, et seulement si le pied de page tient dans la
+   fenêtre (`data-revele-footer`) : plus haut qu'elle — sur téléphone —, il
+   deviendrait inaccessible.
+--------------------------------------------------------------------------- */
+
+.rideau {
+  position: relative;
+  z-index: 2;
+  background: var(--bg);
+  border-radius: 0 0 40px 40px;
+  box-shadow: 0 40px 60px -20px rgba(0, 0, 0, 0.35);
+}
+
+.pied-revele[data-revele-footer] {
+  position: sticky;
+  bottom: 0;
+  z-index: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Apparitions (`<Reveal>`) : up, left, right, zoom, blur. Délai par `--d`.
+--------------------------------------------------------------------------- */
+
+html[data-motion] [data-reveal] {
+  transition:
+    opacity 1s cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 1s cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: var(--d, 0s);
+}
+html[data-motion] [data-reveal]:not([data-vu]) {
+  opacity: 0;
+}
+/* Filet de sécurité : si le script de la page ne se charge jamais, un bloc
+   masqué se montre de lui-même au bout de quatre secondes. */
+html[data-motion] [data-reveal]:not([data-vu]),
+html[data-motion] .eyebrow:not([data-vu])::before {
+  animation: secours-apparition 0s 4s forwards;
+}
+@keyframes secours-apparition {
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+html[data-motion] [data-reveal="up"]:not([data-vu]) {
+  transform: translateY(50px);
+}
+html[data-motion] [data-reveal="left"]:not([data-vu]) {
+  transform: translateX(-60px);
+}
+html[data-motion] [data-reveal="right"]:not([data-vu]) {
+  transform: translateX(60px);
+}
+html[data-motion] [data-reveal="zoom"]:not([data-vu]) {
+  transform: scale(0.88);
+}
+html[data-motion] [data-reveal="blur"]:not([data-vu]) {
+  filter: blur(14px);
+  transform: translateY(20px);
+}
+
+/* Étiquette de section : un trait se dessine avant le texte. */
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 1.2em;
+  color: var(--green-text);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.eyebrow::before {
+  content: "";
+  flex: none;
+  width: 48px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--green), var(--sky));
+  transform-origin: left;
+  transition: transform 0.9s 0.2s cubic-bezier(0.7, 0, 0.2, 1);
+}
+html[data-motion] .eyebrow:not([data-vu])::before {
+  transform: scaleX(0);
+}
+
+/* ---------------------------------------------------------------------------
+   Boutons : aimant (`--bx`, `--by`, posés par `EffetsPointeur`), ondulation
+   au clic, reflet sur les boutons verts.
+--------------------------------------------------------------------------- */
+
+[data-magnetic] {
+  transform: translate(var(--bx, 0px), var(--by, 0px));
+  transition:
+    transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.3s,
+    background-color 0.3s,
+    border-color 0.3s;
+}
+.ondulation {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(0);
+  animation: ondulation 0.7s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes ondulation {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+.bouton-reflet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.4), transparent 70%);
+  transform: translateX(-120%);
+  animation: reflet 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes reflet {
+  60%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Bandeau défilant (brief §3) : points dorés qui clignotent.
+--------------------------------------------------------------------------- */
+
+.bandeau-defilant {
+  background: linear-gradient(90deg, var(--navy-2), var(--navy), var(--navy-2));
+}
+.bandeau-defilant__piste {
+  display: inline-flex;
+  width: max-content;
+  animation: defiler 38s linear infinite;
+}
+.bandeau-defilant__piste > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding-right: 3rem;
+}
+.bandeau-defilant__piste > span::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 10px var(--gold);
+  animation: clignoter 1.6s infinite;
+}
+@keyframes clignoter {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   En-tête qui se compacte au défilement (`data-compact`).
+
+   La barre garde sa place dans la page — pas de décalage de mise en page —
+   et remonte d'un cran par `transform` : sa partie haute sort de l'écran, son
+   contenu se recentre et les logos se réduisent.
+--------------------------------------------------------------------------- */
+
+.entete-site {
+  transition:
+    transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.4s;
+}
+.entete-site > div,
+.entete-site .entete-logos {
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.entete-site .entete-logos {
+  transform-origin: left center;
+}
+.entete-site[data-compact] {
+  transform: translateY(-10px);
+  box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.25);
+}
+.entete-site[data-compact] > div {
+  transform: translateY(5px);
+}
+.entete-site[data-compact] .entete-logos {
+  transform: scale(0.86);
+}
+@media (min-width: 1024px) {
+  .entete-site[data-compact] {
+    transform: translateY(-22px);
+  }
+  .entete-site[data-compact] > div {
+    transform: translateY(11px);
+  }
+  .entete-site[data-compact] .entete-logos {
+    transform: scale(0.8);
+  }
+}
+
+/* Soulignement dégradé des liens du menu. */
+.lien-menu {
+  position: relative;
+}
+.lien-menu::after {
+  content: "";
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.2rem;
+  height: 2px;
+  background: linear-gradient(90deg, var(--green), var(--gold));
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.45s cubic-bezier(0.7, 0, 0.2, 1);
+}
+.lien-menu:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* Anneau tricolore autour du globe du logo, en décor (brief §3). */
+.anneau-globe {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: conic-gradient(var(--green), var(--gold), var(--red), var(--green)) border-box;
+  -webkit-mask:
+    linear-gradient(#000 0 0) padding-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: tourner 6s linear infinite;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Barre de progression, curseur, halo, retour en haut.
+--------------------------------------------------------------------------- */
+
+.progression-lecture {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  z-index: 100;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, var(--green), var(--gold), var(--red), var(--sky));
+  pointer-events: none;
+}
+
+.curseur,
+.curseur-anneau {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 120;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.curseur-actif .curseur,
+.curseur-actif .curseur-anneau {
+  opacity: 1;
+}
+.curseur {
+  width: 8px;
+  height: 8px;
+  background: var(--green);
+}
+.curseur-anneau {
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid var(--green);
+  transition:
+    scale 0.35s,
+    background-color 0.35s,
+    border-color 0.35s,
+    opacity 0.3s;
+}
+/* L'anneau double par `scale`, sans toucher à sa taille : aucun recalcul de
+   mise en page à chaque survol. */
+.curseur-anneau[data-grand] {
+  scale: 2;
+  background: rgba(47, 138, 62, 0.12);
+  border-color: transparent;
+}
+
+.halo-souris {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, var(--glow), transparent 65%);
+  mix-blend-mode: var(--glow-blend);
+}
+
+.retour-haut {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--title);
+  box-shadow: 0 20px 50px -20px rgba(22, 58, 107, 0.45);
+  opacity: 0;
+  transform: translateY(20px) scale(0.8);
+  pointer-events: none;
+  transition:
+    opacity 0.4s,
+    transform 0.4s;
+}
+.retour-haut[data-visible] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Séparateur ondulé : deux vagues qui défilent en sens opposés.
+--------------------------------------------------------------------------- */
+
+.vague {
+  position: relative;
+  height: 110px;
+  margin-top: -1px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.vague svg {
+  position: absolute;
+  bottom: 0;
+  width: 200%;
+  height: 100%;
+}
+.vague .v1 {
+  fill: var(--vague, var(--surface-2));
+  opacity: 0.9;
+  animation: vague 16s linear infinite;
+}
+.vague .v2 {
+  fill: var(--vague, var(--surface-2));
+  opacity: 0.5;
+  animation: vague 11s linear infinite reverse;
+}
+.vague .trace {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+@keyframes vague {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Pied de page « Rendez-vous à Dakar. »
+--------------------------------------------------------------------------- */
+
+.pied-titre {
+  font-weight: 900;
+  font-size: clamp(3rem, 11vw, 10rem);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  color: #fff;
+}
+.pied-titre span {
+  background: linear-gradient(90deg, #4cd37b, var(--gold), var(--red), var(--sky), #4cd37b);
+  background-size: 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: couler 8s linear infinite;
+}
+@keyframes couler {
+  to {
+    background-position: 300% 0;
+  }
+}
+.pied-lien {
+  background: linear-gradient(var(--gold), var(--gold)) 0 100% / 0 1px no-repeat;
+  transition:
+    background-size 0.4s var(--ease),
+    color 0.3s;
+}
+.pied-lien:hover {
+  color: #fff;
+  background-size: 100% 1px;
+}
+
+@keyframes tourner-angle {
+  to {
+    --ang: 360deg;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Mouvement réduit, ou « Animations : aucune » : plus rien ne bouge, et tout
+   est dans son état final.
+--------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .site-public *,
+  .site-public *::before,
+  .site-public *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+html[data-animations="aucune"] .site-public *,
+html[data-animations="aucune"] .site-public *::before,
+html[data-animations="aucune"] .site-public *::after {
+  animation: none !important;
+  transition: none !important;
+}
