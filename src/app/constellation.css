@@ -1823,3 +1823,40 @@ html[data-animations="aucune"] .vague__points {
 .tuile-projecteur:hover::after {
   opacity: 1;
 }
+
+/* Fiche intervenant ciblée par une ancre : la carte se présente retournée. */
+.retournable:target .retournable__interieur {
+  transform: rotateY(180deg);
+}
+.retournable:target {
+  scroll-margin-top: 8rem;
+}
+.retournable:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: var(--radius);
+}
+.verso__bio {
+  margin-top: 0.6rem;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 7;
+  -webkit-box-orient: vertical;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  opacity: 0.92;
+}
+.verso__themes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: auto;
+  padding-top: 0.8rem;
+  list-style: none;
+}
+.verso__themes li {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 0.7rem;
+}

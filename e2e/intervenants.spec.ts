@@ -153,8 +153,10 @@ test("la présentation n'est jamais publique, la photo l'est une fois publiée",
   expect((await request.get(`/api/v1/speakers/${speakerId}/photo`)).status()).toBe(200);
   expect((await request.get(`/api/v1/speakers/${speakerId}/presentation`)).status()).toBe(404);
 
-  await page.goto("/intervenants");
-  await expect(page.getByText(`Awa ${NOM}`)).toBeVisible();
+  // La carte est la fiche : l'ancre l'amène à l'écran même au-delà des
+  // douze premières (chargement progressif).
+  await page.goto(`/intervenants#intervenant-${speakerId}`);
+  await expect(page.getByRole("heading", { name: `Awa ${NOM}` })).toBeVisible();
 });
 
 test("le BackOffice signale un intervenant injoignable et crée son participant", async ({

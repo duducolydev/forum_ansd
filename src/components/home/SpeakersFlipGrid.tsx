@@ -14,6 +14,9 @@ export interface IntervenantCarte {
   jobTitle: string | null;
   organization: string | null;
   photoPath: string | null;
+  /** Biographie et thèmes : montrés au verso sur la page Intervenants. */
+  bio?: string | null;
+  themes?: string[];
 }
 
 /**
@@ -41,7 +44,11 @@ export function SpeakersFlipGrid({
   className = "",
 }: {
   intervenants: IntervenantCarte[];
-  lienProfil?: (id: string) => string;
+  /**
+   * Lien du verso. `null` sur la page Intervenants elle-même : la carte y est
+   * la fiche, et son verso montre la biographie au lieu d'un lien.
+   */
+  lienProfil?: ((id: string) => string) | null;
   className?: string;
 }) {
   return (
@@ -50,7 +57,7 @@ export function SpeakersFlipGrid({
         <CarteRetournable
           key={intervenant.id}
           intervenant={intervenant}
-          href={lienProfil(intervenant.id)}
+          href={lienProfil ? lienProfil(intervenant.id) : null}
           delai={(rang % 4) * 0.1 + Math.floor(rang / 4) * 0.15}
         />
       ))}
@@ -68,7 +75,7 @@ function CarteRetournable({
   delai,
 }: {
   intervenant: IntervenantCarte;
-  href: string;
+  href: string | null;
   delai: number;
 }) {
   const t = useTranslations("constellation.speakers");
@@ -91,6 +98,11 @@ function CarteRetournable({
   return (
     <article
       ref={ref}
+      // Ancre de la fiche : `/intervenants#intervenant-…` retourne la carte visée.
+      id={`intervenant-${intervenant.id}`}
+      // Sans lien au verso, c'est la carte elle-même qui prend le focus clavier.
+      tabIndex={href ? undefined : 0}
+      aria-label={href ? undefined : nom}
       className="retournable"
       data-retournee={retournee ? "" : undefined}
       style={{ "--d": `${delai}s` } as CSSProperties}
@@ -131,18 +143,44 @@ function CarteRetournable({
         </div>
 
         <div className="face face--verso">
-          <div aria-hidden>
-            <div className="verso__avatar">{initiales(intervenant)}</div>
-            {intervenant.organization && (
-              <div className="verso__organisation police-grotesk">{intervenant.organization}</div>
-            )}
-            <div className="verso__nom">{nom}</div>
-            {intervenant.jobTitle && <p className="verso__fonction">{intervenant.jobTitle}</p>}
-          </div>
-          <Link href={href} className="verso__lien" aria-label={`${t("profile")} — ${nom}`}>
-            {t("profile")}
-            <ArrowRight aria-hidden size={16} />
-          </Link>
+          {href ? (
+            <>
+              <div aria-hidden>
+                <div className="verso__avatar">{initiales(intervenant)}</div>
+                {intervenant.organization && (
+                  <div className="verso__organisation police-grotesk">
+                    {intervenant.organization}
+                  </div>
+                )}
+                <div className="verso__nom">{nom}</div>
+                {intervenant.jobTitle && <p className="verso__fonction">{intervenant.jobTitle}</p>}
+              </div>
+              <Link href={href} className="verso__lien" aria-label={`${t("profile")} — ${nom}`}>
+                {t("profile")}
+                <ArrowRight aria-hidden size={16} />
+              </Link>
+            </>
+          ) : (
+            // Fiche complète : la biographie est un contenu propre, lu par
+            // les lecteurs d'écran ; le reste répète le recto.
+            <div className="flex h-full flex-col">
+              <div aria-hidden className="verso__nom text-[1.15rem]">
+                {nom}
+              </div>
+              {intervenant.bio ? (
+                <p className="verso__bio">{intervenant.bio}</p>
+              ) : (
+                intervenant.jobTitle && <p className="verso__fonction">{intervenant.jobTitle}</p>
+              )}
+              {intervenant.themes && intervenant.themes.length > 0 && (
+                <ul className="verso__themes">
+                  {intervenant.themes.map((theme) => (
+                    <li key={theme}>{theme}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </article>
