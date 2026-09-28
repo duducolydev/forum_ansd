@@ -61,7 +61,8 @@ export default async function PracticalInfoPage() {
                   <span
                     className={`mb-3 grid h-10 w-10 place-items-center rounded-xl ${rubrique.ton}`}
                   >
-                    <Icone aria-hidden size={19} strokeWidth={2.2} />
+                    {/* L'icône se dessine trait par trait à l'apparition de la carte. */}
+                    <Icone aria-hidden size={19} strokeWidth={2.2} className="icone-dessinee" />
                   </span>
                   {/* `h2` : la page n'a qu'un `h1`, sauter au `h3` désoriente la
                       navigation par titres. */}

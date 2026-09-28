@@ -2121,3 +2121,34 @@ html[data-motion] .resultat-refus {
     transform: translateX(6px);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Icônes qui se dessinent à l'apparition de leur carte (infos pratiques).
+--------------------------------------------------------------------------- */
+
+.icone-dessinee * {
+  stroke-dasharray: 64;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1.4s ease 0.2s;
+}
+html[data-motion] [data-reveal]:not([data-vu]) .icone-dessinee * {
+  stroke-dashoffset: 64;
+}
+
+/* Parties dépliables (<details>) : ouverture fluide où le navigateur sait
+   animer vers `height: auto` ; ailleurs, elles s'ouvrent d'un coup. */
+@supports (interpolate-size: allow-keywords) {
+  .site-public {
+    interpolate-size: allow-keywords;
+  }
+  .site-public details::details-content {
+    height: 0;
+    overflow: clip;
+    transition:
+      height 0.4s var(--ease),
+      content-visibility 0.4s allow-discrete;
+  }
+  .site-public details[open]::details-content {
+    height: auto;
+  }
+}
