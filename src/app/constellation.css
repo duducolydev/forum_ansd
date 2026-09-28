@@ -1860,3 +1860,163 @@ html[data-animations="aucune"] .vague__points {
   background: rgba(255, 255, 255, 0.14);
   font-size: 0.7rem;
 }
+
+/* ---------------------------------------------------------------------------
+   Programme : onglets de journée, frise des créneaux.
+--------------------------------------------------------------------------- */
+
+.onglets-jour {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.6rem;
+  border-bottom: 1px solid var(--line);
+}
+.onglet-jour {
+  position: relative;
+  padding: 0.6rem 0.1rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: capitalize;
+  transition: color 0.3s;
+}
+.onglet-jour::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(90deg, var(--green), var(--gold));
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.45s cubic-bezier(0.7, 0, 0.2, 1);
+}
+.onglet-jour:hover {
+  color: var(--title);
+}
+.onglet-jour:hover::after,
+.onglet-jour[aria-current]::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+.onglet-jour[aria-current] {
+  color: var(--title);
+}
+
+/* La frise du programme est toujours à gauche : les créneaux s'empilent. */
+.frise--programme {
+  max-width: none;
+}
+.frise--programme .frise__trait {
+  left: 10px;
+}
+.creneau {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+  margin-bottom: 2.4rem;
+  padding-left: 2.5rem;
+  list-style: none;
+}
+.creneau:last-child {
+  margin-bottom: 0;
+}
+.creneau .frise__point {
+  top: 4px;
+  left: 10px;
+}
+.creneau[data-allume] .frise__point {
+  border-color: var(--green);
+  background: var(--green);
+  transform: translate(-50%, 0) scale(1);
+  box-shadow: 0 0 0 8px rgba(47, 138, 62, 0.15);
+}
+.creneau__heure {
+  color: var(--green-text);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.creneau__sessions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.9rem;
+}
+@media (min-width: 768px) {
+  .creneau__sessions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.carte-session {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  height: 100%;
+  padding: 1.1rem 1.3rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  transition:
+    transform 0.4s,
+    box-shadow 0.4s,
+    border-color 0.4s;
+}
+.carte-session::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(var(--green), var(--gold));
+}
+.carte-session:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -24px rgba(15, 36, 71, 0.4);
+}
+.carte-session[data-en-cours] {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(47, 138, 62, 0.18);
+}
+.carte-session__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.carte-session__type {
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--title);
+}
+.carte-session__direct {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--green-text);
+  font-weight: 700;
+}
+.carte-session__titre {
+  color: var(--title);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.carte-session:hover .carte-session__titre {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.carte-session__pied {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin-top: auto;
+  color: var(--muted);
+  font-size: 0.8rem;
+}

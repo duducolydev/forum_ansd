@@ -1,4 +1,13 @@
-import { CalendarDays, Check, DoorOpen, Info, LayoutList, Tag } from "lucide-react";
+import {
+  CalendarDays,
+  Check,
+  Columns3,
+  DoorOpen,
+  Info,
+  LayoutList,
+  ListTree,
+  Tag,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { EnteteSection } from "@/components/site/entete-section";
@@ -13,6 +22,9 @@ import {
   ProgrammeGrid,
   type SessionAffichable,
 } from "@/modules/sessions/components/programme-grid";
+import { ProgrammeFrise } from "@/modules/sessions/components/programme-frise";
+import { ETAT_LABELS } from "@/modules/sessions/service";
+import { MiniCountdown } from "@/components/home/MiniCountdown";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +45,8 @@ interface Filtres {
   theme?: string;
   type?: string;
   salle?: string;
+  /** `salles` : grille par salle ; sinon, frise des créneaux. */
+  vue?: string;
 }
 
 /** Un filtre actif se retire en le rappuyant : la même pastille sert d'aller et de retour. */
@@ -42,6 +56,18 @@ function lienFiltre(filtres: Filtres, cle: keyof Filtres, valeur: string): strin
   );
   if (parametres.get(cle) === valeur) parametres.delete(cle);
   else parametres.set(cle, valeur);
+  const suite = parametres.toString();
+  return suite ? `/programme?${suite}` : "/programme";
+}
+
+/** Bascule d'affichage : on garde les filtres, on change seulement la vue. */
+function lienVue(filtres: Filtres, vue: "salles" | null): string {
+  const parametres = new URLSearchParams(
+    Object.entries({ ...filtres, vue: vue ?? undefined }).filter(([, v]) => Boolean(v)) as [
+      string,
+      string,
+    ][],
+  );
   const suite = parametres.toString();
   return suite ? `/programme?${suite}` : "/programme";
 }
@@ -147,6 +173,9 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
     .map((iso) => ({ iso, date: new Date(`${iso}T00:00:00.000Z`) }));
 
   const jourActif = jours.find((jour) => jour.iso === filtres.jour) ?? jours[0]!;
+  const vueSalles = filtres.vue === "salles";
+  // Cible du compte à rebours : la première session du programme publié.
+  const ouverture = new Date(Math.min(...sessions.map((session) => session.startTime.getTime())));
   const duJour: SessionAffichable[] = retenues
     .filter((session) => session.day.toISOString().slice(0, 10) === jourActif.iso)
     .map((session) => ({
@@ -170,22 +199,44 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
           surtitre="Trois journées"
           titre={t("program")}
           icone={CalendarDays}
-          description={`${edition.venue}, ${edition.city} · ${jours.length} journée(s) · ${sessions.length} session(s)`}
+          action={
+            <MiniCountdown
+              cibleIso={ouverture.toISOString()}
+              finIso={edition.endDate.toISOString()}
+            />
+          }
         />
       </BandeauPage>
 
       <CorpsPage espacement="compact">
-        <nav aria-label="Journées" className="mb-4 flex flex-wrap gap-2">
-          {jours.map((jour) => (
-            <Pastille
-              key={jour.iso}
-              actif={jour.iso === jourActif.iso}
-              href={lienFiltre({ ...filtres, jour: undefined }, "jour", jour.iso)}
-            >
-              {jourLong.format(jour.date)}
+        {/*
+          Onglets de journée, soulignement animé (brief « Constellation » §6).
+          Ce sont des liens : chaque journée a son adresse, partageable.
+        */}
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <nav aria-label="Journées" className="onglets-jour">
+            {jours.map((jour) => (
+              <Link
+                key={jour.iso}
+                href={lienFiltre({ ...filtres, jour: undefined }, "jour", jour.iso)}
+                aria-current={jour.iso === jourActif.iso ? "page" : undefined}
+                className="onglet-jour"
+              >
+                {jourLong.format(jour.date)}
+              </Link>
+            ))}
+          </nav>
+          <nav aria-label="Affichage" className="flex gap-1.5">
+            <Pastille actif={!vueSalles} href={lienVue(filtres, null)}>
+              <ListTree aria-hidden size={14} />
+              Frise
             </Pastille>
-          ))}
-        </nav>
+            <Pastille actif={vueSalles} href={lienVue(filtres, "salles")}>
+              <Columns3 aria-hidden size={14} />
+              Par salle
+            </Pastille>
+          </nav>
+        </div>
 
         {(themes.length > 0 || salles.length > 0) && (
           <div className="border-border bg-surface mb-8 flex flex-col gap-3 rounded-2xl border p-4">
@@ -237,10 +288,30 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
           </div>
         )}
 
-        <ProgrammeGrid
-          sessions={duJour}
-          salles={salles.map((salle) => ({ id: salle.id, name: salle.name }))}
-        />
+        {vueSalles ? (
+          <ProgrammeGrid
+            sessions={duJour}
+            salles={salles.map((salle) => ({ id: salle.id, name: salle.name }))}
+          />
+        ) : (
+          <ProgrammeFrise
+            en={false}
+            sessions={duJour.map((session) => ({
+              id: session.id,
+              slug: session.slug,
+              type: session.type,
+              titre: session.titre,
+              theme: session.theme,
+              debut: session.debut.toISOString(),
+              fin: session.fin.toISOString(),
+              salle: session.salle?.name ?? null,
+              etat:
+                session.places.etat === "SANS_RESERVATION"
+                  ? null
+                  : ETAT_LABELS[session.places.etat],
+            }))}
+          />
+        )}
       </CorpsPage>
     </>
   );
