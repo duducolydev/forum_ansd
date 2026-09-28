@@ -131,6 +131,14 @@ export function EffetsGlobaux() {
         if (!image) image = requestAnimationFrame(boucle);
       }
 
+      // Projecteur : un halo suit la souris sur les tuiles `[data-projecteur]`.
+      const tuile = (evenement.target as Element | null)?.closest<HTMLElement>("[data-projecteur]");
+      if (tuile) {
+        const cadreTuile = tuile.getBoundingClientRect();
+        tuile.style.setProperty("--mx", `${x - cadreTuile.left}px`);
+        tuile.style.setProperty("--my", `${y - cadreTuile.top}px`);
+      }
+
       // Aimant : le bouton suit le pointeur de 25 % en largeur, 35 % en hauteur.
       const cible = (evenement.target as Element | null)?.closest<HTMLElement>("[data-magnetic]");
       if (cible && !sansCurseur) {

@@ -9,7 +9,8 @@ import { EnteteSection } from "@/components/site/entete-section";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
 import { LienSite } from "@/components/site/bouton-site";
 import { Reveal } from "@/components/site/reveal";
-import { RevealListe } from "@/components/site/reveal-liste";
+import { Reveal as RevealMotion } from "@/components/motion/Reveal";
+import { PartnersMarquee } from "@/components/home/PartnersMarquee";
 
 export async function generateMetadata() {
   const t = await getTranslations("nav");
@@ -38,6 +39,14 @@ export default async function SponsorsPage() {
 
   const sponsors = await listerSponsorsPublies(edition.id);
   const total = sponsors.length;
+  /*
+   * Mosaïque (brief « Constellation » §6) : les partenaires du premier niveau
+   * — le plus petit rang, en général le sponsor principal — occupent une
+   * grande tuile ; les autres, une tuile simple. L'ordre reste celui du
+   * BackOffice, et aucun nom de niveau n'est affiché (arbitrage du
+   * 28 septembre 2026).
+   */
+  const premierRang = Math.min(...sponsors.map((sponsor) => sponsor.level.sortOrder));
   const pluriel = total > 1;
 
   return (
@@ -65,8 +74,9 @@ export default async function SponsorsPage() {
             {tPage("empty")}
           </p>
         ) : (
-          <RevealListe className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {sponsors.map((sponsor) => {
+          <div className="grid grid-flow-dense grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {sponsors.map((sponsor, rang) => {
+              const grand = sponsor.level.sortOrder === premierRang;
               const description = resolveLocaleValue(
                 sponsor.descriptionFr,
                 sponsor.descriptionEn,
@@ -99,7 +109,7 @@ export default async function SponsorsPage() {
                             ? { maxWidth: `${sponsor.level.logoMaxWidth}px` }
                             : undefined
                         }
-                        className="max-h-20 object-contain transition-transform duration-300 group-hover:scale-105"
+                        className={`object-contain transition-transform duration-300 group-hover:scale-105 ${grand ? "max-h-32" : "max-h-20"}`}
                       />
                     ) : (
                       <span className="font-display text-heading text-center text-lg leading-snug font-bold text-balance">
@@ -149,11 +159,12 @@ export default async function SponsorsPage() {
                * lisait comme une grille cassée.
                */
               const classes =
-                "group border-border bg-surface relative flex h-full flex-col overflow-hidden rounded-2xl border shadow-sm";
+                "group tuile-projecteur border-border bg-surface relative flex h-full flex-col overflow-hidden rounded-2xl border shadow-sm";
 
-              return sponsor.website ? (
+              // Entrée en cascade ; la grande tuile porte l'étendue dans la grille.
+              const tuile = sponsor.website ? (
                 <a
-                  key={sponsor.id}
+                  data-projecteur
                   href={sponsor.website}
                   target="_blank"
                   // `noopener` : la page ouverte ne doit pas pouvoir manipuler
@@ -165,12 +176,40 @@ export default async function SponsorsPage() {
                   {contenu}
                 </a>
               ) : (
-                <div key={sponsor.id} title={description || undefined} className={classes}>
+                <div data-projecteur title={description || undefined} className={classes}>
                   {contenu}
                 </div>
               );
+
+              return (
+                <RevealMotion
+                  key={sponsor.id}
+                  variant="up"
+                  delay={Math.min(rang, 12) * 0.06}
+                  className={grand ? "sm:col-span-2 sm:row-span-2" : undefined}
+                >
+                  {tuile}
+                </RevealMotion>
+              );
             })}
-          </RevealListe>
+          </div>
+        )}
+
+        {total > 0 && (
+          <div className="mt-16">
+            <PartnersMarquee
+              libelle={en ? "Partners" : "Partenaires"}
+              partenaires={sponsors.map((sponsor) => ({
+                id: sponsor.id,
+                nom: sponsor.name,
+                logo: sponsor.logoPath
+                  ? urlVersionnee(`/api/v1/sponsors/${sponsor.id}/logo`, sponsor.logoPath)
+                  : null,
+                site: sponsor.website,
+                filet: tonDuNiveau(sponsor.level).filet,
+              }))}
+            />
+          </div>
         )}
 
         <Reveal delai={150}>

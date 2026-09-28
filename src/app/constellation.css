@@ -1805,3 +1805,21 @@ html[data-animations="aucune"] .vague__points {
   color: var(--title);
   font-weight: 600;
 }
+
+/* Projecteur qui suit la souris sur une tuile (`data-projecteur`). */
+.tuile-projecteur::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    260px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(76, 180, 106, 0.16),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+.tuile-projecteur:hover::after {
+  opacity: 1;
+}
