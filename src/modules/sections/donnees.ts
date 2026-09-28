@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getHomeStats } from "@/lib/stats";
 import { listPosts } from "@/modules/content/service";
 import { listerSponsorsPublies } from "@/modules/sponsors/service";
+import { heureOuverture } from "@/lib/ouverture";
 import { besoinsDesSections } from "./service";
 
 /**
@@ -68,15 +69,9 @@ export async function chargerDonnees(
 
   if (besoins.has("ouverture")) {
     travaux.push(
-      prisma.session
-        .findFirst({
-          where: { editionId: edition.id, isPublished: true, deletedAt: null },
-          orderBy: { startTime: "asc" },
-          select: { startTime: true },
-        })
-        .then((premiere) => {
-          donnees.ouverture = premiere?.startTime ?? edition.startDate;
-        }),
+      heureOuverture(edition).then((ouverture) => {
+        donnees.ouverture = ouverture;
+      }),
     );
   }
 

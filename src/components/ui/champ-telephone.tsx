@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getCountries, getCountryCallingCode } from "libphonenumber-js/min";
 import { joindreTelephone, listeIndicatifs, separerTelephone } from "@/lib/telephone";
 
 /**
@@ -21,6 +22,11 @@ import { joindreTelephone, listeIndicatifs, separerTelephone } from "@/lib/telep
  * tapant les premières lettres du pays, s'ouvre en roue sur téléphone, et les
  * lecteurs d'écran la connaissent.
  */
+/** Liste identique sur le serveur et dans le navigateur : codes ISO, sans `Intl`. */
+const INDICATIFS_NEUTRES = getCountries()
+  .map((pays) => ({ pays, code: getCountryCallingCode(pays), nom: pays as string }))
+  .sort((a, b) => a.pays.localeCompare(b.pays));
+
 export function ChampTelephone({
   id,
   name,
@@ -38,7 +44,21 @@ export function ChampTelephone({
   disabled?: boolean;
   langue?: "fr" | "en";
 }) {
-  const indicatifs = useMemo(() => listeIndicatifs(langue), [langue]);
+  /*
+   * La liste est construite dans le navigateur seulement. Les noms de pays
+   * viennent d'`Intl.DisplayNames`, dont les données diffèrent entre Node et
+   * le navigateur (« Hong Kong » ou « R.A.S. chinoise de Hong Kong »…) : la
+   * même liste calculée des deux côtés n'avait ni les mêmes libellés ni le
+   * même ordre, et React signalait une erreur d'hydratation.
+   *
+   * Au rendu serveur (et à l'hydratation), toutes les options sont donc
+   * posées avec un libellé qui ne dépend de rien : « CI (+225) », par code de
+   * pays. Elles existent dès le départ — le brouillon de l'inscription peut y
+   * restaurer un indicatif —, puis prennent leur nom dans la langue de la
+   * page une fois le composant monté.
+   */
+  const [indicatifs, setIndicatifs] = useState(INDICATIFS_NEUTRES);
+  useEffect(() => setIndicatifs(listeIndicatifs(langue)), [langue]);
   const initial = useMemo(() => separerTelephone(defaultValue), [defaultValue]);
   const refIndicatif = useRef<HTMLSelectElement>(null);
   const refNumero = useRef<HTMLInputElement>(null);

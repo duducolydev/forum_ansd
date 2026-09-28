@@ -236,29 +236,33 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
       />
 
       <div>
+        {/*
+          Indicateur d'étapes animé (brief « Constellation » §6) : chaque barre
+          se remplit en glissant quand on l'atteint. La couleur n'est pas seule
+          à parler : « Étape 2 sur 5 » et le nom de l'étape suivent.
+        */}
         <div className="mb-2.5 flex gap-1.5">
           {steps.map((step, index) => (
-            <div
-              key={step.key}
-              className={`h-1.5 flex-1 rounded-sm ${
-                index < stepIndex
-                  ? "bg-ansd-vert-vif"
-                  : index === stepIndex
-                    ? "bg-ansd-bleu-vif"
-                    : "bg-bg-3"
-              }`}
-            />
+            <div key={step.key} className="etape-barre">
+              <span
+                data-etat={
+                  index < stepIndex ? "faite" : index === stepIndex ? "courante" : "a-venir"
+                }
+              />
+            </div>
           ))}
         </div>
         <div className="text-text-3 flex justify-between text-sm">
           <span>
             Étape <b className="text-heading">{stepIndex + 1}</b> sur {steps.length}
           </span>
-          <b className="text-heading">{currentStep.label}</b>
+          <b key={currentStep.key} className="text-heading etape-libelle">
+            {currentStep.label}
+          </b>
         </div>
       </div>
 
-      <div hidden={currentStep.key !== "identity"}>
+      <div hidden={currentStep.key !== "identity"} className="etape-panneau">
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
           <Select label="Civilité" name="civility" options={["", "Madame", "Monsieur"]} />
           <div />
@@ -311,7 +315,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
         </div>
       </div>
 
-      <div hidden={currentStep.key !== "profession"}>
+      <div hidden={currentStep.key !== "profession"} className="etape-panneau">
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
           <Field label="Organisation" name="organization" />
           <Select
@@ -354,7 +358,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
         />
       </div>
 
-      <div hidden={currentStep.key !== "participation"}>
+      <div hidden={currentStep.key !== "participation"} className="etape-panneau">
         <div className="flex flex-col gap-4">
           <fieldset className="flex flex-col gap-2">
             <legend className="text-heading mb-1.5 text-sm font-semibold">
@@ -389,7 +393,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
         </div>
       </div>
 
-      <div hidden={currentStep.key !== "logistics"}>
+      <div hidden={currentStep.key !== "logistics"} className="etape-panneau">
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
           <Field label="Date d'arrivée" name="arrivalDate" type="date" />
           <Field label="Date de départ" name="departureDate" type="date" />
@@ -402,7 +406,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
         </div>
       </div>
 
-      <div hidden={currentStep.key !== "consent"}>
+      <div hidden={currentStep.key !== "consent"} className="etape-panneau">
         <div className="flex flex-col gap-2.5">
           <ConsentCheckbox
             label="J'accepte les conditions de participation au Forum."

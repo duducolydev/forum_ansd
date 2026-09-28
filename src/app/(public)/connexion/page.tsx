@@ -17,6 +17,8 @@ export default async function LoginPage({
   return (
     <>
       <BandeauPage largeur="etroit">
+        {/* Formulaire sensible : pas de curseur personnalisé (brief §6). */}
+        <span data-sans-curseur hidden />
         <div className="text-center">
           <h1 className="mb-1 flex items-center justify-center gap-3">
             <span

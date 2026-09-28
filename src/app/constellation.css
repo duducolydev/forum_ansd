@@ -2020,3 +2020,55 @@ html[data-animations="aucune"] .vague__points {
   color: var(--muted);
   font-size: 0.8rem;
 }
+
+/* ---------------------------------------------------------------------------
+   Inscription : barres d'étapes qui se remplissent, étape qui apparaît.
+   Rien d'autre sur le formulaire : ni curseur agrandi, ni aimant.
+--------------------------------------------------------------------------- */
+
+.etape-barre {
+  flex: 1;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--bg-3);
+}
+.etape-barre > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transform-origin: left;
+  transform: scaleX(0);
+  transition:
+    transform 0.6s var(--ease),
+    background-color 0.3s;
+}
+.etape-barre > span[data-etat="faite"] {
+  transform: scaleX(1);
+  background: var(--green-2);
+}
+.etape-barre > span[data-etat="courante"] {
+  transform: scaleX(1);
+  background: linear-gradient(90deg, var(--green), var(--sky));
+}
+.etape-libelle,
+.etape-panneau:not([hidden]) {
+  animation: monter-etape 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes monter-etape {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* Mon espace : le badge arrive avec un léger zoom. */
+html[data-motion] .zoom-entree {
+  animation: zoom-entree 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+@keyframes zoom-entree {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}

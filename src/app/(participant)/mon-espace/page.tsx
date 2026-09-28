@@ -90,7 +90,7 @@ export default async function MySpacePage({
   if (!participant) {
     return (
       <>
-        <BandeauPage largeur="etroit">
+        <BandeauPage largeur="etroit" reseau={false}>
           <div className="text-center">
             <h1 className="mb-1 flex items-center justify-center gap-3">
               <span
@@ -130,7 +130,7 @@ export default async function MySpacePage({
 
   return (
     <>
-      <BandeauPage largeur="moyen">
+      <BandeauPage largeur="moyen" reseau={false}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <span className="surtitre mb-1">Mon espace</span>
@@ -152,23 +152,36 @@ export default async function MySpacePage({
         </div>
       </BandeauPage>
 
+      {/* Espace personnel : animations minimales, ni canvas ni curseur (brief §6). */}
+      <span data-sans-curseur hidden />
       <CorpsPage largeur="moyen" className="flex flex-col gap-6">
         <Reveal>
           <Panneau icone={BadgeCheck} ton="bg-accent-soft text-accent-text" titre="Mon badge">
             {badge?.pdfPath ? (
-              <div className="flex flex-wrap gap-3">
-                <LienSiteExterne
-                  href={`/api/v1/badges/${badge.id}/pdf`}
-                  ton="principal"
-                  icone={Download}
-                >
-                  Télécharger le badge (PDF)
-                </LienSiteExterne>
+              <div className="flex flex-wrap items-center gap-5">
                 {badge.pngPath && (
-                  <LienSiteExterne href={`/api/v1/badges/${badge.id}/png`} icone={FileImage}>
-                    Version PNG
-                  </LienSiteExterne>
+                  // Aperçu du badge et de son QR code, avec un léger zoom d'entrée.
+                  /* eslint-disable-next-line @next/next/no-img-element -- servie par une route contrôlée et authentifiée */
+                  <img
+                    src={`/api/v1/badges/${badge.id}/png`}
+                    alt="Aperçu de mon badge"
+                    className="zoom-entree border-border h-44 w-auto rounded-xl border bg-white shadow-sm"
+                  />
                 )}
+                <div className="flex flex-wrap gap-3">
+                  <LienSiteExterne
+                    href={`/api/v1/badges/${badge.id}/pdf`}
+                    ton="principal"
+                    icone={Download}
+                  >
+                    Télécharger le badge (PDF)
+                  </LienSiteExterne>
+                  {badge.pngPath && (
+                    <LienSiteExterne href={`/api/v1/badges/${badge.id}/png`} icone={FileImage}>
+                      Version PNG
+                    </LienSiteExterne>
+                  )}
+                </div>
               </div>
             ) : badge ? (
               <p className="text-text-2 flex items-start gap-2">

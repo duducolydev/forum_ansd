@@ -35,7 +35,7 @@ export default async function EspaceIntervenantPage({
   if (!speaker) {
     return (
       <>
-        <BandeauPage largeur="etroit">
+        <BandeauPage largeur="etroit" reseau={false}>
           <div className="text-center">
             <h1 className="mb-1 flex items-center justify-center gap-3">
               <span
@@ -92,7 +92,9 @@ export default async function EspaceIntervenantPage({
 
   return (
     <>
-      <BandeauPage largeur="moyen">
+      <BandeauPage largeur="moyen" reseau={false}>
+        {/* Espace personnel : ni canvas ni curseur (brief §6). */}
+        <span data-sans-curseur hidden />
         <span className="surtitre mb-1">Espace intervenant</span>
         <h1 className="mb-1 flex items-center gap-3">
           <Mic aria-hidden size={26} className="text-accent-text shrink-0" />

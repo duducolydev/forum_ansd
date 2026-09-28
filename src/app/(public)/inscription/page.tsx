@@ -14,6 +14,8 @@ import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
 import { EnteteSection } from "@/components/site/entete-section";
 import { LienSite } from "@/components/site/bouton-site";
 import { Reveal } from "@/components/site/reveal";
+import { MiniCountdown } from "@/components/home/MiniCountdown";
+import { heureOuverture } from "@/lib/ouverture";
 
 export async function generateMetadata() {
   const t = await getTranslations("nav");
@@ -172,10 +174,17 @@ export default async function RegisterPage({
           surtitre={en ? "Join the Forum" : "Rejoindre le Forum"}
           titre={t("register")}
           icone={UserPlus}
-          description={edition.theme ?? undefined}
+          action={
+            <MiniCountdown
+              cibleIso={(await heureOuverture(edition)).toISOString()}
+              finIso={edition.endDate.toISOString()}
+            />
+          }
         />
       </BandeauPage>
 
+      {/* Formulaire : ni curseur agrandi, ni aimant (brief « Constellation » §6). */}
+      <span data-sans-curseur hidden />
       <CorpsPage largeur="moyen" espacement="serre">
         <Reveal>
           <ul data-testid="promesses-inscription" className="mb-6 flex flex-wrap gap-2">
