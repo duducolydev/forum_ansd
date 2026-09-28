@@ -1741,3 +1741,67 @@ html[data-motion] .pilier:not([data-vu]) .dessin * {
 html[data-animations="aucune"] .vague__points {
   display: none;
 }
+
+/* ===========================================================================
+   Pages intérieures : bandeau compact animé (brief §6, arbitrage du
+   28 septembre 2026 — compact, environ 200 px).
+   =========================================================================== */
+
+.bandeau-page-constellation {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-block: 1.1rem 0.6rem;
+  background:
+    radial-gradient(
+      40rem 16rem at 12% -20%,
+      color-mix(in srgb, var(--sky) 14%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      34rem 14rem at 95% 0%,
+      color-mix(in srgb, var(--green-2) 12%, transparent),
+      transparent 70%
+    ),
+    var(--surface-2);
+}
+.vague--basse {
+  height: 48px;
+}
+.titre-page {
+  font-size: clamp(1.8rem, 1.3rem + 2vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--title);
+}
+.fil-ariane ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  list-style: none;
+}
+.fil-ariane li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.fil-ariane a {
+  color: var(--muted);
+  background: linear-gradient(var(--gold), var(--gold)) 0 100% / 0 1px no-repeat;
+  transition:
+    background-size 0.4s var(--ease),
+    color 0.3s;
+}
+.fil-ariane a:hover {
+  color: var(--title);
+  background-size: 100% 1px;
+}
+.fil-ariane [aria-current] {
+  color: var(--title);
+  font-weight: 600;
+}

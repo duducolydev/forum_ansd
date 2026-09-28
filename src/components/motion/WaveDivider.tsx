@@ -12,17 +12,20 @@ export function WaveDivider({
   dessus,
   dessous,
   points = false,
+  basse = false,
 }: {
   /** Couleur CSS de la section du dessus. */
   dessus: string;
   /** Couleur CSS de la section du dessous. */
   dessous: string;
   points?: boolean;
+  /** Version basse, sous les bandeaux compacts des pages intérieures. */
+  basse?: boolean;
 }) {
   return (
     <div
       aria-hidden
-      className="vague"
+      className={basse ? "vague vague--basse" : "vague"}
       style={{ background: dessus, ["--vague" as string]: dessous }}
     >
       <svg viewBox="0 0 2880 110" preserveAspectRatio="none">

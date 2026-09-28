@@ -1,4 +1,7 @@
 import type { ReactNode } from "react";
+import { ReseauHero } from "@/components/home/ReseauHero";
+import { WaveDivider } from "@/components/motion/WaveDivider";
+import { FilAriane } from "./fil-ariane";
 
 /**
  * Bandeau d'ouverture d'une page intérieure (§10).
@@ -19,6 +22,14 @@ import type { ReactNode } from "react";
  * en mode bandeau, et le `py` descend à sa dernière marche — le contenu de la
  * page commençait sous la ligne de flottaison sur écran portable, et c'est lui
  * que le visiteur vient chercher, pas la redite du nom de la page.
+ *
+ * **Habillage « Constellation »** (brief §6, arbitrage du 28 septembre 2026) :
+ * le bandeau reçoit les effets de l'accueil — réseau de données léger, fil
+ * d'Ariane, étiquette qui se décode, titre lettre par lettre, vague de
+ * transition — mais **reste compact** (environ 200 px) : étiquette et titre,
+ * sans sous-titre. Le contenu de la page reste visible sans défiler.
+ *
+ * `reseau={false}` pour les espaces personnels (Mon espace) : aucun canvas.
  */
 export const LARGEURS = {
   large: "max-w-[1200px]",
@@ -30,15 +41,25 @@ export type LargeurPage = keyof typeof LARGEURS;
 
 export function BandeauPage({
   largeur = "large",
+  reseau = true,
   children,
 }: {
   largeur?: LargeurPage;
+  /** Réseau de données animé en fond. Faux sur les espaces personnels. */
+  reseau?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section className="fond-bandeau bandeau-page border-border border-b py-3">
-      <div className={`mx-auto px-6 ${LARGEURS[largeur]}`}>{children}</div>
-    </section>
+    <>
+      <section className="bandeau-page bandeau-page-constellation">
+        {reseau && <ReseauHero leger />}
+        <div className={`relative mx-auto px-6 ${LARGEURS[largeur]}`}>
+          <FilAriane />
+          {children}
+        </div>
+      </section>
+      <WaveDivider dessus="var(--surface-2)" dessous="var(--bg)" basse />
+    </>
   );
 }
 

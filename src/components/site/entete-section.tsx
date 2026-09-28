@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { Eyebrow } from "@/components/motion/Reveal";
+import { ScrambleText } from "@/components/motion/ScrambleText";
+import { SplitTitle } from "@/components/motion/SplitTitle";
 
 /**
  * En-tête de section du site public (§10).
@@ -53,32 +56,53 @@ export function EnteteSection({
   bandeau?: boolean;
 }) {
   const Titre = niveau;
-  const surtitreVisible = bandeau ? undefined : surtitre;
-  const descriptionVisible = bandeau ? undefined : description;
+
+  /*
+   * Bandeau « Constellation » (brief §6, arbitrage du 28 septembre 2026) :
+   * l'étiquette revient — une ligne, qui se décode lettre par lettre — et le
+   * titre arrive lettre par lettre. La description reste retirée : le
+   * bandeau doit rester compact.
+   */
+  if (bandeau) {
+    return (
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          {surtitre && (
+            <Eyebrow className="mb-2 text-[0.72rem]">
+              <ScrambleText texte={surtitre} />
+            </Eyebrow>
+          )}
+          <div className="flex items-center gap-3">
+            {Icone && <Icone aria-hidden size={26} className="shrink-0 text-[var(--green-text)]" />}
+            <SplitTitle as={Titre} texte={titre} delaiInitial={0.1} className="titre-page" />
+          </div>
+        </div>
+        {action}
+      </div>
+    );
+  }
 
   return (
     <div
-      className={`flex flex-wrap items-end gap-4 ${bandeau ? "" : "mb-8"} ${
+      className={`mb-8 flex flex-wrap items-end gap-4 ${
         centre ? "flex-col items-center text-center" : "justify-between"
       }`}
     >
       <div className={centre ? "max-w-[62ch]" : "max-w-[62ch]"}>
-        {surtitreVisible && (
-          <span className={`surtitre mb-3 ${centre ? "justify-center" : ""}`}>
-            {surtitreVisible}
-          </span>
+        {surtitre && (
+          <span className={`surtitre mb-3 ${centre ? "justify-center" : ""}`}>{surtitre}</span>
         )}
         <Titre className="flex items-center gap-3">
           {Icone && (
             <Icone
               aria-hidden
-              size={bandeau ? 24 : niveau === "h1" ? 28 : 22}
+              size={niveau === "h1" ? 28 : 22}
               className="text-accent-text shrink-0"
             />
           )}
           {titre}
         </Titre>
-        {descriptionVisible && <p className="text-text-2 mt-3 text-lg">{descriptionVisible}</p>}
+        {description && <p className="text-text-2 mt-3 text-lg">{description}</p>}
       </div>
       {action}
     </div>
