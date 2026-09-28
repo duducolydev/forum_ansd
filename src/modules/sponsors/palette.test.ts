@@ -27,6 +27,13 @@ describe("couleur d'un niveau de partenariat", () => {
     );
   });
 
+  it("suit la couleur choisie en BackOffice, avant le libellé", () => {
+    expect(cleDuNiveau({ code: "GOLD", name: "Gold", color: "argent" })).toBe("argent");
+    // Teinte inconnue en base : on retombe sur le libellé.
+    expect(cleDuNiveau({ code: "GOLD", name: "Gold", color: "fuchsia" })).toBe("or");
+    expect(cleDuNiveau({ code: "GOLD", name: "Gold", color: null })).toBe("or");
+  });
+
   it("donne le vert du site à un niveau inconnu", () => {
     expect(tonDuNiveau({ code: "AMI", name: "Ami du Forum" })).toBe(TONS.institutionnel);
   });

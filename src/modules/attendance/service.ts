@@ -295,6 +295,26 @@ export interface FiltresListe {
   zoneId?: string;
 }
 
+/** Qui garder dans la liste de présence exportée. */
+export type FiltrePresence = "TOUS" | "PRESENTS" | "ABSENTS";
+
+export function lireFiltrePresence(valeur: string | null | undefined): FiltrePresence {
+  return valeur === "PRESENTS" || valeur === "ABSENTS" ? valeur : "TOUS";
+}
+
+/**
+ * Ne garde que les présents, ou que les absents.
+ *
+ * Appliqué **après** la requête, sur la liste des attendus : c'est elle qui
+ * définit un absent — un attendu sans passage ce jour —, et le PDF a besoin de
+ * son total pour dire « 12 absents sur 80 attendus ».
+ */
+export function filtrerParPresence(lignes: LigneListe[], filtre: FiltrePresence): LigneListe[] {
+  if (filtre === "PRESENTS") return lignes.filter((ligne) => ligne.premierPassage !== null);
+  if (filtre === "ABSENTS") return lignes.filter((ligne) => ligne.premierPassage === null);
+  return lignes;
+}
+
 /**
  * Liste nominative pour l'export.
  *

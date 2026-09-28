@@ -13,6 +13,7 @@ import { WebcamCapture } from "./webcam-capture";
 import { useDocumentAvecCamera } from "@/lib/camera-document";
 import { ArrowLeft, ArrowRight, Printer, UserCheck, UserPlus } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import { ChampTelephone } from "@/components/ui/champ-telephone";
 
 const champ = "border-border bg-bg text-text w-full rounded-lg border px-3 py-2.5 text-sm";
 const etiquette = "text-text-3 text-xs font-semibold";
@@ -318,7 +319,13 @@ export function OnsiteDesk({
               <label htmlFor="phone" className={etiquette}>
                 Téléphone
               </label>
-              <input id="phone" name="phone" className={`${champ} mt-1.5`} />
+              <div className="mt-1.5">
+                <ChampTelephone
+                  id="phone"
+                  name="phone"
+                  classeChamp="border-border bg-bg text-text rounded-lg border px-3 py-2.5 text-sm"
+                />
+              </div>
             </div>
             <div>
               <label htmlFor="organization" className={etiquette}>

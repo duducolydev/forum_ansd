@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Ticket, UserPlus } from "lucide-react";
@@ -43,25 +44,37 @@ export async function SiteHeader() {
   return (
     <header className="fond-navbar sticky top-0 z-50 shadow-[0_1px_0_rgb(8_44_78/0.12)]">
       {/*
-        Barre portée de 72 à 80 px pour un logo nettement plus grand (demande du
-        commanditaire, 22 septembre 2026). Le logo occupe 64 des 80 px : le
-        reste est la respiration minimale au-dessus et au-dessous, sans quoi il
-        touche le bord de la barre. Huit pixels de plus sur une barre collante
-        se paient sur toutes les pages — c'est le contrepoids des bandeaux de
-        page resserrés au même moment.
+        Barre de 80 px sur téléphone, 104 px sur grand écran : le logo du Forum
+        y passe de 64 à 80 px de haut (demande du commanditaire, 28 septembre
+        2026), précédé du logo de l'ANSD. Le cadre s'élargit à 1 400 px pour
+        que logos, menu et boutons tiennent sur une ligne ; en dessous de
+        1 280 px, le menu passe dans le tiroir mobile plutôt que de se tasser.
       */}
-      <div className="mx-auto flex h-[80px] max-w-[1200px] items-center justify-between gap-3 px-6">
-        {/* Le logo officiel porte déjà le nom du Forum : le lien reçoit un nom
-            accessible explicite et l'image, décorative ici, un texte vide. */}
+      <div className="mx-auto flex h-[80px] max-w-[1400px] items-center justify-between gap-3 px-6 lg:h-[104px]">
+        {/*
+          Les deux logos forment un seul lien vers l'accueil : l'ANSD à gauche,
+          organisatrice, puis le Forum. Le lien reçoit un nom accessible
+          explicite et les images, décoratives ici, un texte vide.
+        */}
         <Link
           href="/"
-          aria-label="Forum international sur les données — accueil"
-          className="focus-visible:outline-ansd-bleu-nuit shrink-0 rounded-xl"
+          aria-label="ANSD — Forum international sur les données — accueil"
+          className="focus-visible:outline-ansd-bleu-nuit flex shrink-0 items-center gap-2.5 rounded-xl sm:gap-3.5"
         >
-          <LogoForum alt="" taille="h-16" prioritaire />
+          <Image
+            src="/images/logo-ansd.webp"
+            alt=""
+            width={269}
+            height={172}
+            unoptimized
+            priority
+            className="h-10 w-auto sm:h-12 lg:h-16"
+          />
+          <span aria-hidden className="bg-ansd-bleu-nuit/20 h-10 w-px lg:h-14" />
+          <LogoForum alt="" taille="entete" prioritaire />
         </Link>
 
-        <nav className="hidden shrink-0 items-center gap-0.5 lg:flex" aria-label={t("menu")}>
+        <nav className="hidden shrink-0 items-center gap-0.5 xl:flex" aria-label={t("menu")}>
           {entries.map((entry) =>
             entry.kind === "group" ? (
               <NavDropdown key={entry.label} label={entry.label} links={entry.children} />
@@ -77,7 +90,7 @@ export async function SiteHeader() {
           )}
         </nav>
 
-        <div className="hidden shrink-0 items-center gap-2 lg:flex">
+        <div className="hidden shrink-0 items-center gap-2 xl:flex">
           <LocaleSwitcher variante="entete" />
           <ThemeToggle initialTheme={theme} variante="entete" />
           <Link

@@ -25,7 +25,7 @@ export function MobileNav({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="lg:hidden">
+    <div className="xl:hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -37,7 +37,7 @@ export function MobileNav({
       </button>
       {open && (
         <nav
-          className="border-border bg-bg absolute inset-x-0 top-[80px] flex max-h-[calc(100vh-80px)] flex-col gap-1 overflow-y-auto border-b p-3"
+          className="border-border bg-bg absolute inset-x-0 top-[80px] flex max-h-[calc(100vh-80px)] flex-col gap-1 overflow-y-auto border-b p-3 lg:top-[104px] lg:max-h-[calc(100vh-104px)]"
           aria-label={t("menu")}
         >
           {entries.map((entry) =>

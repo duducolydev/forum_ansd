@@ -6,6 +6,7 @@ import { Bouton } from "@/components/ui/bouton";
 import { useActionState } from "react";
 import type { ActionState } from "../actions";
 import type { ParticipantInput } from "../schema";
+import { ChampTelephone } from "@/components/ui/champ-telephone";
 
 interface Props {
   action: (prevState: ActionState, formData: FormData) => Promise<ActionState>;
@@ -34,7 +35,17 @@ export function ParticipantForm({
         <Field label="Prénom" name="firstName" defaultValue={d.firstName} required />
         <Field label="Nom" name="lastName" defaultValue={d.lastName} required />
         <Field label="E-mail" name="email" type="email" defaultValue={d.email} required />
-        <Field label="Téléphone" name="phone" defaultValue={d.phone} />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="phone" className="text-heading text-sm font-semibold">
+            Téléphone
+          </label>
+          <ChampTelephone
+            id="phone"
+            name="phone"
+            classeChamp="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
+            defaultValue={d.phone}
+          />
+        </div>
         <Field label="Organisation" name="organization" defaultValue={d.organization} />
         <Field
           label="Type d'organisation"

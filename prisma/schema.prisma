@@ -697,6 +697,8 @@ model SponsorLevel {
   name         String
   sortOrder    Int    @default(0)
   logoMaxWidth Int?
+  /// Couleur sur le site (`modules/sponsors/palette.ts`) ; vide = déduite du libellé.
+  color        String? @db.VarChar(20)
 
   edition  Edition   @relation(fields: [editionId], references: [id], onDelete: Cascade)
   sponsors Sponsor[]

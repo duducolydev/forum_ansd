@@ -12,6 +12,7 @@ import {
 } from "../registration-schema";
 import { submitRegistrationAction, type RegistrationState } from "../registration-actions";
 import { PhotoField } from "./photo-field";
+import { ChampTelephone } from "@/components/ui/champ-telephone";
 
 const DRAFT_KEY = "forum-ansd:registration-draft";
 const initialState: RegistrationState = {};
@@ -271,7 +272,16 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
             readOnly={Boolean(invitation)}
             required
           />
-          <Field label="Téléphone" name="phone" />
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="phone" className="text-heading text-sm font-semibold">
+              Téléphone
+            </label>
+            <ChampTelephone
+              id="phone"
+              name="phone"
+              classeChamp="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
+            />
+          </div>
           <Field label="Pays" name="country" required />
           <Field label="Ville" name="city" />
           <div className="flex flex-col gap-1.5 md:col-span-2">

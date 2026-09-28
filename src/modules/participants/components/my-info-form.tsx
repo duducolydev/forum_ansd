@@ -4,6 +4,7 @@ import { BoutonSite } from "@/components/site/bouton-site";
 
 import { useActionState } from "react";
 import { updateMyInfoAction, type MySpaceState } from "../my-space-actions";
+import { ChampTelephone } from "@/components/ui/champ-telephone";
 
 const initialState: MySpaceState = {};
 
@@ -54,7 +55,18 @@ export function MyInfoForm({ values, email, editable, deadlineLabel }: Props) {
           required
         />
         <Field label="Nom" name="lastName" value={values.lastName} disabled={!editable} required />
-        <Field label="Téléphone" name="phone" value={values.phone} disabled={!editable} />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="phone" className="text-heading text-sm font-semibold">
+            Téléphone
+          </label>
+          <ChampTelephone
+            id="phone"
+            name="phone"
+            classeChamp="border-border bg-surface text-text rounded-lg border px-3 py-2.5 disabled:opacity-60"
+            defaultValue={values.phone}
+            disabled={!editable}
+          />
+        </div>
         <Field label="Ville" name="city" value={values.city} disabled={!editable} />
         <Field
           label="Organisation"

@@ -14,7 +14,7 @@
  * même vert.
  */
 export interface TonNiveau {
-  /** Pastille du niveau, coin inférieur droit de la carte. */
+  /** Pastille du niveau — BackOffice seulement : le site n'affiche plus son nom. */
   pastille: string;
   /** Filet coloré en haut de carte. */
   filet: string;
@@ -22,8 +22,29 @@ export interface TonNiveau {
   fond: string;
 }
 
-export type CleTon =
-  "principal" | "or" | "argent" | "bronze" | "institutionnel" | "technique" | "media";
+/** Teintes proposées, dans l'ordre de la liste du BackOffice. */
+export const CLES_TONS = [
+  "or",
+  "argent",
+  "bronze",
+  "media",
+  "technique",
+  "principal",
+  "institutionnel",
+] as const;
+
+export type CleTon = (typeof CLES_TONS)[number];
+
+/** Libellé de chaque teinte dans le BackOffice. */
+export const LIBELLES_TONS: Record<CleTon, string> = {
+  or: "Or",
+  argent: "Argent",
+  bronze: "Bronze",
+  media: "Bleu",
+  technique: "Jaune",
+  principal: "Bleu et vert (ANSD)",
+  institutionnel: "Vert",
+};
 
 export const TONS: Record<CleTon, TonNiveau> = {
   principal: {
@@ -97,7 +118,15 @@ function normaliser(texte: string): string {
     .replace(/[^A-Z0-9]+/g, " ");
 }
 
-export function cleDuNiveau(niveau: { code: string; name: string }): CleTon {
+/**
+ * Teinte d'un niveau : celle choisie en BackOffice, sinon celle que désigne son
+ * code ou son libellé. Une valeur inconnue en base (teinte retirée depuis) est
+ * ignorée plutôt que de faire tomber la page.
+ */
+export function cleDuNiveau(niveau: { code: string; name: string; color?: string | null }): CleTon {
+  if (niveau.color && (CLES_TONS as readonly string[]).includes(niveau.color)) {
+    return niveau.color as CleTon;
+  }
   for (const source of [niveau.code, niveau.name]) {
     const texte = normaliser(source);
     for (const [cle, motif] of MOTS) {
@@ -108,6 +137,10 @@ export function cleDuNiveau(niveau: { code: string; name: string }): CleTon {
   return "institutionnel";
 }
 
-export function tonDuNiveau(niveau: { code: string; name: string }): TonNiveau {
+export function tonDuNiveau(niveau: {
+  code: string;
+  name: string;
+  color?: string | null;
+}): TonNiveau {
   return TONS[cleDuNiveau(niveau)];
 }

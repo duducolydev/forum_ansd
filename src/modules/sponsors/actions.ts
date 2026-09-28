@@ -157,6 +157,7 @@ export async function enregistrerNiveauAction(
       name: formData.get("name"),
       sortOrder: formData.get("sortOrder") ?? 0,
       logoMaxWidth: formData.get("logoMaxWidth") || undefined,
+      color: formData.get("color") || undefined,
     });
     await service.enregistrerNiveau(editionId, niveauId, input, acteur);
   } catch (erreur) {

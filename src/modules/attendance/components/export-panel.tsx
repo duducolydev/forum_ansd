@@ -27,11 +27,14 @@ export function ExportPanel({
 }) {
   const [categoryId, setCategoryId] = useState("");
   const [zoneId, setZoneId] = useState("");
+  const [presence, setPresence] = useState<"TOUS" | "PRESENTS" | "ABSENTS">("TOUS");
 
   function lien(forme: "EMARGEMENT" | "CONSTAT"): string {
     const parametres = new URLSearchParams({ jour, forme });
     if (categoryId) parametres.set("categoryId", categoryId);
     if (zoneId) parametres.set("zoneId", zoneId);
+    // L'émargement se signe avant la séance : le filtre ne concerne que le constat.
+    if (forme === "CONSTAT" && presence !== "TOUS") parametres.set("presence", presence);
     return `/api/v1/presences/export?${parametres.toString()}`;
   }
 
@@ -82,6 +85,24 @@ export function ExportPanel({
           </select>
         </div>
 
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="export-presence" className="text-text-3 text-xs font-semibold">
+            Présence (liste de présence)
+          </label>
+          <select
+            id="export-presence"
+            value={presence}
+            onChange={(evenement) =>
+              setPresence(evenement.target.value as "TOUS" | "PRESENTS" | "ABSENTS")
+            }
+            className={`${champ} w-56`}
+          >
+            <option value="TOUS">Présents et absents</option>
+            <option value="PRESENTS">Présents uniquement</option>
+            <option value="ABSENTS">Absents uniquement</option>
+          </select>
+        </div>
+
         <a
           href={lien("EMARGEMENT")}
           target="_blank"
@@ -96,7 +117,11 @@ export function ExportPanel({
           rel="noopener"
           className="bg-primary text-primary-text hover:bg-primary-hover rounded-lg px-4 py-2 text-sm font-semibold"
         >
-          Liste de présence
+          {presence === "PRESENTS"
+            ? "Liste des présents"
+            : presence === "ABSENTS"
+              ? "Liste des absents"
+              : "Liste de présence"}
         </a>
       </div>
     </div>

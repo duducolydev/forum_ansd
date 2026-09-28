@@ -12,8 +12,26 @@ function computeParts(target: Date) {
   };
 }
 
-/** Compte à rebours côté client (brief §5.1) — heure de Dakar = UTC (pas de fuseau à convertir). */
-export function Countdown({ targetIso }: { targetIso: string }) {
+/**
+ * Compte à rebours côté client (brief §5.1) — heure de Dakar = UTC (pas de fuseau à convertir).
+ *
+ * - `panneau` : quatre grandes cases, pour un panneau sombre.
+ * - `mini` : une vignette compacte, posée en haut à droite du bandeau d'accueil
+ *   (demande du commanditaire, 28 septembre 2026) — le grand logo a pris la
+ *   place du panneau.
+ *
+ * Chaque chiffre qui change rejoue une courte animation (`.chiffre-tic`) : la
+ * clé React change avec la valeur, ce qui remonte l'élément.
+ */
+export function Countdown({
+  targetIso,
+  variante = "panneau",
+  en = false,
+}: {
+  targetIso: string;
+  variante?: "panneau" | "mini";
+  en?: boolean;
+}) {
   const [parts, setParts] = useState(() => computeParts(new Date(targetIso)));
 
   useEffect(() => {
@@ -25,12 +43,43 @@ export function Countdown({ targetIso }: { targetIso: string }) {
     return () => clearInterval(interval);
   }, [targetIso]);
 
+  const libelles = en
+    ? { days: "days", hours: "hrs", minutes: "min", seconds: "sec" }
+    : { days: "jours", hours: "h", minutes: "min", seconds: "s" };
+
+  if (variante === "mini") {
+    return (
+      <div className="flex items-stretch gap-1.5">
+        <Mini value={parts.days} label={libelles.days} />
+        <Mini value={parts.hours} label={libelles.hours} />
+        <Mini value={parts.minutes} label={libelles.minutes} />
+        <Mini value={parts.seconds} label={libelles.seconds} />
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-4 gap-2">
       <Cell value={parts.days} label="jours" />
       <Cell value={parts.hours} label="heures" />
       <Cell value={parts.minutes} label="minutes" />
       <Cell value={parts.seconds} label="secondes" />
+    </div>
+  );
+}
+
+function Mini({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div className="min-w-[2.9rem] rounded-lg border border-white/10 bg-white/8 px-1.5 py-1.5 text-center">
+      {/* `suppressHydrationWarning` : voir `Cell`. */}
+      <b
+        key={value}
+        suppressHydrationWarning
+        className="chiffre-tic num font-display block text-lg leading-none font-bold"
+      >
+        {value}
+      </b>
+      <span className="text-dark-panel-muted text-[0.62rem] leading-none">{label}</span>
     </div>
   );
 }

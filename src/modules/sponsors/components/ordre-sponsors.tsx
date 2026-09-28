@@ -11,6 +11,8 @@ export interface SponsorOrdonnable {
   id: string;
   name: string;
   niveau: string;
+  /** Classes de la pastille du niveau, à sa couleur sur le site. */
+  pastilleNiveau: string;
   logoUrl: string | null;
   publie: boolean;
 }
@@ -78,9 +80,13 @@ export function OrdreSponsors({ sponsors }: { sponsors: SponsorOrdonnable[] }) {
               >
                 {sponsor.name}
               </Link>
-              <span className="text-text-3 text-xs">
-                {sponsor.niveau}
-                {sponsor.publie ? "" : " · brouillon"}
+              <span className="text-text-3 mt-0.5 flex items-center gap-1.5 text-xs">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${sponsor.pastilleNiveau}`}
+                >
+                  {sponsor.niveau}
+                </span>
+                {sponsor.publie ? "" : "brouillon"}
               </span>
             </span>
 

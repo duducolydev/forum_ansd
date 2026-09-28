@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { PageSection } from "@prisma/client";
 import {
@@ -14,6 +15,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Countdown } from "@/components/site/countdown";
+import { CompteurAnime, Inclinaison, ReseauDonnees } from "@/components/site/animations-accueil";
+import { LOGO_FORUM } from "@/components/site/logo-forum";
+import { plageDeDates } from "@/lib/dates-edition";
 import { Reveal } from "@/components/site/reveal";
 import { EnteteSection } from "@/components/site/entete-section";
 import { TexteRiche } from "@/components/site/texte-riche";
@@ -25,6 +29,7 @@ import { lireBooleen, lireBoutons, lireContenu, lireNombre, lireTexte } from "..
 import { tonDuNiveau } from "@/modules/sponsors/palette";
 import type { DonneesSections } from "../donnees";
 import { Defilement } from "./defilement";
+import { IntervenantsFiltrables } from "./intervenants-filtrables";
 
 /**
  * Rendu d'une section (§8.4, habillage §10).
@@ -142,9 +147,9 @@ const SEUIL_DEFILEMENT = 5;
 /**
  * Carte d'un partenaire dans le carrousel de l'accueil.
  *
- * Même vocabulaire que la page Partenaires — filet et fond à la couleur du
- * niveau, pastille du niveau en bas à droite — dans un format réduit : le
- * visiteur retrouve sur la page complète les cartes qu'il a vues défiler.
+ * Le filet et le fond portent la couleur du niveau ; le **nom** du niveau
+ * (Gold, Silver…) n'est plus affiché (demande du commanditaire, 28 septembre
+ * 2026) : il reste une affaire de BackOffice, qui décide aussi de l'ordre.
  */
 function CartePartenaire({ sponsor }: { sponsor: Partenaire }) {
   const ton = tonDuNiveau(sponsor.level);
@@ -153,31 +158,25 @@ function CartePartenaire({ sponsor }: { sponsor: Partenaire }) {
     <>
       <span aria-hidden className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${ton.filet}`} />
       <span
-        className={`grid h-28 place-items-center bg-gradient-to-b to-transparent px-4 ${ton.fond}`}
+        className={`flex h-36 flex-col items-center justify-center gap-3 bg-gradient-to-b to-transparent px-4 ${ton.fond}`}
       >
         {sponsor.logoPath ? (
-          /* eslint-disable-next-line @next/next/no-img-element -- servi par une route contrôlée, dimensions variables */
-          <img
-            src={urlVersionnee(`/api/v1/sponsors/${sponsor.id}/logo`, sponsor.logoPath)}
-            alt={sponsor.name}
-            className="max-h-16 max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- servi par une route contrôlée, dimensions variables */}
+            <img
+              src={urlVersionnee(`/api/v1/sponsors/${sponsor.id}/logo`, sponsor.logoPath)}
+              alt=""
+              className="max-h-16 max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+            />
+            <span className="text-heading max-w-full truncate text-xs font-semibold">
+              {sponsor.name}
+            </span>
+          </>
         ) : (
           <span className="font-display text-heading text-center leading-snug font-bold text-balance">
             {sponsor.name}
           </span>
         )}
-      </span>
-      <span className="border-border flex items-center justify-between gap-2 border-t px-3.5 py-2.5">
-        {/* Le nom n'est écrit qu'une fois : sans logo, il tient déjà sa place au-dessus. */}
-        <span className="text-heading min-w-0 truncate text-xs font-semibold">
-          {sponsor.logoPath ? sponsor.name : ""}
-        </span>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-[0.68rem] font-semibold whitespace-nowrap ${ton.pastille}`}
-        >
-          {sponsor.level.name}
-        </span>
       </span>
     </>
   );
@@ -213,7 +212,8 @@ export function RenduSection({ section, donnees, locale }: Props) {
    * qui amène « presque » au bon endroit passe pour un lien cassé.
    */
   const ancre = lireTexte(section.settings, "ancre") || undefined;
-  const classeAncre = ancre ? " scroll-mt-24" : "";
+  // 96 px sous la barre de 80 px, 136 px sous celle de 104 px du grand écran.
+  const classeAncre = ancre ? " scroll-mt-24 lg:scroll-mt-34" : "";
 
   /*
    * Illustration déposée en BackOffice, servie par une route contrôlée.
@@ -236,22 +236,16 @@ export function RenduSection({ section, donnees, locale }: Props) {
 
   switch (section.type) {
     case "hero": {
-      const dateFormatter = new Intl.DateTimeFormat(en ? "en-GB" : "fr-FR", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        timeZone: "Africa/Dakar",
-      });
       const stats = donnees.stats;
       const accroche = texte(section, "titre", locale);
-      const avecCompteur = section.variant === "avec-compteur" && stats;
+      const avecCompteur = section.variant === "avec-compteur";
       const maxPays = Math.max(1, ...(stats?.topCountries.map((row) => row.count) ?? [1]));
 
       /*
        * Illustration à gauche : le texte passe du côté opposé, pour qu'aucune
-       * lettre ne repose sur le décor. Avec le compteur, c'est le panneau qui
-       * vient à gauche, par-dessus l'illustration ; sans lui, le texte occupe
-       * la moitié droite.
+       * lettre ne repose sur le décor. Avec le grand logo, c'est lui qui vient
+       * à gauche, par-dessus l'illustration ; sans lui, le texte occupe la
+       * moitié droite.
        */
       const decorAGauche = Boolean(illustration) && imageAGauche;
 
@@ -278,36 +272,51 @@ export function RenduSection({ section, donnees, locale }: Props) {
               }}
             />
           )}
+
+          {/* Réseau de points animé, en fond : décor seulement (`animations-accueil.tsx`). */}
+          <ReseauDonnees className="opacity-70" />
+
           {/*
            * Nom du Forum, en tête du bandeau et sur toute la largeur du cadre
-           * (demande du commanditaire, 22 septembre 2026) — donc au-dessus du
-           * repère de dates et de lieu, et hors de la grille : logé dans la
-           * colonne de gauche, il tenait sur une demi-largeur et se cassait en
-           * deux lignes à côté du compte à rebours.
+           * (demande du commanditaire, 22 septembre 2026). Il porte le `h1` de
+           * la page : l'accroche qui suit est un `h2`.
            *
-           * Il porte le `h1` de la page : l'accroche qui suit est un `h2`, pour
-           * que la hiérarchie des titres reste celle que lisent les navigations
-           * par titres. Les capitales sont celles du logo officiel, affiché
-           * quelques centimètres plus haut — deux graphies du même nom sur le
-           * même écran se remarquent.
+           * Le compte à rebours, en miniature, se range à sa droite (demande du
+           * 28 septembre 2026) : le grand logo a pris la place de son panneau.
+           * Sur téléphone, il passe sous le titre.
            */}
-          <Reveal className={`${CADRE} relative pt-14`}>
-            <h1 className="titre-forum">{edition.title}</h1>
-          </Reveal>
+          <div
+            className={`${CADRE} relative flex flex-wrap items-start justify-between gap-x-8 gap-y-4 pt-12`}
+          >
+            <Reveal className="w-full lg:w-auto lg:min-w-0 lg:flex-1">
+              <h1 className="titre-forum">{edition.title}</h1>
+            </Reveal>
+            {avecCompteur && (
+              <Reveal delai={200} className="shrink-0">
+                <div className="border-dark-panel-line bg-dark-panel text-dark-panel-text relative overflow-hidden rounded-xl border px-3 pt-2 pb-2.5 shadow-[var(--shadow)]">
+                  <span
+                    aria-hidden
+                    className="from-ansd-bleu-vif to-ansd-vert-vif absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
+                  />
+                  <div className="text-dark-panel-muted mb-1.5 flex items-center gap-1.5 text-[0.62rem] font-semibold tracking-wide uppercase">
+                    <Radio aria-hidden size={11} className="text-ansd-vert-vif pulsation" />
+                    {en ? "Countdown" : "Compte à rebours"}
+                  </div>
+                  <Countdown targetIso={edition.startDate.toISOString()} variante="mini" en={en} />
+                </div>
+              </Reveal>
+            )}
+          </div>
 
           <div
-            className={`${CADRE} relative grid items-center gap-13 pt-8 pb-20 ${
-              avecCompteur
-                ? decorAGauche
-                  ? "grid-cols-1 lg:grid-cols-[0.9fr_1.1fr]"
-                  : "grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]"
-                : "grid-cols-1"
+            className={`${CADRE} relative grid items-center gap-10 pt-6 pb-16 lg:gap-13 ${
+              avecCompteur ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
             }`}
           >
             <Reveal className={!avecCompteur && decorAGauche ? "lg:ms-auto lg:w-1/2" : undefined}>
-              <span className="border-border bg-surface/70 text-heading mb-5 inline-flex items-center gap-2.5 rounded-full border px-4 py-1.5 text-sm font-semibold backdrop-blur">
+              <span className="border-border bg-surface/70 text-heading mb-5 inline-flex flex-wrap items-center gap-2.5 rounded-full border px-4 py-1.5 text-sm font-semibold backdrop-blur">
                 <CalendarDays aria-hidden size={15} className="text-accent-text" />
-                {dateFormatter.format(edition.startDate)} – {dateFormatter.format(edition.endDate)}
+                {plageDeDates(edition.startDate, edition.endDate, en)}
                 <span aria-hidden className="bg-border h-3.5 w-px" />
                 <MapPin aria-hidden size={15} className="text-accent-text" />
                 {edition.venue}
@@ -315,19 +324,8 @@ export function RenduSection({ section, donnees, locale }: Props) {
 
               {/*
                * Titre et chapeau forment un seul bloc, de la largeur du chapeau
-               * (PLAN.md §20). Le `ch` se mesure dans la police du texte courant
-               * agrandi (`text-lg`), celle du chapeau : le titre, qui remplit le
-               * bloc, s'aligne donc exactement sur ses deux bords. Il était
-               * borné à 16 caractères de sa propre police et s'arrêtait à 427 px
-               * pour un chapeau de 524.
-               *
-               * - Chapeau **justifié**, à la demande du commanditaire, et coupé
-               *   selon la langue de la page (`hyphens-auto`) pour limiter les
-               *   blancs entre les mots.
-               * - Titre **centré** dans cette largeur, lignes équilibrées. Justifié,
-               *   il s'affichait « Reliable⎵⎵⎵⎵⎵⎵data / for⎵⎵⎵⎵⎵⎵decisions » : deux ou
-               *   trois mots par ligne ne laissent qu'un ou deux espaces à étirer,
-               *   et aucune règle CSS ne plafonne cet étirement.
+               * (PLAN.md §20). Chapeau justifié et coupé selon la langue ; titre
+               * centré dans cette largeur, lignes équilibrées.
                */}
               <div className="max-w-[54ch] text-lg">
                 {accroche && accroche !== edition.title && (
@@ -343,58 +341,70 @@ export function RenduSection({ section, donnees, locale }: Props) {
 
             {avecCompteur && (
               <Reveal delai={120} className={decorAGauche ? "lg:order-first" : undefined}>
-                <div className="border-dark-panel-line bg-dark-panel text-dark-panel-text relative overflow-hidden rounded-2xl border p-6 shadow-[var(--shadow)]">
-                  <span
-                    aria-hidden
-                    className="from-ansd-bleu-vif to-ansd-vert-vif absolute inset-x-0 top-0 h-1 bg-gradient-to-r"
-                  />
-
-                  <div className="text-dark-panel-muted mb-4 flex items-center gap-2 text-xs font-semibold tracking-wide uppercase">
-                    <Radio aria-hidden size={14} className="text-ansd-vert-vif" />
-                    {en ? "Live countdown" : "Compte à rebours"}
-                  </div>
-
-                  <Countdown targetIso={edition.startDate.toISOString()} />
-
-                  {STATS_ACCUEIL_VISIBLES && (
-                    <>
-                      <div className="border-dark-panel-line mt-5 flex items-end gap-3 border-t pt-4">
-                        <Users aria-hidden size={20} className="text-ansd-vert-vif mb-1 shrink-0" />
-                        <b className="num font-display text-[2.1rem] leading-none font-extrabold">
-                          {stats.confirmedParticipants}
-                        </b>
-                        <span className="text-dark-panel-muted pb-1 text-sm">
-                          {en ? "confirmed" : "confirmés"}
-                          <span aria-hidden className="mx-1.5">
-                            ·
-                          </span>
-                          <Globe2 aria-hidden size={13} className="mb-0.5 inline" />{" "}
-                          {stats.countryCount} {en ? "countries" : "pays"}
-                        </span>
-                      </div>
-
-                      {stats.topCountries.length > 0 && (
-                        <div className="mt-4 flex flex-col gap-2">
-                          {stats.topCountries.map((row) => (
-                            <div
-                              key={row.country}
-                              className="text-dark-panel-muted flex items-center gap-2.5 text-xs"
-                            >
-                              <span className="w-20 shrink-0 truncate">{row.country}</span>
-                              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-                                <span
-                                  className="from-ansd-vert-vif to-ansd-bleu-vif block h-full rounded-full bg-gradient-to-r"
-                                  style={{ width: `${Math.max(6, (row.count / maxPays) * 100)}%` }}
-                                />
-                              </span>
-                              <span className="w-6 text-right tabular-nums">{row.count}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
+                {/*
+                 * Le logo du Forum en très grand, à la place du compte à rebours
+                 * (demande du 28 septembre 2026). Il flotte, un halo coloré
+                 * tourne lentement derrière lui, et il s'incline vers le
+                 * pointeur. `alt` vide : le `h1` juste au-dessus porte déjà le
+                 * même nom, qu'un lecteur d'écran lirait deux fois.
+                 */}
+                <div className="relative mx-auto w-full max-w-[600px]">
+                  <span aria-hidden className="halo-logo" />
+                  <Inclinaison angleMax={7} echelle={1.03}>
+                    {/* Plaque claire en thème sombre seulement (`.plaque-logo`) : le
+                        texte bleu du logo ne se lit pas sur le bleu nuit. */}
+                    <div className="logo-flotte plaque-logo">
+                      <Image
+                        src={LOGO_FORUM.src}
+                        alt=""
+                        width={LOGO_FORUM.largeur}
+                        height={LOGO_FORUM.hauteur}
+                        unoptimized
+                        priority
+                        className="relative h-auto w-full drop-shadow-[0_18px_30px_rgb(8_44_78/0.18)]"
+                      />
+                    </div>
+                  </Inclinaison>
                 </div>
+
+                {STATS_ACCUEIL_VISIBLES && stats && (
+                  <div className="border-dark-panel-line bg-dark-panel text-dark-panel-text mt-6 rounded-2xl border p-5">
+                    <div className="flex items-end gap-3">
+                      <Users aria-hidden size={20} className="text-ansd-vert-vif mb-1 shrink-0" />
+                      <b className="num font-display text-[2.1rem] leading-none font-extrabold">
+                        {stats.confirmedParticipants}
+                      </b>
+                      <span className="text-dark-panel-muted pb-1 text-sm">
+                        {en ? "confirmed" : "confirmés"}
+                        <span aria-hidden className="mx-1.5">
+                          ·
+                        </span>
+                        <Globe2 aria-hidden size={13} className="mb-0.5 inline" />{" "}
+                        {stats.countryCount} {en ? "countries" : "pays"}
+                      </span>
+                    </div>
+
+                    {stats.topCountries.length > 0 && (
+                      <div className="mt-4 flex flex-col gap-2">
+                        {stats.topCountries.map((row) => (
+                          <div
+                            key={row.country}
+                            className="text-dark-panel-muted flex items-center gap-2.5 text-xs"
+                          >
+                            <span className="w-20 shrink-0 truncate">{row.country}</span>
+                            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                              <span
+                                className="from-ansd-vert-vif to-ansd-bleu-vif block h-full rounded-full bg-gradient-to-r"
+                                style={{ width: `${Math.max(6, (row.count / maxPays) * 100)}%` }}
+                              />
+                            </span>
+                            <span className="w-6 text-right tabular-nums">{row.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </Reveal>
             )}
           </div>
@@ -537,7 +547,7 @@ export function RenduSection({ section, donnees, locale }: Props) {
                       </span>
                       <span className="block">
                         <b className="num font-display text-heading block text-[2.4rem] leading-none font-extrabold">
-                          {chiffre.valeur}
+                          <CompteurAnime valeur={chiffre.valeur} />
                         </b>
                         <span className="text-text-3 mt-1.5 block text-sm">{chiffre.label}</span>
                       </span>
@@ -699,11 +709,8 @@ export function RenduSection({ section, donnees, locale }: Props) {
     }
 
     case "intervenants": {
-      const speakers = (donnees.intervenants ?? []).slice(
-        0,
-        lireNombre(section.settings, "nombre", 8),
-      );
-      if (speakers.length === 0) return null;
+      const intervenants = donnees.intervenants ?? [];
+      if (intervenants.length === 0) return null;
 
       return (
         <section id={ancre} className={`border-border border-b py-16${classeAncre}`}>
@@ -717,60 +724,12 @@ export function RenduSection({ section, donnees, locale }: Props) {
               />
             </Reveal>
 
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {speakers.map((speaker, rang) => (
-                <Reveal key={speaker.id} delai={rang * 60} className="h-full">
-                  {/*
-                    Animation au survol (`.carte-intervenant`, globals.css) : la
-                    carte monte, la photo grossit dans son cadre rond — qui la
-                    rogne, elle zoome sans déborder —, un halo monte derrière
-                    elle et un filet se déroule sous la carte.
-                  */}
-                  <div className="carte-intervenant group border-border bg-surface relative h-full overflow-hidden rounded-xl border p-5 text-center">
-                    <span
-                      aria-hidden
-                      className="halo from-blue-soft via-accent-soft/50 absolute inset-x-0 top-0 h-32 bg-gradient-to-b to-transparent"
-                    />
-                    {/* `relative` : sans lui, le halo positionné passerait par-dessus le texte. */}
-                    <div className="relative">
-                      <span className="ring-border group-hover:ring-ansd-vert-vif transition-tout mx-auto mb-3 block h-22 w-22 overflow-hidden rounded-full ring-2 ring-offset-2 ring-offset-[var(--surface)]">
-                        {speaker.photoPath ? (
-                          /* eslint-disable-next-line @next/next/no-img-element -- servie par une route contrôlée, hors optimiseur */
-                          <img
-                            src={`/api/v1/speakers/${speaker.id}/photo`}
-                            alt=""
-                            className="photo bg-bg-2 h-full w-full object-cover"
-                          />
-                        ) : (
-                          <span
-                            aria-hidden
-                            className="photo from-ansd-bleu-vif to-ansd-vert-vif font-display grid h-full w-full place-items-center bg-gradient-to-br text-xl font-bold text-white"
-                          >
-                            {speaker.firstName[0]}
-                            {speaker.lastName[0]}
-                          </span>
-                        )}
-                      </span>
-                      <b className="font-display text-heading group-hover:text-link transition-tout block leading-snug">
-                        {speaker.firstName} {speaker.lastName}
-                      </b>
-                      {speaker.jobTitle && (
-                        <span className="text-text-2 mt-1 block text-sm">{speaker.jobTitle}</span>
-                      )}
-                      {speaker.organization && (
-                        <span className="text-text-3 mt-0.5 block text-xs">
-                          {speaker.organization}
-                        </span>
-                      )}
-                    </div>
-                    <span
-                      aria-hidden
-                      className="filet-bas from-ansd-bleu-vif to-ansd-vert-vif absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r"
-                    />
-                  </div>
-                </Reveal>
-              ))}
-            </div>
+            {/* Filtre par thème et cartes animées : `intervenants-filtrables.tsx`. */}
+            <IntervenantsFiltrables
+              intervenants={intervenants}
+              nombre={lireNombre(section.settings, "nombre", 8)}
+              en={en}
+            />
           </div>
         </section>
       );
@@ -844,10 +803,11 @@ export function RenduSection({ section, donnees, locale }: Props) {
             {niveaux.map((niveau, rangNiveau) => (
               <Reveal key={niveau.id} delai={rangNiveau * 80}>
                 <div className="mb-7">
-                  <h3 className="text-text-3 mb-3 flex items-center gap-3 text-sm font-medium">
-                    {niveau.name}
-                    <span className="bg-border h-px flex-1" />
-                  </h3>
+                  {/* Le nom du niveau n'est plus affiché : un filet à sa couleur sépare les groupes. */}
+                  <span
+                    aria-hidden
+                    className={`mb-3 block h-1 w-16 rounded-full bg-gradient-to-r ${tonDuNiveau(niveau).filet}`}
+                  />
                   <div
                     className={
                       section.variant === "bandeau"

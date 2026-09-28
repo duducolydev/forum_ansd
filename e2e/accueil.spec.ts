@@ -143,6 +143,8 @@ test("inscrit une personne inconnue et la fait entrer dans la foulée", async ({
   // Inscription au comptoir : validée d'emblée, et tracée comme telle.
   expect(cree.status).toBe("CHECKED_IN");
   expect(cree.source).toBe("ONSITE");
+  // L'indicatif ressaisi dans le numéro n'est pas doublé par celui de la liste.
+  expect(cree.phone).toBe("+221 770000000");
   expect(await prisma.badge.count({ where: { participantId: cree.id } })).toBe(1);
 });
 

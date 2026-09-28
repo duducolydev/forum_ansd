@@ -4,7 +4,11 @@ import { can } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { getActiveEdition } from "@/lib/edition";
 import { prisma } from "@/lib/db";
-import { getListePresence } from "@/modules/attendance/service";
+import {
+  filtrerParPresence,
+  getListePresence,
+  lireFiltrePresence,
+} from "@/modules/attendance/service";
 import { renderListePresence, type FormeListe } from "@/modules/attendance/pdf";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +20,10 @@ export const dynamic = "force-dynamic";
  * liste de ce qui s'est réellement passé. Les filtres — jour, catégorie, zone —
  * sont ceux de l'écran, pour que le document imprimé corresponde exactement à
  * ce que l'utilisateur avait sous les yeux.
+ *
+ * `presence=PRESENTS|ABSENTS` réduit la liste de présence aux uns ou aux
+ * autres ; sans lui, elle les montre tous. La feuille d'émargement l'ignore :
+ * elle se signe avant la séance, quand personne n'est encore présent.
  */
 function jourValide(valeur: string | null): Date | null {
   if (!valeur || !/^\d{4}-\d{2}-\d{2}$/.test(valeur)) return null;
@@ -38,9 +46,10 @@ export async function GET(request: Request): Promise<NextResponse> {
   const forme: FormeListe = parametres.get("forme") === "EMARGEMENT" ? "EMARGEMENT" : "CONSTAT";
   const categoryId = parametres.get("categoryId") || undefined;
   const zoneId = parametres.get("zoneId") || undefined;
+  const filtre = forme === "CONSTAT" ? lireFiltrePresence(parametres.get("presence")) : "TOUS";
 
   const edition = await getActiveEdition();
-  const [lignes, categorie, zone] = await Promise.all([
+  const [attendus, categorie, zone] = await Promise.all([
     getListePresence(edition.id, { jour, categoryId, zoneId }),
     categoryId
       ? prisma.participantCategory.findUnique({
@@ -51,14 +60,26 @@ export async function GET(request: Request): Promise<NextResponse> {
     zoneId ? prisma.zone.findUnique({ where: { id: zoneId }, select: { name: true } }) : null,
   ]);
 
+  const lignes = filtrerParPresence(attendus, filtre);
+
   const precisions = [categorie?.labelFr, zone?.name].filter(Boolean);
+  const titre =
+    forme === "EMARGEMENT"
+      ? "Feuille d'émargement"
+      : filtre === "PRESENTS"
+        ? "Liste des présents"
+        : filtre === "ABSENTS"
+          ? "Liste des absents"
+          : "Liste de présence";
   const pdf = await renderListePresence({
     editionName: edition.title,
-    titre: forme === "EMARGEMENT" ? "Feuille d'émargement" : "Liste de présence",
+    titre,
     sousTitre: precisions.length > 0 ? precisions.join(" · ") : "Toutes catégories",
     jour,
     forme,
     lignes,
+    filtre,
+    attendus: attendus.length,
   });
 
   await audit.log({
@@ -71,12 +92,14 @@ export async function GET(request: Request): Promise<NextResponse> {
       forme,
       jour: jour.toISOString().slice(0, 10),
       lignes: lignes.length,
+      presence: filtre,
       categoryId,
       zoneId,
     },
   });
 
-  const nom = `presences-${jour.toISOString().slice(0, 10)}-${forme.toLowerCase()}.pdf`;
+  const suffixe = filtre === "TOUS" ? "" : `-${filtre.toLowerCase()}`;
+  const nom = `presences-${jour.toISOString().slice(0, 10)}-${forme.toLowerCase()}${suffixe}.pdf`;
   return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",

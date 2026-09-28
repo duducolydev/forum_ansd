@@ -30,6 +30,8 @@ export interface DonneesSections {
     jobTitle: string | null;
     organization: string | null;
     photoPath: string | null;
+    /** Thèmes des sessions publiées où il intervient — ceux du filtre de la section. */
+    themes: string[];
   }[];
   sessions?: {
     id: string;
@@ -79,12 +81,17 @@ export async function chargerDonnees(
   }
 
   if (besoins.has("intervenants")) {
+    /*
+     * Tous les intervenants publiés, et non les douze premiers : la section se
+     * filtre par thème, et le filtre doit chercher dans la liste entière avant
+     * d'en afficher le nombre réglé. Leurs thèmes viennent des sessions
+     * publiées, comme sur la page Intervenants (§31).
+     */
     travaux.push(
       prisma.speaker
         .findMany({
           where: { editionId: edition.id, isPublished: true, deletedAt: null },
           orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-          take: PLAFOND,
           select: {
             id: true,
             firstName: true,
@@ -92,10 +99,23 @@ export async function chargerDonnees(
             jobTitle: true,
             organization: true,
             photoPath: true,
+            sessions: {
+              where: { session: { isPublished: true, deletedAt: null } },
+              select: { session: { select: { theme: true } } },
+            },
           },
         })
         .then((speakers) => {
-          donnees.intervenants = speakers;
+          donnees.intervenants = speakers.map(({ sessions, ...speaker }) => ({
+            ...speaker,
+            themes: [
+              ...new Set(
+                sessions
+                  .map((lien) => lien.session.theme)
+                  .filter((theme): theme is string => Boolean(theme)),
+              ),
+            ].sort((a, b) => a.localeCompare(b, "fr")),
+          }));
         }),
     );
   }

@@ -103,9 +103,9 @@ const TYPES: TypeSection[] = [
     cle: "hero",
     label: "Bandeau d'accueil",
     description:
-      "Le premier écran : dates, titre, texte d'introduction et boutons. La variante avec compteur ajoute le décompte et les chiffres en direct.",
+      "Le premier écran : dates, titre, texte d'introduction et boutons. La variante avec logo ajoute le grand logo animé du Forum et le compte à rebours en miniature.",
     variantes: [
-      { cle: "avec-compteur", label: "Avec compteur et chiffres en direct" },
+      { cle: "avec-compteur", label: "Avec grand logo et compte à rebours" },
       { cle: "simple", label: "Texte seul, sans panneau" },
     ],
     champs: [

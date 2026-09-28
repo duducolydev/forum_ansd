@@ -5,6 +5,7 @@ import { Save } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 import type { ActionState } from "../actions";
 import type { ReferentInput } from "../schema";
+import { ChampTelephone } from "@/components/ui/champ-telephone";
 
 interface Props {
   action: (prevState: ActionState, formData: FormData) => Promise<ActionState>;
@@ -59,7 +60,7 @@ export function ReferentForm({ action, defaultValues, submitLabel }: Props) {
           <label htmlFor="phone" className="text-heading text-sm font-semibold">
             Téléphone
           </label>
-          <input id="phone" name="phone" defaultValue={d.phone} className={CHAMP} />
+          <ChampTelephone id="phone" name="phone" defaultValue={d.phone} classeChamp={CHAMP} />
           <span className="text-text-3 text-xs">
             Communiqué aux participants. Laisser vide si le référent ne le souhaite pas.
           </span>

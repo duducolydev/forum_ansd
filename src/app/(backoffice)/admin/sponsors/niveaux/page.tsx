@@ -48,6 +48,7 @@ export default async function NiveauxPage() {
               name: niveau.name,
               sortOrder: niveau.sortOrder,
               logoMaxWidth: niveau.logoMaxWidth,
+              color: niveau.color,
             }}
           />
         ))}

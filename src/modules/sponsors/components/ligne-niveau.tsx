@@ -6,6 +6,7 @@ import { auClicConfirme } from "@/components/ui/confirmer";
 import { enregistrerNiveauAction, supprimerNiveauAction, type EtatAction } from "../actions";
 import { Plus, Save, Trash2 } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import { CLES_TONS, cleDuNiveau, LIBELLES_TONS, TONS } from "../palette";
 
 const etatInitial: EtatAction = {};
 const CHAMP = "border-border bg-bg text-text rounded-lg border px-3 py-2.5 text-sm";
@@ -20,6 +21,7 @@ export function LigneNiveau({
     name: string;
     sortOrder: number;
     logoMaxWidth: number | null;
+    color: string | null;
   };
   nombreSponsors?: number;
 }) {
@@ -32,6 +34,17 @@ export function LigneNiveau({
   const router = useRouter();
 
   const prefixe = niveau?.id ?? "nouveau";
+
+  /*
+   * Aperçu de la couleur, tel que le site la montrera : filet et fond de la
+   * carte. « Automatique » montre la teinte déduite du code et du libellé
+   * enregistrés.
+   */
+  const [couleur, setCouleur] = useState(niveau?.color ?? "");
+  const apercu =
+    TONS[
+      cleDuNiveau({ code: niveau?.code ?? "", name: niveau?.name ?? "", color: couleur || null })
+    ];
 
   return (
     <div className="border-border bg-surface rounded-xl border p-4">
@@ -88,6 +101,37 @@ export function LigneNiveau({
             placeholder="auto"
             className={CHAMP}
           />
+        </div>
+        <div className="flex w-[210px] flex-col gap-1.5">
+          <label htmlFor={`couleur-${prefixe}`} className="text-text-3 text-xs font-semibold">
+            Couleur sur le site
+          </label>
+          <span className="flex items-center gap-2">
+            <select
+              id={`couleur-${prefixe}`}
+              name="color"
+              value={couleur}
+              onChange={(evenement) => setCouleur(evenement.target.value)}
+              className={`${CHAMP} min-w-0 flex-1`}
+            >
+              <option value="">Automatique</option>
+              {CLES_TONS.map((cle) => (
+                <option key={cle} value={cle}>
+                  {LIBELLES_TONS[cle]}
+                </option>
+              ))}
+            </select>
+            {/* Aperçu : filet et fond de la carte publique. */}
+            <span
+              aria-hidden
+              className="border-border relative h-9 w-9 shrink-0 overflow-hidden rounded-lg border"
+            >
+              <span className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${apercu.filet}`} />
+              <span
+                className={`absolute inset-x-0 top-1.5 bottom-0 bg-gradient-to-b to-transparent ${apercu.fond}`}
+              />
+            </span>
+          </span>
         </div>
         <Bouton ton="principal" icone={niveau ? Save : Plus} type="submit" disabled={enCours}>
           {enCours ? "…" : niveau ? "Enregistrer" : "Ajouter"}

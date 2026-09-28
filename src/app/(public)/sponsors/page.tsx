@@ -21,13 +21,13 @@ export async function generateMetadata() {
  *
  * Une seule grille, dans l'ordre décidé en BackOffice. Le site les groupait par
  * niveau, ce qui imposait l'ordre du barème : un partenaire institutionnel
- * décisif passait après trois sponsors d'un échelon supérieur. Le niveau
- * redevient une mention sur la carte, en bas à droite, et le comité décide
+ * décisif passait après trois sponsors d'un échelon supérieur. Le comité décide
  * lui-même de la succession.
  *
- * La couleur vient du niveau (`palette.ts`) : elle distingue les échelons
- * d'un coup d'œil sans réintroduire le groupement, et reste un rappel
- * — la pastille porte le nom du niveau, la couleur ne le dit jamais seule.
+ * Le **nom** du niveau (Gold, Silver…) n'est plus affiché (demande du
+ * commanditaire, 28 septembre 2026) : seule sa couleur (`palette.ts`) reste
+ * sur la carte, en filet et en fond. Le niveau, sa couleur et l'ordre se
+ * gèrent en BackOffice.
  */
 export default async function SponsorsPage() {
   const t = await getTranslations("nav");
@@ -109,12 +109,12 @@ export default async function SponsorsPage() {
                   </span>
 
                   {/*
-                    Pied de carte : le nom à gauche, le niveau en bas à droite.
-                    Le nom n'est écrit qu'une fois — sans logo, il tient déjà la
-                    place de celui-ci au-dessus.
+                    Pied de carte : le nom, le stand et le site. Le nom n'est
+                    écrit qu'une fois — sans logo, il tient déjà la place de
+                    celui-ci au-dessus. Sans rien à y mettre, pas de pied.
                   */}
-                  <span className="border-border flex items-end justify-between gap-3 border-t px-4 py-3">
-                    <span className="min-w-0 flex-1">
+                  {(sponsor.logoPath || sponsor.standNumber || sponsor.website) && (
+                    <span className="border-border block border-t px-4 py-3">
                       {sponsor.logoPath && (
                         <span className="text-heading block truncate text-sm font-semibold">
                           {sponsor.name}
@@ -139,13 +139,7 @@ export default async function SponsorsPage() {
                         </span>
                       )}
                     </span>
-
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-[0.68rem] font-semibold whitespace-nowrap ${ton.pastille}`}
-                    >
-                      {sponsor.level.name}
-                    </span>
-                  </span>
+                  )}
                 </>
               );
 

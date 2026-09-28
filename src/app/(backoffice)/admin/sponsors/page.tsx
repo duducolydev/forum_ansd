@@ -7,6 +7,7 @@ import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
 import * as service from "@/modules/sponsors/service";
 import { OrdreSponsors } from "@/modules/sponsors/components/ordre-sponsors";
+import { tonDuNiveau } from "@/modules/sponsors/palette";
 
 export const metadata = { title: "Sponsors" };
 
@@ -62,8 +63,8 @@ export default async function SponsorsAdminPage() {
         classement que la page publique ne reprend pas.
       */}
       <p className="text-text-2 mb-4 max-w-[80ch] text-sm">
-        L&apos;ordre ci-dessous est <strong>celui du site</strong>. Le niveau reste affiché sur la
-        carte de chaque partenaire, mais ne décide plus de sa place.
+        L&apos;ordre ci-dessous est <strong>celui du site</strong>. Le site ne montre plus le nom du
+        niveau, seulement sa couleur (réglée dans Niveaux) ; le niveau ne décide pas de la place.
       </p>
 
       {sponsors.length === 0 ? (
@@ -76,6 +77,7 @@ export default async function SponsorsAdminPage() {
             id: sponsor.id,
             name: sponsor.name,
             niveau: sponsor.level.name,
+            pastilleNiveau: tonDuNiveau(sponsor.level).pastille,
             logoUrl: sponsor.logoPath ? `/api/v1/sponsors/${sponsor.id}/logo` : null,
             publie: sponsor.isPublished,
           }))}

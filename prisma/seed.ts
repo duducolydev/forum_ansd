@@ -168,8 +168,8 @@ async function main() {
     },
     {
       code: "PRESTATAIRE",
-      labelFr: "Prestataire",
-      labelEn: "Service provider",
+      labelFr: "Prestataire de service/Fournisseur",
+      labelEn: "Service provider/Supplier",
       color: "#4E5D6B",
       autoConfirm: true,
       requiresLogistics: false,

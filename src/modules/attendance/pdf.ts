@@ -1,5 +1,5 @@
 import { renderHtmlToPdf } from "@/lib/pdf";
-import type { LigneListe } from "./service";
+import type { FiltrePresence, LigneListe } from "./service";
 
 /**
  * Listes de présence en PDF (brief §5.6).
@@ -25,6 +25,24 @@ export interface DonneesListe {
   jour: Date;
   forme: FormeListe;
   lignes: LigneListe[];
+  /**
+   * Liste de présence réduite aux présents ou aux absents. `lignes` est alors
+   * déjà filtrée, et `attendus` garde le total d'origine, pour situer le
+   * nombre : « 12 absent(s) sur 80 attendu(s) ».
+   */
+  filtre?: FiltrePresence;
+  attendus?: number;
+}
+
+/** Ligne de synthèse sous le titre. */
+function synthese(donnees: DonneesListe): string {
+  const nombre = donnees.lignes.length;
+  const attendus = donnees.attendus ?? nombre;
+  if (donnees.forme === "EMARGEMENT") return `${nombre} personne(s) attendue(s)`;
+  if (donnees.filtre === "PRESENTS") return `${nombre} présente(s) sur ${attendus} attendue(s)`;
+  if (donnees.filtre === "ABSENTS") return `${nombre} absente(s) sur ${attendus} attendue(s)`;
+  const presents = donnees.lignes.filter((ligne) => ligne.premierPassage !== null).length;
+  return `${nombre} personne(s) attendue(s) · ${presents} présente(s)`;
 }
 
 const ANSD_BLEU_NUIT = "#082c4e";
@@ -54,8 +72,6 @@ const heure = new Intl.DateTimeFormat("fr-FR", {
 
 export function listePresenceHtml(donnees: DonneesListe): string {
   const emargement = donnees.forme === "EMARGEMENT";
-  const presents = donnees.lignes.filter((ligne) => ligne.premierPassage !== null).length;
-
   const colonnes = emargement
     ? ["N°", "Nom et prénom", "Organisation", "Catégorie", "Signature"]
     : ["N°", "Nom et prénom", "Organisation", "Catégorie", "Pays", "Passage"];
@@ -154,9 +170,7 @@ export function listePresenceHtml(donnees: DonneesListe): string {
     <h1>${escapeHtml(donnees.titre)}</h1>
     <div class="meta">
       ${escapeHtml(donnees.sousTitre)} · ${dateLongue.format(donnees.jour)}<br>
-      ${donnees.lignes.length} personne(s) attendue(s)${
-        emargement ? "" : ` · ${presents} présente(s)`
-      }
+      ${synthese(donnees)}
     </div>
   </header>
 

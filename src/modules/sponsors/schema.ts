@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CLES_TONS } from "./palette";
 
 /**
  * Sponsors et partenaires (brief §5.9).
@@ -49,6 +50,8 @@ export const niveauInputSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).max(999),
   /** Largeur d'affichage du logo : un partenaire principal se voit plus qu'un technique. */
   logoMaxWidth: z.coerce.number().int().min(40).max(600).optional(),
+  /** Couleur sur le site ; vide = déduite du libellé (`palette.ts`). */
+  color: z.enum(CLES_TONS).optional(),
 });
 
 export type SponsorInput = z.infer<typeof sponsorInputSchema>;

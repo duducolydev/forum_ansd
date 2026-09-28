@@ -43,7 +43,9 @@ export async function listerSponsors(editionId: string) {
   return prisma.sponsor.findMany({
     where: { editionId, deletedAt: null },
     orderBy: ORDRE_AFFICHAGE,
-    include: { level: { select: { id: true, name: true, sortOrder: true } } },
+    include: {
+      level: { select: { id: true, code: true, name: true, color: true, sortOrder: true } },
+    },
   });
 }
 
@@ -65,7 +67,14 @@ export async function listerSponsorsPublies(editionId: string) {
       descriptionEn: true,
       sortOrder: true,
       level: {
-        select: { id: true, code: true, name: true, sortOrder: true, logoMaxWidth: true },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          color: true,
+          sortOrder: true,
+          logoMaxWidth: true,
+        },
       },
     },
   });
@@ -290,6 +299,7 @@ export async function enregistrerNiveau(
     name: input.name,
     sortOrder: input.sortOrder,
     logoMaxWidth: input.logoMaxWidth ?? null,
+    color: input.color ?? null,
   };
 
   const niveau = niveauId

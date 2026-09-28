@@ -168,10 +168,12 @@ test("l'en-tête porte le logo officiel et des liens lisibles sur le bleu clair"
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
-  // Le logo est bien chargé, dans l'en-tête comme dans le pied de page.
+  // Les logos sont bien chargés : celui de l'ANSD et celui du Forum dans
+  // l'en-tête, celui du Forum dans le pied de page.
   for (const logo of [
-    page.locator('header img[src="/images/logo_forum_transparent.png"]'),
-    page.locator('footer img[src="/images/logo_forum_transparent.png"]'),
+    page.locator('header img[src="/images/logo-ansd.webp"]'),
+    page.locator('header img[src="/images/logo-forum-2026.webp"]'),
+    page.locator('footer img[src="/images/logo-forum-2026.webp"]'),
   ]) {
     await logo.scrollIntoViewIfNeeded();
     await expect

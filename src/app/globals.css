@@ -64,6 +64,9 @@
   --warn-text: #a65b13;
   --danger-soft: #fbe7e8;
   --danger-text: #c43139;
+  /* Plaque du grand logo de l'accueil : invisible en clair, claire en sombre,
+     où le texte bleu du logo ne se lirait pas sur le bleu nuit. */
+  --plaque-logo: transparent;
   --gold-soft: #fff4dd;
   --gold-text: #9a6408;
   /* Niveaux de partenariat (§32, `modules/sponsors/palette.ts`). Or et argent
@@ -166,6 +169,7 @@
     --danger-text: #f37479;
     --gold-soft: rgba(242, 178, 51, 0.15);
     --gold-text: #f2b233;
+    --plaque-logo: rgba(244, 248, 252, 0.94);
     /* Ratios aplatis sur la surface : or 6,75 et 5,01 ; argent 8,12 et 6,18 ;
        bronze 5,15 ; jaune 8,45. */
     --or-soft: rgba(244, 201, 93, 0.14);
@@ -244,6 +248,7 @@
   --danger-text: #f37479;
   --gold-soft: rgba(242, 178, 51, 0.15);
   --gold-text: #f2b233;
+  --plaque-logo: rgba(244, 248, 252, 0.94);
   /* Ratios aplatis sur la surface : or 6,75 et 5,01 ; argent 8,12 et 6,18 ;
      bronze 5,15 ; jaune 8,45. */
   --or-soft: rgba(244, 201, 93, 0.14);
@@ -830,4 +835,94 @@
 }
 .carte-intervenant:hover .photo {
   transform: scale(1.08) rotate(-2deg);
+}
+
+/* ---------------------------------------------------------------------------
+   Bandeau d'accueil animé (demande du 28 septembre 2026).
+
+   Le grand logo flotte, un halo aux couleurs du logo tourne lentement derrière
+   lui, les chiffres du compte à rebours basculent à chaque changement. Rien de
+   tout cela ne porte de texte, et tout s'arrête sous `prefers-reduced-motion`.
+--------------------------------------------------------------------------- */
+
+@keyframes flotter {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes tourner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes tic {
+  from {
+    opacity: 0;
+    transform: translateY(-45%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes battement {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.logo-flotte {
+  animation: flotter 6s ease-in-out infinite;
+}
+
+.halo-logo {
+  position: absolute;
+  inset: 4% 10%;
+  border-radius: 9999px;
+  background: conic-gradient(
+    from 0deg,
+    var(--ansd-bleu-vif),
+    var(--ansd-vert-vif),
+    #f5b82e,
+    #e0303a,
+    var(--ansd-bleu-vif)
+  );
+  filter: blur(70px);
+  opacity: 0.22;
+  animation: tourner 22s linear infinite;
+  pointer-events: none;
+}
+
+.chiffre-tic {
+  animation: tic 0.35s var(--courbe-animation) both;
+}
+
+.pulsation {
+  animation: battement 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-flotte,
+  .halo-logo,
+  .chiffre-tic,
+  .pulsation {
+    animation: none;
+  }
+}
+
+.plaque-logo {
+  background: var(--plaque-logo);
+  border-radius: 1.75rem;
+  padding: 1.25rem 1.5rem;
 }
