@@ -24,6 +24,7 @@
     "guide:agents": "tsx scripts/guide-agents.ts",
     "comptes:demo": "tsx scripts/comptes-demo.ts",
     "section:a-propos": "tsx scripts/section-a-propos.ts",
+    "section:intervenants-partenaires": "tsx scripts/sections-intervenants-partenaires.ts",
     "illustrer:accueil": "tsx scripts/illustrer-accueil.ts",
     "icones:scanner": "tsx scripts/icones-scanner.ts"
   },

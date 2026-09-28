@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Clock,
   Globe2,
+  Handshake,
   MapPin,
   Mic,
   Newspaper,
@@ -21,7 +22,9 @@ import { iconeDeLien, LienSite, LienSiteExterne } from "@/components/site/bouton
 import { resolveLocaleValue } from "@/modules/content/service";
 import type { BoutonSection } from "../catalogue";
 import { lireBooleen, lireBoutons, lireContenu, lireNombre, lireTexte } from "../schema";
+import { tonDuNiveau } from "@/modules/sponsors/palette";
 import type { DonneesSections } from "../donnees";
+import { Defilement } from "./defilement";
 
 /**
  * Rendu d'une section (§8.4, habillage §10).
@@ -127,6 +130,76 @@ function LienTout({ href, libelle }: { href: string; libelle: string }) {
 }
 
 const CADRE = "mx-auto max-w-[1200px] px-6";
+
+type Partenaire = NonNullable<DonneesSections["sponsors"]>[number];
+
+/**
+ * En dessous, le carrousel reste posé : la boucle ne remplirait pas la largeur
+ * du cadre (cinq cartes de 15 rem et leurs marges la dépassent).
+ */
+const SEUIL_DEFILEMENT = 5;
+
+/**
+ * Carte d'un partenaire dans le carrousel de l'accueil.
+ *
+ * Même vocabulaire que la page Partenaires — filet et fond à la couleur du
+ * niveau, pastille du niveau en bas à droite — dans un format réduit : le
+ * visiteur retrouve sur la page complète les cartes qu'il a vues défiler.
+ */
+function CartePartenaire({ sponsor }: { sponsor: Partenaire }) {
+  const ton = tonDuNiveau(sponsor.level);
+
+  const contenu = (
+    <>
+      <span aria-hidden className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${ton.filet}`} />
+      <span
+        className={`grid h-28 place-items-center bg-gradient-to-b to-transparent px-4 ${ton.fond}`}
+      >
+        {sponsor.logoPath ? (
+          /* eslint-disable-next-line @next/next/no-img-element -- servi par une route contrôlée, dimensions variables */
+          <img
+            src={urlVersionnee(`/api/v1/sponsors/${sponsor.id}/logo`, sponsor.logoPath)}
+            alt={sponsor.name}
+            className="max-h-16 max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <span className="font-display text-heading text-center leading-snug font-bold text-balance">
+            {sponsor.name}
+          </span>
+        )}
+      </span>
+      <span className="border-border flex items-center justify-between gap-2 border-t px-3.5 py-2.5">
+        {/* Le nom n'est écrit qu'une fois : sans logo, il tient déjà sa place au-dessus. */}
+        <span className="text-heading min-w-0 truncate text-xs font-semibold">
+          {sponsor.logoPath ? sponsor.name : ""}
+        </span>
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-1 text-[0.68rem] font-semibold whitespace-nowrap ${ton.pastille}`}
+        >
+          {sponsor.level.name}
+        </span>
+      </span>
+    </>
+  );
+
+  const classes =
+    "group border-border bg-surface relative flex w-full flex-col overflow-hidden rounded-2xl border shadow-sm";
+
+  return sponsor.website ? (
+    <a
+      href={sponsor.website}
+      target="_blank"
+      // `noopener` : la page ouverte ne doit pas pouvoir manipuler celle du
+      // Forum via `window.opener`.
+      rel="noopener noreferrer"
+      className={`${classes} carte-lien hover:shadow-lg`}
+    >
+      {contenu}
+    </a>
+  ) : (
+    <div className={classes}>{contenu}</div>
+  );
+}
 
 export function RenduSection({ section, donnees, locale }: Props) {
   const { edition } = donnees;
@@ -640,46 +713,60 @@ export function RenduSection({ section, donnees, locale }: Props) {
                 surtitre={en ? "They speak" : "Ils interviennent"}
                 titre={texte(section, "titre", locale) || (en ? "Speakers" : "Intervenants")}
                 icone={Mic}
-                action={
-                  <LienTout
-                    href="/intervenants"
-                    libelle={en ? "All speakers" : "Tous les intervenants"}
-                  />
-                }
+                action={<LienTout href="/intervenants" libelle={en ? "See all" : "Voir tout"} />}
               />
             </Reveal>
 
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               {speakers.map((speaker, rang) => (
                 <Reveal key={speaker.id} delai={rang * 60} className="h-full">
-                  <div className="border-border bg-surface carte-relief h-full rounded-xl border p-5 text-center">
-                    {speaker.photoPath ? (
-                      /* eslint-disable-next-line @next/next/no-img-element -- servie par une route contrôlée, hors optimiseur */
-                      <img
-                        src={`/api/v1/speakers/${speaker.id}/photo`}
-                        alt=""
-                        className="ring-border bg-bg-2 mx-auto mb-3 h-22 w-22 rounded-full object-cover ring-2 ring-offset-2 ring-offset-[var(--surface)]"
-                      />
-                    ) : (
-                      <span
-                        aria-hidden
-                        className="from-ansd-bleu-vif to-ansd-vert-vif font-display mx-auto mb-3 grid h-22 w-22 place-items-center rounded-full bg-gradient-to-br text-xl font-bold text-white"
-                      >
-                        {speaker.firstName[0]}
-                        {speaker.lastName[0]}
+                  {/*
+                    Animation au survol (`.carte-intervenant`, globals.css) : la
+                    carte monte, la photo grossit dans son cadre rond — qui la
+                    rogne, elle zoome sans déborder —, un halo monte derrière
+                    elle et un filet se déroule sous la carte.
+                  */}
+                  <div className="carte-intervenant group border-border bg-surface relative h-full overflow-hidden rounded-xl border p-5 text-center">
+                    <span
+                      aria-hidden
+                      className="halo from-blue-soft via-accent-soft/50 absolute inset-x-0 top-0 h-32 bg-gradient-to-b to-transparent"
+                    />
+                    {/* `relative` : sans lui, le halo positionné passerait par-dessus le texte. */}
+                    <div className="relative">
+                      <span className="ring-border group-hover:ring-ansd-vert-vif transition-tout mx-auto mb-3 block h-22 w-22 overflow-hidden rounded-full ring-2 ring-offset-2 ring-offset-[var(--surface)]">
+                        {speaker.photoPath ? (
+                          /* eslint-disable-next-line @next/next/no-img-element -- servie par une route contrôlée, hors optimiseur */
+                          <img
+                            src={`/api/v1/speakers/${speaker.id}/photo`}
+                            alt=""
+                            className="photo bg-bg-2 h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span
+                            aria-hidden
+                            className="photo from-ansd-bleu-vif to-ansd-vert-vif font-display grid h-full w-full place-items-center bg-gradient-to-br text-xl font-bold text-white"
+                          >
+                            {speaker.firstName[0]}
+                            {speaker.lastName[0]}
+                          </span>
+                        )}
                       </span>
-                    )}
-                    <b className="font-display text-heading block leading-snug">
-                      {speaker.firstName} {speaker.lastName}
-                    </b>
-                    {speaker.jobTitle && (
-                      <span className="text-text-2 mt-1 block text-sm">{speaker.jobTitle}</span>
-                    )}
-                    {speaker.organization && (
-                      <span className="text-text-3 mt-0.5 block text-xs">
-                        {speaker.organization}
-                      </span>
-                    )}
+                      <b className="font-display text-heading group-hover:text-link transition-tout block leading-snug">
+                        {speaker.firstName} {speaker.lastName}
+                      </b>
+                      {speaker.jobTitle && (
+                        <span className="text-text-2 mt-1 block text-sm">{speaker.jobTitle}</span>
+                      )}
+                      {speaker.organization && (
+                        <span className="text-text-3 mt-0.5 block text-xs">
+                          {speaker.organization}
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      aria-hidden
+                      className="filet-bas from-ansd-bleu-vif to-ansd-vert-vif absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r"
+                    />
                   </div>
                 </Reveal>
               ))}
@@ -690,18 +777,69 @@ export function RenduSection({ section, donnees, locale }: Props) {
     }
 
     case "sponsors": {
-      const niveaux = donnees.sponsors ?? [];
-      if (niveaux.length === 0) return null;
+      const sponsors = donnees.sponsors ?? [];
+      if (sponsors.length === 0) return null;
+
+      const entete = (
+        <Reveal>
+          <EnteteSection
+            surtitre={en ? "With the support of" : "Avec le soutien de"}
+            titre={texte(section, "titre", locale) || (en ? "Partners" : "Partenaires")}
+            icone={Handshake}
+            action={<LienTout href="/sponsors" libelle={en ? "See all" : "Voir tout"} />}
+          />
+        </Reveal>
+      );
+
+      if (section.variant === "carrousel") {
+        const cartes = sponsors.map((sponsor) => (
+          <li key={sponsor.id} className="flex w-60 shrink-0">
+            <CartePartenaire sponsor={sponsor} />
+          </li>
+        ));
+
+        return (
+          <section id={ancre} className={`border-border bg-bg-2 border-b py-16${classeAncre}`}>
+            <div className={CADRE}>
+              {entete}
+              <Reveal>
+                {/*
+                  Trop peu de partenaires pour remplir la largeur : la boucle
+                  laisserait un trou avant de reprendre. Ils restent alors
+                  posés, centrés, sans défiler.
+                */}
+                {sponsors.length >= SEUIL_DEFILEMENT ? (
+                  <Defilement
+                    elements={cartes}
+                    nombre={sponsors.length}
+                    libelle={en ? "Partners" : "Partenaires"}
+                    en={en}
+                  />
+                ) : (
+                  <ul className="flex flex-wrap justify-center gap-5 py-3">{cartes}</ul>
+                )}
+              </Reveal>
+            </div>
+          </section>
+        );
+      }
+
+      /*
+       * Grille et bandeau : groupés par niveau, dans l'ordre des niveaux ; à
+       * l'intérieur d'un niveau, l'ordre du comité est conservé.
+       */
+      const parNiveau = new Map<string, Partenaire["level"] & { sponsors: Partenaire[] }>();
+      for (const sponsor of sponsors) {
+        const groupe = parNiveau.get(sponsor.level.id) ?? { ...sponsor.level, sponsors: [] };
+        groupe.sponsors.push(sponsor);
+        parNiveau.set(sponsor.level.id, groupe);
+      }
+      const niveaux = [...parNiveau.values()].sort((a, b) => a.sortOrder - b.sortOrder);
 
       return (
         <section id={ancre} className={`border-border bg-bg-2 border-b py-16${classeAncre}`}>
           <div className={CADRE}>
-            <Reveal>
-              <EnteteSection
-                surtitre={en ? "With the support of" : "Avec le soutien de"}
-                titre={texte(section, "titre", locale) || (en ? "Partners" : "Partenaires")}
-              />
-            </Reveal>
+            {entete}
 
             {niveaux.map((niveau, rangNiveau) => (
               <Reveal key={niveau.id} delai={rangNiveau * 80}>
@@ -721,7 +859,10 @@ export function RenduSection({ section, donnees, locale }: Props) {
                       const contenu = sponsor.logoPath ? (
                         /* eslint-disable-next-line @next/next/no-img-element -- servie par une route contrôlée, hors optimiseur */
                         <img
-                          src={`/api/v1/sponsors/${sponsor.id}/logo`}
+                          src={urlVersionnee(
+                            `/api/v1/sponsors/${sponsor.id}/logo`,
+                            sponsor.logoPath,
+                          )}
                           alt={sponsor.name}
                           style={
                             niveau.logoMaxWidth

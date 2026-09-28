@@ -64,7 +64,9 @@ export async function listerSponsorsPublies(editionId: string) {
       descriptionFr: true,
       descriptionEn: true,
       sortOrder: true,
-      level: { select: { id: true, name: true, sortOrder: true, logoMaxWidth: true } },
+      level: {
+        select: { id: true, code: true, name: true, sortOrder: true, logoMaxWidth: true },
+      },
     },
   });
 }

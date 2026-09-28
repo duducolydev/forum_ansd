@@ -2,6 +2,7 @@ import type { Edition, PageSection } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getHomeStats } from "@/lib/stats";
 import { listPosts } from "@/modules/content/service";
+import { listerSponsorsPublies } from "@/modules/sponsors/service";
 import { besoinsDesSections } from "./service";
 
 /**
@@ -20,12 +21,8 @@ export interface DonneesSections {
   edition: Edition;
   stats?: Awaited<ReturnType<typeof getHomeStats>>;
   actualites?: Awaited<ReturnType<typeof listPosts>>;
-  sponsors?: {
-    id: string;
-    name: string;
-    logoMaxWidth: number | null;
-    sponsors: { id: string; name: string; logoPath: string | null; website: string | null }[];
-  }[];
+  /** Partenaires publiés, dans l'ordre décidé par le comité — le même que sur leur page. */
+  sponsors?: Awaited<ReturnType<typeof listerSponsorsPublies>>;
   intervenants?: {
     id: string;
     firstName: string;
@@ -69,31 +66,15 @@ export async function chargerDonnees(
   }
 
   if (besoins.has("sponsors")) {
+    /*
+     * Liste à plat, dans l'ordre de la page Partenaires : le carrousel la suit
+     * telle quelle, et la grille la regroupe par niveau au rendu. La projection
+     * du service écarte déjà les contacts internes (§5.9).
+     */
     travaux.push(
-      prisma.sponsorLevel
-        .findMany({
-          where: { editionId: edition.id },
-          orderBy: { sortOrder: "asc" },
-          include: {
-            sponsors: {
-              where: { isPublished: true, deletedAt: null },
-              orderBy: { name: "asc" },
-              // Projection explicite : les contacts internes (§5.9) ne doivent
-              // atteindre aucune page publique.
-              select: { id: true, name: true, logoPath: true, website: true },
-            },
-          },
-        })
-        .then((niveaux) => {
-          donnees.sponsors = niveaux
-            .filter((niveau) => niveau.sponsors.length > 0)
-            .map((niveau) => ({
-              id: niveau.id,
-              name: niveau.name,
-              logoMaxWidth: niveau.logoMaxWidth,
-              sponsors: niveau.sponsors,
-            }));
-        }),
+      listerSponsorsPublies(edition.id).then((sponsors) => {
+        donnees.sponsors = sponsors;
+      }),
     );
   }
 

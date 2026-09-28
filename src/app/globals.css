@@ -66,6 +66,26 @@
   --danger-text: #c43139;
   --gold-soft: #fff4dd;
   --gold-text: #9a6408;
+  /* Niveaux de partenariat (§32, `modules/sponsors/palette.ts`). Or et argent
+     en dégradé « métal » : le texte tient 4,5:1 sur chacun des deux arrêts —
+     or 6,65 et 5,22 ; argent 7,73 et 5,86. Bronze 6,68, jaune 7,24. Les reflets
+     ne dessinent que le filet décoratif et ne portent aucun texte. */
+  --or-soft: #fbe9a6;
+  --or-soft-2: #f0cd5c;
+  --or-text: #6b4a00;
+  --or-vif: #d4a017;
+  --or-reflet: #f8e48f;
+  --argent-soft: #f1f3f5;
+  --argent-soft-2: #cfd6dd;
+  --argent-text: #434d58;
+  --argent-vif: #9aa6b2;
+  --argent-reflet: #eef1f4;
+  --bronze-soft: #f8e4d3;
+  --bronze-text: #7a3f14;
+  --bronze-vif: #b87333;
+  --jaune-soft: #fff6a8;
+  --jaune-text: #5e5000;
+  --jaune-vif: #f2d024;
   --dark-panel: #082c4e;
   --dark-panel-text: #fff;
   --dark-panel-muted: #9fb8d2;
@@ -146,6 +166,22 @@
     --danger-text: #f37479;
     --gold-soft: rgba(242, 178, 51, 0.15);
     --gold-text: #f2b233;
+    /* Ratios aplatis sur la surface : or 6,75 et 5,01 ; argent 8,12 et 6,18 ;
+       bronze 5,15 ; jaune 8,45. */
+    --or-soft: rgba(244, 201, 93, 0.14);
+    --or-soft-2: rgba(244, 201, 93, 0.26);
+    --or-text: #f4c95d;
+    --or-vif: #e8b730;
+    --argent-soft: rgba(213, 221, 229, 0.1);
+    --argent-soft-2: rgba(213, 221, 229, 0.2);
+    --argent-text: #d5dde5;
+    --argent-vif: #b8c3ce;
+    --bronze-soft: rgba(234, 163, 106, 0.16);
+    --bronze-text: #eaa36a;
+    --bronze-vif: #cd7f32;
+    --jaune-soft: rgba(255, 241, 118, 0.14);
+    --jaune-text: #fff176;
+    --jaune-vif: #ffe135;
     --chart-mark: #5c9de0; /* 5,00:1 sur la surface sombre #0b2b4e */
     --chart-grid: #17395f;
     --chart-ordinal-1: #2f7fd1; /* pas le plus sombre, 3,45:1 sur la surface */
@@ -208,6 +244,22 @@
   --danger-text: #f37479;
   --gold-soft: rgba(242, 178, 51, 0.15);
   --gold-text: #f2b233;
+  /* Ratios aplatis sur la surface : or 6,75 et 5,01 ; argent 8,12 et 6,18 ;
+     bronze 5,15 ; jaune 8,45. */
+  --or-soft: rgba(244, 201, 93, 0.14);
+  --or-soft-2: rgba(244, 201, 93, 0.26);
+  --or-text: #f4c95d;
+  --or-vif: #e8b730;
+  --argent-soft: rgba(213, 221, 229, 0.1);
+  --argent-soft-2: rgba(213, 221, 229, 0.2);
+  --argent-text: #d5dde5;
+  --argent-vif: #b8c3ce;
+  --bronze-soft: rgba(234, 163, 106, 0.16);
+  --bronze-text: #eaa36a;
+  --bronze-vif: #cd7f32;
+  --jaune-soft: rgba(255, 241, 118, 0.14);
+  --jaune-text: #fff176;
+  --jaune-vif: #ffe135;
   --chart-mark: #5c9de0;
   --chart-grid: #17395f;
   --chart-ordinal-1: #2f7fd1;
@@ -271,6 +323,22 @@
   --color-danger-text: var(--danger-text);
   --color-gold-soft: var(--gold-soft);
   --color-gold-text: var(--gold-text);
+  --color-or-soft: var(--or-soft);
+  --color-or-soft-2: var(--or-soft-2);
+  --color-or-text: var(--or-text);
+  --color-or-vif: var(--or-vif);
+  --color-or-reflet: var(--or-reflet);
+  --color-argent-soft: var(--argent-soft);
+  --color-argent-soft-2: var(--argent-soft-2);
+  --color-argent-text: var(--argent-text);
+  --color-argent-vif: var(--argent-vif);
+  --color-argent-reflet: var(--argent-reflet);
+  --color-bronze-soft: var(--bronze-soft);
+  --color-bronze-text: var(--bronze-text);
+  --color-bronze-vif: var(--bronze-vif);
+  --color-jaune-soft: var(--jaune-soft);
+  --color-jaune-text: var(--jaune-text);
+  --color-jaune-vif: var(--jaune-vif);
   --color-dark-panel: var(--dark-panel);
   --color-dark-panel-text: var(--dark-panel-text);
   --color-dark-panel-muted: var(--dark-panel-muted);
@@ -668,4 +736,98 @@
 }
 [data-revele-liste="1"] > *:nth-child(n + 6) {
   transition-delay: 300ms;
+}
+
+/* ---------------------------------------------------------------------------
+   Carrousel défilant (partenaires de l'accueil, §32).
+
+   La piste porte **deux** copies de la liste et recule de la moitié de sa
+   largeur : quand la copie arrive à la place de l'original, la boucle reprend
+   sans saut visible. La seconde copie est `inert` et cachée aux lecteurs
+   d'écran, qui ne lisent la liste qu'une fois.
+
+   Le défilement s'arrête au survol, au focus clavier, et sur le bouton Pause
+   (WCAG 2.2.2) : un contenu qui bouge seul plus de cinq secondes doit pouvoir
+   être arrêté. Sous `prefers-reduced-motion`, il n'y a pas d'animation du
+   tout : la liste devient une bande que l'on fait défiler soi-même.
+--------------------------------------------------------------------------- */
+
+@keyframes defiler {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.defilement-fenetre {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+}
+
+.defilement-piste {
+  display: flex;
+  width: max-content;
+  animation: defiler var(--duree-defilement, 40s) linear infinite;
+}
+
+.defilement:hover .defilement-piste,
+.defilement:focus-within .defilement-piste,
+.defilement[data-pause] .defilement-piste {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .defilement-piste {
+    animation: none;
+  }
+  .defilement-fenetre {
+    overflow-x: auto;
+    mask-image: none;
+  }
+  .defilement-copie,
+  .defilement-commande {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Carte d'intervenant (accueil).
+
+   Au survol : la carte se soulève, la photo grossit dans son cadre, un halo
+   bleu-vert monte derrière elle et un filet se déroule sous la carte. Tout
+   passe par `--duree-animation`, donc s'éteint sous `prefers-reduced-motion`.
+--------------------------------------------------------------------------- */
+
+.carte-intervenant {
+  transition:
+    transform calc(var(--duree-animation) * 1.6) var(--courbe-animation),
+    box-shadow calc(var(--duree-animation) * 1.6) var(--courbe-animation),
+    border-color calc(var(--duree-animation) * 1.6) var(--courbe-animation);
+}
+.carte-intervenant:hover {
+  transform: translateY(-6px);
+  border-color: var(--ansd-bleu-vif);
+  box-shadow: 0 22px 40px -24px rgb(8 44 78 / 0.45);
+}
+.carte-intervenant .halo,
+.carte-intervenant .filet-bas,
+.carte-intervenant .photo {
+  transition:
+    opacity calc(var(--duree-animation) * 1.6) var(--courbe-animation),
+    transform calc(var(--duree-animation) * 2) var(--courbe-animation);
+}
+.carte-intervenant .halo {
+  opacity: 0;
+}
+.carte-intervenant:hover .halo {
+  opacity: 1;
+}
+.carte-intervenant .filet-bas {
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.carte-intervenant:hover .filet-bas {
+  transform: scaleX(1);
+}
+.carte-intervenant:hover .photo {
+  transform: scale(1.08) rotate(-2deg);
 }

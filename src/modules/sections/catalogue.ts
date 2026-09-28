@@ -207,9 +207,11 @@ const TYPES: TypeSection[] = [
   {
     cle: "sponsors",
     label: "Partenaires",
-    description: "Les partenaires publiés, groupés par niveau de partenariat.",
+    description:
+      "Les partenaires publiés, en carrousel défilant ou groupés par niveau, avec un lien vers la page Partenaires.",
     variantes: [
-      { cle: "grille", label: "En grille" },
+      { cle: "carrousel", label: "En carrousel défilant" },
+      { cle: "grille", label: "En grille, par niveau" },
       { cle: "bandeau", label: "En bandeau compact" },
     ],
     champs: [{ cle: "titre", label: "Titre de la section", type: "court", max: 120 }],

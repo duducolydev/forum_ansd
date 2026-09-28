@@ -25,8 +25,8 @@ export async function generateMetadata() {
  * redevient une mention sur la carte, en bas à droite, et le comité décide
  * lui-même de la succession.
  *
- * La couleur vient du rang du niveau (`palette.ts`) : elle distingue les
- * échelons d'un coup d'œil sans réintroduire le groupement, et reste un rappel
+ * La couleur vient du niveau (`palette.ts`) : elle distingue les échelons
+ * d'un coup d'œil sans réintroduire le groupement, et reste un rappel
  * — la pastille porte le nom du niveau, la couleur ne le dit jamais seule.
  */
 export default async function SponsorsPage() {
@@ -72,7 +72,7 @@ export default async function SponsorsPage() {
                 sponsor.descriptionEn,
                 locale,
               );
-              const ton = tonDuNiveau(sponsor.level.sortOrder);
+              const ton = tonDuNiveau(sponsor.level);
 
               const contenu = (
                 <>

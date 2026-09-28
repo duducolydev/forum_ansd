@@ -74,11 +74,25 @@ export const COMPOSITION_ACCUEIL: SectionParDefaut[] = [
     },
   },
   {
+    type: "intervenants",
+    variant: "grille",
+    sortOrder: 25,
+    settings: { nombre: 8 },
+    contenu: { titre: { fr: "Intervenants", en: "Speakers" } },
+  },
+  {
     type: "actualites",
     variant: "cartes",
     sortOrder: 30,
     settings: { nombre: 3 },
     contenu: { titre: { fr: "Actualités", en: "News" } },
+  },
+  {
+    type: "sponsors",
+    variant: "carrousel",
+    sortOrder: 40,
+    settings: {},
+    contenu: { titre: { fr: "Partenaires", en: "Partners" } },
   },
 ];
 

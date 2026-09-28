@@ -434,6 +434,16 @@ Constaté le 22 septembre 2026 sur un changement de `SMTP_PASSWORD`, où Compose
 répondait « Running » au lieu de « Recreated ». Le sous-shell meurt avec la
 sauvegarde et n'en laisse rien derrière lui.
 
+**Sections ajoutées à l'accueil.** Une section ajoutée à la composition du code
+(`src/modules/sections/defaut.ts`) n'apparaît pas sur une installation dont
+l'accueil a déjà été modifié en BackOffice : c'est alors la base qui pilote la
+page. Chaque ajout de ce genre vient avec un script idempotent, à lancer une
+fois après la mise à jour (`--essai` montre ce qu'il ferait) :
+
+```bash
+forum run --rm outils pnpm section:intervenants-partenaires   # 28 septembre 2026
+```
+
 ---
 
 ## 5. HTTPS sur `forum2026.ansd.sn`

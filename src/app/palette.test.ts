@@ -87,6 +87,13 @@ const COUPLES = [
   { texte: "warn-text", fond: "warn-soft", nom: "pastille orange" },
   { texte: "danger-text", fond: "danger-soft", nom: "pastille rouge" },
   { texte: "gold-text", fond: "gold-soft", nom: "pastille dorée" },
+  // Niveaux de partenariat : or et argent sont des dégradés, chaque arrêt compte.
+  { texte: "or-text", fond: "or-soft", nom: "pastille Gold, arrêt clair" },
+  { texte: "or-text", fond: "or-soft-2", nom: "pastille Gold, arrêt foncé" },
+  { texte: "argent-text", fond: "argent-soft", nom: "pastille Silver, arrêt clair" },
+  { texte: "argent-text", fond: "argent-soft-2", nom: "pastille Silver, arrêt foncé" },
+  { texte: "bronze-text", fond: "bronze-soft", nom: "pastille Bronze" },
+  { texte: "jaune-text", fond: "jaune-soft", nom: "pastille partenaire technique" },
   { texte: "btn-blue-text", fond: "btn-blue", nom: "bouton bleu" },
   { texte: "text", fond: "bg", nom: "texte courant" },
   { texte: "text-3", fond: "bg-3", nom: "texte atténué" },
