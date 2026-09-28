@@ -48,6 +48,8 @@ export const speakerInputSchema = z.object({
   bioFr: z.string().trim().max(3000).optional().or(z.literal("")),
   bioEn: z.string().trim().max(3000).optional().or(z.literal("")),
   isPublished: z.boolean().default(false),
+  isFeatured: z.boolean().default(false),
+  featuredOrder: z.coerce.number().int().min(0).max(999).default(0),
 });
 
 export type SpeakerInput = z.infer<typeof speakerInputSchema>;
@@ -78,6 +80,8 @@ const SELECTION = {
   bioFr: true,
   bioEn: true,
   isPublished: true,
+  isFeatured: true,
+  featuredOrder: true,
   participant: { select: { id: true, publicId: true, email: true, status: true } },
   sessions: {
     // Une session supprimée (suppression douce) ne compte plus au programme.
@@ -118,6 +122,8 @@ export async function createSpeaker(editionId: string, input: SpeakerInput, acto
       bioFr: input.bioFr || null,
       bioEn: input.bioEn || null,
       isPublished: input.isPublished,
+      isFeatured: input.isFeatured,
+      featuredOrder: input.featuredOrder,
     },
     select: SELECTION,
   });
@@ -147,6 +153,8 @@ export async function updateSpeaker(id: string, input: SpeakerInput, actor: Acto
       bioFr: input.bioFr || null,
       bioEn: input.bioEn || null,
       isPublished: input.isPublished,
+      isFeatured: input.isFeatured,
+      featuredOrder: input.featuredOrder,
     },
     select: SELECTION,
   });
@@ -157,7 +165,7 @@ export async function updateSpeaker(id: string, input: SpeakerInput, actor: Acto
     action: "speaker.update",
     entity: "Speaker",
     entityId: id,
-    after: { isPublished: speaker.isPublished },
+    after: { isPublished: speaker.isPublished, isFeatured: speaker.isFeatured },
   });
 
   return speaker;

@@ -2,7 +2,7 @@ import type { Edition, PageSection } from "@prisma/client";
 import { getContentText } from "@/modules/content/service";
 import { chargerDonnees } from "../donnees";
 import { blocsRequis, COMPOSITIONS, resoudreContenu } from "../defaut";
-import { RenduSection } from "./rendu-section";
+import { SectionsComposees } from "./sections-composees";
 
 /**
  * Composition d'origine d'une page, rendue tant qu'aucune section n'a été
@@ -50,11 +50,5 @@ export async function SectionsParDefaut({
 
   const donnees = await chargerDonnees(edition, sections);
 
-  return (
-    <>
-      {sections.map((section) => (
-        <RenduSection key={section.id} section={section} donnees={donnees} locale={locale} />
-      ))}
-    </>
-  );
+  return <SectionsComposees sections={sections} donnees={donnees} locale={locale} />;
 }

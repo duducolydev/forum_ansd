@@ -37,6 +37,8 @@ export interface DonneesSections {
     photoPath: string | null;
     /** Thèmes des sessions publiées où il intervient — ceux du filtre de la section. */
     themes: string[];
+    isFeatured: boolean;
+    featuredOrder: number;
   }[];
   sessions?: {
     id: string;
@@ -118,6 +120,8 @@ export async function chargerDonnees(
             jobTitle: true,
             organization: true,
             photoPath: true,
+            isFeatured: true,
+            featuredOrder: true,
             sessions: {
               where: { session: { isPublished: true, deletedAt: null } },
               select: { session: { select: { theme: true } } },

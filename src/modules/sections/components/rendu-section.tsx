@@ -12,12 +12,19 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { CompteurAnime } from "@/components/site/animations-accueil";
-import { Reveal as RevealMotion } from "@/components/motion/Reveal";
+import { CompteurAnime } from "@/components/motion/CompteurAnime";
+import { Eyebrow, Reveal as RevealMotion } from "@/components/motion/Reveal";
 import { SplitTitle } from "@/components/motion/SplitTitle";
 import { ReseauHero } from "@/components/home/ReseauHero";
 import { MiniCountdown } from "@/components/home/MiniCountdown";
 import { AnimatedLogo } from "@/components/home/AnimatedLogo";
+import { TeteSection } from "@/components/home/TeteSection";
+import { Piliers } from "@/components/home/Piliers";
+import { NewsTimeline } from "@/components/home/NewsTimeline";
+import { PartnersMarquee } from "@/components/home/PartnersMarquee";
+import { ScrubText } from "@/components/motion/ScrubText";
+import { ScrambleText } from "@/components/motion/ScrambleText";
+import { motsDeTexteRiche } from "@/lib/mots-texte-riche";
 import { plageDeDates } from "@/lib/dates-edition";
 import { Reveal } from "@/components/site/reveal";
 import { EnteteSection } from "@/components/site/entete-section";
@@ -29,7 +36,6 @@ import type { BoutonSection } from "../catalogue";
 import { lireBooleen, lireBoutons, lireContenu, lireNombre, lireTexte } from "../schema";
 import { tonDuNiveau } from "@/modules/sponsors/palette";
 import type { DonneesSections } from "../donnees";
-import { Defilement } from "./defilement";
 import { IntervenantsFiltrables } from "./intervenants-filtrables";
 
 /**
@@ -70,12 +76,36 @@ function lireReglage(section: PageSection, cle: string): unknown {
  * Poser des couleurs claires une à une aurait laissé passer un lien ou un bouton
  * resté dans les tons du thème clair — illisible sur fond foncé.
  */
+/**
+ * Couleur de fond d'une section, telle que la page l'affiche. Sert à poser un
+ * séparateur ondulé (`WaveDivider`) entre deux sections de fonds différents :
+ * les filets de séparation ont disparu avec le système « Constellation ».
+ */
+export function fondDeSection(section: Pick<PageSection, "type" | "variant">): string {
+  switch (section.type) {
+    case "texte":
+    case "appel":
+    case "piliers":
+      if (section.variant === "sombre") return "var(--fond-sombre)";
+      return section.variant === "adouci" ? "var(--bg-2)" : "var(--bg)";
+    case "chiffres":
+    case "programme":
+      return "var(--bg-2)";
+    case "actualites":
+      return section.variant === "frise" ? "var(--bg-2)" : "var(--bg)";
+    case "sponsors":
+      return section.variant === "carrousel" ? "var(--bg)" : "var(--bg-2)";
+    default:
+      return "var(--bg)";
+  }
+}
+
 function fondDe(variant: string): { className: string; theme?: "dark" } {
   if (variant === "sombre") {
-    return { className: "bg-fond-sombre border-border border-b", theme: "dark" };
+    return { className: "bg-fond-sombre", theme: "dark" };
   }
   return {
-    className: variant === "adouci" ? "bg-bg-2 border-border border-b" : "border-border border-b",
+    className: variant === "adouci" ? "bg-bg-2" : "",
   };
 }
 
@@ -123,68 +153,6 @@ function LienTout({ href, libelle }: { href: string; libelle: string }) {
 const CADRE = "mx-auto max-w-[1200px] px-6";
 
 type Partenaire = NonNullable<DonneesSections["sponsors"]>[number];
-
-/**
- * En dessous, le carrousel reste posé : la boucle ne remplirait pas la largeur
- * du cadre (cinq cartes de 15 rem et leurs marges la dépassent).
- */
-const SEUIL_DEFILEMENT = 5;
-
-/**
- * Carte d'un partenaire dans le carrousel de l'accueil.
- *
- * Le filet et le fond portent la couleur du niveau ; le **nom** du niveau
- * (Gold, Silver…) n'est plus affiché (demande du commanditaire, 28 septembre
- * 2026) : il reste une affaire de BackOffice, qui décide aussi de l'ordre.
- */
-function CartePartenaire({ sponsor }: { sponsor: Partenaire }) {
-  const ton = tonDuNiveau(sponsor.level);
-
-  const contenu = (
-    <>
-      <span aria-hidden className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${ton.filet}`} />
-      <span
-        className={`flex h-36 flex-col items-center justify-center gap-3 bg-gradient-to-b to-transparent px-4 ${ton.fond}`}
-      >
-        {sponsor.logoPath ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element -- servi par une route contrôlée, dimensions variables */}
-            <img
-              src={urlVersionnee(`/api/v1/sponsors/${sponsor.id}/logo`, sponsor.logoPath)}
-              alt=""
-              className="max-h-16 max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
-            />
-            <span className="text-heading max-w-full truncate text-xs font-semibold">
-              {sponsor.name}
-            </span>
-          </>
-        ) : (
-          <span className="font-display text-heading text-center leading-snug font-bold text-balance">
-            {sponsor.name}
-          </span>
-        )}
-      </span>
-    </>
-  );
-
-  const classes =
-    "group border-border bg-surface relative flex w-full flex-col overflow-hidden rounded-2xl border shadow-sm";
-
-  return sponsor.website ? (
-    <a
-      href={sponsor.website}
-      target="_blank"
-      // `noopener` : la page ouverte ne doit pas pouvoir manipuler celle du
-      // Forum via `window.opener`.
-      rel="noopener noreferrer"
-      className={`${classes} carte-lien hover:shadow-lg`}
-    >
-      {contenu}
-    </a>
-  ) : (
-    <div className={classes}>{contenu}</div>
-  );
-}
 
 export function RenduSection({ section, donnees, locale }: Props) {
   const { edition } = donnees;
@@ -238,10 +206,7 @@ export function RenduSection({ section, donnees, locale }: Props) {
       const decorAGauche = Boolean(illustration) && imageAGauche;
 
       return (
-        <section
-          id={ancre}
-          className={`bandeau-accueil fond-bandeau border-border border-b${classeAncre}`}
-        >
+        <section id={ancre} className={`bandeau-accueil fond-bandeau${classeAncre}`}>
           {illustration && (
             <span
               aria-hidden
@@ -327,7 +292,37 @@ export function RenduSection({ section, donnees, locale }: Props) {
       const corps = texte(section, "corps", locale);
       if (!corps) return null;
       const titre = texte(section, "titre", locale);
+      const etiquette = texte(section, "etiquette", locale);
       const fond = fondDe(section.variant);
+
+      /*
+       * Texte qui s'allume mot à mot (brief §4.2) : étiquette, titre révélé,
+       * puis `ScrubText`. Les mots clés sont ceux que l'éditeur a mis en gras
+       * ou en italique.
+       */
+      if (lireBooleen(section.settings, "defilement", false)) {
+        return (
+          <section
+            id={ancre}
+            data-theme={fond.theme}
+            className={`${fond.className} section-constellation${classeAncre}`}
+          >
+            <div className={CADRE}>
+              {etiquette && (
+                <RevealMotion variant="left">
+                  <Eyebrow>{etiquette}</Eyebrow>
+                </RevealMotion>
+              )}
+              {titre && (
+                <RevealMotion variant="up">
+                  <h2 className="titre-section">{titre}</h2>
+                </RevealMotion>
+              )}
+              <ScrubText paragraphes={motsDeTexteRiche(corps)} />
+            </div>
+          </section>
+        );
+      }
 
       return (
         <section
@@ -371,6 +366,29 @@ export function RenduSection({ section, donnees, locale }: Props) {
                 )}
               </div>
             </Reveal>
+          </div>
+        </section>
+      );
+    }
+
+    case "piliers": {
+      const piliers = [1, 2, 3]
+        .map((rang) => ({
+          titre: texte(section, `pilier${rang}Titre`, locale),
+          texte: texte(section, `pilier${rang}Texte`, locale),
+        }))
+        .filter((pilier) => pilier.titre);
+      if (piliers.length === 0) return null;
+      const fond = fondDe(section.variant);
+
+      return (
+        <section
+          id={ancre}
+          data-theme={fond.theme}
+          className={`${fond.className} pb-20${classeAncre}`}
+        >
+          <div className={CADRE}>
+            <Piliers piliers={piliers} />
           </div>
         </section>
       );
@@ -426,7 +444,7 @@ export function RenduSection({ section, donnees, locale }: Props) {
       const titre = texte(section, "titre", locale);
 
       return (
-        <section id={ancre} className={`border-border bg-bg-2 border-b py-16${classeAncre}`}>
+        <section id={ancre} className={`bg-bg-2 py-16${classeAncre}`}>
           <div className={CADRE}>
             {titre && (
               <Reveal>
@@ -480,8 +498,39 @@ export function RenduSection({ section, donnees, locale }: Props) {
       if (articles.length === 0) return null;
       const enListe = section.variant === "liste";
 
+      if (section.variant === "frise") {
+        return (
+          <section
+            id={ancre}
+            className={`section-constellation section-constellation--alt${classeAncre}`}
+          >
+            <div className={CADRE}>
+              <TeteSection
+                etiquette={<ScrambleText texte={en ? "FOLLOW THE FORUM" : "SUIVRE LE FORUM"} />}
+                titre={texte(section, "titre", locale) || (en ? "News" : "Actualités")}
+                icone={Newspaper}
+                lien={{ href: "/actualites", libelle: en ? "All news" : "Toutes les actualités" }}
+              />
+              <NewsTimeline
+                locale={locale}
+                articles={articles.map((article) => ({
+                  id: article.id,
+                  href: `/actualites/${article.slug}`,
+                  titre: en ? article.titleEn || article.titleFr : article.titleFr,
+                  date: (article.publishedAt ?? article.createdAt).toISOString(),
+                  couverture: article.coverPath
+                    ? `/api/v1/posts/${article.id}/image/couverture`
+                    : null,
+                  etiquette: en ? "NEWS" : "ACTUALITÉ",
+                }))}
+              />
+            </div>
+          </section>
+        );
+      }
+
       return (
-        <section id={ancre} className={`border-border border-b py-16${classeAncre}`}>
+        <section id={ancre} className={`py-16${classeAncre}`}>
           <div className={CADRE}>
             <Reveal>
               <EnteteSection
@@ -573,7 +622,7 @@ export function RenduSection({ section, donnees, locale }: Props) {
       });
 
       return (
-        <section id={ancre} className={`border-border bg-bg-2 border-b py-16${classeAncre}`}>
+        <section id={ancre} className={`bg-bg-2 py-16${classeAncre}`}>
           <div className={CADRE}>
             <Reveal>
               <EnteteSection
@@ -624,18 +673,16 @@ export function RenduSection({ section, donnees, locale }: Props) {
       if (intervenants.length === 0) return null;
 
       return (
-        <section id={ancre} className={`border-border border-b py-16${classeAncre}`}>
+        <section id={ancre} className={`section-constellation${classeAncre}`}>
           <div className={CADRE}>
-            <Reveal>
-              <EnteteSection
-                surtitre={en ? "They speak" : "Ils interviennent"}
-                titre={texte(section, "titre", locale) || (en ? "Speakers" : "Intervenants")}
-                icone={Mic}
-                action={<LienTout href="/intervenants" libelle={en ? "See all" : "Voir tout"} />}
-              />
-            </Reveal>
+            <TeteSection
+              etiquette={en ? "They speak" : "Ils interviennent"}
+              titre={texte(section, "titre", locale) || (en ? "Speakers" : "Intervenants")}
+              icone={Mic}
+              lien={{ href: "/intervenants", libelle: en ? "See all" : "Voir tout" }}
+            />
 
-            {/* Filtre par thème et cartes animées : `intervenants-filtrables.tsx`. */}
+            {/* Filtre par thème et cartes retournables : `intervenants-filtrables.tsx`. */}
             <IntervenantsFiltrables
               intervenants={intervenants}
               nombre={lireNombre(section.settings, "nombre", 8)}
@@ -662,34 +709,35 @@ export function RenduSection({ section, donnees, locale }: Props) {
       );
 
       if (section.variant === "carrousel") {
-        const cartes = sponsors.map((sponsor) => (
-          <li key={sponsor.id} className="flex w-60 shrink-0">
-            <CartePartenaire sponsor={sponsor} />
-          </li>
-        ));
-
+        /*
+         * Double bandeau « Constellation » (brief §4.5), sur toute la largeur.
+         * Sans libellé de niveau : seule la couleur du niveau reste, en liseré
+         * (arbitrage du 28 septembre 2026).
+         */
         return (
-          <section id={ancre} className={`border-border bg-bg-2 border-b py-16${classeAncre}`}>
+          <section id={ancre} className={`section-constellation${classeAncre}`}>
             <div className={CADRE}>
-              {entete}
-              <Reveal>
-                {/*
-                  Trop peu de partenaires pour remplir la largeur : la boucle
-                  laisserait un trou avant de reprendre. Ils restent alors
-                  posés, centrés, sans défiler.
-                */}
-                {sponsors.length >= SEUIL_DEFILEMENT ? (
-                  <Defilement
-                    elements={cartes}
-                    nombre={sponsors.length}
-                    libelle={en ? "Partners" : "Partenaires"}
-                    en={en}
-                  />
-                ) : (
-                  <ul className="flex flex-wrap justify-center gap-5 py-3">{cartes}</ul>
-                )}
-              </Reveal>
+              <TeteSection
+                etiquette={en ? "With the support of" : "Avec le soutien de"}
+                titre={texte(section, "titre", locale) || (en ? "Partners" : "Partenaires")}
+                icone={Handshake}
+                lien={{ href: "/sponsors", libelle: en ? "See all" : "Voir tout" }}
+              />
             </div>
+            <RevealMotion variant="blur">
+              <PartnersMarquee
+                libelle={en ? "Partners" : "Partenaires"}
+                partenaires={sponsors.map((sponsor) => ({
+                  id: sponsor.id,
+                  nom: sponsor.name,
+                  logo: sponsor.logoPath
+                    ? urlVersionnee(`/api/v1/sponsors/${sponsor.id}/logo`, sponsor.logoPath)
+                    : null,
+                  site: sponsor.website,
+                  filet: tonDuNiveau(sponsor.level).filet,
+                }))}
+              />
+            </RevealMotion>
           </section>
         );
       }
@@ -707,7 +755,7 @@ export function RenduSection({ section, donnees, locale }: Props) {
       const niveaux = [...parNiveau.values()].sort((a, b) => a.sortOrder - b.sortOrder);
 
       return (
-        <section id={ancre} className={`border-border bg-bg-2 border-b py-16${classeAncre}`}>
+        <section id={ancre} className={`bg-bg-2 py-16${classeAncre}`}>
           <div className={CADRE}>
             {entete}
 

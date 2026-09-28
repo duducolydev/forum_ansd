@@ -28,6 +28,8 @@ export default async function NouvelIntervenantPage() {
           bioFr: "",
           bioEn: "",
           isPublished: false,
+          isFeatured: false,
+          featuredOrder: 0,
         }}
       />
     </div>

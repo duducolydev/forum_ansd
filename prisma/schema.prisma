@@ -644,6 +644,11 @@ model Speaker {
   /// Sans lui, le comité ne peut pas publier la contribution qui en est issue.
   presentationConsentement Boolean   @default(false)
   isPublished              Boolean   @default(false)
+  /// Mis en avant sur l'accueil (brief « Constellation » §4.3), dans l'ordre
+  /// de `featuredOrder` ; sans aucun intervenant mis en avant, l'accueil
+  /// montre les premiers par ordre alphabétique.
+  isFeatured               Boolean   @default(false)
+  featuredOrder            Int       @default(0)
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
   deletedAt                DateTime?

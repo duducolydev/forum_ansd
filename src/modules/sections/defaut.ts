@@ -32,6 +32,25 @@ const BOUTONS_ACCUEIL: BoutonSection[] = [
   { href: "/mon-espace", labelFr: "Mon espace", labelEn: "My space", style: "secondaire" },
 ];
 
+/** Les trois piliers du Forum (brief « Constellation » §4.2), modifiables en BackOffice. */
+export const PILIERS: SectionParDefaut["contenu"] = {
+  pilier1Titre: { fr: "Produire", en: "Produce" },
+  pilier1Texte: {
+    fr: "Comment produire des données de qualité, comparables et à temps ?",
+    en: "How can we produce quality, comparable and timely data?",
+  },
+  pilier2Titre: { fr: "Partager", en: "Share" },
+  pilier2Texte: {
+    fr: "Comment les partager en confiance, dans le respect des standards ?",
+    en: "How can we share them with confidence, in line with standards?",
+  },
+  pilier3Titre: { fr: "Décider", en: "Decide" },
+  pilier3Texte: {
+    fr: "Comment décider avec elles et mesurer l'impact des politiques ?",
+    en: "How can we decide with them and measure the impact of policies?",
+  },
+};
+
 export const COMPOSITION_ACCUEIL: SectionParDefaut[] = [
   {
     type: "hero",
@@ -57,11 +76,20 @@ export const COMPOSITION_ACCUEIL: SectionParDefaut[] = [
     type: "texte",
     variant: "adouci",
     sortOrder: 15,
-    settings: { ancre: "a-propos" },
+    // Texte qui s'allume mot à mot au défilement (brief « Constellation » §4.2).
+    settings: { ancre: "a-propos", defilement: true },
     contenu: {
+      etiquette: { fr: "Le Forum", en: "The Forum" },
       titre: { fr: "À propos du Forum", en: "About the Forum" },
       corps: { bloc: "about.body" },
     },
+  },
+  {
+    type: "piliers",
+    variant: "adouci",
+    sortOrder: 16,
+    settings: {},
+    contenu: PILIERS,
   },
   {
     type: "texte",
@@ -82,7 +110,7 @@ export const COMPOSITION_ACCUEIL: SectionParDefaut[] = [
   },
   {
     type: "actualites",
-    variant: "cartes",
+    variant: "frise",
     sortOrder: 30,
     settings: { nombre: 3 },
     contenu: { titre: { fr: "Actualités", en: "News" } },

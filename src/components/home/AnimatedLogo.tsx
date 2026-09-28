@@ -99,7 +99,7 @@ export function AnimatedLogo({ variant = "animated" }: { variant?: "animated" | 
   return (
     <div ref={ref} aria-hidden className="grand-logo">
       <div
-        className={`grand-logo__scene${variant === "official" ? "grand-logo__scene--officiel" : ""}`}
+        className={`grand-logo__scene ${variant === "official" ? "grand-logo__scene--officiel" : ""}`}
       >
         <div className="grand-logo__halo" />
         <div className="grand-logo__onde" />

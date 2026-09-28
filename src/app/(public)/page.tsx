@@ -2,7 +2,7 @@ import { getLocale } from "next-intl/server";
 import { getActiveEdition } from "@/lib/edition";
 import { chargerDonnees } from "@/modules/sections/donnees";
 import { sectionsVisibles } from "@/modules/sections/service";
-import { RenduSection } from "@/modules/sections/components/rendu-section";
+import { SectionsComposees } from "@/modules/sections/components/sections-composees";
 import { SectionsParDefaut } from "@/modules/sections/components/sections-par-defaut";
 
 export async function generateMetadata() {
@@ -33,11 +33,5 @@ export default async function HomePage() {
 
   const donnees = await chargerDonnees(edition, sections);
 
-  return (
-    <>
-      {sections.map((section) => (
-        <RenduSection key={section.id} section={section} donnees={donnees} locale={locale} />
-      ))}
-    </>
-  );
+  return <SectionsComposees sections={sections} donnees={donnees} locale={locale} />;
 }

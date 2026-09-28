@@ -733,17 +733,8 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Carrousel défilant (partenaires de l'accueil, §32).
-
-   La piste porte **deux** copies de la liste et recule de la moitié de sa
-   largeur : quand la copie arrive à la place de l'original, la boucle reprend
-   sans saut visible. La seconde copie est `inert` et cachée aux lecteurs
-   d'écran, qui ne lisent la liste qu'une fois.
-
-   Le défilement s'arrête au survol, au focus clavier, et sur le bouton Pause
-   (WCAG 2.2.2) : un contenu qui bouge seul plus de cinq secondes doit pouvoir
-   être arrêté. Sous `prefers-reduced-motion`, il n'y a pas d'animation du
-   tout : la liste devient une bande que l'on fait défiler soi-même.
+   Images clés partagées avec constellation.css (bandeaux défilants, logo qui
+   flotte, anneaux qui tournent).
 --------------------------------------------------------------------------- */
 
 @keyframes defiler {
@@ -751,88 +742,6 @@
     transform: translateX(-50%);
   }
 }
-
-.defilement-fenetre {
-  overflow: hidden;
-  mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
-}
-
-.defilement-piste {
-  display: flex;
-  width: max-content;
-  animation: defiler var(--duree-defilement, 40s) linear infinite;
-}
-
-.defilement:hover .defilement-piste,
-.defilement:focus-within .defilement-piste,
-.defilement[data-pause] .defilement-piste {
-  animation-play-state: paused;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .defilement-piste {
-    animation: none;
-  }
-  .defilement-fenetre {
-    overflow-x: auto;
-    mask-image: none;
-  }
-  .defilement-copie,
-  .defilement-commande {
-    display: none;
-  }
-}
-
-/* ---------------------------------------------------------------------------
-   Carte d'intervenant (accueil).
-
-   Au survol : la carte se soulève, la photo grossit dans son cadre, un halo
-   bleu-vert monte derrière elle et un filet se déroule sous la carte. Tout
-   passe par `--duree-animation`, donc s'éteint sous `prefers-reduced-motion`.
---------------------------------------------------------------------------- */
-
-.carte-intervenant {
-  transition:
-    transform calc(var(--duree-animation) * 1.6) var(--courbe-animation),
-    box-shadow calc(var(--duree-animation) * 1.6) var(--courbe-animation),
-    border-color calc(var(--duree-animation) * 1.6) var(--courbe-animation);
-}
-.carte-intervenant:hover {
-  transform: translateY(-6px);
-  border-color: var(--ansd-bleu-vif);
-  box-shadow: 0 22px 40px -24px rgb(8 44 78 / 0.45);
-}
-.carte-intervenant .halo,
-.carte-intervenant .filet-bas,
-.carte-intervenant .photo {
-  transition:
-    opacity calc(var(--duree-animation) * 1.6) var(--courbe-animation),
-    transform calc(var(--duree-animation) * 2) var(--courbe-animation);
-}
-.carte-intervenant .halo {
-  opacity: 0;
-}
-.carte-intervenant:hover .halo {
-  opacity: 1;
-}
-.carte-intervenant .filet-bas {
-  transform: scaleX(0);
-  transform-origin: left;
-}
-.carte-intervenant:hover .filet-bas {
-  transform: scaleX(1);
-}
-.carte-intervenant:hover .photo {
-  transform: scale(1.08) rotate(-2deg);
-}
-
-/* ---------------------------------------------------------------------------
-   Bandeau d'accueil animé (demande du 28 septembre 2026).
-
-   Le grand logo flotte, un halo aux couleurs du logo tourne lentement derrière
-   lui, les chiffres du compte à rebours basculent à chaque changement. Rien de
-   tout cela ne porte de texte, et tout s'arrête sous `prefers-reduced-motion`.
---------------------------------------------------------------------------- */
 
 @keyframes flotter {
   0%,
@@ -847,66 +756,6 @@
 @keyframes tourner {
   to {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes tic {
-  from {
-    opacity: 0;
-    transform: translateY(-45%);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes battement {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
-
-.logo-flotte {
-  animation: flotter 6s ease-in-out infinite;
-}
-
-.halo-logo {
-  position: absolute;
-  inset: 4% 10%;
-  border-radius: 9999px;
-  background: conic-gradient(
-    from 0deg,
-    var(--ansd-bleu-vif),
-    var(--ansd-vert-vif),
-    #f5b82e,
-    #e0303a,
-    var(--ansd-bleu-vif)
-  );
-  filter: blur(70px);
-  opacity: 0.22;
-  animation: tourner 22s linear infinite;
-  pointer-events: none;
-}
-
-.chiffre-tic {
-  animation: tic 0.35s var(--courbe-animation) both;
-}
-
-.pulsation {
-  animation: battement 1.6s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .logo-flotte,
-  .halo-logo,
-  .chiffre-tic,
-  .pulsation {
-    animation: none;
   }
 }
 

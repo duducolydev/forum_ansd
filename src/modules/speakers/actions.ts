@@ -168,6 +168,8 @@ export async function enregistrerIntervenantAction(
       bioFr: formData.get("bioFr") ?? undefined,
       bioEn: formData.get("bioEn") ?? undefined,
       isPublished: formData.get("isPublished") === "on",
+      isFeatured: formData.get("isFeatured") === "on",
+      featuredOrder: formData.get("featuredOrder") || 0,
     });
 
     const id = formData.get("id");

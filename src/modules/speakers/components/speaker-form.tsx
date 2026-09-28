@@ -20,6 +20,8 @@ export interface SpeakerFormValues {
   bioFr: string;
   bioEn: string;
   isPublished: boolean;
+  isFeatured: boolean;
+  featuredOrder: number;
 }
 
 export function SpeakerForm({ valeurs }: { valeurs: SpeakerFormValues }) {
@@ -149,6 +151,27 @@ export function SpeakerForm({ valeurs }: { valeurs: SpeakerFormValues }) {
             className="accent-primary h-4 w-4"
           />
           Publier sur le site
+        </label>
+        {/* Mise en avant sur l'accueil (brief « Constellation » §4.3). */}
+        <label className="text-text-2 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="isFeatured"
+            defaultChecked={valeurs.isFeatured}
+            className="accent-primary h-4 w-4"
+          />
+          Mettre en avant sur l&apos;accueil
+        </label>
+        <label className="text-text-2 flex items-center gap-2 text-sm">
+          Ordre
+          <input
+            type="number"
+            name="featuredOrder"
+            min={0}
+            max={999}
+            defaultValue={valeurs.featuredOrder}
+            className="border-border bg-bg text-text w-20 rounded-lg border px-2 py-1.5 text-sm"
+          />
         </label>
         <Bouton ton="principal" icone={Save} type="submit" disabled={pending}>
           {pending ? "Enregistrement…" : "Enregistrer"}

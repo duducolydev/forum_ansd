@@ -148,6 +148,13 @@ const TYPES: TypeSection[] = [
     description: "Un titre facultatif et un paragraphe. Pour présenter, situer, expliquer.",
     variantes: VARIANTES_FOND,
     champs: [
+      {
+        cle: "etiquette",
+        label: "Étiquette au-dessus du titre (facultatif)",
+        type: "court",
+        max: 40,
+        aide: "Un ou deux mots en capitales, comme « Le Forum ».",
+      },
       { cle: "titre", label: "Titre (facultatif)", type: "court", max: 120 },
       { cle: "corps", label: "Texte", type: "riche", max: 3000 },
       {
@@ -157,6 +164,31 @@ const TYPES: TypeSection[] = [
         max: 160,
         aide: AIDE_ALT,
       },
+    ],
+    reglages: [
+      {
+        cle: "defilement",
+        label: "Texte qui s'allume mot à mot au défilement",
+        type: "booleen",
+        defaut: false,
+        aide: "Les mots en gras ou en italique passent en vert. À réserver aux textes courts de présentation.",
+      },
+    ],
+    besoins: [],
+  },
+  {
+    cle: "piliers",
+    label: "Piliers",
+    description:
+      "Trois piliers numérotés côte à côte, chacun avec son icône qui se dessine à l'apparition (produire, partager, décider).",
+    variantes: VARIANTES_FOND,
+    champs: [
+      { cle: "pilier1Titre", label: "Pilier 1 — titre", type: "court", max: 40 },
+      { cle: "pilier1Texte", label: "Pilier 1 — texte", type: "long", max: 240 },
+      { cle: "pilier2Titre", label: "Pilier 2 — titre", type: "court", max: 40 },
+      { cle: "pilier2Texte", label: "Pilier 2 — texte", type: "long", max: 240 },
+      { cle: "pilier3Titre", label: "Pilier 3 — titre", type: "court", max: 40 },
+      { cle: "pilier3Texte", label: "Pilier 3 — texte", type: "long", max: 240 },
     ],
     reglages: [],
     besoins: [],
@@ -185,6 +217,7 @@ const TYPES: TypeSection[] = [
     label: "Dernières actualités",
     description: "Les articles publiés les plus récents, avec leur couverture et leur chapô.",
     variantes: [
+      { cle: "frise", label: "En frise chronologique animée" },
       { cle: "cartes", label: "En cartes" },
       { cle: "liste", label: "En liste" },
     ],
