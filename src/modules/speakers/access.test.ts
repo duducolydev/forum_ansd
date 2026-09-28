@@ -124,7 +124,14 @@ describe("accès des intervenants (brief §5.8, contradiction C12)", () => {
 
   describe("lien d'accès", () => {
     it("répond SENT pour une adresse inconnue, sans rien révéler", async () => {
-      const resultat = await requestSpeakerLink(editionId, "inconnu@example.test", "");
+      // Une adresse neuve à chaque exécution : le service limite à dix demandes
+      // par adresse et par jour, et une adresse fixe faisait échouer ce test
+      // pour 24 heures dès la onzième exécution de la journée.
+      const resultat = await requestSpeakerLink(
+        editionId,
+        `inconnu-${Date.now()}@example.test`,
+        "",
+      );
       expect(resultat.status).toBe("SENT");
       // Aucun lien créé : la réponse est la même, l'effet ne l'est pas.
       expect(await prisma.magicLink.count({ where: { speakerId } })).toBe(0);
