@@ -37,10 +37,17 @@ export interface ArticleFrise {
 export function NewsTimeline({
   articles,
   locale,
+  niveau = "h3",
+  prioritaire = false,
 }: {
   articles: ArticleFrise[];
   locale: "fr" | "en";
+  /** `h2` sur la page Actualités, qui n'a pas d'autre intertitre ; `h3` sur l'accueil. */
+  niveau?: "h2" | "h3";
+  /** Première couverture chargée en priorité : c'est l'image du premier écran (LCP). */
+  prioritaire?: boolean;
 }) {
+  const Titre = niveau;
   const t = useTranslations("constellation.news");
   const refFrise = useRef<HTMLDivElement>(null);
   const refEncre = useRef<SVGLineElement>(null);
@@ -127,6 +134,7 @@ export function NewsTimeline({
                       fill
                       sizes="(min-width: 1024px) 460px, 100vw"
                       unoptimized
+                      priority={prioritaire && rang === 0}
                       className="object-cover"
                     />
                   ) : (
@@ -138,7 +146,7 @@ export function NewsTimeline({
                   <time dateTime={article.date} className="police-grotesk frise__date">
                     {jour} · {mois} · {annee}
                   </time>
-                  <h3 className="frise__titre">{article.titre}</h3>
+                  <Titre className="frise__titre">{article.titre}</Titre>
                   <Link href={article.href} className="frise__lire">
                     {t("read")}
                     <ArrowRight aria-hidden size={16} />

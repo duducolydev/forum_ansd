@@ -1,18 +1,30 @@
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
-import { ArrowRight, Clock, Newspaper } from "lucide-react";
+import { ArrowLeft, ArrowRight, Newspaper } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
-import { listPosts, resolveLocaleValue } from "@/modules/content/service";
+import { listPosts } from "@/modules/content/service";
 import { EnteteSection } from "@/components/site/entete-section";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
-import { Reveal } from "@/components/site/reveal";
+import { NewsTimeline } from "@/components/home/NewsTimeline";
 
 export async function generateMetadata() {
   const t = await getTranslations("nav");
   return { title: t("news") };
 }
 
-export default async function NewsPage() {
+/** Articles par page de la frise. */
+const PAR_PAGE = 8;
+
+/**
+ * Actualités (§26), habillage « Constellation » (brief §6) : la frise de
+ * l'accueil, paginée — trait qui se remplit, cartes en alternance, visuel de
+ * couverture ou visuel génératif propre à chaque article.
+ */
+export default async function NewsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const t = await getTranslations("nav");
   const tPage = await getTranslations("newsPage");
   const locale = (await getLocale()) as "fr" | "en";
@@ -20,13 +32,18 @@ export default async function NewsPage() {
   const posts = await listPosts(edition.id, { onlyPublished: true });
   const en = locale === "en";
 
+  const pages = Math.max(1, Math.ceil(posts.length / PAR_PAGE));
+  const demandee = Number.parseInt((await searchParams).page ?? "1", 10);
+  const page = Number.isFinite(demandee) ? Math.min(Math.max(demandee, 1), pages) : 1;
+  const affiches = posts.slice((page - 1) * PAR_PAGE, page * PAR_PAGE);
+
   return (
     <>
       <BandeauPage>
         <EnteteSection
           bandeau
           niveau="h1"
-          surtitre={en ? "Keep up" : "Suivre le Forum"}
+          surtitre={en ? "Follow the Forum" : "Suivre le Forum"}
           titre={t("news")}
           icone={Newspaper}
         />
@@ -38,62 +55,51 @@ export default async function NewsPage() {
             {tPage("empty")}
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-            {posts.map((post, rang) => {
-              const chapo = resolveLocaleValue(post.excerptFr, post.excerptEn, locale);
-              return (
-                <Reveal key={post.id} delai={rang * 70} className="h-full">
-                  <Link
-                    href={`/actualites/${post.slug}`}
-                    className="border-border bg-surface carte-lien h-full rounded-xl border"
-                  >
-                    {/*
-                     * Le cadre média est toujours présent : une grille mêlant
-                     * articles illustrés et non illustrés décalait les titres
-                     * d'une carte à l'autre.
-                     */}
-                    <span className="bg-bg-2 border-border block border-b">
-                      {post.coverPath ? (
-                        /* eslint-disable-next-line @next/next/no-img-element -- servie par une route contrôlée, hors optimiseur */
-                        <img
-                          src={`/api/v1/posts/${post.id}/image/couverture`}
-                          alt=""
-                          className="vignette"
-                        />
-                      ) : (
-                        <span className="vignette from-bg-2 to-bg-3 grid place-items-center bg-gradient-to-br">
-                          <Newspaper aria-hidden size={30} className="text-text-3 opacity-45" />
-                        </span>
-                      )}
-                    </span>
+          <>
+            <NewsTimeline
+              key={page}
+              locale={locale}
+              niveau="h2"
+              prioritaire
+              articles={affiches.map((post) => ({
+                id: post.id,
+                href: `/actualites/${post.slug}`,
+                titre: (en ? post.titleEn : post.titleFr) || post.titleFr,
+                date: (post.publishedAt ?? post.createdAt).toISOString(),
+                couverture: post.coverPath ? `/api/v1/posts/${post.id}/image/couverture` : null,
+                etiquette: en ? "NEWS" : "ACTUALITÉ",
+              }))}
+            />
 
-                    <span className="flex flex-1 flex-col p-5.5">
-                      <span className="text-text-3 flex items-center gap-1.5 text-sm">
-                        <Clock aria-hidden size={13} />
-                        {post.publishedAt
-                          ? new Intl.DateTimeFormat(locale).format(post.publishedAt)
-                          : ""}
-                      </span>
-                      {/* `h2` et non `h3` : la page n'a qu'un `h1`, et sauter un
-                          niveau désoriente la navigation par titres. */}
-                      <h2 className="titre-carte mt-2 text-lg leading-snug">
-                        {en ? post.titleEn : post.titleFr}
-                      </h2>
-                      {chapo && (
-                        <span className="text-text-2 mt-2 block text-sm leading-relaxed">
-                          {chapo}
-                        </span>
-                      )}
-                      <span className="text-link mt-auto flex items-center gap-1.5 pt-4 text-sm font-semibold">
-                        {en ? "Read" : "Lire"}
-                        <ArrowRight aria-hidden size={14} />
-                      </span>
-                    </span>
+            {pages > 1 && (
+              <nav
+                aria-label={en ? "Pages" : "Pages"}
+                className="mt-14 flex flex-wrap items-center justify-center gap-3"
+              >
+                {page > 1 && (
+                  <Link
+                    href={page - 1 === 1 ? "/actualites" : `/actualites?page=${page - 1}`}
+                    className="inline-flex items-center gap-1.5 font-semibold text-[var(--title)]"
+                  >
+                    <ArrowLeft aria-hidden size={16} />
+                    {en ? "Newer" : "Plus récentes"}
                   </Link>
-                </Reveal>
-              );
-            })}
-          </div>
+                )}
+                <span className="police-grotesk text-sm text-[var(--muted)]">
+                  {page} / {pages}
+                </span>
+                {page < pages && (
+                  <Link
+                    href={`/actualites?page=${page + 1}`}
+                    className="inline-flex items-center gap-1.5 font-semibold text-[var(--title)]"
+                  >
+                    {en ? "Older" : "Plus anciennes"}
+                    <ArrowRight aria-hidden size={16} />
+                  </Link>
+                )}
+              </nav>
+            )}
+          </>
         )}
       </CorpsPage>
     </>

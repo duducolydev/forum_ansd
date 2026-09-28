@@ -9,6 +9,8 @@ import { lireGalerie } from "@/modules/content/schema";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
 import { LienSite } from "@/components/site/bouton-site";
 import { Reveal } from "@/components/site/reveal";
+import { SplitTitle } from "@/components/motion/SplitTitle";
+import { VisuelActualite } from "@/components/home/VisuelActualite";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -65,7 +67,11 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
           {en ? "All news" : "Toutes les actualités"}
         </LienSite>
 
-        <h1 className="mt-2 mb-1">{en ? post.titleEn : post.titleFr}</h1>
+        <SplitTitle
+          texte={(en ? post.titleEn : post.titleFr) || post.titleFr}
+          delaiInitial={0.1}
+          className="titre-page mt-2 mb-1"
+        />
 
         {date && (
           <p className="text-text-3 flex items-center gap-1.5 text-sm">
@@ -77,9 +83,20 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
 
       <CorpsPage largeur="moyen">
         {chapo && (
-          <p className="text-heading border-accent-text mb-8 border-l-2 pl-5 text-xl leading-relaxed font-medium">
-            {chapo}
-          </p>
+          <Reveal>
+            <p className="text-heading border-accent-text mb-8 border-l-2 pl-5 text-xl leading-relaxed font-medium">
+              {chapo}
+            </p>
+          </Reveal>
+        )}
+
+        {/* Sans couverture, un visuel génératif propre à l'article (brief §6). */}
+        {!post.coverPath && (
+          <Reveal>
+            <div className="mb-9">
+              <VisuelActualite id={post.id} />
+            </div>
+          </Reveal>
         )}
 
         {post.coverPath && (
@@ -93,10 +110,14 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
           </Reveal>
         )}
 
-        <TexteRiche
-          valeur={en ? post.bodyEn : post.bodyFr}
-          className="text-text-2 text-lg leading-relaxed"
-        />
+        {/* Corps : une apparition d'ensemble, jamais de texte révélé mot à mot —
+            le confort de lecture d'un article passe avant l'effet (brief §6). */}
+        <Reveal>
+          <TexteRiche
+            valeur={en ? post.bodyEn : post.bodyFr}
+            className="text-text-2 text-lg leading-relaxed"
+          />
+        </Reveal>
 
         {galerie.length > 0 && (
           <div className="mt-12">
