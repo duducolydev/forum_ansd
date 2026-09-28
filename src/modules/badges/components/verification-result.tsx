@@ -154,14 +154,37 @@ function Panel({
   children: React.ReactNode;
 }) {
   const styles = TONES[tone];
+  /*
+   * Retour visuel du résultat (brief « Constellation » §6) : la coche d'un
+   * badge valide se dessine, la croix d'un refus se trace et le panneau
+   * tremble brièvement. Le titre dit le résultat en toutes lettres : l'effet
+   * ne fait que l'accompagner, et disparaît sous mouvement réduit.
+   */
+  const trace =
+    icon === "✓" ? (
+      <svg viewBox="0 0 24 24" className="trace-resultat h-5 w-5">
+        <polyline points="5 12.5 10 17 19 7.5" />
+      </svg>
+    ) : icon === "✕" ? (
+      <svg viewBox="0 0 24 24" className="trace-resultat h-5 w-5">
+        <line x1="6.5" y1="6.5" x2="17.5" y2="17.5" />
+        <line x1="17.5" y1="6.5" x2="6.5" y2="17.5" />
+      </svg>
+    ) : (
+      icon
+    );
   return (
-    <div className={`bg-surface mt-7 rounded-2xl border p-6 text-left ${styles.border}`}>
+    <div
+      className={`bg-surface mt-7 rounded-2xl border p-6 text-left ${styles.border} ${
+        tone === "danger" ? "resultat-refus" : ""
+      }`}
+    >
       <div className={`mb-4 flex items-center gap-3 font-bold ${styles.title}`}>
         <span
           className={`grid h-8 w-8 place-items-center rounded-full text-sm ${styles.icon}`}
           aria-hidden
         >
-          {icon}
+          {trace}
         </span>
         {title}
       </div>
