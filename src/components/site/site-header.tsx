@@ -42,7 +42,7 @@ export async function SiteHeader() {
   );
 
   return (
-    <header className="fond-navbar sticky top-0 z-50 shadow-[0_1px_0_rgb(8_44_78/0.12)]">
+    <header className="entete-site fond-navbar sticky top-0 z-50 shadow-[0_1px_0_rgb(8_44_78/0.12)]">
       {/*
         Barre de 80 px sur téléphone, 104 px sur grand écran : le logo du Forum
         y passe de 64 à 80 px de haut (demande du commanditaire, 28 septembre
@@ -59,7 +59,7 @@ export async function SiteHeader() {
         <Link
           href="/"
           aria-label="ANSD — Forum international sur les données — accueil"
-          className="focus-visible:outline-ansd-bleu-nuit flex shrink-0 items-center gap-2.5 rounded-xl sm:gap-3.5"
+          className="entete-logos focus-visible:outline-ansd-bleu-nuit flex shrink-0 items-center gap-2.5 rounded-xl sm:gap-3.5"
         >
           <Image
             src="/images/logo-ansd.webp"
@@ -71,7 +71,20 @@ export async function SiteHeader() {
             className="h-10 w-auto sm:h-12 lg:h-16"
           />
           <span aria-hidden className="bg-ansd-bleu-nuit/20 h-10 w-px lg:h-14" />
-          <LogoForum alt="" taille="entete" prioritaire />
+          {/*
+            Anneau tricolore qui tourne autour du globe du logo (brief §3), en
+            décor : le logo officiel reste intact, l'anneau est posé par-dessus,
+            centré sur son globe (16,8 % de la largeur, 60,6 % de la hauteur du
+            fichier recadré).
+          */}
+          <span className="relative inline-flex">
+            <LogoForum alt="" taille="entete" prioritaire />
+            <span
+              aria-hidden
+              className="anneau-globe"
+              style={{ left: "-3.6%", top: "15%", width: "40.5%", aspectRatio: "1" }}
+            />
+          </span>
         </Link>
 
         <nav className="hidden shrink-0 items-center gap-0.5 xl:flex" aria-label={t("menu")}>
@@ -82,7 +95,7 @@ export async function SiteHeader() {
               <Link
                 key={entry.href}
                 href={entry.href}
-                className={`${SUR_ENTETE} rounded-lg px-2 py-2 text-sm font-medium whitespace-nowrap`}
+                className={`${SUR_ENTETE} lien-menu rounded-lg px-2 py-2 text-sm font-medium whitespace-nowrap`}
               >
                 {entry.label}
               </Link>
@@ -95,6 +108,7 @@ export async function SiteHeader() {
           <ThemeToggle initialTheme={theme} variante="entete" />
           <Link
             href="/mon-espace"
+            data-magnetic
             className={`${SUR_ENTETE} border-ansd-bleu-nuit/25 hidden items-center gap-2 rounded-[10px] border px-3 py-2 text-[0.84rem] font-semibold whitespace-nowrap hover:-translate-y-0.5 xl:inline-flex`}
           >
             <Ticket aria-hidden size={15} strokeWidth={2.2} />
@@ -102,7 +116,8 @@ export async function SiteHeader() {
           </Link>
           <Link
             href="/inscription"
-            className="bg-primary text-primary-text hover:bg-primary-hover transition-tout focus-visible:outline-ansd-bleu-nuit inline-flex items-center gap-2 rounded-[10px] px-3 py-2 text-[0.84rem] font-semibold whitespace-nowrap shadow-sm hover:-translate-y-0.5 hover:shadow-lg"
+            data-magnetic
+            className="bouton-reflet bg-primary text-primary-text hover:bg-primary-hover transition-tout focus-visible:outline-ansd-bleu-nuit relative inline-flex items-center gap-2 overflow-hidden rounded-[10px] px-3 py-2 text-[0.84rem] font-semibold whitespace-nowrap shadow-sm hover:-translate-y-0.5 hover:shadow-lg"
           >
             <UserPlus aria-hidden size={15} strokeWidth={2.2} />
             {t("register")}

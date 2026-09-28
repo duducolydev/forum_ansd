@@ -51,5 +51,55 @@
   },
   "newsPage": {
     "empty": "No news published yet."
+  },
+  "constellation": {
+    "backToTop": "Back to top",
+    "ticker": {
+      "dates": "{venue}, Dakar · {dates}",
+      "registrations": "Registrations open on 5 October 2026",
+      "translation": "Simultaneous interpretation FR · EN",
+      "motto": "Data · Innovation · Impact"
+    },
+    "footer": {
+      "seeYou": "See you",
+      "preposition": "in",
+      "city": "Dakar.",
+      "initiative": "An ANSD initiative",
+      "follow": "Follow",
+      "privacy": "Privacy policy",
+      "legal": "Legal notice",
+      "motto": "Data · Innovation · Impact"
+    },
+    "countdown": {
+      "label": "D-DAY −",
+      "days": "d",
+      "hours": "h",
+      "minutes": "min",
+      "seconds": "s",
+      "aria": "Countdown to the opening of the Forum: {days} days, {hours} hours and {minutes} minutes",
+      "live": "The Forum is under way",
+      "over": "Thank you! See the Forum proceedings"
+    },
+    "hero": {
+      "scroll": "Scroll down"
+    },
+    "speakers": {
+      "hover": "HOVER ↻",
+      "touch": "TAP ↻",
+      "profile": "View profile",
+      "seeAll": "See all",
+      "turnHint": "Flip {name}'s card"
+    },
+    "news": {
+      "eyebrow": "FOLLOW THE FORUM",
+      "label": "NEWS",
+      "read": "Read the article",
+      "all": "All news"
+    },
+    "partners": {
+      "pause": "Pause scrolling",
+      "resume": "Resume scrolling",
+      "seeAll": "See all"
+    }
   }
 }

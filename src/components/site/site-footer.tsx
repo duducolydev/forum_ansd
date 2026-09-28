@@ -15,10 +15,12 @@ import {
 } from "lucide-react";
 import { parametresPourGabarit } from "@/modules/settings/service";
 import { RESEAUX_LABELS, type Reseau } from "@/modules/settings/schema";
-import { LogoForum } from "./logo-forum";
 
 /**
- * Pied de page (§8.6, habillage §10).
+ * Pied de page (§8.6), habillage « Constellation » (brief §3) : grand titre
+ * « Rendez-vous à Dakar. », quatre colonnes, liens soulignés d'or au survol.
+ * Collé sous le rideau du contenu (`pied-revele`) quand il tient dans la
+ * fenêtre — c'est `EffetsGlobaux` qui en décide.
  *
  * Les coordonnées, les réseaux et les liens supplémentaires viennent des
  * paramètres de l'édition. Les colonnes de navigation, elles, restent tenues
@@ -45,131 +47,152 @@ const ICONES_RESEAU: Record<Reseau, LucideIcon> = {
   site: Globe,
 };
 
-const LIEN =
-  "text-dark-panel-muted hover:text-white transition-tout flex w-fit items-center gap-2 py-1 text-sm";
+const LIEN = "pied-lien text-[#b8c9e2] flex w-fit items-center gap-2 py-1 text-sm";
 
 export async function SiteFooter() {
   const t = await getTranslations("nav");
+  const tc = await getTranslations("constellation.footer");
   const { piedDePage } = await parametresPourGabarit();
 
   const reseaux = piedDePage.reseaux.filter((entree) => entree.url.trim().length > 0);
 
   return (
-    <footer className="border-dark-panel-line bg-dark-panel text-dark-panel-muted relative mt-10 border-t py-14">
-      {/* Filet dégradé au ras du bord haut : il rattache le pied de page à la
-          charte du site sans poser de texte sur une couleur non vérifiée. */}
-      <span
-        aria-hidden
-        className="from-ansd-bleu-vif to-ansd-vert-vif absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
-      />
+    <footer className="pied-revele relative bg-[var(--deep)] pt-24 pb-10 text-[#b8c9e2]">
+      <div className="mx-auto max-w-[1200px] px-6">
+        {/* Titre décoratif : le texte reste lisible (blanc sur bleu nuit,
+            dégradé animé sur « Dakar. » seulement). */}
+        <p className="pied-titre mb-12">
+          {tc("seeYou")}
+          <br />
+          {tc("preposition")} <span>{tc("city")}</span>
+        </p>
 
-      <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-10 px-6 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
-        <div>
-          {/* Logo officiel transparent, posé à même le fond, à la demande du
-              commanditaire (PLAN.md §20). Il porte le nom du Forum, que son texte
-              alternatif restitue. */}
-          <div className="mb-4 flex flex-col items-start gap-2">
-            <LogoForum alt="Forum international sur les données" taille="h-14" />
-            <small>Une initiative de l&apos;ANSD</small>
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
+          <div>
+            <p className="font-bold text-white">{tc("initiative")}</p>
+            {piedDePage.organisation && (
+              <p className="mt-3 flex max-w-[40ch] items-start gap-2 text-sm">
+                <MapPin aria-hidden size={15} className="mt-0.5 shrink-0 opacity-70" />
+                <span>
+                  {piedDePage.organisation}
+                  {piedDePage.adresse ? `, ${piedDePage.adresse}` : ""}
+                </span>
+              </p>
+            )}
+            {piedDePage.email && (
+              <a href={`mailto:${piedDePage.email}`} className={`${LIEN} mt-2`}>
+                <Mail aria-hidden size={15} className="shrink-0 opacity-70" />
+                {piedDePage.email}
+              </a>
+            )}
+            {piedDePage.telephone && (
+              <a href={`tel:${piedDePage.telephone.replace(/\s/g, "")}`} className={LIEN}>
+                <Phone aria-hidden size={15} className="shrink-0 opacity-70" />
+                {piedDePage.telephone}
+              </a>
+            )}
           </div>
 
-          {piedDePage.organisation && (
-            <p className="flex max-w-[40ch] items-start gap-2 text-sm">
-              <MapPin aria-hidden size={15} className="mt-0.5 shrink-0 opacity-70" />
-              <span>
-                {piedDePage.organisation}
-                {piedDePage.adresse ? `, ${piedDePage.adresse}` : ""}
-              </span>
-            </p>
-          )}
+          <div>
+            <h2 className="mb-3 text-base font-semibold text-white">{t("home")}</h2>
+            <ul>
+              <li>
+                <Link href="/#a-propos" className={LIEN}>
+                  {t("about")}
+                </Link>
+              </li>
+              <li>
+                <Link href="/programme" className={LIEN}>
+                  {t("program")}
+                </Link>
+              </li>
+              <li>
+                <Link href="/intervenants" className={LIEN}>
+                  {t("speakers")}
+                </Link>
+              </li>
+              <li>
+                <Link href="/sponsors" className={LIEN}>
+                  {t("sponsors")}
+                </Link>
+              </li>
+            </ul>
+          </div>
 
-          {piedDePage.email && (
-            <a href={`mailto:${piedDePage.email}`} className={LIEN}>
-              <Mail aria-hidden size={15} className="shrink-0 opacity-70" />
-              {piedDePage.email}
-            </a>
-          )}
-          {piedDePage.telephone && (
-            <a href={`tel:${piedDePage.telephone.replace(/\s/g, "")}`} className={LIEN}>
-              <Phone aria-hidden size={15} className="shrink-0 opacity-70" />
-              {piedDePage.telephone}
-            </a>
-          )}
+          <div>
+            <h2 className="mb-3 text-base font-semibold text-white">{t("register")}</h2>
+            <ul>
+              <li>
+                <Link href="/inscription" className={LIEN}>
+                  {t("register")}
+                </Link>
+              </li>
+              <li>
+                <Link href="/mon-espace" className={LIEN}>
+                  {t("myRegistrations")}
+                </Link>
+              </li>
+              <li>
+                <Link href="/verifier" className={LIEN}>
+                  {t("verifyBadge")}
+                </Link>
+              </li>
+              <li>
+                <Link href="/infos-pratiques" className={LIEN}>
+                  {t("practicalInfo")}
+                </Link>
+              </li>
+              {piedDePage.liens.map((lien) => (
+                <li key={lien.url}>
+                  <Link href={lien.url} className={LIEN}>
+                    {lien.libelle}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-base font-semibold text-white">{tc("follow")}</h2>
+            {reseaux.length === 0 ? (
+              // Rien plutôt qu'une liste de noms sans lien : trois libellés morts
+              // donnaient l'impression d'un site inachevé.
+              <p className="text-sm">—</p>
+            ) : (
+              <ul>
+                {reseaux.map((entree) => {
+                  const Icone = ICONES_RESEAU[entree.reseau as Reseau] ?? Globe;
+                  return (
+                    <li key={entree.reseau}>
+                      <a
+                        href={entree.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={LIEN}
+                      >
+                        <Icone aria-hidden size={15} className="shrink-0 opacity-70" />
+                        {RESEAUX_LABELS[entree.reseau as Reseau] ?? entree.reseau}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </div>
 
-        <div>
-          <h2 className="font-display mb-3 text-[0.92rem] text-white">{t("home")}</h2>
-          <Link href="/#a-propos" className={LIEN}>
-            {t("about")}
-          </Link>
-          <Link href="/programme" className={LIEN}>
-            {t("program")}
-          </Link>
-          <Link href="/intervenants" className={LIEN}>
-            {t("speakers")}
-          </Link>
-          <Link href="/sponsors" className={LIEN}>
-            {t("sponsors")}
-          </Link>
-        </div>
-
-        <div>
-          <h2 className="font-display mb-3 text-[0.92rem] text-white">{t("register")}</h2>
-          <Link href="/inscription" className={LIEN}>
-            {t("register")}
-          </Link>
-          <Link href="/mon-espace" className={LIEN}>
-            {t("myRegistrations")}
-          </Link>
-          <Link href="/verifier" className={LIEN}>
-            {t("verifyBadge")}
-          </Link>
-          <Link href="/infos-pratiques" className={LIEN}>
-            {t("practicalInfo")}
-          </Link>
-          {piedDePage.liens.map((lien) => (
-            <Link key={lien.url} href={lien.url} className={LIEN}>
-              {lien.libelle}
-            </Link>
-          ))}
-        </div>
-
-        <div>
-          <h2 className="font-display mb-3 text-[0.92rem] text-white">Suivre</h2>
-          {reseaux.length === 0 ? (
-            // Rien plutôt qu'une liste de noms sans lien : trois libellés morts
-            // donnaient l'impression d'un site inachevé.
-            <p className="text-sm">—</p>
-          ) : (
-            reseaux.map((entree) => {
-              const Icone = ICONES_RESEAU[entree.reseau as Reseau] ?? Globe;
-              return (
-                <a
-                  key={entree.reseau}
-                  href={entree.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={LIEN}
-                >
-                  <Icone aria-hidden size={15} className="shrink-0 opacity-70" />
-                  {RESEAUX_LABELS[entree.reseau as Reseau] ?? entree.reseau}
-                </a>
-              );
-            })
-          )}
-        </div>
-
-        <div className="border-dark-panel-line col-span-full flex flex-wrap justify-between gap-2.5 border-t pt-5 text-sm md:col-span-4">
+        <div className="mt-12 flex flex-wrap justify-between gap-3 border-t border-white/10 pt-6 text-sm">
           <span>{piedDePage.mentionCopyright}</span>
-          <span className="flex flex-wrap items-center gap-x-3">
+          <span className="flex flex-wrap items-center gap-x-4">
             <Link href="/confidentialite" className={LIEN}>
               <ShieldCheck aria-hidden size={14} className="opacity-70" />
-              Politique de confidentialité
+              {tc("privacy")}
             </Link>
             <Link href="/mentions-legales" className={LIEN}>
-              Mentions légales
+              {tc("legal")}
             </Link>
           </span>
+          <span className="police-grotesk tracking-wide">{tc("motto")}</span>
         </div>
       </div>
     </footer>

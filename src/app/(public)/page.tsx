@@ -1,5 +1,4 @@
 import { getLocale } from "next-intl/server";
-import { BarreProgression } from "@/components/site/animations-accueil";
 import { getActiveEdition } from "@/lib/edition";
 import { chargerDonnees } from "@/modules/sections/donnees";
 import { sectionsVisibles } from "@/modules/sections/service";
@@ -29,20 +28,13 @@ export default async function HomePage() {
   const sections = await sectionsVisibles(edition.id, "accueil");
 
   if (sections.length === 0) {
-    return (
-      <>
-        <BarreProgression />
-        <SectionsParDefaut edition={edition} page="accueil" locale={locale} />
-      </>
-    );
+    return <SectionsParDefaut edition={edition} page="accueil" locale={locale} />;
   }
 
   const donnees = await chargerDonnees(edition, sections);
 
   return (
     <>
-      {/* Progression de lecture : l'accueil est la seule page assez longue pour en avoir besoin. */}
-      <BarreProgression />
       {sections.map((section) => (
         <RenduSection key={section.id} section={section} donnees={donnees} locale={locale} />
       ))}

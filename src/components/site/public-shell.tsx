@@ -3,12 +3,19 @@ import { getTranslations } from "next-intl/server";
 import { Ticker } from "./ticker";
 import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
+import { EffetsGlobaux } from "@/components/motion/EffetsGlobaux";
 
 export async function PublicShell({ children }: { children: ReactNode }) {
   const t = await getTranslations("nav");
 
+  /*
+   * `.site-public` porte la palette et les polices du site public
+   * (constellation.css) ; le BackOffice, qui n'a pas ce cadre, garde les
+   * siennes. Le contenu vit dans un « rideau » qui glisse au-dessus du pied de
+   * page révélé (brief §3).
+   */
   return (
-    <>
+    <div className="site-public">
       {/*
        * Lien d'évitement (WCAG 2.4.1). L'en-tête colle en haut de page et porte
        * jusqu'à une douzaine de liens : sans ce raccourci, atteindre le contenu
@@ -23,10 +30,13 @@ export async function PublicShell({ children }: { children: ReactNode }) {
       >
         {t("skipToContent")}
       </a>
-      <Ticker />
-      <SiteHeader />
-      <main id="contenu">{children}</main>
+      <div className="rideau">
+        <Ticker />
+        <SiteHeader />
+        <main id="contenu">{children}</main>
+      </div>
       <SiteFooter />
-    </>
+      <EffetsGlobaux />
+    </div>
   );
 }

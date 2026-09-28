@@ -67,7 +67,7 @@ export function NavDropdown({ label, links }: { label: string; links: NavLink[] 
         aria-expanded={open}
         aria-haspopup="true"
         aria-controls={menuId}
-        className={`transition-tout text-ansd-bleu-nuit focus-visible:outline-ansd-bleu-nuit flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-medium whitespace-nowrap hover:bg-white/60 ${
+        className={`lien-menu transition-tout text-ansd-bleu-nuit focus-visible:outline-ansd-bleu-nuit flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-medium whitespace-nowrap hover:bg-white/60 ${
           // Sur la barre bleu clair (PLAN.md §20), la rubrique courante se marque
           // par un fond éclairci.
           active || open ? "bg-white/60" : ""

@@ -168,12 +168,11 @@ test("l'en-tête porte le logo officiel et des liens lisibles sur le bleu clair"
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
-  // Les logos sont bien chargés : celui de l'ANSD et celui du Forum dans
-  // l'en-tête, celui du Forum dans le pied de page.
+  // Les logos de l'ANSD et du Forum sont bien chargés dans l'en-tête. Le pied
+  // de page « Rendez-vous à Dakar. » n'en porte plus (brief « Constellation »).
   for (const logo of [
     page.locator('header img[src="/images/logo-ansd.webp"]'),
     page.locator('header img[src="/images/logo-forum-2026.webp"]'),
-    page.locator('footer img[src="/images/logo-forum-2026.webp"]'),
   ]) {
     await logo.scrollIntoViewIfNeeded();
     await expect

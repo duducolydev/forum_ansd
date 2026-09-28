@@ -51,5 +51,55 @@
   },
   "newsPage": {
     "empty": "Aucune actualité publiée pour l'instant."
+  },
+  "constellation": {
+    "backToTop": "Retour en haut de page",
+    "ticker": {
+      "dates": "{venue}, Dakar · {dates}",
+      "registrations": "Ouverture des inscriptions : 5 octobre 2026",
+      "translation": "Traduction simultanée FR · EN",
+      "motto": "Données · Innovation · Impact"
+    },
+    "footer": {
+      "seeYou": "Rendez-vous",
+      "preposition": "à",
+      "city": "Dakar.",
+      "initiative": "Une initiative de l'ANSD",
+      "follow": "Suivre",
+      "privacy": "Politique de confidentialité",
+      "legal": "Mentions légales",
+      "motto": "Données · Innovation · Impact"
+    },
+    "countdown": {
+      "label": "JOUR J −",
+      "days": "j",
+      "hours": "h",
+      "minutes": "min",
+      "seconds": "s",
+      "aria": "Compte à rebours avant l'ouverture du Forum : {days} jours, {hours} heures et {minutes} minutes",
+      "live": "Le Forum est en cours",
+      "over": "Merci ! Rendez-vous aux actes du Forum"
+    },
+    "hero": {
+      "scroll": "Faire défiler"
+    },
+    "speakers": {
+      "hover": "SURVOLER ↻",
+      "touch": "TOUCHER ↻",
+      "profile": "Voir le profil",
+      "seeAll": "Voir tout",
+      "turnHint": "Retourner la carte de {name}"
+    },
+    "news": {
+      "eyebrow": "SUIVRE LE FORUM",
+      "label": "ACTUALITÉ",
+      "read": "Lire l'article",
+      "all": "Toutes les actualités"
+    },
+    "partners": {
+      "pause": "Mettre en pause",
+      "resume": "Reprendre le défilement",
+      "seeAll": "Voir tout"
+    }
   }
 }
