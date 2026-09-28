@@ -71,7 +71,8 @@ export interface TypeSection {
   besoins: Besoin[];
 }
 
-export type Besoin = "stats" | "actualites" | "sponsors" | "intervenants" | "sessions";
+export type Besoin =
+  "stats" | "actualites" | "sponsors" | "intervenants" | "sessions" | "ouverture";
 
 /** Un bouton d'appel à l'action, tel que stocké dans les réglages d'une section. */
 export interface BoutonSection {
@@ -127,8 +128,19 @@ const TYPES: TypeSection[] = [
         max: 3,
         aide: "Le premier est mis en avant, les suivants sont secondaires.",
       },
+      {
+        cle: "logo",
+        label: "Grand logo",
+        type: "choix",
+        options: [
+          { cle: "anime", label: "Logo animé (reconstruction)" },
+          { cle: "officiel", label: "Fichier du logo officiel" },
+        ],
+        defaut: "anime",
+        aide: "Le logo animé redessine l'emblème ; le logo officiel affiche le fichier fourni, avec les mêmes effets.",
+      },
     ],
-    besoins: ["stats"],
+    besoins: ["ouverture"],
   },
   {
     cle: "texte",

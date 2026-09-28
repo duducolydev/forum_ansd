@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { PageSection } from "@prisma/client";
 import {
@@ -10,13 +9,15 @@ import {
   MapPin,
   Mic,
   Newspaper,
-  Radio,
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { Countdown } from "@/components/site/countdown";
-import { CompteurAnime, Inclinaison, ReseauDonnees } from "@/components/site/animations-accueil";
-import { LOGO_FORUM } from "@/components/site/logo-forum";
+import { CompteurAnime } from "@/components/site/animations-accueil";
+import { Reveal as RevealMotion } from "@/components/motion/Reveal";
+import { SplitTitle } from "@/components/motion/SplitTitle";
+import { ReseauHero } from "@/components/home/ReseauHero";
+import { MiniCountdown } from "@/components/home/MiniCountdown";
+import { AnimatedLogo } from "@/components/home/AnimatedLogo";
 import { plageDeDates } from "@/lib/dates-edition";
 import { Reveal } from "@/components/site/reveal";
 import { EnteteSection } from "@/components/site/entete-section";
@@ -42,21 +43,6 @@ import { IntervenantsFiltrables } from "./intervenants-filtrables";
  * se coupent sous `prefers-reduced-motion`. Les couleurs reprennent des jetons
  * déjà vérifiés en contraste ; les dégradés décoratifs ne portent aucun texte.
  */
-
-/**
- * Statistiques de participation du bandeau d'accueil : masquées (demande du
- * commanditaire, 22 septembre 2026), le temps que les inscriptions démarrent.
- *
- * Un compteur qui annonce douze confirmés sur une page d'accueil publiée avant
- * l'ouverture dessert le Forum plus qu'il ne le sert. Le compte à rebours, lui,
- * reste : il dit la même chose sans chiffre à comparer.
- *
- * Un interrupteur plutôt qu'un bloc mis en commentaire : le code reste compilé,
- * relu par TypeScript et par ESLint, donc encore juste le jour où il faudra le
- * rallumer — repasser cette constante à `true` suffit, et rien d'autre n'est à
- * retrouver.
- */
-const STATS_ACCUEIL_VISIBLES: boolean = false;
 
 interface Props {
   section: PageSection;
@@ -236,30 +222,30 @@ export function RenduSection({ section, donnees, locale }: Props) {
 
   switch (section.type) {
     case "hero": {
-      const stats = donnees.stats;
       const accroche = texte(section, "titre", locale);
-      const avecCompteur = section.variant === "avec-compteur";
-      const maxPays = Math.max(1, ...(stats?.topCountries.map((row) => row.count) ?? [1]));
+      const avecLogo = section.variant === "avec-compteur";
+      const logo = lireTexte(section.settings, "logo") === "officiel" ? "official" : "animated";
+      const ouverture = donnees.ouverture ?? edition.startDate;
 
       /*
-       * Illustration à gauche : le texte passe du côté opposé, pour qu'aucune
-       * lettre ne repose sur le décor. Avec le grand logo, c'est lui qui vient
-       * à gauche, par-dessus l'illustration ; sans lui, le texte occupe la
-       * moitié droite.
+       * Bandeau « Constellation » (brief §4.1) : deux colonnes, texte à gauche
+       * et grand logo animé à droite ; une seule colonne sous 1 024 px, le
+       * logo passant sous le texte.
+       *
+       * L'illustration éventuelle reste un décor estompé sur une moitié du
+       * bandeau, du côté opposé au texte. Aucun texte ne repose dessus.
        */
       const decorAGauche = Boolean(illustration) && imageAGauche;
 
       return (
-        <section id={ancre} className={`fond-bandeau border-border border-b${classeAncre}`}>
+        <section
+          id={ancre}
+          className={`bandeau-accueil fond-bandeau border-border border-b${classeAncre}`}
+        >
           {illustration && (
-            /*
-             * Décor, et rien d'autre : `aria-hidden`, cantonné à une moitié sur
-             * grand écran, estompé vers le texte par un masque, et absent sur
-             * téléphone où le texte occupe toute la largeur.
-             */
             <span
               aria-hidden
-              className={`pointer-events-none absolute inset-y-0 hidden w-1/2 lg:block ${
+              className={`pointer-events-none absolute inset-y-0 -z-10 hidden w-1/2 lg:block ${
                 decorAGauche ? "left-0" : "right-0"
               }`}
               style={{
@@ -273,141 +259,66 @@ export function RenduSection({ section, donnees, locale }: Props) {
             />
           )}
 
-          {/* Réseau de points animé, en fond : décor seulement (`animations-accueil.tsx`). */}
-          <ReseauDonnees className="opacity-70" />
-
-          {/*
-           * Nom du Forum, en tête du bandeau et sur toute la largeur du cadre
-           * (demande du commanditaire, 22 septembre 2026). Il porte le `h1` de
-           * la page : l'accroche qui suit est un `h2`.
-           *
-           * Le compte à rebours, en miniature, se range à sa droite (demande du
-           * 28 septembre 2026) : le grand logo a pris la place de son panneau.
-           * Sur téléphone, il passe sous le titre.
-           */}
-          <div
-            className={`${CADRE} relative flex flex-wrap items-start justify-between gap-x-8 gap-y-4 pt-12`}
-          >
-            <Reveal className="w-full lg:w-auto lg:min-w-0 lg:flex-1">
-              <h1 className="titre-forum">{edition.title}</h1>
-            </Reveal>
-            {avecCompteur && (
-              <Reveal delai={200} className="shrink-0">
-                <div className="border-dark-panel-line bg-dark-panel text-dark-panel-text relative overflow-hidden rounded-xl border px-3 pt-2 pb-2.5 shadow-[var(--shadow)]">
-                  <span
-                    aria-hidden
-                    className="from-ansd-bleu-vif to-ansd-vert-vif absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
-                  />
-                  <div className="text-dark-panel-muted mb-1.5 flex items-center gap-1.5 text-[0.62rem] font-semibold tracking-wide uppercase">
-                    <Radio aria-hidden size={11} className="text-ansd-vert-vif pulsation" />
-                    {en ? "Countdown" : "Compte à rebours"}
-                  </div>
-                  <Countdown targetIso={edition.startDate.toISOString()} variante="mini" en={en} />
-                </div>
-              </Reveal>
-            )}
-          </div>
+          {/* Décor : réseau de données (canvas différé) et taches floues. */}
+          <ReseauHero />
+          <span aria-hidden className="tache tache--1" />
+          <span aria-hidden className="tache tache--2" />
+          <span aria-hidden className="tache tache--3" />
 
           <div
-            className={`${CADRE} relative grid items-center gap-10 pt-6 pb-16 lg:gap-13 ${
-              avecCompteur ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
+            className={`${CADRE} relative grid w-full items-center gap-12 pt-12 pb-24 ${
+              avecLogo ? "lg:grid-cols-[1.2fr_0.95fr]" : ""
             }`}
           >
-            <Reveal className={!avecCompteur && decorAGauche ? "lg:ms-auto lg:w-1/2" : undefined}>
-              <span className="border-border bg-surface/70 text-heading mb-5 inline-flex flex-wrap items-center gap-2.5 rounded-full border px-4 py-1.5 text-sm font-semibold backdrop-blur">
-                <CalendarDays aria-hidden size={15} className="text-accent-text" />
-                {plageDeDates(edition.startDate, edition.endDate, en)}
-                <span aria-hidden className="bg-border h-3.5 w-px" />
-                <MapPin aria-hidden size={15} className="text-accent-text" />
-                {edition.venue}
-              </span>
+            <div className={avecLogo && decorAGauche ? "lg:order-last" : undefined}>
+              {avecLogo && (
+                <RevealMotion variant="left" delay={0.1} className="mb-7">
+                  <MiniCountdown
+                    cibleIso={ouverture.toISOString()}
+                    finIso={edition.endDate.toISOString()}
+                  />
+                </RevealMotion>
+              )}
 
-              {/*
-               * Titre et chapeau forment un seul bloc, de la largeur du chapeau
-               * (PLAN.md §20). Chapeau justifié et coupé selon la langue ; titre
-               * centré dans cette largeur, lignes équilibrées.
-               */}
-              <div className="max-w-[54ch] text-lg">
-                {accroche && accroche !== edition.title && (
-                  <h2 className="mb-5 text-center text-balance">{accroche}</h2>
-                )}
+              {/* Le nom du Forum porte le `h1` ; l'accroche qui suit est un `h2`. */}
+              <SplitTitle texte={edition.title} className="titre-accueil uppercase" />
+
+              <RevealMotion variant="up" delay={0.9} className="mt-7 mb-6">
+                <span className="pastille-conique text-sm sm:text-base">
+                  <span className="inline-flex items-center gap-2">
+                    <CalendarDays aria-hidden size={17} className="text-[var(--green-text)]" />
+                    {plageDeDates(edition.startDate, edition.endDate, en)}
+                  </span>
+                  <span aria-hidden className="hidden h-[18px] w-px bg-[var(--line)] sm:block" />
+                  <span className="inline-flex items-center gap-2">
+                    <MapPin aria-hidden size={17} className="text-[var(--green-text)]" />
+                    {edition.venue}
+                  </span>
+                </span>
+              </RevealMotion>
+
+              {accroche && accroche !== edition.title && (
+                <RevealMotion variant="blur" delay={1.1}>
+                  <h2 className="slogan-degrade max-w-[22ch] text-balance">{accroche}</h2>
+                </RevealMotion>
+              )}
+
+              <RevealMotion variant="up" delay={1.3}>
                 <TexteRiche
                   valeur={texte(section, "chapo", locale) || edition.theme || ""}
-                  className="text-text-2 mb-8 text-justify leading-relaxed hyphens-auto"
+                  className="mt-4 mb-8 max-w-[560px] text-[1.12rem] leading-[1.7] text-[var(--muted)]"
                 />
-              </div>
-              <Boutons boutons={lireBoutons(lireReglage(section, "boutons"))} locale={locale} />
-            </Reveal>
+              </RevealMotion>
 
-            {avecCompteur && (
-              <Reveal delai={120} className={decorAGauche ? "lg:order-first" : undefined}>
-                {/*
-                 * Le logo du Forum en très grand, à la place du compte à rebours
-                 * (demande du 28 septembre 2026). Il flotte, un halo coloré
-                 * tourne lentement derrière lui, et il s'incline vers le
-                 * pointeur. `alt` vide : le `h1` juste au-dessus porte déjà le
-                 * même nom, qu'un lecteur d'écran lirait deux fois.
-                 */}
-                <div className="relative mx-auto w-full max-w-[600px]">
-                  <span aria-hidden className="halo-logo" />
-                  <Inclinaison angleMax={7} echelle={1.03}>
-                    {/* Plaque claire en thème sombre seulement (`.plaque-logo`) : le
-                        texte bleu du logo ne se lit pas sur le bleu nuit. */}
-                    <div className="logo-flotte plaque-logo">
-                      <Image
-                        src={LOGO_FORUM.src}
-                        alt=""
-                        width={LOGO_FORUM.largeur}
-                        height={LOGO_FORUM.hauteur}
-                        unoptimized
-                        priority
-                        className="relative h-auto w-full drop-shadow-[0_18px_30px_rgb(8_44_78/0.18)]"
-                      />
-                    </div>
-                  </Inclinaison>
-                </div>
+              <RevealMotion variant="up" delay={1.5}>
+                <Boutons boutons={lireBoutons(lireReglage(section, "boutons"))} locale={locale} />
+              </RevealMotion>
+            </div>
 
-                {STATS_ACCUEIL_VISIBLES && stats && (
-                  <div className="border-dark-panel-line bg-dark-panel text-dark-panel-text mt-6 rounded-2xl border p-5">
-                    <div className="flex items-end gap-3">
-                      <Users aria-hidden size={20} className="text-ansd-vert-vif mb-1 shrink-0" />
-                      <b className="num font-display text-[2.1rem] leading-none font-extrabold">
-                        {stats.confirmedParticipants}
-                      </b>
-                      <span className="text-dark-panel-muted pb-1 text-sm">
-                        {en ? "confirmed" : "confirmés"}
-                        <span aria-hidden className="mx-1.5">
-                          ·
-                        </span>
-                        <Globe2 aria-hidden size={13} className="mb-0.5 inline" />{" "}
-                        {stats.countryCount} {en ? "countries" : "pays"}
-                      </span>
-                    </div>
-
-                    {stats.topCountries.length > 0 && (
-                      <div className="mt-4 flex flex-col gap-2">
-                        {stats.topCountries.map((row) => (
-                          <div
-                            key={row.country}
-                            className="text-dark-panel-muted flex items-center gap-2.5 text-xs"
-                          >
-                            <span className="w-20 shrink-0 truncate">{row.country}</span>
-                            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-                              <span
-                                className="from-ansd-vert-vif to-ansd-bleu-vif block h-full rounded-full bg-gradient-to-r"
-                                style={{ width: `${Math.max(6, (row.count / maxPays) * 100)}%` }}
-                              />
-                            </span>
-                            <span className="w-6 text-right tabular-nums">{row.count}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </Reveal>
-            )}
+            {avecLogo && <AnimatedLogo variant={logo} />}
           </div>
+
+          <span aria-hidden className="molette hidden lg:block" />
         </section>
       );
     }

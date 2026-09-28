@@ -30,7 +30,7 @@ export type TailleSite = "normal" | "compact";
 
 const TONS: Record<TonSite, string> = {
   principal:
-    "bg-primary text-primary-text hover:bg-primary-hover shadow-sm hover:shadow-lg hover:-translate-y-0.5",
+    "bouton-reflet bg-primary text-primary-text hover:bg-primary-hover shadow-sm hover:shadow-lg hover:-translate-y-0.5",
   secondaire:
     "border-border bg-surface text-heading hover:border-link border hover:-translate-y-0.5 hover:shadow-md",
   discret: "text-link hover:bg-blue-soft border border-transparent",
@@ -42,7 +42,7 @@ const TAILLES: Record<TailleSite, string> = {
 };
 
 const BASE =
-  "transition-tout inline-flex items-center justify-center font-semibold no-underline disabled:pointer-events-none disabled:opacity-60";
+  "transition-tout relative overflow-hidden inline-flex items-center justify-center font-semibold no-underline disabled:pointer-events-none disabled:opacity-60";
 
 export function classesBoutonSite(ton: TonSite = "secondaire", taille: TailleSite = "normal") {
   return `${BASE} ${TONS[ton]} ${TAILLES[taille]}`;
@@ -102,7 +102,9 @@ export function LienSite({
   ...reste
 }: CommunSite & ComponentProps<typeof Link>) {
   return (
-    <Link className={`${classesBoutonSite(ton, taille)} ${className}`} {...reste}>
+    // `data-magnetic` : aimant et ondulation au clic (`EffetsGlobaux`), sur le
+    // site public seulement — le BackOffice ne monte pas ces effets.
+    <Link data-magnetic className={`${classesBoutonSite(ton, taille)} ${className}`} {...reste}>
       {contenu({ icone, iconeApres, taille, children })}
     </Link>
   );
@@ -127,6 +129,7 @@ export function LienSiteExterne({
 }: CommunSite & ComponentProps<"a">) {
   return (
     <a
+      data-magnetic
       className={`${classesBoutonSite(ton, taille)} ${className}`}
       target={target}
       rel={target === "_blank" ? (rel ?? "noopener noreferrer") : rel}

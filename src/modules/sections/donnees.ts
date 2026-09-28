@@ -20,6 +20,11 @@ const PLAFOND = 12;
 export interface DonneesSections {
   edition: Edition;
   stats?: Awaited<ReturnType<typeof getHomeStats>>;
+  /**
+   * Heure d'ouverture du Forum, cible du compte à rebours : début de la
+   * première session publiée — l'édition ne porte qu'une date, à minuit.
+   */
+  ouverture?: Date;
   actualites?: Awaited<ReturnType<typeof listPosts>>;
   /** Partenaires publiés, dans l'ordre décidé par le comité — le même que sur leur page. */
   sponsors?: Awaited<ReturnType<typeof listerSponsorsPublies>>;
@@ -56,6 +61,20 @@ export async function chargerDonnees(
       getHomeStats(edition.id).then((stats) => {
         donnees.stats = stats;
       }),
+    );
+  }
+
+  if (besoins.has("ouverture")) {
+    travaux.push(
+      prisma.session
+        .findFirst({
+          where: { editionId: edition.id, isPublished: true, deletedAt: null },
+          orderBy: { startTime: "asc" },
+          select: { startTime: true },
+        })
+        .then((premiere) => {
+          donnees.ouverture = premiere?.startTime ?? edition.startDate;
+        }),
     );
   }
 
