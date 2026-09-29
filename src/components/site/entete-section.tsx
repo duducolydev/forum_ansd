@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Eyebrow } from "@/components/motion/Reveal";
-import { ScrambleText } from "@/components/motion/ScrambleText";
 import { SplitTitle } from "@/components/motion/SplitTitle";
 
 /**
@@ -58,20 +56,14 @@ export function EnteteSection({
   const Titre = niveau;
 
   /*
-   * Bandeau « Constellation » (brief §6, arbitrage du 28 septembre 2026) :
-   * l'étiquette revient — une ligne, qui se décode lettre par lettre — et le
-   * titre arrive lettre par lettre. La description reste retirée : le
-   * bandeau doit rester compact.
+   * Bandeau « Constellation » : **le titre seul** (demande du 29 septembre
+   * 2026), qui arrive lettre par lettre. `surtitre` et `description` restent
+   * acceptés, comme le 22 septembre, mais ne sont pas affichés en bandeau.
    */
   if (bandeau) {
     return (
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          {surtitre && (
-            <Eyebrow className="mb-2 text-[0.72rem]">
-              <ScrambleText texte={surtitre} />
-            </Eyebrow>
-          )}
           <div className="flex items-center gap-3">
             {Icone && <Icone aria-hidden size={26} className="shrink-0 text-[var(--green-text)]" />}
             <SplitTitle as={Titre} texte={titre} delaiInitial={0.1} className="titre-page" />

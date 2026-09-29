@@ -37,7 +37,7 @@ export default async function EspaceIntervenantPage({
       <>
         <BandeauPage largeur="etroit" reseau={false}>
           <div className="text-center">
-            <h1 className="mb-1 flex items-center justify-center gap-3">
+            <h1 className="flex items-center justify-center gap-3">
               <span
                 aria-hidden
                 className="bg-blue-soft text-blue-text inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl"
@@ -46,15 +46,15 @@ export default async function EspaceIntervenantPage({
               </span>
               Espace intervenant
             </h1>
-            <p className="text-text-2 mx-auto max-w-[68ch]">
-              Déposez votre photo, votre biographie et votre présentation. Indiquez l&apos;adresse à
-              laquelle le comité vous a écrit : vous recevrez un lien d&apos;accès valable 30
-              minutes.
-            </p>
           </div>
         </BandeauPage>
 
         <CorpsPage largeur="etroit">
+          {/* Consigne sous le bandeau, qui ne porte plus que le titre (29 septembre 2026). */}
+          <p className="text-text-2 mx-auto mb-6 max-w-[68ch] text-center">
+            Déposez votre photo, votre biographie et votre présentation. Indiquez l&apos;adresse à
+            laquelle le comité vous a écrit : vous recevrez un lien d&apos;accès valable 30 minutes.
+          </p>
           {lien === "invalide" && (
             <p className="bg-danger-soft text-danger-text mb-4 flex items-start gap-2 rounded-lg px-4 py-3 text-sm">
               <AlertCircle aria-hidden size={16} className="mt-0.5 shrink-0" />
@@ -95,17 +95,17 @@ export default async function EspaceIntervenantPage({
       <BandeauPage largeur="moyen" reseau={false}>
         {/* Espace personnel : ni canvas ni curseur (brief §6). */}
         <span data-sans-curseur hidden />
-        <span className="surtitre mb-1">Espace intervenant</span>
-        <h1 className="mb-1 flex items-center gap-3">
+        <h1 className="flex items-center gap-3">
           <Mic aria-hidden size={26} className="text-accent-text shrink-0" />
           {vue.nom}
         </h1>
-        <p className="text-text-2">
-          {[vue.jobTitle, vue.organization, vue.country].filter(Boolean).join(" · ")}
-        </p>
       </BandeauPage>
 
       <CorpsPage largeur="moyen">
+        {/* Fonction et organisation sous le bandeau, qui ne porte plus que le titre. */}
+        <p className="text-text-2 mb-6">
+          {[vue.jobTitle, vue.organization, vue.country].filter(Boolean).join(" · ")}
+        </p>
         <SpeakerSpace speaker={vue} />
       </CorpsPage>
     </>

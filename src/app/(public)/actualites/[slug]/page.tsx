@@ -57,31 +57,31 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
   return (
     <article>
       <BandeauPage largeur="moyen">
-        {/*
-         * Le retour au fil d'actualité est placé avant le titre et porte une
-         * flèche : sur téléphone, le bouton « précédent » du navigateur est le
-         * seul chemin de retour, et il disparaît quand la page a été ouverte
-         * depuis un lien partagé.
-         */}
-        <LienSite href="/actualites" ton="discret" taille="compact" icone={ArrowLeft}>
-          {en ? "All news" : "Toutes les actualités"}
-        </LienSite>
-
         <SplitTitle
           texte={(en ? post.titleEn : post.titleFr) || post.titleFr}
           delaiInitial={0.1}
-          className="titre-page mt-2 mb-1"
+          className="titre-page"
         />
-
-        {date && (
-          <p className="text-text-3 flex items-center gap-1.5 text-sm">
-            <CalendarDays aria-hidden size={14} />
-            <time dateTime={post.publishedAt?.toISOString()}>{date}</time>
-          </p>
-        )}
       </BandeauPage>
 
       <CorpsPage largeur="moyen">
+        {/*
+         * Retour au fil et date, en tête du contenu : le bandeau ne porte plus
+         * que le titre (29 septembre 2026). Le retour reste en haut — sur
+         * téléphone, le bouton « précédent » disparaît quand la page a été
+         * ouverte depuis un lien partagé.
+         */}
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+          <LienSite href="/actualites" ton="discret" taille="compact" icone={ArrowLeft}>
+            {en ? "All news" : "Toutes les actualités"}
+          </LienSite>
+          {date && (
+            <p className="text-text-3 flex items-center gap-1.5 text-sm">
+              <CalendarDays aria-hidden size={14} />
+              <time dateTime={post.publishedAt?.toISOString()}>{date}</time>
+            </p>
+          )}
+        </div>
         {chapo && (
           <Reveal>
             <p className="text-heading border-accent-text mb-8 border-l-2 pl-5 text-xl leading-relaxed font-medium">

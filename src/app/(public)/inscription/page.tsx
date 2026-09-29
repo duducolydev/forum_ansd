@@ -176,6 +176,7 @@ export default async function RegisterPage({
           icone={UserPlus}
           action={
             <MiniCountdown
+              petit
               cibleIso={(await heureOuverture(edition)).toISOString()}
               finIso={edition.endDate.toISOString()}
             />

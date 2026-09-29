@@ -21,7 +21,7 @@ export default async function ValiderConnexionPage({
         {/* Formulaire sensible : pas de curseur personnalisé (brief §6). */}
         <span data-sans-curseur hidden />
         <div className="text-center">
-          <h1 className="mb-1 flex items-center justify-center gap-3">
+          <h1 className="flex items-center justify-center gap-3">
             <span
               aria-hidden
               className="bg-blue-soft text-blue-text inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl"
@@ -30,14 +30,15 @@ export default async function ValiderConnexionPage({
             </span>
             Validation de la connexion
           </h1>
-          <p className="text-text-2 mx-auto max-w-[68ch]">
-            Ce lien vous ouvre le BackOffice sur cet appareil. Il ne sert qu&apos;une fois et expire
-            dix minutes après son envoi.
-          </p>
         </div>
       </BandeauPage>
 
       <CorpsPage largeur="etroit" espacement="serre">
+        {/* Consigne sous le bandeau, qui ne porte plus que le titre (29 septembre 2026). */}
+        <p className="text-text-2 mx-auto mb-6 max-w-[68ch] text-center">
+          Ce lien vous ouvre le BackOffice sur cet appareil. Il ne sert qu&apos;une fois et expire
+          dix minutes après son envoi.
+        </p>
         <ValidationLien jeton={token} />
       </CorpsPage>
     </>

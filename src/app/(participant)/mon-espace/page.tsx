@@ -92,7 +92,7 @@ export default async function MySpacePage({
       <>
         <BandeauPage largeur="etroit" reseau={false}>
           <div className="text-center">
-            <h1 className="mb-1 flex items-center justify-center gap-3">
+            <h1 className="flex items-center justify-center gap-3">
               <span
                 aria-hidden
                 className="bg-blue-soft text-blue-text inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl"
@@ -101,14 +101,15 @@ export default async function MySpacePage({
               </span>
               Mon espace
             </h1>
-            <p className="text-text-2 mx-auto max-w-[68ch]">
-              Pas de mot de passe : indiquez votre adresse e-mail, nous vous envoyons un lien
-              d&apos;accès valable 30 minutes.
-            </p>
           </div>
         </BandeauPage>
 
         <CorpsPage largeur="etroit">
+          {/* Consigne sous le bandeau, qui ne porte plus que le titre (29 septembre 2026). */}
+          <p className="text-text-2 mx-auto mb-6 max-w-[68ch] text-center">
+            Pas de mot de passe : indiquez votre adresse e-mail, nous vous envoyons un lien
+            d&apos;accès valable 30 minutes.
+          </p>
           <div className="border-border bg-surface rounded-2xl border p-7 shadow-sm">
             <MagicLinkForm linkError={erreur === "lien"} />
           </div>
@@ -131,30 +132,28 @@ export default async function MySpacePage({
   return (
     <>
       <BandeauPage largeur="moyen" reseau={false}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <span className="surtitre mb-1">Mon espace</span>
-            <h1 className="mb-1">
-              Bonjour {participant.firstName} {participant.lastName}
-            </h1>
-            <p className="text-text-2 flex flex-wrap items-center gap-2">
-              <StatusBadge status={participant.status} />
-              <span>{participant.category.labelFr}</span>
-              <span className="text-text-3">·</span>
-              <span className="text-text-3">N° {participant.publicId}</span>
-            </p>
-          </div>
+        <h1>
+          Bonjour {participant.firstName} {participant.lastName}
+        </h1>
+      </BandeauPage>
+
+      {/* Espace personnel : animations minimales, ni canvas ni curseur (brief §6). */}
+      <span data-sans-curseur hidden />
+      <CorpsPage largeur="moyen" className="flex flex-col gap-6">
+        {/* Statut et déconnexion sous le bandeau, qui ne porte plus que le titre. */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="text-text-2 flex flex-wrap items-center gap-2">
+            <StatusBadge status={participant.status} />
+            <span>{participant.category.labelFr}</span>
+            <span className="text-text-3">·</span>
+            <span className="text-text-3">N° {participant.publicId}</span>
+          </p>
           <form action={logoutAction}>
             <BoutonSite type="submit" taille="compact" icone={LogOut}>
               Se déconnecter
             </BoutonSite>
           </form>
         </div>
-      </BandeauPage>
-
-      {/* Espace personnel : animations minimales, ni canvas ni curseur (brief §6). */}
-      <span data-sans-curseur hidden />
-      <CorpsPage largeur="moyen" className="flex flex-col gap-6">
         <Reveal>
           <Panneau icone={BadgeCheck} ton="bg-accent-soft text-accent-text" titre="Mon badge">
             {badge?.pdfPath ? (

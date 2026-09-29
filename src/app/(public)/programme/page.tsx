@@ -201,6 +201,7 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
           icone={CalendarDays}
           action={
             <MiniCountdown
+              petit
               cibleIso={ouverture.toISOString()}
               finIso={edition.endDate.toISOString()}
             />

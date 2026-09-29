@@ -25,6 +25,7 @@ import { LienSite, LienSiteExterne } from "@/components/site/bouton-site";
 import { Reveal } from "@/components/site/reveal";
 import { listerPubliees } from "@/modules/contributions/service";
 import { BlocContribution } from "@/modules/contributions/components/bloc-public";
+import { SplitTitle } from "@/components/motion/SplitTitle";
 
 export const dynamic = "force-dynamic";
 
@@ -104,26 +105,34 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
   return (
     <article>
       <BandeauPage largeur="moyen">
-        <LienSite href="/programme" ton="discret" taille="compact" icone={ArrowLeft}>
-          Programme
-        </LienSite>
-
-        <p className="surtitre mt-2 mb-1">
-          {TYPE_LABELS[session.type]}
-          {session.theme ? ` · ${session.theme}` : ""}
-        </p>
-        <h1 className="mb-2.5">{session.titleFr}</h1>
-
-        <div className="flex flex-wrap gap-2.5">
-          <Repere icone={CalendarDays}>{jourLong.format(session.day)}</Repere>
-          <Repere icone={Clock}>
-            {heure(session.startTime)} – {heure(session.endTime)}
-          </Repere>
-          {session.room && <Repere icone={MapPin}>{session.room.name}</Repere>}
-        </div>
+        <SplitTitle texte={session.titleFr} delaiInitial={0.1} className="titre-page" />
       </BandeauPage>
 
       <CorpsPage largeur="moyen" className="flex flex-col gap-10">
+        {/* Retour, format et repères : en tête du contenu, le bandeau ne
+            porte plus que le titre (29 septembre 2026). */}
+        <div className="flex flex-col gap-3">
+          <LienSite
+            href="/programme"
+            ton="discret"
+            taille="compact"
+            icone={ArrowLeft}
+            className="self-start"
+          >
+            Programme
+          </LienSite>
+          <p className="surtitre">
+            {TYPE_LABELS[session.type]}
+            {session.theme ? ` · ${session.theme}` : ""}
+          </p>
+          <div className="flex flex-wrap gap-2.5">
+            <Repere icone={CalendarDays}>{jourLong.format(session.day)}</Repere>
+            <Repere icone={Clock}>
+              {heure(session.startTime)} – {heure(session.endTime)}
+            </Repere>
+            {session.room && <Repere icone={MapPin}>{session.room.name}</Repere>}
+          </div>
+        </div>
         {session.places.etat !== "SANS_RESERVATION" && (
           <Reveal>
             <div className="filet-haut border-border bg-surface relative overflow-hidden rounded-2xl border p-6">

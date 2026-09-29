@@ -20,7 +20,7 @@ export default async function LoginPage({
         {/* Formulaire sensible : pas de curseur personnalisé (brief §6). */}
         <span data-sans-curseur hidden />
         <div className="text-center">
-          <h1 className="mb-1 flex items-center justify-center gap-3">
+          <h1 className="flex items-center justify-center gap-3">
             <span
               aria-hidden
               className="bg-blue-soft text-blue-text inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl"
@@ -29,14 +29,15 @@ export default async function LoginPage({
             </span>
             Connexion à l&apos;organisation
           </h1>
-          <p className="text-text-2 mx-auto max-w-[68ch]">
-            Espace réservé au comité d&apos;organisation. Les participants accèdent à leur dossier
-            par « Mon espace ».
-          </p>
         </div>
       </BandeauPage>
 
       <CorpsPage largeur="etroit">
+        {/* Consigne sous le bandeau, qui ne porte plus que le titre (29 septembre 2026). */}
+        <p className="text-text-2 mx-auto mb-6 max-w-[68ch] text-center">
+          Espace réservé au comité d&apos;organisation. Les participants accèdent à leur dossier par
+          « Mon espace ».
+        </p>
         {/* Transmise telle quelle ; le serveur la valide avant de s'en servir. */}
         <LoginForm callbackUrl={typeof callbackUrl === "string" ? callbackUrl : ""} />
       </CorpsPage>
