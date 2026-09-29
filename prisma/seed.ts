@@ -155,6 +155,9 @@ async function main() {
       labelEn: "Media",
       color: "#C8323A",
       autoConfirm: false,
+      // Presse : bouton « Accréditer » au BackOffice, e-mail d'attente dédié,
+      // mention « Accréditation presse » sur le badge.
+      requiresAccreditation: true,
       requiresLogistics: false,
       sortOrder: 80,
     },
@@ -998,14 +1001,38 @@ async function main() {
       key: "registration_confirmed",
       subjectFr: "Votre participation au Forum est confirmée",
       subjectEn: "Your participation in the Forum is confirmed",
+      // `lien_espace` ouvre directement l'espace (lien signé, 14 jours) et
+      // `code6` est un code de secours : plus d'aller-retour par la page
+      // « Mon espace » après la confirmation (29 septembre 2026).
       bodyFr:
-        "Bonjour {{prenom}},\n\nVotre participation au Forum international sur les données est confirmée. Retrouvez vos informations dans votre espace : {{lien_espace}}\n{{referent_bloc}}\n\nCordialement,\nLe comité d'organisation",
+        "Bonjour {{prenom}},\n\nVotre participation au Forum international sur les données est confirmée.\n\nAccédez directement à votre espace, sans autre démarche : {{lien_espace}}\nCe lien vous est personnel ; il reste valable 14 jours.\n\nCode d'accès de secours, à saisir avec votre adresse e-mail sur la page « Mon espace » : {{code6}}\n{{referent_bloc}}\n\nCordialement,\nLe comité d'organisation",
       bodyEn:
-        "Hello {{prenom}},\n\nYour participation in the International Data Forum is confirmed. Find your details in your personal space: {{lien_espace}}\n{{referent_bloc}}\n\nBest regards,\nThe organising committee",
+        'Hello {{prenom}},\n\nYour participation in the International Data Forum is confirmed.\n\nGo straight to your personal space, with no further step: {{lien_espace}}\nThis link is personal and remains valid for 14 days.\n\nBackup access code, to enter with your e-mail address on the "My space" page: {{code6}}\n{{referent_bloc}}\n\nBest regards,\nThe organising committee',
       // `referent_bloc` est un paragraphe entier, composé côté serveur et vide
       // quand le participant n'a pas de délégation : le moteur ne sait pas
       // conditionner, et une phrase à trous aurait été envoyée telle quelle.
-      variables: ["prenom", "lien_espace", "referent_bloc"],
+      variables: ["prenom", "lien_espace", "code6", "referent_bloc"],
+    },
+    // Presse : attente puis octroi de l'accréditation (29 septembre 2026).
+    {
+      key: "accreditation_pending",
+      subjectFr: "Votre demande d'accréditation presse est bien reçue",
+      subjectEn: "Your press accreditation request has been received",
+      bodyFr:
+        "Bonjour {{prenom}},\n\nNous avons bien reçu votre demande d'accréditation presse pour le Forum international sur les données.\n\nVotre compte sera activé dès que l'administration du Forum aura accordé votre accréditation. Vous recevrez alors un e-mail avec un accès direct à votre espace, où vous retrouverez votre badge presse.\n\nCordialement,\nLe comité d'organisation",
+      bodyEn:
+        "Hello {{prenom}},\n\nWe have received your press accreditation request for the International Data Forum.\n\nYour account will be activated as soon as the Forum administration has granted your accreditation. You will then receive an e-mail with direct access to your personal space, where your press badge will be available.\n\nBest regards,\nThe organising committee",
+      variables: ["prenom"],
+    },
+    {
+      key: "accreditation_granted",
+      subjectFr: "Votre accréditation presse est accordée",
+      subjectEn: "Your press accreditation has been granted",
+      bodyFr:
+        "Bonjour {{prenom}},\n\nVotre accréditation presse pour le Forum international sur les données est accordée : votre compte est activé.\n\nAccédez directement à votre espace : {{lien_espace}}\nCe lien vous est personnel ; il reste valable 14 jours.\n\nCode d'accès de secours, à saisir avec votre adresse e-mail sur la page « Mon espace » : {{code6}}\n\nVotre badge presse, qui porte la mention « Accréditation presse », y sera disponible dès sa génération.\n\nCordialement,\nLe comité d'organisation",
+      bodyEn:
+        'Hello {{prenom}},\n\nYour press accreditation for the International Data Forum has been granted: your account is now active.\n\nGo straight to your personal space: {{lien_espace}}\nThis link is personal and remains valid for 14 days.\n\nBackup access code, to enter with your e-mail address on the "My space" page: {{code6}}\n\nYour press badge, marked "Press accreditation", will be available there as soon as it is generated.\n\nBest regards,\nThe organising committee',
+      variables: ["prenom", "lien_espace", "code6"],
     },
     {
       key: "badge_ready",

@@ -165,6 +165,7 @@ export async function enregistrerCategorieAction(
       autoConfirm: formData.get("autoConfirm") === "on",
       requiresLogistics: formData.get("requiresLogistics") === "on",
       alertOnScan: formData.get("alertOnScan") === "on",
+      requiresAccreditation: formData.get("requiresAccreditation") === "on",
     });
     await service.enregistrerCategorie(editionId, categoryId, valeurs, acteur);
   } catch (erreur) {

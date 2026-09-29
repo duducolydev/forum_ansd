@@ -283,6 +283,7 @@ export async function enregistrerCategorie(
       autoConfirm: valeurs.autoConfirm,
       requiresLogistics: valeurs.requiresLogistics,
       alertOnScan: valeurs.alertOnScan,
+      requiresAccreditation: valeurs.requiresAccreditation,
     },
   });
 
@@ -297,12 +298,14 @@ export async function enregistrerCategorie(
       autoConfirm: avant.autoConfirm,
       isActive: avant.isActive,
       alertOnScan: avant.alertOnScan,
+      requiresAccreditation: avant.requiresAccreditation,
     },
     after: {
       labelFr: apres.labelFr,
       autoConfirm: apres.autoConfirm,
       isActive: apres.isActive,
       alertOnScan: apres.alertOnScan,
+      requiresAccreditation: apres.requiresAccreditation,
     },
   });
 

@@ -8,6 +8,7 @@ import {
   declineParticipant,
   markBadged,
   publicIdPrefix,
+  statutInitial,
   type Actor,
 } from "./service";
 import { DuplicateParticipantEmailError, InvalidParticipantTransitionError } from "./errors";
@@ -18,6 +19,22 @@ const actor: Actor = { type: "SYSTEM" };
 describe("publicIdPrefix (fonction pure)", () => {
   it("derives the badge prefix from the edition code", () => {
     expect(publicIdPrefix("FID-2026")).toBe("FID26");
+  });
+});
+
+describe("statut initial d'une inscription", () => {
+  it("confirme d'office une catégorie à validation automatique", () => {
+    expect(statutInitial({ autoConfirm: true, requiresAccreditation: false })).toBe("CONFIRMED");
+  });
+
+  it("n'accrédite jamais la presse d'office, même en validation automatique", () => {
+    expect(statutInitial({ autoConfirm: true, requiresAccreditation: true })).toBe("REGISTERED");
+  });
+
+  it("valide l'inscription sur place, presse comprise", () => {
+    expect(statutInitial({ autoConfirm: false, requiresAccreditation: true }, "ONSITE")).toBe(
+      "CONFIRMED",
+    );
   });
 });
 
@@ -136,6 +153,32 @@ describe("machine à états des participants (brief §2.3)", () => {
 
     const checkedIn = await checkIn(created.id, actor);
     expect(checkedIn.status).toBe("CHECKED_IN");
+  });
+
+  it("accrédite un journaliste : date, trace et code de secours", async () => {
+    const { input, editionId, editionCode } = await buildInput("MEDIA"); // accréditation requise
+    const created = await createParticipant({
+      editionId,
+      editionCode,
+      input,
+      source: "ONLINE",
+      actor,
+    });
+    participantIds.push(created.id);
+    expect(created.status).toBe("REGISTERED");
+    expect(created.accreditedAt).toBeNull();
+
+    const accredite = await confirmParticipant(created.id, actor);
+    expect(accredite.status).toBe("CONFIRMED");
+    expect(accredite.accreditedAt).not.toBeNull();
+
+    const trace = await prisma.auditLog.findFirst({
+      where: { entityId: created.id, action: "participant.accredit" },
+    });
+    expect(trace).not.toBeNull();
+    // L'e-mail d'accréditation porte un code de secours, valable plusieurs jours.
+    const code = await prisma.magicLink.findFirst({ where: { participantId: created.id } });
+    expect(code?.expiresAt.getTime()).toBeGreaterThan(Date.now() + 24 * 60 * 60 * 1000);
   });
 
   it("rejects confirming a participant that is not REGISTERED", async () => {

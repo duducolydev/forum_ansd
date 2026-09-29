@@ -176,6 +176,7 @@ export const categorieSchema = z.object({
   autoConfirm: z.boolean(),
   requiresLogistics: z.boolean(),
   alertOnScan: z.boolean(),
+  requiresAccreditation: z.boolean().default(false),
 });
 
 export type Identite = z.infer<typeof identiteSchema>;

@@ -11,6 +11,7 @@ import { renderBadgeHtml } from "./template";
 import { logoBadgeDataUrl } from "./logo";
 import { datesDuForum } from "./dates";
 import { buildBadgeToken, hashBadgeToken, parseBadgeToken, verifyBadgeSignature } from "./token";
+import { variablesAccesDirect } from "@/modules/auth/acces-direct";
 
 /** Sélection minimale nécessaire au rendu — évite de charger tout le participant. */
 const participantForBadge = {
@@ -26,7 +27,8 @@ const participantForBadge = {
   status: true,
   photoPath: true,
   editionId: true,
-  category: { select: { labelFr: true, labelEn: true, color: true } },
+  accreditedAt: true,
+  category: { select: { labelFr: true, labelEn: true, color: true, requiresAccreditation: true } },
   edition: { select: { title: true, startDate: true, endDate: true } },
 } satisfies Prisma.ParticipantSelect;
 
@@ -73,6 +75,11 @@ async function renderAndStore(badge: Badge): Promise<{ pdfPath: string; pngPath:
     country: participant.country,
     categoryLabel: participant.category.labelFr,
     categoryColor: participant.category.color,
+    // Presse accréditée : la mention est imprimée, pour le contrôle à l'entrée.
+    mention:
+      participant.category.requiresAccreditation && participant.accreditedAt
+        ? "ACCRÉDITATION PRESSE"
+        : null,
     publicId: participant.publicId,
     // Le QR encode l'URL de vérification publique : un scanner générique
     // (appareil photo de téléphone) ouvre directement la page de contrôle.
@@ -200,14 +207,18 @@ export async function generateBadge(
     }
   }
 
-  const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
+  // Le lien du badge ouvre directement l'espace, où le badge se télécharge :
+  // plus de passage par la page de connexion (29 septembre 2026).
+  const { lien_espace: lienBadge } = await variablesAccesDirect(participantId, {
+    avecCode: false,
+  });
   await enqueueNotification(
     {
       editionId: participant.editionId,
       templateKey: "badge_ready",
       to: participant.email,
       participantId,
-      variables: { prenom: participant.firstName, lien_badge: `${baseUrl}/mon-espace` },
+      variables: { prenom: participant.firstName, lien_badge: lienBadge },
     },
     `badge-ready-${updated.id}-v${updated.version}`,
   );

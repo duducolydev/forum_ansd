@@ -214,8 +214,10 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
         <h2 className="mb-2 text-xl">Inscription enregistrée</h2>
         <p>
           {state.success.autoConfirmed
-            ? "Votre participation est confirmée. Vous allez recevoir un e-mail avec l'accès à votre espace."
-            : "Votre inscription est enregistrée et en attente de validation par le comité d'organisation. Vous recevrez un e-mail dès qu'elle sera confirmée."}
+            ? "Votre participation est confirmée. Vous allez recevoir un e-mail avec un accès direct à votre espace."
+            : state.success.accreditation
+              ? "Votre demande d'accréditation presse est enregistrée. Votre compte sera activé dès que l'administration du Forum aura accordé votre accréditation ; vous recevrez alors un e-mail avec un accès direct à votre espace."
+              : "Votre inscription est enregistrée et en attente de validation par le comité d'organisation. Vous recevrez un e-mail dès qu'elle sera confirmée, avec un accès direct à votre espace."}
         </p>
       </div>
     );

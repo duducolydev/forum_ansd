@@ -141,6 +141,29 @@ export async function requestMagicLink(
   return { status: "SENT" };
 }
 
+/**
+ * Code de secours joint à un e-mail de confirmation (`acces-direct.ts`).
+ *
+ * Même table et mêmes règles que les codes demandés depuis « Mon espace » :
+ * seul le dernier code valide est comparé, cinq erreurs l'annulent. Il ne
+ * s'accompagne pas d'un lien — c'est le lien signé de l'e-mail qui en tient
+ * lieu — et n'annule pas les codes précédents : ceux-ci ne sont de toute
+ * façon plus comparés.
+ */
+export async function creerCodeSecours(participantId: string, jours: number): Promise<string> {
+  const code6 = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  await prisma.magicLink.create({
+    data: {
+      participantId,
+      // Jeton aléatoire jamais transmis : le code est le seul moyen d'usage.
+      tokenHash: hashToken(randomBytes(32).toString("base64url")),
+      code6,
+      expiresAt: new Date(Date.now() + jours * 24 * 60 * 60 * 1000),
+    },
+  });
+  return code6;
+}
+
 /** Consommation du lien : le jeton est à usage unique. */
 export async function consumeMagicLink(token: string): Promise<MagicLinkConsumeResult> {
   const magicLink = await prisma.magicLink.findUnique({

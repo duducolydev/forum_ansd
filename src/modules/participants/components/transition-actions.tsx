@@ -1,5 +1,5 @@
 "use client";
-import { Check, CircleSlash, X, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Check, CircleSlash, X, type LucideIcon } from "lucide-react";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -53,18 +53,35 @@ const ACTIONS: Partial<
   ],
 };
 
+/**
+ * Presse (catégorie « Accréditation requise ») : la validation s'appelle
+ * « Accréditer ». C'est la même transition — elle date l'accréditation,
+ * l'imprime sur le badge et envoie l'e-mail d'accréditation accordée.
+ */
+const ACCREDITER = {
+  label: "Accréditer",
+  icone: BadgeCheck,
+  run: confirmParticipantAction,
+  className: "bg-primary text-primary-text hover:bg-primary-hover",
+};
+
 export function TransitionActions({
   participantId,
   status,
+  accreditation = false,
 }: {
   participantId: string;
   status: ParticipantStatus;
+  /** Catégorie soumise à accréditation (presse). */
+  accreditation?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const actions = ACTIONS[status] ?? [];
+  const actions = (ACTIONS[status] ?? []).map((action) =>
+    accreditation && action.run === confirmParticipantAction ? ACCREDITER : action,
+  );
   if (actions.length === 0) return null;
 
   function run(action: (id: string) => Promise<{ error?: string }>) {

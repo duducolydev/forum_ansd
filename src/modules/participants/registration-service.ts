@@ -5,16 +5,25 @@ import { captchaProvider } from "@/lib/captcha";
 import { rateLimit } from "@/lib/rate-limit";
 import { enqueueNotification } from "@/modules/notifications/jobs";
 import { reconcileByEmail, getInvitationByToken } from "@/modules/invitations/service";
-import { blocReferent } from "@/modules/referents/service";
-import { CHAMPS_PUBLICS as CHAMPS_REFERENT } from "@/modules/referents/repository";
 import { parametresFrais } from "@/modules/settings/service";
 import { etatInscriptions } from "@/modules/settings/regles";
-import { enqueueBadgeGeneration, generateUniquePublicId } from "./service";
+import {
+  enqueueBadgeGeneration,
+  envoyerConfirmation,
+  generateUniquePublicId,
+  statutInitial,
+} from "./service";
 import { saveParticipantPhoto } from "./photo";
 import type { RegistrationInput } from "./registration-schema";
 
 export type RegistrationResult =
-  | { status: "OK"; participantId: string; participantStatus: ParticipantStatus }
+  | {
+      status: "OK";
+      participantId: string;
+      participantStatus: ParticipantStatus;
+      /** Inscription de presse, en attente d'accréditation. */
+      accreditation: boolean;
+    }
   | { status: "DUPLICATE_EMAIL" }
   | { status: "RATE_LIMITED"; retryAfterSeconds: number }
   | { status: "CAPTCHA_FAILED" }
@@ -116,7 +125,7 @@ export async function registerPublicParticipant(options: {
   if (!category) {
     return { status: "CATEGORY_INVALID" };
   }
-  const status: ParticipantStatus = category.autoConfirm ? "CONFIRMED" : "REGISTERED";
+  const status: ParticipantStatus = statutInitial(category);
   const now = new Date();
 
   const participant = await prisma.participant.create({
@@ -198,39 +207,37 @@ export async function registerPublicParticipant(options: {
     await enqueueBadgeGeneration(participant.id);
   }
 
-  const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
-
   /*
-   * Coordonnées du référent de la délégation, reprises dans le message (§28).
+   * E-mail de suite (29 septembre 2026) :
    *
-   * Le bloc est composé ici en une seule variable plutôt qu'en plusieurs : le
-   * moteur de modèles ne sait que substituer, pas conditionner, et un
-   * participant sans délégation aurait lu « Votre référent est , joignable
-   * au ». Vide, la variable ne laisse rien derrière elle.
+   * - **confirmée d'office** : l'e-mail de confirmation, avec l'accès direct à
+   *   « Mon espace » (lien signé et code de secours) — plus d'aller-retour par
+   *   la page de connexion ;
+   * - **presse** : un e-mail propre, qui annonce que le compte sera activé une
+   *   fois l'accréditation accordée ;
+   * - **autres** : l'accusé de réception habituel, en attente du comité.
    */
-  const referent = participant.delegationId
-    ? await prisma.delegation
-        .findUnique({
-          where: { id: participant.delegationId },
-          select: { referent: { select: CHAMPS_REFERENT } },
-        })
-        .then((d) => d?.referent ?? null)
-    : null;
-
-  await enqueueNotification(
-    {
-      editionId,
-      templateKey: status === "CONFIRMED" ? "registration_confirmed" : "registration_received",
-      to: participant.email,
-      participantId: participant.id,
-      variables: {
-        prenom: participant.firstName,
-        lien_espace: `${baseUrl}/mon-espace`,
-        referent_bloc: blocReferent(referent, participant.locale === "en" ? "en" : "fr"),
+  if (status === "CONFIRMED") {
+    await envoyerConfirmation(participant.id);
+  } else {
+    await enqueueNotification(
+      {
+        editionId,
+        templateKey: category.requiresAccreditation
+          ? "accreditation_pending"
+          : "registration_received",
+        to: participant.email,
+        participantId: participant.id,
+        variables: { prenom: participant.firstName },
       },
-    },
-    `registration-${status.toLowerCase()}-${participant.id}`,
-  );
+      `registration-${status.toLowerCase()}-${participant.id}`,
+    );
+  }
 
-  return { status: "OK", participantId: participant.id, participantStatus: status };
+  return {
+    status: "OK",
+    participantId: participant.id,
+    participantStatus: status,
+    accreditation: category.requiresAccreditation,
+  };
 }

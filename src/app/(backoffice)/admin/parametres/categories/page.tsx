@@ -54,6 +54,7 @@ export default async function CategoriesPage() {
               autoConfirm: categorie.autoConfirm,
               requiresLogistics: categorie.requiresLogistics,
               alertOnScan: categorie.alertOnScan,
+              requiresAccreditation: categorie.requiresAccreditation,
               inscrits: categorie._count.participants,
             }}
           />

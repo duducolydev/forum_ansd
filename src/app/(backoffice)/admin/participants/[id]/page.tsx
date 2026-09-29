@@ -43,6 +43,11 @@ export default async function ParticipantDetailPage({
           <div className="mt-2 flex items-center gap-2">
             <StatusBadge status={participant.status} />
             <span className="text-text-3 text-sm">{participant.category.labelFr}</span>
+            {participant.category.requiresAccreditation && (
+              <span className="bg-gold-soft text-gold-text rounded-md px-2 py-0.5 text-xs font-semibold">
+                {participant.accreditedAt ? "Presse accréditée" : "Accréditation presse requise"}
+              </span>
+            )}
           </div>
         </div>
         {can(session, "participants.write") && (
@@ -54,7 +59,11 @@ export default async function ParticipantDetailPage({
 
       {can(session, "participants.write") && (
         <div className="border-border bg-surface mb-5 rounded-xl border p-4">
-          <TransitionActions participantId={participant.id} status={participant.status} />
+          <TransitionActions
+            participantId={participant.id}
+            status={participant.status}
+            accreditation={participant.category.requiresAccreditation}
+          />
         </div>
       )}
 
@@ -83,6 +92,16 @@ export default async function ParticipantDetailPage({
               : undefined
           }
         />
+        {participant.category.requiresAccreditation && (
+          <Info
+            label="Accréditation presse"
+            value={
+              participant.accreditedAt
+                ? `Accordée le ${new Date(participant.accreditedAt).toLocaleString("fr-FR")}`
+                : "En attente"
+            }
+          />
+        )}
       </dl>
 
       <BadgePanel

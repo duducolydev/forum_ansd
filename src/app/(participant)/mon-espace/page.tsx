@@ -13,6 +13,7 @@ import {
   UserPen,
   UserRoundCheck,
   Users,
+  Newspaper,
 } from "lucide-react";
 import { getParticipantSession } from "@/modules/auth/participant-session";
 import { logoutAction } from "@/modules/participants/my-space-actions";
@@ -119,6 +120,44 @@ export default async function MySpacePage({
               Remplir le formulaire
             </LienSite>
           </p>
+        </CorpsPage>
+      </>
+    );
+  }
+
+  /*
+   * Presse en attente d'accréditation (29 septembre 2026) : le compte n'est
+   * « activé » qu'à l'accréditation. D'ici là, l'espace ne montre que l'état de
+   * la demande — ni badge, ni formulaires.
+   */
+  if (participant.category.requiresAccreditation && participant.status === "REGISTERED") {
+    return (
+      <>
+        <BandeauPage largeur="moyen" reseau={false}>
+          <h1>
+            Bonjour {participant.firstName} {participant.lastName}
+          </h1>
+        </BandeauPage>
+        <span data-sans-curseur hidden />
+        <CorpsPage largeur="moyen" className="flex flex-col gap-6">
+          <Panneau
+            icone={Newspaper}
+            ton="bg-gold-soft text-gold-text"
+            titre="Accréditation presse en cours"
+          >
+            <p className="text-text-2 leading-relaxed">
+              Votre demande d&apos;accréditation presse est bien enregistrée. Votre compte sera
+              activé dès que l&apos;administration du Forum aura accordé votre accréditation : vous
+              recevrez alors un e-mail avec un accès direct à cet espace, où vous retrouverez votre
+              badge presse.
+            </p>
+            <p className="text-text-3 mt-3 text-sm">N° de dossier : {participant.publicId}</p>
+          </Panneau>
+          <form action={logoutAction}>
+            <BoutonSite type="submit" taille="compact" icone={LogOut}>
+              Se déconnecter
+            </BoutonSite>
+          </form>
         </CorpsPage>
       </>
     );

@@ -8,6 +8,10 @@ import { registerBadgeJobs } from "@/modules/badges/jobs";
 import * as repo from "./repository";
 import type { ParticipantInput, ParticipantSearchInput } from "./schema";
 import { DuplicateParticipantEmailError, InvalidParticipantTransitionError } from "./errors";
+import { enqueueNotification } from "@/modules/notifications/jobs";
+import { variablesAccesDirect } from "@/modules/auth/acces-direct";
+import { blocReferent } from "@/modules/referents/service";
+import { CHAMPS_PUBLICS as CHAMPS_REFERENT } from "@/modules/referents/repository";
 
 export interface Actor {
   type: "USER" | "PARTICIPANT" | "SYSTEM";
@@ -116,6 +120,66 @@ async function logTransition(
   });
 }
 
+/**
+ * Statut d'une inscription à sa création.
+ *
+ * Une catégorie soumise à accréditation (presse) n'est **jamais** confirmée
+ * d'office, même cochée « validation automatique » : c'est l'administration
+ * qui accrédite (29 septembre 2026). L'inscription sur place reste validée
+ * immédiatement — l'agent qui l'enregistre en répond.
+ */
+export function statutInitial(
+  category: { autoConfirm: boolean; requiresAccreditation: boolean },
+  source?: "ONLINE" | "ONSITE" | "IMPORT",
+): ParticipantStatus {
+  if (source === "ONSITE") return "CONFIRMED";
+  return category.autoConfirm && !category.requiresAccreditation ? "CONFIRMED" : "REGISTERED";
+}
+
+/**
+ * E-mail de confirmation, avec l'accès direct à « Mon espace » (lien signé et
+ * code de secours) : plus d'aller-retour par la page de connexion.
+ *
+ * Presse : l'e-mail annonce l'accréditation, sans le paragraphe du référent
+ * de délégation, sans objet pour un journaliste.
+ */
+export async function envoyerConfirmation(participantId: string): Promise<void> {
+  const participant = await prisma.participant.findUniqueOrThrow({
+    where: { id: participantId },
+    select: {
+      id: true,
+      editionId: true,
+      email: true,
+      firstName: true,
+      locale: true,
+      category: { select: { requiresAccreditation: true } },
+      delegation: { select: { referent: { select: CHAMPS_REFERENT } } },
+    },
+  });
+  const presse = participant.category.requiresAccreditation;
+  const acces = await variablesAccesDirect(participant.id, { avecCode: true });
+
+  await enqueueNotification(
+    {
+      editionId: participant.editionId,
+      templateKey: presse ? "accreditation_granted" : "registration_confirmed",
+      to: participant.email,
+      participantId: participant.id,
+      variables: {
+        prenom: participant.firstName,
+        ...acces,
+        referent_bloc: presse
+          ? ""
+          : blocReferent(
+              participant.delegation?.referent ?? null,
+              participant.locale === "en" ? "en" : "fr",
+            ),
+      },
+    },
+    `confirmation-${participant.id}`,
+  );
+}
+
 export async function enqueueBadgeGeneration(participantId: string): Promise<void> {
   registerBadgeJobs();
   await jobQueue.enqueue(
@@ -153,9 +217,9 @@ export async function createParticipant(options: CreateParticipantOptions): Prom
   });
 
   // Inscription sur place = validée immédiatement (brief §5.7) ; en ligne/import,
-  // le statut dépend de l'auto-confirmation de la catégorie (brief §5.3).
-  const status: ParticipantStatus =
-    source === "ONSITE" || category.autoConfirm ? "CONFIRMED" : "REGISTERED";
+  // le statut dépend de l'auto-confirmation de la catégorie (brief §5.3), et
+  // une catégorie à accréditation attend toujours l'administration.
+  const status = statutInitial(category, source);
 
   const publicId = await generateUniquePublicId(editionCode);
   const now = new Date();
@@ -170,6 +234,7 @@ export async function createParticipant(options: CreateParticipantOptions): Prom
     status,
     registeredAt: now,
     confirmedAt: status === "CONFIRMED" ? now : null,
+    accreditedAt: status === "CONFIRMED" && category.requiresAccreditation ? now : null,
   });
 
   await audit.log({
@@ -296,7 +361,7 @@ export async function completeRegistration(
   const category = await prisma.participantCategory.findUniqueOrThrow({
     where: { id: input.categoryId },
   });
-  const nextStatus: ParticipantStatus = category.autoConfirm ? "CONFIRMED" : "REGISTERED";
+  const nextStatus = statutInitial(category);
   const now = new Date();
 
   const updated = await repo.updateParticipant(participantId, {
@@ -306,6 +371,7 @@ export async function completeRegistration(
     status: nextStatus,
     registeredAt: now,
     confirmedAt: nextStatus === "CONFIRMED" ? now : null,
+    accreditedAt: nextStatus === "CONFIRMED" && category.requiresAccreditation ? now : null,
   });
 
   await logTransition(
@@ -323,22 +389,42 @@ export async function completeRegistration(
   return updated;
 }
 
-/** Validation manuelle par le comité (brief §2.3, §5.3). */
+/**
+ * Validation manuelle par le comité (brief §2.3, §5.3) — ou **accréditation**
+ * pour une catégorie qui l'exige (presse, 29 septembre 2026) : c'est la même
+ * transition, tracée sous son propre nom et datée dans `accreditedAt`.
+ *
+ * Le participant reçoit alors l'e-mail de confirmation avec l'accès direct à
+ * son espace ; jusqu'ici, la validation par le comité n'envoyait rien.
+ */
 export async function confirmParticipant(
   participantId: string,
   actor: Actor,
 ): Promise<Participant> {
-  const participant = await prisma.participant.findUniqueOrThrow({ where: { id: participantId } });
+  const participant = await prisma.participant.findUniqueOrThrow({
+    where: { id: participantId },
+    include: { category: { select: { requiresAccreditation: true } } },
+  });
   await assertStatus(participant, ["REGISTERED"], "confirm");
+  const accreditation = participant.category.requiresAccreditation;
+  const maintenant = new Date();
 
   const updated = await repo.updateParticipant(participantId, {
     status: "CONFIRMED",
-    confirmedAt: new Date(),
+    confirmedAt: maintenant,
+    accreditedAt: accreditation ? maintenant : null,
     confirmedBy: actor.userId ? { connect: { id: actor.userId } } : { disconnect: true },
   });
 
-  await logTransition(participantId, "participant.confirm", participant.status, "CONFIRMED", actor);
+  await logTransition(
+    participantId,
+    accreditation ? "participant.accredit" : "participant.confirm",
+    participant.status,
+    "CONFIRMED",
+    actor,
+  );
   await enqueueBadgeGeneration(participantId);
+  await envoyerConfirmation(participantId);
 
   return updated;
 }

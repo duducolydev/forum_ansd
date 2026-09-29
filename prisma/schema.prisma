@@ -281,20 +281,23 @@ model Role {
 // ---------------------------------------------------------------------------
 
 model ParticipantCategory {
-  id                String   @id @default(cuid())
-  editionId         String
-  code              String
-  labelFr           String
-  labelEn           String
-  color             String?
-  badgeTemplateId   String?
-  autoConfirm       Boolean  @default(false)
-  requiresLogistics Boolean  @default(false)
-  alertOnScan       Boolean  @default(false) // scan orange : catégorie à accueillir (§2.5)
-  sortOrder         Int      @default(0)
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  editionId             String
+  code                  String
+  labelFr               String
+  labelEn               String
+  color                 String?
+  badgeTemplateId       String?
+  autoConfirm           Boolean  @default(false)
+  requiresLogistics     Boolean  @default(false)
+  alertOnScan           Boolean  @default(false) // scan orange : catégorie à accueillir (§2.5)
+  /// Inscription soumise à accréditation (presse) : bouton « Accréditer » au
+  /// BackOffice, e-mail d'attente dédié, mention sur le badge (29/09/2026).
+  requiresAccreditation Boolean  @default(false)
+  sortOrder             Int      @default(0)
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   edition       Edition        @relation(fields: [editionId], references: [id], onDelete: Cascade)
   participants  Participant[]
@@ -344,6 +347,8 @@ model Participant {
   source              ParticipantSource @default(ONLINE)
   registeredAt        DateTime?
   confirmedAt         DateTime?
+  /// Date de l'accréditation presse, pour les catégories qui l'exigent.
+  accreditedAt        DateTime?
   confirmedById       String?
   notes               String?           @db.Text
   createdAt           DateTime          @default(now())
@@ -698,11 +703,11 @@ model SessionRegistration {
 // ---------------------------------------------------------------------------
 
 model SponsorLevel {
-  id           String @id @default(cuid())
+  id           String  @id @default(cuid())
   editionId    String
   code         String
   name         String
-  sortOrder    Int    @default(0)
+  sortOrder    Int     @default(0)
   logoMaxWidth Int?
   /// Couleur sur le site (`modules/sponsors/palette.ts`) ; vide = déduite du libellé.
   color        String? @db.VarChar(20)

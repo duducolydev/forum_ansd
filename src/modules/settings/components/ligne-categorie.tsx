@@ -19,6 +19,7 @@ export interface CategorieAffichee {
   autoConfirm: boolean;
   requiresLogistics: boolean;
   alertOnScan: boolean;
+  requiresAccreditation: boolean;
   inscrits: number;
 }
 
@@ -129,6 +130,15 @@ export function LigneCategorie({ categorie }: { categorie: CategorieAffichee }) 
           </Case>
           <Case nom="alertOnScan" id={`alerte-${categorie.id}`} coche={categorie.alertOnScan}>
             Scan orange (à accueillir)
+          </Case>
+          {/* Presse : bouton « Accréditer », e-mail d'attente dédié, mention sur le
+              badge. Prime sur la validation automatique. */}
+          <Case
+            nom="requiresAccreditation"
+            id={`accreditation-${categorie.id}`}
+            coche={categorie.requiresAccreditation}
+          >
+            Accréditation requise (presse)
           </Case>
         </div>
 

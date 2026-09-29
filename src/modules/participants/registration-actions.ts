@@ -10,7 +10,7 @@ export interface RegistrationState {
   error?: string;
   /** L'e-mail est déjà inscrit : l'UI propose le lien magique plutôt qu'un doublon. */
   duplicateEmail?: boolean;
-  success?: { autoConfirmed: boolean };
+  success?: { autoConfirmed: boolean; accreditation: boolean };
 }
 
 // Jamais le premier élément de X-Forwarded-For, que le client choisit (§18).
@@ -77,7 +77,12 @@ export async function submitRegistrationAction(
 
     switch (result.status) {
       case "OK":
-        return { success: { autoConfirmed: result.participantStatus === "CONFIRMED" } };
+        return {
+          success: {
+            autoConfirmed: result.participantStatus === "CONFIRMED",
+            accreditation: result.accreditation,
+          },
+        };
       case "DUPLICATE_EMAIL":
         return { duplicateEmail: true };
       case "RATE_LIMITED":

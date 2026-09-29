@@ -21,6 +21,11 @@ export interface BadgeTemplateData {
   categoryLabel: string;
   /** Couleur de la catégorie (`ParticipantCategory.color`), pour le bandeau et la pastille. */
   categoryColor: string | null;
+  /**
+   * Mention imprimée en bande sous l'en-tête — « ACCRÉDITATION PRESSE » pour un
+   * journaliste accrédité (29 septembre 2026). Absente pour les autres.
+   */
+  mention?: string | null;
   publicId: string;
   qrDataUrl: string;
   photoDataUrl: string | null;
@@ -104,6 +109,13 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
     flex: 0 0 auto; height: 2mm;
     background: linear-gradient(90deg, ${ANSD_BLEU_VIF}, ${accent});
   }
+  /* Mention d'accréditation : blanc sur bleu nuit, lisible quelle que soit la
+     couleur de la catégorie ; le filet de gauche en rappelle la couleur. */
+  .mention {
+    flex: 0 0 auto; padding: 1mm 2mm;
+    background: ${ANSD_BLEU_NUIT}; color: #fff; border-left: 1.2mm solid ${accent};
+    font-size: 6.2pt; font-weight: 800; letter-spacing: 0.14em; text-align: center;
+  }
   /* Identité : occupe la place restante et se centre dedans. */
   .body {
     flex: 1 1 auto; min-height: 0; overflow: hidden;
@@ -150,6 +162,7 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
       </div>
     </div>
     <div class="band"></div>
+    ${data.mention ? `<div class="mention">${escapeHtml(data.mention)}</div>` : ""}
     <div class="body">
       ${avatar}
       <div class="name">${escapeHtml(data.firstName)}<br /><span class="last">${escapeHtml(data.lastName)}</span></div>
