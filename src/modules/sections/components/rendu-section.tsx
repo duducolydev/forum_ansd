@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { PageSection } from "@prisma/client";
 import {
   ArrowRight,
@@ -6,6 +7,7 @@ import {
   Clock,
   Globe2,
   Handshake,
+  Mail,
   MapPin,
   Mic,
   Newspaper,
@@ -30,7 +32,13 @@ import { Reveal } from "@/components/site/reveal";
 import { EnteteSection } from "@/components/site/entete-section";
 import { TexteRiche } from "@/components/site/texte-riche";
 import { urlVersionnee } from "@/lib/url-fichier";
-import { iconeDeLien, LienSite, LienSiteExterne } from "@/components/site/bouton-site";
+import {
+  classesBoutonSite,
+  iconeDeLien,
+  LienSite,
+  LienSiteExterne,
+} from "@/components/site/bouton-site";
+import { LienNousEcrire } from "@/modules/contact/components/lien-nous-ecrire";
 import { resolveLocaleValue } from "@/modules/content/service";
 import type { BoutonSection } from "../catalogue";
 import { lireBooleen, lireBoutons, lireContenu, lireNombre, lireTexte } from "../schema";
@@ -109,8 +117,17 @@ function fondDe(variant: string): { className: string; theme?: "dark" } {
   };
 }
 
-function Boutons({ boutons, locale }: { boutons: BoutonSection[]; locale: "fr" | "en" }) {
-  if (boutons.length === 0) return null;
+function Boutons({
+  boutons,
+  locale,
+  children,
+}: {
+  boutons: BoutonSection[];
+  locale: "fr" | "en";
+  /** Boutons tenus par le code, placés après ceux de la section. */
+  children?: ReactNode;
+}) {
+  if (boutons.length === 0 && !children) return null;
 
   return (
     <div className="flex flex-wrap gap-2.5">
@@ -137,6 +154,7 @@ function Boutons({ boutons, locale }: { boutons: BoutonSection[]; locale: "fr" |
           </LienSite>
         );
       })}
+      {children}
     </div>
   );
 }
@@ -306,7 +324,13 @@ export function RenduSection({ section, donnees, locale }: Props) {
                 </RevealMotion>
 
                 <RevealMotion variant="up" delay={1.5}>
-                  <Boutons boutons={lireBoutons(lireReglage(section, "boutons"))} locale={locale} />
+                  <Boutons boutons={lireBoutons(lireReglage(section, "boutons"))} locale={locale}>
+                    {/* Formulaire de contact en fenêtre (demande du 29 septembre 2026). */}
+                    <LienNousEcrire data-magnetic className={classesBoutonSite("secondaire")}>
+                      <Mail aria-hidden size={17} strokeWidth={2.2} />
+                      {en ? "Write to us" : "Nous écrire"}
+                    </LienNousEcrire>
+                  </Boutons>
                 </RevealMotion>
               </div>
 

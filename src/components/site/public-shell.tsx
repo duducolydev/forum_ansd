@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Ticker } from "./ticker";
 import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
 import { EffetsGlobaux } from "@/components/motion/EffetsGlobaux";
+import { FenetreContact } from "@/modules/contact/components/fenetre-contact";
 
 export async function PublicShell({ children }: { children: ReactNode }) {
   const t = await getTranslations("nav");
+  const locale = await getLocale();
 
   /*
    * `.site-public` porte la palette et les polices du site public
@@ -37,6 +39,8 @@ export async function PublicShell({ children }: { children: ReactNode }) {
       </div>
       <SiteFooter />
       <EffetsGlobaux />
+      {/* Formulaire « Nous écrire », ouvert depuis l'accueil et le pied de page. */}
+      <FenetreContact en={locale === "en"} />
     </div>
   );
 }
