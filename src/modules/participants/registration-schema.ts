@@ -37,6 +37,7 @@ export const registrationParticipationSchema = z.object({
   participationDays: z.array(z.string()).min(1, "Sélectionnez au moins une journée"),
   attendsOpening: z.boolean().default(false),
   attendsInaugural: z.boolean().default(false),
+  attendsClosing: z.boolean().default(false),
   attendsAwards: z.boolean().default(false),
 });
 

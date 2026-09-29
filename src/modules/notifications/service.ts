@@ -89,6 +89,8 @@ export async function sendTemplatedEmail(options: {
   locale?: Locale;
   /** Ex. pixel de suivi d'ouverture (brief §5.5) — ajouté après le corps du message. */
   appendHtml?: string;
+  /** Adresse de réponse (formulaire de contact). */
+  replyTo?: string;
 }): Promise<void> {
   const template = await getTemplate(options.editionId, options.templateKey);
   if (!template) {
@@ -115,7 +117,13 @@ export async function sendTemplatedEmail(options: {
 
   try {
     const html = renderHtml(body) + (options.appendHtml ?? "");
-    const result = await sendMail({ to: options.to, subject, html, text: body });
+    const result = await sendMail({
+      to: options.to,
+      subject,
+      html,
+      text: body,
+      replyTo: options.replyTo,
+    });
 
     // Le serveur SMTP a accepté la connexion mais refusé ce destinataire :
     // c'est un rebond dur, à distinguer d'une panne d'envoi (brief §5.13).

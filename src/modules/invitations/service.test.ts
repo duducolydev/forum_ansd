@@ -64,6 +64,7 @@ describe("rapprochement automatique par email (brief §5.5)", () => {
         locale: "fr",
         attendsOpening: false,
         attendsInaugural: false,
+        attendsClosing: false,
         attendsAwards: false,
         needsAccommodation: false,
         needsTransport: false,

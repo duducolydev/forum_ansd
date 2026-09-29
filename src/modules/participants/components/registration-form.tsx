@@ -145,6 +145,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
           participationDays: data.getAll("participationDays").map(String),
           attendsOpening: data.get("attendsOpening") === "on",
           attendsInaugural: data.get("attendsInaugural") === "on",
+          attendsClosing: data.get("attendsClosing") === "on",
           attendsAwards: data.get("attendsAwards") === "on",
         });
         return result.success ? null : (result.error.issues[0]?.message ?? "Étape incomplète");
@@ -388,8 +389,9 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
             <legend className="text-heading mb-1.5 text-sm font-semibold">Moments officiels</legend>
             <div className="flex flex-wrap gap-2.5">
               <Checkbox label="Cérémonie d'ouverture" name="attendsOpening" defaultChecked />
-              <Checkbox label="Conférence inaugurale" name="attendsInaugural" defaultChecked />
               <Checkbox label="Cérémonie de distinction" name="attendsAwards" />
+              {/* Remplace la conférence inaugurale (29 septembre 2026). */}
+              <Checkbox label="Cérémonie de clôture" name="attendsClosing" defaultChecked />
             </div>
           </fieldset>
         </div>

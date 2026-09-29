@@ -150,6 +150,7 @@ export async function registerPublicParticipant(options: {
       participationDays: input.participationDays,
       attendsOpening: input.attendsOpening,
       attendsInaugural: input.attendsInaugural,
+      attendsClosing: input.attendsClosing,
       attendsAwards: input.attendsAwards,
       arrivalDate: input.arrivalDate ? new Date(input.arrivalDate) : null,
       departureDate: input.departureDate ? new Date(input.departureDate) : null,

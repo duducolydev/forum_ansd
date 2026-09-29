@@ -96,6 +96,18 @@ async function main() {
       sortOrder: 10,
     },
     {
+      // Autorités administratives (29 septembre 2026), sur le modèle des
+      // autorités / VIP : validation par le comité, logistique, scan orange.
+      code: "AUTORITE_ADMIN",
+      labelFr: "Autorités administratives",
+      labelEn: "Administrative authorities",
+      color: "#6D4C9F",
+      autoConfirm: false,
+      requiresLogistics: true,
+      alertOnScan: true,
+      sortOrder: 15,
+    },
+    {
       code: "PARTICIPANT_NATIONAL",
       labelFr: "Participant national",
       labelEn: "National participant",
@@ -305,6 +317,7 @@ async function main() {
   const allZones = Object.keys(zones);
   const categoryZoneMatrix: Record<string, string[]> = {
     AUTORITE_VIP: allZones,
+    AUTORITE_ADMIN: allZones,
     PARTICIPANT_NATIONAL: allZones,
     PARTICIPANT_INTERNATIONAL: allZones,
     INS: allZones,
@@ -1013,6 +1026,17 @@ async function main() {
       // conditionner, et une phrase à trous aurait été envoyée telle quelle.
       variables: ["prenom", "lien_espace", "code6", "referent_bloc"],
     },
+    // Formulaire de contact du site : message transmis au comité (29/09/2026).
+    {
+      key: "contact_message",
+      subjectFr: "[Contact site] {{objet}}",
+      subjectEn: "[Website contact] {{objet}}",
+      bodyFr:
+        "Nouveau message reçu par le formulaire de contact du site.\n\nDe : {{nom}} <{{email}}>\nOrganisation : {{organisation}}\nObjet : {{objet}}\n\n{{message}}\n\n—\nRépondez directement à ce message : la réponse part vers l'adresse de l'expéditeur.",
+      bodyEn:
+        "New message received through the website contact form.\n\nFrom: {{nom}} <{{email}}>\nOrganisation: {{organisation}}\nSubject: {{objet}}\n\n{{message}}\n\n—\nReply directly to this message: the answer goes to the sender's address.",
+      variables: ["nom", "email", "organisation", "objet", "message"],
+    },
     // Presse : attente puis octroi de l'accréditation (29 septembre 2026).
     {
       key: "accreditation_pending",
@@ -1422,6 +1446,7 @@ async function main() {
         locale: "fr",
         attendsOpening: true,
         attendsInaugural: true,
+        attendsClosing: true,
         attendsAwards: false,
         needsAccommodation: demo.source === "ONLINE" && demo.country !== "Sénégal",
         needsTransport: false,

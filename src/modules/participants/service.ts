@@ -75,6 +75,7 @@ function mapInputToData(input: ParticipantInput) {
     locale: input.locale,
     attendsOpening: input.attendsOpening,
     attendsInaugural: input.attendsInaugural,
+    attendsClosing: input.attendsClosing,
     attendsAwards: input.attendsAwards,
     needsAccommodation: input.needsAccommodation,
     needsTransport: input.needsTransport,
@@ -124,16 +125,25 @@ async function logTransition(
  * Statut d'une inscription à sa création.
  *
  * Une catégorie soumise à accréditation (presse) n'est **jamais** confirmée
- * d'office, même cochée « validation automatique » : c'est l'administration
- * qui accrédite (29 septembre 2026). L'inscription sur place reste validée
- * immédiatement — l'agent qui l'enregistre en répond.
+ * d'office — ni par la validation automatique, ni au comptoir : seule
+ * l'administration accrédite, depuis le BackOffice (29 septembre 2026).
+ * Les autres inscriptions sur place restent validées immédiatement : l'agent
+ * qui les enregistre en répond.
  */
 export function statutInitial(
   category: { autoConfirm: boolean; requiresAccreditation: boolean },
   source?: "ONLINE" | "ONSITE" | "IMPORT",
 ): ParticipantStatus {
+  if (category.requiresAccreditation) return "REGISTERED";
   if (source === "ONSITE") return "CONFIRMED";
-  return category.autoConfirm && !category.requiresAccreditation ? "CONFIRMED" : "REGISTERED";
+  return category.autoConfirm ? "CONFIRMED" : "REGISTERED";
+}
+
+/** Refus explicite : une accréditation demandée par qui n'en a pas le droit. */
+export class AccreditationReserveeError extends Error {
+  constructor() {
+    super("L'accréditation presse est réservée à l'administration du Forum, depuis le BackOffice.");
+  }
 }
 
 /**
@@ -400,6 +410,7 @@ export async function completeRegistration(
 export async function confirmParticipant(
   participantId: string,
   actor: Actor,
+  options: { peutAccrediter?: boolean } = {},
 ): Promise<Participant> {
   const participant = await prisma.participant.findUniqueOrThrow({
     where: { id: participantId },
@@ -407,6 +418,9 @@ export async function confirmParticipant(
   });
   await assertStatus(participant, ["REGISTERED"], "confirm");
   const accreditation = participant.category.requiresAccreditation;
+  // L'accréditation n'est jamais implicite : l'appelant doit l'avoir vérifiée
+  // (permission `participants.accredit`). Le guichet ne la passe jamais.
+  if (accreditation && !options.peutAccrediter) throw new AccreditationReserveeError();
   const maintenant = new Date();
 
   const updated = await repo.updateParticipant(participantId, {

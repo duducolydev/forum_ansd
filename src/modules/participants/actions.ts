@@ -104,6 +104,7 @@ function parseParticipantForm(formData: FormData): ParticipantInput {
     locale: (formData.get("locale") as "fr" | "en") ?? "fr",
     attendsOpening: formData.get("attendsOpening") === "on",
     attendsInaugural: formData.get("attendsInaugural") === "on",
+    attendsClosing: formData.get("attendsClosing") === "on",
     attendsAwards: formData.get("attendsAwards") === "on",
     needsAccommodation: formData.get("needsAccommodation") === "on",
     needsTransport: formData.get("needsTransport") === "on",
@@ -130,8 +131,24 @@ async function runTransition(
   return {};
 }
 
+/**
+ * Confirmer, ou accréditer pour la presse. L'accréditation exige en plus la
+ * permission `participants.accredit` : l'agent d'accueil, qui détient
+ * `participants.write`, confirme mais n'accrédite pas.
+ */
 export async function confirmParticipantAction(participantId: string): Promise<ActionState> {
-  return runTransition(participantId, "participants.write", service.confirmParticipant);
+  try {
+    const session = await requireSession();
+    if (!can(session, "participants.write")) return { error: "Permission refusée." };
+    await service.confirmParticipant(participantId, actorFromSession(session), {
+      peutAccrediter: can(session, "participants.accredit"),
+    });
+  } catch (error) {
+    return { error: firstFieldError(error) };
+  }
+  revalidatePath("/admin/participants");
+  revalidatePath(`/admin/participants/${participantId}`);
+  return {};
 }
 
 export async function declineParticipantAction(participantId: string): Promise<ActionState> {

@@ -69,20 +69,30 @@ export function TransitionActions({
   participantId,
   status,
   accreditation = false,
+  peutAccrediter = false,
 }: {
   participantId: string;
   status: ParticipantStatus;
   /** Catégorie soumise à accréditation (presse). */
   accreditation?: boolean;
+  /** Permission `participants.accredit` : réservée à l'administration. */
+  peutAccrediter?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const actions = (ACTIONS[status] ?? []).map((action) =>
-    accreditation && action.run === confirmParticipantAction ? ACCREDITER : action,
+  // Presse : « Accréditer » remplace « Confirmer », et disparaît pour qui n'a
+  // pas le droit d'accréditer (l'agent d'accueil, notamment).
+  const actions = (ACTIONS[status] ?? []).flatMap((action) =>
+    accreditation && action.run === confirmParticipantAction
+      ? peutAccrediter
+        ? [ACCREDITER]
+        : []
+      : [action],
   );
-  if (actions.length === 0) return null;
+  const accreditationRefusee = accreditation && !peutAccrediter && status === "REGISTERED";
+  if (actions.length === 0 && !accreditationRefusee) return null;
 
   function run(action: (id: string) => Promise<{ error?: string }>) {
     setError(null);
@@ -112,6 +122,11 @@ export function TransitionActions({
           </button>
         ))}
       </div>
+      {accreditationRefusee && (
+        <p className="text-text-3 text-sm">
+          L&apos;accréditation presse est réservée à l&apos;administration du Forum.
+        </p>
+      )}
       {error && <p className="text-danger-text text-sm">{error}</p>}
     </div>
   );

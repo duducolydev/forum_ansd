@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
+import { prisma } from "@/lib/db";
 import { participantInputSchema } from "@/modules/participants/schema";
 import { createParticipant } from "@/modules/participants/service";
 import { DuplicateParticipantEmailError } from "@/modules/participants/errors";
@@ -111,6 +112,7 @@ export async function inscrireSurPlaceAction(
       locale: "fr",
       attendsOpening: false,
       attendsInaugural: false,
+      attendsClosing: false,
       attendsAwards: false,
       needsAccommodation: false,
       needsTransport: false,
@@ -118,6 +120,19 @@ export async function inscrireSurPlaceAction(
       consentData: true,
       consentImage: false,
     });
+
+    // Presse : pas d'inscription au comptoir, l'accréditation revient à
+    // l'administration (29 septembre 2026). Refus avant toute création.
+    const categorie = await prisma.participantCategory.findFirst({
+      where: { id: input.categoryId, editionId: edition.id },
+      select: { requiresAccreditation: true },
+    });
+    if (categorie?.requiresAccreditation) {
+      return {
+        error:
+          "Presse : l'accréditation est accordée par l'administration du Forum, depuis le BackOffice. Le journaliste peut déposer sa demande en ligne ; orientez-le vers le comité d'organisation.",
+      };
+    }
 
     const participant = await createParticipant({
       editionId: edition.id,

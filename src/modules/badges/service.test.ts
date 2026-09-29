@@ -41,6 +41,7 @@ async function makeConfirmedParticipant() {
       jobTitle: "Directrice des statistiques démographiques",
       attendsOpening: false,
       attendsInaugural: false,
+      attendsClosing: false,
       attendsAwards: false,
       needsAccommodation: false,
       needsTransport: false,

@@ -31,6 +31,7 @@ async function makeParticipant(): Promise<{ id: string; email: string }> {
       categoryId,
       attendsOpening: false,
       attendsInaugural: false,
+      attendsClosing: false,
       attendsAwards: false,
       needsAccommodation: false,
       needsTransport: false,

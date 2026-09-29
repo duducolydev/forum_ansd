@@ -444,6 +444,13 @@ fois après la mise à jour (`--essai` montre ce qu'il ferait) :
 forum run --rm outils pnpm section:intervenants-partenaires   # 28 septembre 2026
 ```
 
+**Nouvelle permission : se reconnecter.** Les droits d'un compte BackOffice
+sont lus à la connexion. Quand une mise à jour ajoute une permission aux rôles
+(ainsi « Accréditer la presse », 29 septembre 2026, donnée par migration aux
+rôles Super Administrateur, Administrateur Forum et Gestionnaire
+Participants), les personnes déjà connectées ne la voient qu'après s'être
+déconnectées puis reconnectées.
+
 ---
 
 ## 5. HTTPS sur `forum2026.ansd.sn`

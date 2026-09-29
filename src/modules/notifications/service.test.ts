@@ -126,6 +126,7 @@ describe("envoi groupé", () => {
           categoryId,
           attendsOpening: false,
           attendsInaugural: false,
+          attendsClosing: false,
           attendsAwards: false,
           needsAccommodation: false,
           needsTransport: false,

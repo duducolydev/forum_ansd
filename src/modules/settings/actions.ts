@@ -136,6 +136,7 @@ export async function enregistrerPiedDePageAction(
       adresse: formData.get("adresse") ?? undefined,
       email: formData.get("email") ?? "",
       telephone: formData.get("telephone") ?? "",
+      destinataireContact: formData.get("destinataireContact") || undefined,
       mentionCopyright: formData.get("mentionCopyright") ?? undefined,
       reseaux,
       liens,

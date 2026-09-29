@@ -162,7 +162,14 @@ export async function finaliser(
 ): Promise<ResultatAccueil> {
   const participant = await prisma.participant.findFirstOrThrow({
     where: { id: participantId, deletedAt: null },
-    select: { id: true, publicId: true, firstName: true, lastName: true, status: true },
+    select: {
+      id: true,
+      publicId: true,
+      firstName: true,
+      lastName: true,
+      status: true,
+      category: { select: { requiresAccreditation: true } },
+    },
   });
 
   if (participant.status === "CANCELLED" || participant.status === "DECLINED") {
@@ -172,6 +179,12 @@ export async function finaliser(
   }
 
   if (!["CONFIRMED", "BADGED", "CHECKED_IN"].includes(participant.status)) {
+    // Presse non accréditée : le comptoir ne l'accrédite pas (29 septembre 2026).
+    if (participant.category.requiresAccreditation) {
+      throw new OnsiteError(
+        "Journaliste non accrédité : l'accréditation presse est accordée par l'administration du Forum, depuis le BackOffice. Orientez la personne vers le comité d'organisation.",
+      );
+    }
     await confirmParticipant(participantId, actor);
   }
 

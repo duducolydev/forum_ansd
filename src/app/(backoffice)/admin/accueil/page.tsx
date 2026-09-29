@@ -21,7 +21,8 @@ export default async function AccueilPage() {
   const edition = await getActiveEdition();
   const [categories, checkpoints] = await Promise.all([
     prisma.participantCategory.findMany({
-      where: { editionId: edition.id, isActive: true },
+      // Pas de presse au comptoir : l'accréditation revient à l'administration.
+      where: { editionId: edition.id, isActive: true, requiresAccreditation: false },
       orderBy: { sortOrder: "asc" },
       select: { id: true, labelFr: true },
     }),

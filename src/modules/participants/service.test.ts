@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db";
 import {
+  AccreditationReserveeError,
   cancelParticipant,
   checkIn,
   confirmParticipant,
@@ -31,9 +32,15 @@ describe("statut initial d'une inscription", () => {
     expect(statutInitial({ autoConfirm: true, requiresAccreditation: true })).toBe("REGISTERED");
   });
 
-  it("valide l'inscription sur place, presse comprise", () => {
-    expect(statutInitial({ autoConfirm: false, requiresAccreditation: true }, "ONSITE")).toBe(
+  it("valide l'inscription sur place, hors presse", () => {
+    expect(statutInitial({ autoConfirm: false, requiresAccreditation: false }, "ONSITE")).toBe(
       "CONFIRMED",
+    );
+  });
+
+  it("n'accrédite pas la presse sur place : l'accréditation relève du BackOffice", () => {
+    expect(statutInitial({ autoConfirm: false, requiresAccreditation: true }, "ONSITE")).toBe(
+      "REGISTERED",
     );
   });
 });
@@ -65,6 +72,7 @@ describe("machine à états des participants (brief §2.3)", () => {
         locale: "fr",
         attendsOpening: false,
         attendsInaugural: false,
+        attendsClosing: false,
         attendsAwards: false,
         needsAccommodation: false,
         needsTransport: false,
@@ -168,7 +176,12 @@ describe("machine à états des participants (brief §2.3)", () => {
     expect(created.status).toBe("REGISTERED");
     expect(created.accreditedAt).toBeNull();
 
-    const accredite = await confirmParticipant(created.id, actor);
+    // Sans la permission d'accréditer (agent d'accueil) : refus, dossier intact.
+    await expect(confirmParticipant(created.id, actor)).rejects.toThrow(AccreditationReserveeError);
+    const intact = await prisma.participant.findUniqueOrThrow({ where: { id: created.id } });
+    expect(intact.status).toBe("REGISTERED");
+
+    const accredite = await confirmParticipant(created.id, actor, { peutAccrediter: true });
     expect(accredite.status).toBe("CONFIRMED");
     expect(accredite.accreditedAt).not.toBeNull();
 

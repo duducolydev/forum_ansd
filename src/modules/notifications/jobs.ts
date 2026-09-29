@@ -10,6 +10,8 @@ export interface NotificationJobPayload {
   to: string;
   variables: Record<string, string>;
   participantId?: string;
+  /** Adresse de réponse (formulaire de contact). */
+  replyTo?: string;
 }
 
 let registered = false;

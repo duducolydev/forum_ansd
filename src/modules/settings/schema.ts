@@ -115,6 +115,15 @@ export const piedDePageSchema = z.object({
     .default("Rocade Fann – Bel-Air – Cerf-volant, Dakar, Sénégal"),
   email: z.string().trim().max(190).default(""),
   telephone: z.string().trim().max(60).default(""),
+  /**
+   * Destinataire des messages du formulaire de contact (29 septembre 2026).
+   * Jamais affiché sur le site : le visiteur écrit par le formulaire.
+   */
+  destinataireContact: z
+    .email("Adresse de réception du formulaire invalide.")
+    .trim()
+    .max(190)
+    .default("forumansd@gmail.com"),
   mentionCopyright: z.string().trim().max(120).default("© 2026 ANSD"),
   /** Un réseau sans adresse n'est pas affiché : c'est ainsi qu'on en retire un. */
   reseaux: z

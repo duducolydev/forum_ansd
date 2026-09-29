@@ -25,6 +25,7 @@ export const participantInputSchema = z.object({
   locale: z.enum(["fr", "en"]).default("fr"),
   attendsOpening: z.boolean().default(false),
   attendsInaugural: z.boolean().default(false),
+  attendsClosing: z.boolean().default(false),
   attendsAwards: z.boolean().default(false),
   needsAccommodation: z.boolean().default(false),
   needsTransport: z.boolean().default(false),

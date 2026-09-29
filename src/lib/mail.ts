@@ -14,6 +14,8 @@ export interface SendMailInput {
   subject: string;
   html: string;
   text?: string;
+  /** Adresse de réponse : l'expéditeur d'un message du formulaire de contact. */
+  replyTo?: string;
 }
 
 /**
@@ -28,5 +30,6 @@ export async function sendMail(input: SendMailInput) {
     subject: input.subject,
     html: input.html,
     text: input.text,
+    replyTo: input.replyTo,
   });
 }

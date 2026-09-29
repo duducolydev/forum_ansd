@@ -39,6 +39,7 @@ async function participantConfirme() {
       jobTitle: "Statisticienne",
       attendsOpening: false,
       attendsInaugural: false,
+      attendsClosing: false,
       attendsAwards: false,
       needsAccommodation: false,
       needsTransport: false,

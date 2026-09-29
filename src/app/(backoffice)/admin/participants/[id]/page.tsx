@@ -63,6 +63,7 @@ export default async function ParticipantDetailPage({
             participantId={participant.id}
             status={participant.status}
             accreditation={participant.category.requiresAccreditation}
+            peutAccrediter={can(session, "participants.accredit")}
           />
         </div>
       )}

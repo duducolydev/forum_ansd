@@ -7,6 +7,13 @@
 export const PERMISSIONS = [
   "participants.read",
   "participants.write",
+  /*
+   * Accréditation de la presse (29 septembre 2026) : réservée à
+   * l'administration. Distincte de `participants.write`, que l'agent
+   * d'accueil détient pour inscrire et badger au comptoir — il ne doit pas
+   * pouvoir accréditer un journaliste.
+   */
+  "participants.accredit",
   "participants.delete",
   "participants.export",
   "invitations.read",
@@ -61,6 +68,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, readonly Permission[]> = {
   GESTIONNAIRE_PARTICIPANTS: [
     "participants.read",
     "participants.write",
+    "participants.accredit",
     "participants.delete",
     "participants.export",
     "invitations.read",

@@ -332,7 +332,10 @@ model Participant {
   status              ParticipantStatus @default(INVITED)
   participationDays   Json?
   attendsOpening      Boolean           @default(false)
+  /// Conférence inaugurale : plus proposée depuis le 29/09/2026, remplacée par
+  /// la cérémonie de clôture. Conservé pour les réponses déjà données.
   attendsInaugural    Boolean           @default(false)
+  attendsClosing      Boolean           @default(false)
   attendsAwards       Boolean           @default(false)
   arrivalDate         DateTime?
   departureDate       DateTime?

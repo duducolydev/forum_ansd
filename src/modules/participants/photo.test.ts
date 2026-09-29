@@ -89,6 +89,7 @@ describe("enregistrement de la photo (brief §5.3)", () => {
         categoryId,
         attendsOpening: false,
         attendsInaugural: false,
+        attendsClosing: false,
         attendsAwards: false,
         needsAccommodation: false,
         needsTransport: false,

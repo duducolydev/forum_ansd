@@ -30,6 +30,7 @@ function baseInput(overrides: Partial<RegistrationInput> = {}): RegistrationInpu
     participationDays: ["2026-11-23"],
     attendsOpening: true,
     attendsInaugural: false,
+    attendsClosing: false,
     attendsAwards: false,
     arrivalDate: "",
     departureDate: "",

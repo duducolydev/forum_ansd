@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getLocale } from "next-intl/server";
-import { ArrowLeft, Mail, Phone } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Send } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
 import { getContentText, resolveLocaleValue } from "@/modules/content/service";
 import { listHotelsPublies, listContacts } from "@/modules/hotels/service";
@@ -10,6 +10,7 @@ import { ListeHotels } from "@/modules/hotels/components/liste-hotels";
 import { EnteteSection } from "@/components/site/entete-section";
 import { TexteRiche } from "@/components/site/texte-riche";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
+import { FormulaireContact } from "@/modules/contact/components/formulaire-contact";
 
 /**
  * Page de détail d'une rubrique pratique (§29).
@@ -127,6 +128,19 @@ export default async function DetailRubriquePage({
                 ))}
               </ul>
             )}
+
+            <section aria-labelledby="ecrire-comite" className="mt-10">
+              <h2
+                id="ecrire-comite"
+                className="text-heading font-display mb-4 flex items-center gap-2 text-xl font-semibold"
+              >
+                <Send aria-hidden size={19} className="text-accent-text" />
+                {locale === "en"
+                  ? "Write to the organising committee"
+                  : "Écrire au comité d'organisation"}
+              </h2>
+              <FormulaireContact en={locale === "en"} />
+            </section>
           </>
         )}
 

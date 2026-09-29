@@ -50,6 +50,7 @@ export async function submitRegistrationAction(
       participationDays: formData.getAll("participationDays").map(String),
       attendsOpening: formData.get("attendsOpening") === "on",
       attendsInaugural: formData.get("attendsInaugural") === "on",
+      attendsClosing: formData.get("attendsClosing") === "on",
       attendsAwards: formData.get("attendsAwards") === "on",
       arrivalDate: formData.get("arrivalDate") ?? undefined,
       departureDate: formData.get("departureDate") ?? undefined,

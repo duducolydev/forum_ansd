@@ -36,6 +36,7 @@ async function participantAvecBadge(version = 1) {
       jobTitle: "Statisticienne",
       attendsOpening: false,
       attendsInaugural: false,
+      attendsClosing: false,
       attendsAwards: false,
       needsAccommodation: false,
       needsTransport: false,

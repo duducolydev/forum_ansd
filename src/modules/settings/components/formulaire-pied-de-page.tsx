@@ -82,6 +82,17 @@ export function FormulairePiedDePage({ valeurs }: { valeurs: PiedDePage }) {
               />
             </Champ>
           </div>
+          {/* Destinataire du formulaire de contact : jamais affiché sur le site. */}
+          <Champ id="pied-contact" label="Réception du formulaire de contact">
+            <input
+              id="pied-contact"
+              name="destinataireContact"
+              type="email"
+              required
+              defaultValue={valeurs.destinataireContact}
+              className={CHAMP}
+            />
+          </Champ>
         </div>
 
         <fieldset className="border-border border-t pt-4">
