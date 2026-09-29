@@ -1026,6 +1026,17 @@ async function main() {
       // conditionner, et une phrase à trous aurait été envoyée telle quelle.
       variables: ["prenom", "lien_espace", "code6", "referent_bloc"],
     },
+    // Participants importés par fichier (29/09/2026) : inscrits par le comité.
+    {
+      key: "registration_imported",
+      subjectFr: "Votre inscription au Forum international sur les données",
+      subjectEn: "Your registration for the International Data Forum",
+      bodyFr:
+        "Bonjour {{prenom}},\n\nSuite à la confirmation de votre participation, le comité d'organisation vous a inscrit(e) au Forum international sur les données. Vous n'avez aucune démarche d'inscription à faire.\n\nAccédez directement à votre espace : {{lien_espace}}\nCe lien vous est personnel ; il reste valable 14 jours.\n\nCode d'accès de secours, à saisir avec votre adresse e-mail sur la page « Mon espace » : {{code6}}\n\nDans votre espace, vous pourrez vérifier et compléter vos informations, ajouter votre photo et télécharger votre badge. Un e-mail vous préviendra dès que le badge sera prêt.\n{{referent_bloc}}\n\nCordialement,\nLe comité d'organisation",
+      bodyEn:
+        'Hello {{prenom}},\n\nFollowing the confirmation of your participation, the organising committee has registered you for the International Data Forum. There is no registration step left for you to complete.\n\nGo straight to your personal space: {{lien_espace}}\nThis link is personal and remains valid for 14 days.\n\nBackup access code, to enter with your e-mail address on the "My space" page: {{code6}}\n\nIn your space, you can check and complete your details, add your photo and download your badge. An e-mail will let you know as soon as the badge is ready.\n{{referent_bloc}}\n\nBest regards,\nThe organising committee',
+      variables: ["prenom", "lien_espace", "code6", "referent_bloc"],
+    },
     // Formulaire de contact du site : message transmis au comité (29/09/2026).
     {
       key: "contact_message",

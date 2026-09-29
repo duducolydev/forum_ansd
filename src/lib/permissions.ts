@@ -14,6 +14,13 @@ export const PERMISSIONS = [
    * pouvoir accréditer un journaliste.
    */
   "participants.accredit",
+  /*
+   * Import de participants par fichier (29 septembre 2026) : inscrit d'un
+   * coup, et confirmées, des personnes invitées hors du site. Réservé à
+   * l'administration, comme l'accréditation : l'agent d'accueil inscrit une
+   * personne à la fois, au comptoir.
+   */
+  "participants.import",
   "participants.delete",
   "participants.export",
   "invitations.read",
@@ -69,6 +76,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, readonly Permission[]> = {
     "participants.read",
     "participants.write",
     "participants.accredit",
+    "participants.import",
     "participants.delete",
     "participants.export",
     "invitations.read",

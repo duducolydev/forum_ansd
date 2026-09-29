@@ -419,7 +419,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
             onChange={(value) => setConsents((c) => ({ ...c, consentTerms: value }))}
           />
           <ConsentCheckbox
-            label="Je consens au traitement de mes données personnelles pour l'organisation du Forum (loi n° 2008-12)."
+            label="Je consens à la collecte et à l'utilisation de mon adresse e-mail (loi n° 2008-12)."
             name="consentData"
             checked={consents.consentData}
             onChange={(value) => setConsents((c) => ({ ...c, consentData: value }))}

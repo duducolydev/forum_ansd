@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { FileSpreadsheet, Plus } from "lucide-react";
 import { LienBouton } from "@/components/ui/bouton";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -38,11 +38,18 @@ export default async function ParticipantsPage({
             {total} inscrit{total > 1 ? "s" : ""}
           </span>
         </div>
-        {can(session, "participants.write") && (
-          <LienBouton href="/admin/participants/nouveau" ton="principal" icone={Plus}>
-            Ajouter
-          </LienBouton>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {can(session, "participants.import") && (
+            <LienBouton href="/admin/participants/importer" icone={FileSpreadsheet}>
+              Importer
+            </LienBouton>
+          )}
+          {can(session, "participants.write") && (
+            <LienBouton href="/admin/participants/nouveau" ton="principal" icone={Plus}>
+              Ajouter
+            </LienBouton>
+          )}
+        </div>
       </div>
       <ParticipantsToolbar categories={categories} />
       <ParticipantsTable data={items} />

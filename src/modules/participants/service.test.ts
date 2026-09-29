@@ -38,6 +38,12 @@ describe("statut initial d'une inscription", () => {
     );
   });
 
+  it("confirme un import : la personne a déjà confirmé sa venue", () => {
+    expect(statutInitial({ autoConfirm: false, requiresAccreditation: false }, "IMPORT")).toBe(
+      "CONFIRMED",
+    );
+  });
+
   it("n'accrédite pas la presse sur place : l'accréditation relève du BackOffice", () => {
     expect(statutInitial({ autoConfirm: false, requiresAccreditation: true }, "ONSITE")).toBe(
       "REGISTERED",

@@ -21,6 +21,7 @@ export const CATALOGUE: GroupePermissions[] = [
       { cle: "participants.read", label: "Consulter les participants" },
       { cle: "participants.write", label: "Créer et modifier des participants" },
       { cle: "participants.accredit", label: "Accréditer la presse" },
+      { cle: "participants.import", label: "Importer des participants (fichier Excel)" },
       { cle: "participants.delete", label: "Supprimer des participants" },
       { cle: "participants.export", label: "Exporter la liste des participants" },
       { cle: "delegations.read", label: "Consulter les délégations" },

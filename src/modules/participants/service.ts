@@ -128,14 +128,16 @@ async function logTransition(
  * d'office — ni par la validation automatique, ni au comptoir : seule
  * l'administration accrédite, depuis le BackOffice (29 septembre 2026).
  * Les autres inscriptions sur place restent validées immédiatement : l'agent
- * qui les enregistre en répond.
+ * qui les enregistre en répond. De même pour l'import par fichier : il porte
+ * des personnes qui ont déjà confirmé leur venue, et l'administrateur qui
+ * importe en répond.
  */
 export function statutInitial(
   category: { autoConfirm: boolean; requiresAccreditation: boolean },
   source?: "ONLINE" | "ONSITE" | "IMPORT",
 ): ParticipantStatus {
   if (category.requiresAccreditation) return "REGISTERED";
-  if (source === "ONSITE") return "CONFIRMED";
+  if (source === "ONSITE" || source === "IMPORT") return "CONFIRMED";
   return category.autoConfirm ? "CONFIRMED" : "REGISTERED";
 }
 
@@ -152,8 +154,14 @@ export class AccreditationReserveeError extends Error {
  *
  * Presse : l'e-mail annonce l'accréditation, sans le paragraphe du référent
  * de délégation, sans objet pour un journaliste.
+ *
+ * `importe` : personne inscrite par le comité (import par fichier) — l'e-mail
+ * lui annonce qu'elle n'a aucune démarche d'inscription à faire.
  */
-export async function envoyerConfirmation(participantId: string): Promise<void> {
+export async function envoyerConfirmation(
+  participantId: string,
+  options: { importe?: boolean } = {},
+): Promise<void> {
   const participant = await prisma.participant.findUniqueOrThrow({
     where: { id: participantId },
     select: {
@@ -172,7 +180,11 @@ export async function envoyerConfirmation(participantId: string): Promise<void> 
   await enqueueNotification(
     {
       editionId: participant.editionId,
-      templateKey: presse ? "accreditation_granted" : "registration_confirmed",
+      templateKey: presse
+        ? "accreditation_granted"
+        : options.importe
+          ? "registration_imported"
+          : "registration_confirmed",
       to: participant.email,
       participantId: participant.id,
       variables: {
