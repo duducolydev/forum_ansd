@@ -375,7 +375,33 @@ export function RenduSection({ section, donnees, locale }: Props) {
                   <h2 className="titre-section">{titre}</h2>
                 </RevealMotion>
               )}
-              <ScrubText paragraphes={motsDeTexteRiche(corps)} />
+              {/*
+               * L'illustration accompagne aussi le texte qui s'allume : elle
+               * était ignorée dans cet habillage, et une image déposée en
+               * BackOffice ne s'affichait pas (constaté le 29 septembre 2026).
+               */}
+              {illustration ? (
+                <div
+                  className={`grid grid-cols-1 items-center gap-10 ${
+                    imageAGauche ? "lg:grid-cols-[0.8fr_1.2fr]" : "lg:grid-cols-[1.2fr_0.8fr]"
+                  }`}
+                >
+                  <ScrubText paragraphes={motsDeTexteRiche(corps)} />
+                  <RevealMotion
+                    variant={imageAGauche ? "left" : "right"}
+                    className={imageAGauche ? "lg:order-first" : undefined}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- servie par une route contrôlée, hors optimiseur */}
+                    <img
+                      src={illustration}
+                      alt={illustrationAlt}
+                      className="border-border mx-auto max-h-[26rem] w-auto rounded-2xl border object-contain shadow-[var(--shadow)]"
+                    />
+                  </RevealMotion>
+                </div>
+              ) : (
+                <ScrubText paragraphes={motsDeTexteRiche(corps)} />
+              )}
             </div>
           </section>
         );
