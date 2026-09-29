@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import {
@@ -63,11 +64,31 @@ export async function SiteFooter() {
       <div className="mx-auto max-w-[1200px] px-6">
         {/* Titre décoratif : le texte reste lisible (blanc sur bleu nuit,
             dégradé animé sur « Dakar. » seulement). */}
-        <p className="pied-titre mb-12">
-          {tc("seeYou")}
-          <br />
-          {tc("preposition")} <span>{tc("city")}</span>
-        </p>
+        {/*
+         * Logo des 20 ans de l'ANSD en face du titre (29 septembre 2026).
+         *
+         * Sur grand écran, il est ancré en bas à droite du titre, dans la place
+         * que laisse « à Dakar. », plus court que « Rendez-vous » : les deux ne
+         * tiennent pas côte à côte dans le flux, le titre occupant déjà les
+         * trois quarts de la largeur. Sa largeur (16 vw, 14 rem au plus) reste
+         * sous l'espace libre à droite de la première ligne, à toute taille
+         * d'écran. Sous 1 024 px, il passe sous le titre.
+         */}
+        <div className="relative mb-12">
+          <p className="pied-titre">
+            {tc("seeYou")}
+            <br />
+            {tc("preposition")} <span>{tc("city")}</span>
+          </p>
+          <Image
+            src="/images/logo-ansd-20-ans.webp"
+            alt={tc("anniversaryLogo")}
+            width={800}
+            height={646}
+            unoptimized
+            className="mt-8 block h-auto w-[clamp(9rem,42vw,13rem)] drop-shadow-[0_0_28px_rgba(120,170,220,0.25)] lg:absolute lg:right-0 lg:bottom-0 lg:mt-0 lg:w-[clamp(9rem,16vw,14rem)]"
+          />
+        </div>
 
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
           <div>
