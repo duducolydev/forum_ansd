@@ -210,7 +210,9 @@ export function RenduSection({ section, donnees, locale }: Props) {
     case "hero": {
       const accroche = texte(section, "titre", locale);
       const avecLogo = section.variant === "avec-compteur";
-      const logo = lireTexte(section.settings, "logo") === "officiel" ? "official" : "animated";
+      // Logo officiel sauf choix explicite du logo animé : c'est le défaut
+      // demandé le 29 septembre 2026, y compris pour la composition d'origine.
+      const logo = lireTexte(section.settings, "logo") === "anime" ? "animated" : "official";
       const ouverture = donnees.ouverture ?? edition.startDate;
       // Nom du Forum dans la langue de la page, et dans l'autre en dessous.
       const titrePrincipal = en ? edition.titleEn || edition.title : edition.title;

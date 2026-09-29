@@ -56,7 +56,7 @@ export const COMPOSITION_ACCUEIL: SectionParDefaut[] = [
     type: "hero",
     variant: "avec-compteur",
     sortOrder: 10,
-    settings: { boutons: BOUTONS_ACCUEIL },
+    settings: { boutons: BOUTONS_ACCUEIL, logo: "officiel" },
     contenu: {
       titre: { bloc: "home.hero.title" },
       chapo: { bloc: "home.hero.lead" },

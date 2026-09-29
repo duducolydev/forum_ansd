@@ -44,6 +44,16 @@ export async function ajouterSectionAction(
   return { avis: "Section ajoutée, masquée pour l'instant : réglez-la avant de l'afficher." };
 }
 
+export async function reprendreCompositionAction(page: string): Promise<EtatAction> {
+  try {
+    const { acteur, editionId } = await exigerRedaction();
+    await service.reprendreComposition(editionId, page, acteur);
+  } catch (erreur) {
+    return { erreur: messageErreur(erreur) };
+  }
+  return {};
+}
+
 /**
  * Lit les boutons d'un formulaire.
  *

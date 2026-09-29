@@ -133,11 +133,12 @@ const TYPES: TypeSection[] = [
         label: "Grand logo",
         type: "choix",
         options: [
-          { cle: "anime", label: "Logo animé (reconstruction)" },
           { cle: "officiel", label: "Fichier du logo officiel" },
+          { cle: "anime", label: "Logo animé (reconstruction)" },
         ],
-        defaut: "anime",
-        aide: "Le logo animé redessine l'emblème ; le logo officiel affiche le fichier fourni, avec les mêmes effets.",
+        // Le fichier officiel par défaut (demande du 29 septembre 2026).
+        defaut: "officiel",
+        aide: "Le logo officiel affiche le fichier fourni ; le logo animé redessine l'emblème. Les effets sont les mêmes.",
       },
     ],
     besoins: ["ouverture"],

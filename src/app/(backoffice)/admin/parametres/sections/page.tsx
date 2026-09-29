@@ -10,6 +10,8 @@ import { PAGES, typeSection } from "@/modules/sections/catalogue";
 import { lireContenu } from "@/modules/sections/schema";
 import { AjoutSection } from "@/modules/sections/components/ajout-section";
 import { CarteSection } from "@/modules/sections/components/carte-section";
+import { RepriseComposition } from "@/modules/sections/components/reprise-composition";
+import { COMPOSITIONS } from "@/modules/sections/defaut";
 
 export const metadata = { title: "Sections de page" };
 
@@ -34,6 +36,7 @@ export default async function SectionsPage({
 
   const edition = await getActiveEdition();
   const sections = await listerSections(edition.id, page);
+  const composition = COMPOSITIONS[page] ?? [];
   const cheminPublic = PAGES.find((candidate) => candidate.cle === page)!.chemin;
 
   return (
@@ -61,13 +64,22 @@ export default async function SectionsPage({
       </div>
 
       {sections.length === 0 && (
-        <p className="border-border bg-surface text-text-2 mb-4 rounded-xl border p-5 text-sm">
-          Tant qu&apos;aucune section n&apos;est enregistrée, la page publique conserve sa
-          composition d&apos;origine — bandeau, texte d&apos;introduction et dernières actualités.
-          En ajouter une première <strong>reprend cette composition telle quelle</strong> et la rend
-          modifiable : rien n&apos;est perdu, et vous pouvez ensuite réordonner, masquer ou
-          supprimer chaque section.
-        </p>
+        <div className="border-border bg-surface text-text-2 mb-4 rounded-xl border p-5 text-sm">
+          <p>
+            Tant qu&apos;aucune section n&apos;est enregistrée, la page publique affiche sa
+            composition d&apos;origine
+            {composition.length > 0 &&
+              ` : ${composition.map((modele) => typeSection(modele.type)?.label ?? modele.type).join(", ")}`}
+            .
+          </p>
+          <p className="mt-2">
+            <strong>Modifier la composition actuelle</strong> la reprend telle quelle et rend chaque
+            section réglable (grand logo, boutons, textes…) : rien ne change à l&apos;écran, et vous
+            pouvez ensuite réordonner, masquer ou supprimer chaque section. Ajouter une section la
+            reprend aussi, avant d&apos;y ajouter la nouvelle.
+          </p>
+          {composition.length > 0 && <RepriseComposition page={page} />}
+        </div>
       )}
 
       <div className="mb-4 flex flex-col gap-3">

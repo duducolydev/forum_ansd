@@ -144,6 +144,33 @@ async function materialiserComposition(editionId: string, page: string): Promise
   });
 }
 
+/**
+ * Reprend la composition d'origine telle quelle, pour la rendre modifiable
+ * sans ajouter de section (demande du 29 septembre 2026 : en production, la
+ * page « Sections » n'offrait rien à régler tant qu'aucune section n'existait).
+ */
+export async function reprendreComposition(
+  editionId: string,
+  page: string,
+  acteur: Acteur,
+): Promise<void> {
+  const existantes = await prisma.pageSection.count({ where: { editionId, page } });
+  if (existantes > 0) throw new SectionRuleError("Cette page a déjà ses sections.");
+
+  await materialiserComposition(editionId, page);
+
+  await audit.log({
+    actorType: "USER",
+    actorUserId: acteur.userId,
+    action: "page_section.composition_taken_over",
+    entity: "PageSection",
+    entityId: page,
+    after: { page },
+  });
+
+  invalider(page);
+}
+
 export async function creerSection(
   editionId: string,
   page: string,
