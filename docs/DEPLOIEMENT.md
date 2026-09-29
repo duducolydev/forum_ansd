@@ -14,13 +14,25 @@ avec la machine.
 cd /opt/forum-ansd
 ( set -a && . ./.env && set +a && ./scripts/backup.sh )   # d'abord la sauvegarde
 git pull
-forum build app
+forum build app outils
 forum up -d app
 forum run --rm outils pnpm prisma migrate deploy
 ```
 
 L'ordre compte : la sauvegarde d'abord, les migrations après le démarrage de la
 nouvelle image — elles sont écrites pour elle.
+
+**`outils` se reconstruit avec l'application, pas après.** C'est lui qui porte
+les migrations : resté sur son ancienne image, il répond « No pending
+migrations to apply » alors que la nouvelle application attend des colonnes
+qui n'existent pas encore — et chaque page tombe en « Application error: a
+server-side exception ». Constaté le 29 septembre 2026 : l'image `outils`
+comptait 16 migrations, le code déployé 18. Le nombre annoncé par la commande
+(« N migrations found ») doit être celui du dossier `prisma/migrations` :
+
+```bash
+ls -d prisma/migrations/*/ | wc -l
+```
 
 ---
 
@@ -412,13 +424,25 @@ Mise à jour après une évolution du code :
 cd /opt/forum-ansd
 ( set -a && . ./.env && set +a && ./scripts/backup.sh )   # d'abord la sauvegarde
 git pull
-forum build app
+forum build app outils
 forum up -d app
 forum run --rm outils pnpm prisma migrate deploy
 ```
 
 L'ordre compte : la sauvegarde d'abord, les migrations après le démarrage de la
 nouvelle image — elles sont écrites pour elle.
+
+**`outils` se reconstruit avec l'application, pas après.** C'est lui qui porte
+les migrations : resté sur son ancienne image, il répond « No pending
+migrations to apply » alors que la nouvelle application attend des colonnes
+qui n'existent pas encore — et chaque page tombe en « Application error: a
+server-side exception ». Constaté le 29 septembre 2026 : l'image `outils`
+comptait 16 migrations, le code déployé 18. Le nombre annoncé par la commande
+(« N migrations found ») doit être celui du dossier `prisma/migrations` :
+
+```bash
+ls -d prisma/migrations/*/ | wc -l
+```
 
 Le chargement du `.env` n'est pas facultatif : `backup.sh` s'arrête net sans
 `MYSQL_DATABASE`, `MYSQL_USER` et `MYSQL_PASSWORD`, qu'un shell interactif ne
