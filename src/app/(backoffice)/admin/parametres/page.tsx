@@ -60,6 +60,7 @@ export default async function ParametresPage() {
         <FormulaireIdentite
           valeurs={{
             title: edition.title,
+            titleEn: edition.titleEn ?? "",
             theme: edition.theme ?? "",
             startDate: jour(edition.startDate),
             endDate: jour(edition.endDate),

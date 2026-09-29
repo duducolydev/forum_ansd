@@ -155,6 +155,7 @@ export type Parametres = z.infer<typeof parametresSchema>;
 export const identiteSchema = z
   .object({
     title: z.string().trim().min(3, "Le titre est requis.").max(200),
+    titleEn: z.string().trim().max(200).optional().or(z.literal("")),
     theme: z.string().trim().max(300).optional().or(z.literal("")),
     startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date de début attendue (AAAA-MM-JJ)"),
     endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date de fin attendue (AAAA-MM-JJ)"),

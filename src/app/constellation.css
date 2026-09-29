@@ -32,6 +32,11 @@
    été assombries, faute de tenir 4,5:1 : le vert des étiquettes (#2f8a3e,
    3,90:1 sur --surface-2 → #287a37, 4,79:1) et le fond des boutons verts sous
    texte blanc (#3c9f4d, 3,36:1 → dégradé #237033 → #287a37, 5,34:1 au pire).
+
+   Thème sombre éclairci (demande du 29 septembre 2026) : fond #18304f au lieu
+   du #08131f du template, pour que le logo officiel transparent se pose sur la
+   page sans plaque claire. Les textes ont été éclaircis d'autant ; le couple
+   le plus faible tient 4,73:1.
 --------------------------------------------------------------------------- */
 
 .site-public {
@@ -80,43 +85,43 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .site-public {
-    --line: #1c3354;
-    --title: #8fbaff;
-    --muted: #93a6c1;
-    --green-text: #4cb46a;
+    --line: #2c4a73;
+    --title: #9cc4ff;
+    --muted: #a9bbd3;
+    --green-text: #5cc47a;
     --glow: rgba(76, 180, 106, 0.1);
     --glow-blend: screen;
-    --bg: #08131f;
-    --bg-2: #0c1a2d;
-    --bg-3: #132840;
-    --surface: #0f1f35;
-    --surface-2: #0c1a2d;
-    --border: #1c3354;
-    --text: #dfe8f5;
-    --text-2: #93a6c1;
-    --text-3: #93a6c1;
-    --heading: #8fbaff;
+    --bg: #18304f;
+    --bg-2: #142a47;
+    --bg-3: #23416a;
+    --surface: #1f3a5e;
+    --surface-2: #142a47;
+    --border: #2c4a73;
+    --text: #e6eef8;
+    --text-2: #a9bbd3;
+    --text-3: #a9bbd3;
+    --heading: #9cc4ff;
   }
 }
 
 :root[data-theme="dark"] .site-public,
 .site-public [data-theme="dark"] {
-  --line: #1c3354;
-  --title: #8fbaff;
-  --muted: #93a6c1;
-  --green-text: #4cb46a;
+  --line: #2c4a73;
+  --title: #9cc4ff;
+  --muted: #a9bbd3;
+  --green-text: #5cc47a;
   --glow: rgba(76, 180, 106, 0.1);
   --glow-blend: screen;
-  --bg: #08131f;
-  --bg-2: #0c1a2d;
-  --bg-3: #132840;
-  --surface: #0f1f35;
-  --surface-2: #0c1a2d;
-  --border: #1c3354;
-  --text: #dfe8f5;
-  --text-2: #93a6c1;
-  --text-3: #93a6c1;
-  --heading: #8fbaff;
+  --bg: #18304f;
+  --bg-2: #142a47;
+  --bg-3: #23416a;
+  --surface: #1f3a5e;
+  --surface-2: #142a47;
+  --border: #2c4a73;
+  --text: #e6eef8;
+  --text-2: #a9bbd3;
+  --text-3: #a9bbd3;
+  --heading: #9cc4ff;
 }
 
 /* Dates et étiquettes. */
@@ -573,7 +578,8 @@ html[data-animations="aucune"] .site-public *::after {
   isolation: isolate;
   overflow: hidden;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
 }
 @media (min-width: 1024px) {
   .bandeau-accueil {
@@ -692,6 +698,35 @@ html[data-motion] .titre-decoupe__lettre {
   line-height: 1.02;
   letter-spacing: -0.02em;
   color: var(--title);
+}
+/* Titre sur toute la largeur, centré (29 septembre 2026). Sur grand écran, la
+   taille suit la largeur pour tenir sur une ligne ; en dessous, il se replie
+   en lignes équilibrées. */
+.titre-accueil-bloc {
+  text-align: center;
+}
+.titre-accueil-bloc .titre-accueil {
+  font-size: clamp(2rem, 3.9vw, 5.2rem);
+  text-wrap: balance;
+}
+/* Sur grand écran, une seule ligne sur toute la largeur de la fenêtre. */
+@media (min-width: 1024px) {
+  .titre-accueil-bloc .titre-accueil {
+    white-space: nowrap;
+  }
+}
+@media (min-width: 1024px) {
+  .titre-accueil-bloc {
+    padding-top: 3.2rem;
+  }
+}
+.titre-accueil-second {
+  margin-top: 0.6rem;
+  color: var(--muted);
+  font-size: clamp(0.95rem, 1.6vw, 1.45rem);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
 }
 
 /* Pastille date et lieu, bordure conique qui tourne. */
@@ -908,6 +943,30 @@ html[data-motion] .titre-decoupe__lettre {
   border-radius: 50%;
   background: radial-gradient(circle, rgba(59, 125, 216, 0.32), transparent 65%);
   filter: blur(12px);
+}
+/* En sombre, un halo clair derrière le logo officiel transparent : son texte
+   bleu se détache du fond sans plaque. Décor, sans texte. */
+:root[data-theme="dark"] .grand-logo__scene--officiel .grand-logo__halo {
+  inset: -8% -4%;
+  background: radial-gradient(
+    closest-side,
+    rgba(226, 238, 255, 0.58),
+    rgba(226, 238, 255, 0.18) 70%,
+    transparent
+  );
+  filter: blur(18px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .grand-logo__scene--officiel .grand-logo__halo {
+    inset: -8% -4%;
+    background: radial-gradient(
+      closest-side,
+      rgba(226, 238, 255, 0.58),
+      rgba(226, 238, 255, 0.18) 70%,
+      transparent
+    );
+    filter: blur(18px);
+  }
 }
 .grand-logo__onde {
   position: absolute;
@@ -1379,6 +1438,11 @@ html[data-motion] .retournable:not([data-vu]) {
   position: relative;
   max-width: 980px;
   margin: 0 auto;
+  /* Les cartes arrivent de ±80 px : sans cette coupe, la page débordait
+     horizontalement sur téléphone pendant leur entrée. `clip` ne crée pas de
+     conteneur de défilement. */
+  overflow-x: clip;
+  overflow-y: visible;
 }
 .frise__trait {
   position: absolute;
@@ -1751,7 +1815,7 @@ html[data-animations="aucune"] .vague__points {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  padding-block: 1.1rem 0.6rem;
+  padding-block: 0.7rem 0.1rem;
   background:
     radial-gradient(
       40rem 16rem at 12% -20%,
@@ -1766,44 +1830,14 @@ html[data-animations="aucune"] .vague__points {
     var(--surface-2);
 }
 .vague--basse {
-  height: 48px;
+  height: 26px;
 }
 .titre-page {
-  font-size: clamp(1.8rem, 1.3rem + 2vw, 2.6rem);
+  font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.2rem);
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.01em;
   color: var(--title);
-}
-.fil-ariane ol {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-  margin-bottom: 0.6rem;
-  color: var(--muted);
-  font-size: 0.8rem;
-  list-style: none;
-}
-.fil-ariane li {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-.fil-ariane a {
-  color: var(--muted);
-  background: linear-gradient(var(--gold), var(--gold)) 0 100% / 0 1px no-repeat;
-  transition:
-    background-size 0.4s var(--ease),
-    color 0.3s;
-}
-.fil-ariane a:hover {
-  color: var(--title);
-  background-size: 100% 1px;
-}
-.fil-ariane [aria-current] {
-  color: var(--title);
-  font-weight: 600;
 }
 
 /* Projecteur qui suit la souris sur une tuile (`data-projecteur`). */
@@ -2151,4 +2185,62 @@ html[data-motion] [data-reveal]:not([data-vu]) .icone-dessinee * {
   .site-public details[open]::details-content {
     height: auto;
   }
+}
+
+/* Compte à rebours réduit (coin supérieur droit du bandeau d'accueil). */
+.mini-compte--petit {
+  gap: 0.55rem;
+  min-height: 0;
+  padding: 0.35rem 0.6rem 0.35rem 0.55rem;
+  border-radius: 12px;
+}
+.mini-compte--petit .mini-compte__libelle {
+  font-size: 0.64rem;
+  gap: 0.35rem;
+}
+.mini-compte--petit .point-direct {
+  width: 7px;
+  height: 7px;
+}
+.mini-compte--petit .mini-compte__unites {
+  gap: 0.2rem;
+}
+.mini-compte--petit .mini-compte__case {
+  min-width: 1.75rem;
+  padding: 0.15rem 0.2rem;
+  border-radius: 7px;
+}
+.mini-compte--petit .mini-compte__chiffre {
+  font-size: 0.95rem;
+}
+.mini-compte--petit .mini-compte__case small {
+  font-size: 0.5rem;
+}
+.mini-compte--petit .mini-compte__deux-points {
+  margin-top: -0.6rem;
+  font-size: 0.8rem;
+}
+
+/* Rôles de l'intervenant, au verso (panéliste, modérateur…) : une pastille
+   par rôle, pour qu'un intitulé ne se coupe jamais en deux lignes. */
+.verso__roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.7rem;
+  list-style: none;
+}
+.verso__roles li {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  /* Fond bleu nuit translucide : le texte doré tient 4,5:1 sur tout le
+     dégradé du verso, partie verte comprise. */
+  background: rgba(8, 26, 51, 0.45);
+  border: 1px solid rgba(232, 185, 49, 0.6);
+  color: #ffe7a3;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }

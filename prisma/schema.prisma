@@ -164,6 +164,8 @@ model Edition {
   id        String   @id @default(cuid())
   code      String   @unique // ex. FID-2026
   title     String
+  /// Nom anglais du Forum, affiché sous le titre du bandeau d'accueil.
+  titleEn   String?
   theme     String?
   startDate DateTime
   endDate   DateTime

@@ -194,6 +194,10 @@ export function RenduSection({ section, donnees, locale }: Props) {
       const avecLogo = section.variant === "avec-compteur";
       const logo = lireTexte(section.settings, "logo") === "officiel" ? "official" : "animated";
       const ouverture = donnees.ouverture ?? edition.startDate;
+      // Nom du Forum dans la langue de la page, et dans l'autre en dessous.
+      const titrePrincipal = en ? edition.titleEn || edition.title : edition.title;
+      // Sans titre anglais saisi, pas de second titre (il répéterait le premier).
+      const titreSecond = edition.titleEn ? (en ? edition.title : edition.titleEn) : null;
 
       /*
        * Bandeau « Constellation » (brief §4.1) : deux colonnes, texte à gauche
@@ -230,57 +234,84 @@ export function RenduSection({ section, donnees, locale }: Props) {
           <span aria-hidden className="tache tache--2" />
           <span aria-hidden className="tache tache--3" />
 
-          <div
-            className={`${CADRE} relative grid w-full items-center gap-12 pt-12 pb-24 ${
-              avecLogo ? "lg:grid-cols-[1.2fr_0.95fr]" : ""
-            }`}
-          >
-            <div className={avecLogo && decorAGauche ? "lg:order-last" : undefined}>
-              {avecLogo && (
-                <RevealMotion variant="left" delay={0.1} className="mb-7">
-                  <MiniCountdown
-                    cibleIso={ouverture.toISOString()}
-                    finIso={edition.endDate.toISOString()}
-                  />
-                </RevealMotion>
-              )}
-
-              {/* Le nom du Forum porte le `h1` ; l'accroche qui suit est un `h2`. */}
-              <SplitTitle texte={edition.title} className="titre-accueil uppercase" />
-
-              <RevealMotion variant="up" delay={0.9} className="mt-7 mb-6">
-                <span className="pastille-conique text-sm sm:text-base">
-                  <span className="inline-flex items-center gap-2">
-                    <CalendarDays aria-hidden size={17} className="text-[var(--green-text)]" />
-                    {plageDeDates(edition.startDate, edition.endDate, en)}
-                  </span>
-                  <span aria-hidden className="hidden h-[18px] w-px bg-[var(--line)] sm:block" />
-                  <span className="inline-flex items-center gap-2">
-                    <MapPin aria-hidden size={17} className="text-[var(--green-text)]" />
-                    {edition.venue}
-                  </span>
-                </span>
-              </RevealMotion>
-
-              {accroche && accroche !== edition.title && (
-                <RevealMotion variant="blur" delay={1.1}>
-                  <h2 className="slogan-degrade max-w-[22ch] text-balance">{accroche}</h2>
-                </RevealMotion>
-              )}
-
-              <RevealMotion variant="up" delay={1.3}>
-                <TexteRiche
-                  valeur={texte(section, "chapo", locale) || edition.theme || ""}
-                  className="mt-4 mb-8 max-w-[560px] text-[1.12rem] leading-[1.7] text-[var(--muted)]"
+          {/* Titre sur toute la largeur de la section (et non du cadre de 1 200 px). */}
+          <div className="relative w-full px-6 pt-10">
+            {/*
+             * Compte à rebours réduit, dans le coin supérieur droit (demande du
+             * 29 septembre 2026). Sur téléphone, il passe au-dessus du titre.
+             */}
+            {avecLogo && (
+              <RevealMotion
+                variant="right"
+                delay={0.1}
+                className="mb-6 flex justify-end lg:absolute lg:top-6 lg:right-8 lg:mb-0"
+              >
+                <MiniCountdown
+                  petit
+                  cibleIso={ouverture.toISOString()}
+                  finIso={edition.endDate.toISOString()}
                 />
               </RevealMotion>
+            )}
 
-              <RevealMotion variant="up" delay={1.5}>
-                <Boutons boutons={lireBoutons(lireReglage(section, "boutons"))} locale={locale} />
-              </RevealMotion>
+            {/*
+             * Nom du Forum sur toute la largeur, centré (demande du 29 septembre
+             * 2026), avec son nom dans l'autre langue en dessous. Le premier
+             * porte le `h1` ; l'accroche plus bas est un `h2`.
+             */}
+            <div className="titre-accueil-bloc">
+              <SplitTitle texte={titrePrincipal} className="titre-accueil uppercase" />
+              {titreSecond && (
+                <RevealMotion variant="up" delay={0.8}>
+                  <p lang={en ? "fr" : "en"} className="titre-accueil-second police-grotesk">
+                    {titreSecond}
+                  </p>
+                </RevealMotion>
+              )}
             </div>
+          </div>
 
-            {avecLogo && <AnimatedLogo variant={logo} />}
+          <div className={`${CADRE} relative w-full pb-24`}>
+            <div
+              className={`mt-10 grid items-center gap-12 ${
+                avecLogo ? "lg:grid-cols-[1.2fr_0.95fr]" : ""
+              }`}
+            >
+              <div className={avecLogo && decorAGauche ? "lg:order-last" : undefined}>
+                <RevealMotion variant="up" delay={0.9} className="mb-6">
+                  <span className="pastille-conique text-sm sm:text-base">
+                    <span className="inline-flex items-center gap-2">
+                      <CalendarDays aria-hidden size={17} className="text-[var(--green-text)]" />
+                      {plageDeDates(edition.startDate, edition.endDate, en)}
+                    </span>
+                    <span aria-hidden className="hidden h-[18px] w-px bg-[var(--line)] sm:block" />
+                    <span className="inline-flex items-center gap-2">
+                      <MapPin aria-hidden size={17} className="text-[var(--green-text)]" />
+                      {edition.venue}
+                    </span>
+                  </span>
+                </RevealMotion>
+
+                {accroche && accroche !== edition.title && (
+                  <RevealMotion variant="blur" delay={1.1}>
+                    <h2 className="slogan-degrade max-w-[22ch] text-balance">{accroche}</h2>
+                  </RevealMotion>
+                )}
+
+                <RevealMotion variant="up" delay={1.3}>
+                  <TexteRiche
+                    valeur={texte(section, "chapo", locale) || edition.theme || ""}
+                    className="mt-4 mb-8 max-w-[560px] text-[1.12rem] leading-[1.7] text-[var(--muted)]"
+                  />
+                </RevealMotion>
+
+                <RevealMotion variant="up" delay={1.5}>
+                  <Boutons boutons={lireBoutons(lireReglage(section, "boutons"))} locale={locale} />
+                </RevealMotion>
+              </div>
+
+              {avecLogo && <AnimatedLogo variant={logo} />}
+            </div>
           </div>
 
           <span aria-hidden className="molette hidden lg:block" />

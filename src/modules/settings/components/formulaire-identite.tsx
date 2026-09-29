@@ -10,6 +10,7 @@ const etatInitial: EtatAction = {};
 
 export interface ValeursIdentite {
   title: string;
+  titleEn: string;
   theme: string;
   startDate: string;
   endDate: string;
@@ -32,6 +33,15 @@ export function FormulaireIdentite({ valeurs }: { valeurs: ValeursIdentite }) {
             name="title"
             required
             defaultValue={valeurs.title}
+            className={CHAMP}
+          />
+        </Champ>
+        <Champ id="edition-title-en" label="Titre en anglais">
+          <input
+            id="edition-title-en"
+            name="titleEn"
+            defaultValue={valeurs.titleEn}
+            placeholder="International Data Forum"
             className={CHAMP}
           />
         </Champ>

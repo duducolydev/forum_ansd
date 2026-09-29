@@ -49,6 +49,7 @@ export async function enregistrerIdentiteAction(
     const { acteur, editionId } = await exigerParametreur();
     const valeurs = identiteSchema.parse({
       title: formData.get("title"),
+      titleEn: formData.get("titleEn") ?? "",
       theme: formData.get("theme") ?? "",
       startDate: formData.get("startDate"),
       endDate: formData.get("endDate"),

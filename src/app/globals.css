@@ -66,9 +66,6 @@
   --warn-text: #a65b13;
   --danger-soft: #fbe7e8;
   --danger-text: #c43139;
-  /* Plaque du grand logo de l'accueil : invisible en clair, claire en sombre,
-     où le texte bleu du logo ne se lirait pas sur le bleu nuit. */
-  --plaque-logo: transparent;
   --gold-soft: #fff4dd;
   --gold-text: #9a6408;
   /* Niveaux de partenariat (§32, `modules/sponsors/palette.ts`). Or et argent
@@ -171,7 +168,6 @@
     --danger-text: #f37479;
     --gold-soft: rgba(242, 178, 51, 0.15);
     --gold-text: #f2b233;
-    --plaque-logo: rgba(244, 248, 252, 0.94);
     /* Ratios aplatis sur la surface : or 6,75 et 5,01 ; argent 8,12 et 6,18 ;
        bronze 5,15 ; jaune 8,45. */
     --or-soft: rgba(244, 201, 93, 0.14);
@@ -250,7 +246,6 @@
   --danger-text: #f37479;
   --gold-soft: rgba(242, 178, 51, 0.15);
   --gold-text: #f2b233;
-  --plaque-logo: rgba(244, 248, 252, 0.94);
   /* Ratios aplatis sur la surface : or 6,75 et 5,01 ; argent 8,12 et 6,18 ;
      bronze 5,15 ; jaune 8,45. */
   --or-soft: rgba(244, 201, 93, 0.14);
@@ -757,10 +752,4 @@
   to {
     transform: rotate(360deg);
   }
-}
-
-.plaque-logo {
-  background: var(--plaque-logo);
-  border-radius: 1.75rem;
-  padding: 1.25rem 1.5rem;
 }

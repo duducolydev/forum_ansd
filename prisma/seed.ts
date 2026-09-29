@@ -32,6 +32,7 @@ async function main() {
     create: {
       code: "FID-2026",
       title: "Forum international sur les données",
+      titleEn: "International Data Forum",
       theme: "Des données fiables pour des décisions qui comptent",
       startDate: new Date("2026-11-23T00:00:00Z"),
       endDate: new Date("2026-11-25T23:59:59Z"),

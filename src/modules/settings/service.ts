@@ -227,6 +227,7 @@ export async function enregistrerIdentite(
     where: { id: editionId },
     data: {
       title: valeurs.title,
+      titleEn: valeurs.titleEn?.trim() || null,
       theme: valeurs.theme?.trim() || null,
       // Minuit UTC, qui est minuit à Dakar : les dates du Forum sont des jours,
       // pas des instants.

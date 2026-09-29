@@ -38,7 +38,17 @@ function parties(cible: number): Parties | null {
 
 type Etat = { phase: "attente" } | { phase: "avant"; p: Parties } | { phase: "pendant" | "apres" };
 
-export function MiniCountdown({ cibleIso, finIso }: { cibleIso: string; finIso: string }) {
+export function MiniCountdown({
+  cibleIso,
+  finIso,
+  petit = false,
+}: {
+  cibleIso: string;
+  finIso: string;
+  /** Version réduite, posée dans le coin supérieur droit du bandeau d'accueil. */
+  petit?: boolean;
+}) {
+  const classe = petit ? "mini-compte mini-compte--petit" : "mini-compte";
   const t = useTranslations("constellation.countdown");
   const [etat, setEtat] = useState<Etat>({ phase: "attente" });
 
@@ -57,7 +67,7 @@ export function MiniCountdown({ cibleIso, finIso }: { cibleIso: string; finIso: 
 
   if (etat.phase === "pendant" || etat.phase === "apres") {
     return (
-      <div className="mini-compte">
+      <div className={classe}>
         <span className="mini-compte__libelle">
           <span aria-hidden className="point-direct" />
           {etat.phase === "pendant" ? t("live") : t("over")}
@@ -79,7 +89,7 @@ export function MiniCountdown({ cibleIso, finIso }: { cibleIso: string; finIso: 
   return (
     <div
       role="timer"
-      className="mini-compte"
+      className={classe}
       aria-label={
         p ? t("aria", { days: p.jours, hours: p.heures, minutes: p.minutes }) : t("label")
       }

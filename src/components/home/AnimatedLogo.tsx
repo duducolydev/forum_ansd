@@ -114,7 +114,7 @@ export function AnimatedLogo({ variant = "animated" }: { variant?: "animated" | 
               height={LOGO_FORUM.hauteur}
               unoptimized
               priority
-              className="plaque-logo h-auto w-full"
+              className="relative h-auto w-full"
             />
           </div>
         ) : (
