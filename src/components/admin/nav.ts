@@ -9,6 +9,7 @@ import {
   FileText,
   Handshake,
   Hotel,
+  Images,
   LayoutDashboard,
   Mail,
   Mails,
@@ -171,6 +172,12 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: "Newsletters",
         icone: Mails,
         permissions: ["content.read"],
+      },
+      {
+        href: "/admin/mediatheque",
+        label: "Médiathèque",
+        icone: Images,
+        permissions: ["content.write"],
       },
       { href: "/admin/sponsors", label: "Sponsors", icone: Award, permissions: ["sponsors.write"] },
       {

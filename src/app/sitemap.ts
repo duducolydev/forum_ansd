@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getActiveEdition } from "@/lib/edition";
 import { listPosts } from "@/modules/content/service";
+import { albumsPublies } from "@/modules/medias/service";
 
 // Sans ceci, Next.js pré-génère /sitemap.xml au moment du `build` (aucune base
 // de données réelle disponible dans l'image Docker à cette étape) plutôt qu'à
@@ -15,6 +16,7 @@ const STATIC_PATHS = [
   "/contributions",
   "/infos-pratiques",
   "/actualites",
+  "/mediatheque",
   "/inscription",
   "/verifier",
 ];
@@ -22,7 +24,10 @@ const STATIC_PATHS = [
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
   const edition = await getActiveEdition();
-  const posts = await listPosts(edition.id, { onlyPublished: true });
+  const [posts, albums] = await Promise.all([
+    listPosts(edition.id, { onlyPublished: true }),
+    albumsPublies(edition.id),
+  ]);
 
   return [
     ...STATIC_PATHS.map((path) => ({ url: `${baseUrl}${path}` })),
@@ -30,5 +35,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${baseUrl}/actualites/${post.slug}`,
       lastModified: post.updatedAt,
     })),
+    ...albums.map((album) => ({ url: `${baseUrl}/mediatheque/${album.slug}` })),
   ];
 }

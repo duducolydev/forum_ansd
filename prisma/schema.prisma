@@ -156,6 +156,12 @@ enum JobStatus {
   FAILED
 }
 
+/// Nature d'un élément de la médiathèque (29 septembre 2026).
+enum MediaType {
+  PHOTO
+  VIDEO
+}
+
 // ---------------------------------------------------------------------------
 // Édition & BackOffice
 // ---------------------------------------------------------------------------
@@ -197,6 +203,8 @@ model Edition {
   pageSections          PageSection[]
   notificationTemplates NotificationTemplate[]
   contributions         Contribution[]
+  mediaAlbums           MediaAlbum[]
+  mediaItems            MediaItem[]
 }
 
 model User {
@@ -978,6 +986,63 @@ model Post {
   edition Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
 
   @@unique([editionId, slug])
+}
+
+/// Album de la médiathèque (29 septembre 2026) : un moment du Forum, une
+/// visite, une cérémonie. Invisible du public tant qu'il n'est pas publié.
+model MediaAlbum {
+  id            String    @id @default(cuid())
+  editionId     String
+  slug          String
+  titleFr       String
+  titleEn       String
+  descriptionFr String?   @db.Text
+  descriptionEn String?   @db.Text
+  /// Date du moment photographié, pour l'affichage et le tri.
+  eventDate     DateTime?
+  /// Élément choisi comme couverture ; à défaut, la première photo.
+  coverItemId   String?
+  isPublished   Boolean   @default(false)
+  sortOrder     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  edition Edition     @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  items   MediaItem[]
+
+  @@unique([editionId, slug])
+}
+
+/// Photo ou vidéo de la médiathèque, dans un album ou seule.
+///
+/// Une photo est stockée en deux tailles, réduites dans le navigateur avant
+/// l'envoi : `filePath` pour l'affichage plein écran, `thumbPath` pour les
+/// grilles. Une vidéo n'est pas hébergée : c'est un lien YouTube ou Vimeo
+/// (`videoProvider` + `videoId`), avec une vignette facultative.
+model MediaItem {
+  id            String    @id @default(cuid())
+  editionId     String
+  albumId       String?
+  type          MediaType
+  filePath      String?
+  thumbPath     String?
+  width         Int?
+  height        Int?
+  videoProvider String?
+  videoId       String?
+  captionFr     String?   @db.Text
+  captionEn     String?   @db.Text
+  credit        String?
+  /// Masquer un élément sans le supprimer.
+  isPublished   Boolean   @default(true)
+  sortOrder     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  edition Edition     @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  album   MediaAlbum? @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  @@index([editionId, albumId, sortOrder])
 }
 
 /// Section de page paramétrable (PLAN.md §8.4).

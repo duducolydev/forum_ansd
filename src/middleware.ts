@@ -29,7 +29,11 @@ function buildCsp(nonce: string, isDev: boolean, enHttps: boolean): string {
     // calculées) ne peuvent pas porter de nonce : `'unsafe-inline'` est ici
     // sans danger, une feuille de style ne permettant pas d'exécuter de code.
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    // Vignettes des vidéos YouTube de la médiathèque (29 septembre 2026).
+    "img-src 'self' data: blob: https://i.ytimg.com",
+    // Lecteurs vidéo de la médiathèque, et eux seuls : une vidéo est un lien
+    // YouTube ou Vimeo (`modules/medias/video.ts`), lu dans un `iframe`.
+    "frame-src https://www.youtube-nocookie.com https://player.vimeo.com",
     "font-src 'self' data:",
     // Aucun appel sortant : tout est servi par l'application elle-même.
     "connect-src 'self'",
