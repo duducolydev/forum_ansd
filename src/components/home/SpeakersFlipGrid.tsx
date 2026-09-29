@@ -16,6 +16,11 @@ export interface IntervenantCarte {
   photoPath: string | null;
   /** Biographie et thèmes : montrés au verso sur la page Intervenants. */
   bio?: string | null;
+  /**
+   * Rôles tenus dans les sessions publiées (codes `PANELIST`, `MODERATOR`…),
+   * affichés au verso (demande du 29 septembre 2026).
+   */
+  roles?: string[];
   themes?: string[];
 }
 
@@ -86,6 +91,16 @@ function CarteRetournable({
   useReveal(ref);
 
   const nom = `${intervenant.firstName} ${intervenant.lastName}`;
+  // Rôles : une information propre au verso, donc lue par les lecteurs d'écran.
+  const roles = (intervenant.roles ?? []).map((role) => t(`roles.${role}`));
+  const blocRoles =
+    roles.length > 0 ? (
+      <ul className="verso__roles police-grotesk" aria-label={`${nom} — ${t("rolesLabel")}`}>
+        {roles.map((role) => (
+          <li key={role}>{role}</li>
+        ))}
+      </ul>
+    ) : null;
 
   function projecteur(evenement: PointerEvent<HTMLElement>) {
     const recto = refRecto.current;
@@ -145,15 +160,20 @@ function CarteRetournable({
         <div className="face face--verso">
           {href ? (
             <>
-              <div aria-hidden>
-                <div className="verso__avatar">{initiales(intervenant)}</div>
-                {intervenant.organization && (
-                  <div className="verso__organisation police-grotesk">
-                    {intervenant.organization}
-                  </div>
-                )}
-                <div className="verso__nom">{nom}</div>
-                {intervenant.jobTitle && <p className="verso__fonction">{intervenant.jobTitle}</p>}
+              <div>
+                <div aria-hidden>
+                  <div className="verso__avatar">{initiales(intervenant)}</div>
+                  {intervenant.organization && (
+                    <div className="verso__organisation police-grotesk">
+                      {intervenant.organization}
+                    </div>
+                  )}
+                  <div className="verso__nom">{nom}</div>
+                  {intervenant.jobTitle && (
+                    <p className="verso__fonction">{intervenant.jobTitle}</p>
+                  )}
+                </div>
+                {blocRoles}
               </div>
               <Link href={href} className="verso__lien" aria-label={`${t("profile")} — ${nom}`}>
                 {t("profile")}
@@ -167,6 +187,7 @@ function CarteRetournable({
               <div aria-hidden className="verso__nom text-[1.15rem]">
                 {nom}
               </div>
+              {blocRoles}
               {intervenant.bio ? (
                 <p className="verso__bio">{intervenant.bio}</p>
               ) : (

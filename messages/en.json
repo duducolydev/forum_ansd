@@ -88,7 +88,14 @@
       "touch": "TAP ↻",
       "profile": "View profile",
       "seeAll": "See all",
-      "turnHint": "Flip {name}'s card"
+      "turnHint": "Flip {name}'s card",
+      "roles": {
+        "MODERATOR": "Moderator",
+        "PANELIST": "Panellist",
+        "KEYNOTE": "Keynote speaker",
+        "GUEST_OF_HONOR": "Guest of honour"
+      },
+      "rolesLabel": "roles"
     },
     "news": {
       "eyebrow": "FOLLOW THE FORUM",

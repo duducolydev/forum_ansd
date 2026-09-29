@@ -88,7 +88,14 @@
       "touch": "TOUCHER ↻",
       "profile": "Voir le profil",
       "seeAll": "Voir tout",
-      "turnHint": "Retourner la carte de {name}"
+      "turnHint": "Retourner la carte de {name}",
+      "roles": {
+        "MODERATOR": "Modérateur",
+        "PANELIST": "Panéliste",
+        "KEYNOTE": "Orateur principal",
+        "GUEST_OF_HONOR": "Invité d'honneur"
+      },
+      "rolesLabel": "rôles"
     },
     "news": {
       "eyebrow": "SUIVRE LE FORUM",

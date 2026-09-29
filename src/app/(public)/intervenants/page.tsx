@@ -54,7 +54,10 @@ export default async function SpeakersPage({ searchParams }: { searchParams: Pro
     include: {
       sessions: {
         where: { session: { isPublished: true, deletedAt: null } },
-        select: { session: { select: { theme: true, titleFr: true, titleEn: true } } },
+        select: {
+          role: true,
+          session: { select: { theme: true, titleFr: true, titleEn: true } },
+        },
       },
     },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
@@ -75,6 +78,7 @@ export default async function SpeakersPage({ searchParams }: { searchParams: Pro
     photoPath: speaker.photoPath,
     bio: en ? speaker.bioEn || speaker.bioFr : speaker.bioFr,
     themes: unique(speaker.sessions.map((lien) => lien.session.theme)),
+    roles: [...new Set(speaker.sessions.map((lien) => lien.role))],
     panels: unique(
       speaker.sessions.map((lien) =>
         en ? lien.session.titleEn || lien.session.titleFr : lien.session.titleFr,

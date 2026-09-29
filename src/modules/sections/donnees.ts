@@ -40,6 +40,8 @@ export interface DonneesSections {
     themes: string[];
     isFeatured: boolean;
     featuredOrder: number;
+    /** Rôles tenus dans les sessions publiées (panéliste, modérateur…), en codes. */
+    roles: string[];
   }[];
   sessions?: {
     id: string;
@@ -119,7 +121,7 @@ export async function chargerDonnees(
             featuredOrder: true,
             sessions: {
               where: { session: { isPublished: true, deletedAt: null } },
-              select: { session: { select: { theme: true } } },
+              select: { role: true, session: { select: { theme: true } } },
             },
           },
         })
@@ -133,6 +135,7 @@ export async function chargerDonnees(
                   .filter((theme): theme is string => Boolean(theme)),
               ),
             ].sort((a, b) => a.localeCompare(b, "fr")),
+            roles: [...new Set(sessions.map((lien) => lien.role))],
           }));
         }),
     );
