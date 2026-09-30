@@ -715,9 +715,16 @@ html[data-motion] .titre-decoupe__lettre {
     white-space: nowrap;
   }
 }
-@media (min-width: 1024px) {
-  .titre-accueil-bloc {
-    padding-top: 3.2rem;
+/* À côté du compte à rebours (30 septembre 2026) : titre à gauche, un peu
+   plus petit pour tenir sur la même ligne que le compteur. Entre 1 024 et
+   1 280 px, le compteur passe au-dessus et le titre reprend toute la largeur. */
+@media (min-width: 1280px) {
+  .titre-accueil-bloc--compteur {
+    text-align: left;
+  }
+  .titre-accueil-bloc--compteur .titre-accueil {
+    /* Plafond : tenir, avec le compteur, dans le cadre de 1 400 px. */
+    font-size: clamp(2rem, 3.1vw, 3.15rem);
   }
 }
 .titre-accueil-second {
@@ -934,7 +941,8 @@ html[data-motion] .titre-decoupe__lettre {
   animation: flotter 7s ease-in-out infinite;
 }
 .grand-logo__scene--officiel {
-  width: min(560px, 88vw);
+  /* Jamais plus large que sa colonne, resserrée le 30 septembre 2026. */
+  width: min(560px, 88vw, 100%);
   aspect-ratio: 1800 / 793;
 }
 .grand-logo__halo {
@@ -1181,6 +1189,10 @@ html[data-motion] .mot-symbole__tri i {
 .section-constellation {
   position: relative;
   padding-block: 5rem;
+  /* Les éléments qui entrent par le côté débordaient à 1 024 px tant qu'ils
+     n'étaient pas révélés, et la page défilait en largeur. `clip` coupe sans
+     créer de zone de défilement (30 septembre 2026). */
+  overflow-x: clip;
 }
 @media (min-width: 1024px) {
   .section-constellation {

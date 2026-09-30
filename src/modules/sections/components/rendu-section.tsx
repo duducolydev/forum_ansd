@@ -266,51 +266,59 @@ export function RenduSection({ section, donnees, locale }: Props) {
           <span aria-hidden className="tache tache--2" />
           <span aria-hidden className="tache tache--3" />
 
-          {/* Titre sur toute la largeur de la section (et non du cadre de 1 200 px). */}
-          <div className="relative w-full px-6 pt-10">
+          {/* Titre et compte à rebours dans le cadre de l'en-tête (1 400 px) : le titre
+              s'aligne sous le logo, le compteur sous « S'inscrire ». */}
+          <div className="relative mx-auto w-full max-w-[1400px] px-6 pt-6">
             {/*
-             * Compte à rebours réduit, dans le coin supérieur droit (demande du
-             * 29 septembre 2026). Sur téléphone, il passe au-dessus du titre.
+             * Nom du Forum et compte à rebours sur la même ligne (demande du
+             * 30 septembre 2026) : le titre à gauche, dimensionné pour tenir à
+             * côté, le compteur à droite. Sous 1 280 px, le compteur passe
+             * au-dessus du titre, qui se replie en lignes équilibrées.
+             *
+             * Le nom dans l'autre langue suit en dessous. Le premier porte le
+             * `h1` ; l'accroche plus bas est un `h2`.
              */}
-            {avecLogo && (
-              <RevealMotion
-                variant="right"
-                delay={0.1}
-                className="mb-6 flex justify-end lg:absolute lg:top-6 lg:right-8 lg:mb-0"
+            <div
+              className={
+                avecLogo
+                  ? "flex flex-col-reverse gap-5 xl:flex-row xl:items-center xl:gap-8"
+                  : undefined
+              }
+            >
+              <div
+                className={`titre-accueil-bloc min-w-0 xl:flex-1${
+                  avecLogo ? "titre-accueil-bloc--compteur" : ""
+                }`}
               >
-                <MiniCountdown
-                  petit
-                  cibleIso={ouverture.toISOString()}
-                  finIso={edition.endDate.toISOString()}
-                />
-              </RevealMotion>
-            )}
-
-            {/*
-             * Nom du Forum sur toute la largeur, centré (demande du 29 septembre
-             * 2026), avec son nom dans l'autre langue en dessous. Le premier
-             * porte le `h1` ; l'accroche plus bas est un `h2`.
-             */}
-            <div className="titre-accueil-bloc">
-              <SplitTitle texte={titrePrincipal} className="titre-accueil uppercase" />
-              {titreSecond && titreSecond !== titrePrincipal && (
-                <RevealMotion variant="up" delay={0.8}>
-                  <p lang={langueSecond} className="titre-accueil-second police-grotesk">
-                    {titreSecond}
-                  </p>
+                <SplitTitle texte={titrePrincipal} className="titre-accueil uppercase" />
+                {titreSecond && titreSecond !== titrePrincipal && (
+                  <RevealMotion variant="up" delay={0.8}>
+                    <p lang={langueSecond} className="titre-accueil-second police-grotesk">
+                      {titreSecond}
+                    </p>
+                  </RevealMotion>
+                )}
+              </div>
+              {avecLogo && (
+                <RevealMotion variant="right" delay={0.1} className="flex shrink-0 justify-end">
+                  <MiniCountdown
+                    petit
+                    cibleIso={ouverture.toISOString()}
+                    finIso={edition.endDate.toISOString()}
+                  />
                 </RevealMotion>
               )}
             </div>
           </div>
 
-          <div className={`${CADRE} relative w-full pb-24`}>
+          <div className="relative mx-auto w-full max-w-[1400px] px-6 pb-16">
             <div
-              className={`mt-10 grid items-center gap-12 ${
-                avecLogo ? "lg:grid-cols-[1.2fr_0.95fr]" : ""
+              className={`mt-6 grid items-center gap-8 xl:mt-8 xl:gap-12 ${
+                avecLogo ? "lg:grid-cols-[1.35fr_0.85fr]" : ""
               }`}
             >
               <div className={avecLogo && decorAGauche ? "lg:order-last" : undefined}>
-                <RevealMotion variant="up" delay={0.9} className="mb-6">
+                <RevealMotion variant="up" delay={0.9} className="mb-5">
                   <span className="pastille-conique text-sm sm:text-base">
                     <span className="inline-flex items-center gap-2">
                       <CalendarDays aria-hidden size={17} className="text-[var(--green-text)]" />
@@ -333,7 +341,7 @@ export function RenduSection({ section, donnees, locale }: Props) {
                 <RevealMotion variant="up" delay={1.3}>
                   <TexteRiche
                     valeur={texte(section, "chapo", locale) || edition.theme || ""}
-                    className="mt-4 mb-8 max-w-[560px] text-[1.12rem] leading-[1.7] text-[var(--muted)]"
+                    className="mt-3 mb-6 max-w-[580px] text-[1.08rem] leading-[1.65] text-[var(--muted)]"
                   />
                 </RevealMotion>
 
