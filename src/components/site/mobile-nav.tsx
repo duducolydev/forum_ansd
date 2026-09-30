@@ -7,6 +7,7 @@ import { Menu, Ticket, UserPlus, X } from "lucide-react";
 import type { Theme } from "@/lib/theme";
 import { ThemeToggle } from "./theme-toggle";
 import { LocaleSwitcher } from "./locale-switcher";
+import type { Locale } from "@/i18n/config";
 import type { ResolvedNavEntry } from "./site-header";
 
 /**
@@ -17,9 +18,11 @@ import type { ResolvedNavEntry } from "./site-header";
 export function MobileNav({
   entries,
   theme,
+  langues,
 }: {
   entries: ResolvedNavEntry[];
   theme: Theme | null;
+  langues: readonly Locale[];
 }) {
   const t = useTranslations("nav");
   const [open, setOpen] = useState(false);
@@ -71,7 +74,7 @@ export function MobileNav({
 
           <div className="border-border mt-2 flex flex-col gap-2 border-t pt-3">
             <div className="flex items-center gap-2">
-              <LocaleSwitcher />
+              <LocaleSwitcher langues={langues} />
               <ThemeToggle initialTheme={theme} />
             </div>
             <Link

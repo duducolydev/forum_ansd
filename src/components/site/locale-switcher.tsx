@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { setUserLocale } from "@/i18n/locale";
 import { locales, type Locale } from "@/i18n/config";
+import { NOM_LANGUE } from "@/lib/langue";
 import { useRouter } from "next/navigation";
 import { Languages } from "lucide-react";
 
@@ -12,7 +13,14 @@ import { Languages } from "lucide-react";
  * contour de focus bleu nuit, langue active en pastille bleu nuit. `panneau` :
  * dans le menu mobile.
  */
-export function LocaleSwitcher({ variante = "panneau" }: { variante?: "entete" | "panneau" }) {
+export function LocaleSwitcher({
+  variante = "panneau",
+  langues = locales,
+}: {
+  variante?: "entete" | "panneau";
+  /** Langues proposées, selon les paramètres (le portugais peut être désactivé). */
+  langues?: readonly Locale[];
+}) {
   const surEntete = variante === "entete";
   const locale = useLocale();
   const t = useTranslations("locale");
@@ -39,13 +47,15 @@ export function LocaleSwitcher({ variante = "panneau" }: { variante?: "entete" |
         size={15}
         className={`ml-2 shrink-0 ${surEntete ? "text-ansd-bleu-nuit" : "text-text-3"}`}
       />
-      {locales.map((l) => (
+      {langues.map((l) => (
         <button
           key={l}
           type="button"
           onClick={() => change(l)}
           disabled={isPending}
           aria-pressed={locale === l}
+          lang={l}
+          title={NOM_LANGUE[l]}
           className={`transition-tout px-2.5 py-1.5 text-xs font-semibold ${
             surEntete
               ? `focus-visible:outline-ansd-bleu-nuit focus-visible:-outline-offset-4 ${

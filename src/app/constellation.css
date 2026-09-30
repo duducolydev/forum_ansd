@@ -1913,6 +1913,14 @@ html[data-animations="aucune"] .vague__points {
   text-transform: capitalize;
   transition: color 0.3s;
 }
+/* Portugais : « Segunda-feira, 23 de novembro » — une capitale par mot
+   donnerait « De Novembro ». La première lettre suffit. */
+:lang(pt) .onglet-jour {
+  text-transform: none;
+}
+:lang(pt) .onglet-jour::first-letter {
+  text-transform: uppercase;
+}
 .onglet-jour::after {
   content: "";
   position: absolute;

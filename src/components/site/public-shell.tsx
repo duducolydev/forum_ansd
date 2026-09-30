@@ -1,3 +1,4 @@
+import { lireLangue } from "@/lib/langue";
 import type { ReactNode } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Ticker } from "./ticker";
@@ -40,7 +41,7 @@ export async function PublicShell({ children }: { children: ReactNode }) {
       <SiteFooter />
       <EffetsGlobaux />
       {/* Formulaire « Nous écrire », ouvert depuis l'accueil et le pied de page. */}
-      <FenetreContact en={locale === "en"} />
+      <FenetreContact locale={lireLangue(locale)} />
     </div>
   );
 }

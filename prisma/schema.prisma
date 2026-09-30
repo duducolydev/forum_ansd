@@ -172,6 +172,7 @@ model Edition {
   title     String
   /// Nom anglais du Forum, affiché sous le titre du bandeau d'accueil.
   titleEn   String?
+  titlePt   String?
   theme     String?
   startDate DateTime
   endDate   DateTime
@@ -294,6 +295,7 @@ model ParticipantCategory {
   code                  String
   labelFr               String
   labelEn               String
+  labelPt               String?
   color                 String?
   badgeTemplateId       String?
   autoConfirm           Boolean  @default(false)
@@ -608,8 +610,10 @@ model Session {
   type                 SessionType
   titleFr              String
   titleEn              String
+  titlePt              String?
   descriptionFr        String?     @db.Text
   descriptionEn        String?     @db.Text
+  descriptionPt        String?     @db.Text
   objectives           String?     @db.Text
   theme                String?
   day                  DateTime    @db.Date
@@ -657,6 +661,7 @@ model Speaker {
   photoPath                String?
   bioFr                    String?   @db.Text
   bioEn                    String?   @db.Text
+  bioPt                    String?   @db.Text
   presentationPath         String?
   /// Accord de l'intervenant pour que sa présentation soit publiée sur le site.
   /// Sans lui, le comité ne peut pas publier la contribution qui en est issue.
@@ -737,6 +742,7 @@ model Sponsor {
   logoPath      String?
   descriptionFr String?   @db.Text
   descriptionEn String?   @db.Text
+  descriptionPt String?   @db.Text
   website       String?
   videoUrl      String?
   standNumber   String?
@@ -832,6 +838,7 @@ model Hotel {
   mapUrl        String?
   descriptionFr String?   @db.Text
   descriptionEn String?   @db.Text
+  descriptionPt String?   @db.Text
   /// Prestations, en `string[]` : navette, wifi, petit-déjeuner, piscine…
   /// Un tableau plutôt qu'une table dédiée — ce sont des étiquettes, sans
   /// attribut propre, et elles changent d'une édition à l'autre.
@@ -892,6 +899,7 @@ model PracticalContact {
   /// Objet du contact : « Accréditation presse », « Logistique »…
   labelFr   String
   labelEn   String?
+  labelPt   String?
   name      String?
   email     String?
   phone     String?
@@ -931,14 +939,17 @@ model Newsletter {
   slug      String
   titleFr   String
   titleEn   String
+  titlePt   String?
   /// Chapô : repris dans l'e-mail d'annonce et dans la liste. Distinct du
   /// corps, parce qu'un e-mail ne reprend pas le texte intégral (§34).
   excerptFr String  @db.Text
   excerptEn String  @db.Text
+  excerptPt String? @db.Text
   /// Corps mis en forme, document structuré sérialisé (`lib/texte-riche.ts`).
   /// Jamais du HTML : voir l'en-tête de ce module pour la raison.
   bodyFr    String  @db.Text
   bodyEn    String  @db.Text
+  bodyPt    String? @db.Text
   coverPath String?
   /// Images du corps : `[{ path }]`. Le document ne référence que leur **rang**
   /// dans cette liste, jamais un chemin — un chemin accepté depuis l'extérieur
@@ -969,11 +980,14 @@ model Post {
   slug        String
   titleFr     String
   titleEn     String
+  titlePt     String?
   /// Chapô : le résumé affiché en liste et dans les partages, distinct du corps.
   excerptFr   String?   @db.Text
   excerptEn   String?   @db.Text
+  excerptPt   String?   @db.Text
   bodyFr      String    @db.Text
   bodyEn      String    @db.Text
+  bodyPt      String?   @db.Text
   coverPath   String?
   /// Galerie : [{ path, captionFr, captionEn }]. En JSON plutôt qu'en table —
   /// une image de galerie n'existe que par son article et ne se requête jamais seule.
@@ -996,8 +1010,10 @@ model MediaAlbum {
   slug          String
   titleFr       String
   titleEn       String
+  titlePt       String?
   descriptionFr String?   @db.Text
   descriptionEn String?   @db.Text
+  descriptionPt String?   @db.Text
   /// Date du moment photographié, pour l'affichage et le tri.
   eventDate     DateTime?
   /// Élément choisi comme couverture ; à défaut, la première photo.
@@ -1032,6 +1048,7 @@ model MediaItem {
   videoId       String?
   captionFr     String?   @db.Text
   captionEn     String?   @db.Text
+  captionPt     String?   @db.Text
   credit        String?
   /// Masquer un élément sans le supprimer.
   isPublished   Boolean   @default(true)
@@ -1065,6 +1082,7 @@ model PageSection {
   /// Contenu rédactionnel, une version par langue.
   contentFr Json
   contentEn Json
+  contentPt Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1079,6 +1097,7 @@ model ContentBlock {
   key         String // home.hero, home.objectives, practical.visa, ...
   valueFr     Json
   valueEn     Json
+  valuePt     Json?
   updatedById String?
   updatedAt   DateTime @updatedAt
   createdAt   DateTime @default(now())
@@ -1100,8 +1119,10 @@ model NotificationTemplate {
   channel   NotificationChannel
   subjectFr String?
   subjectEn String?
+  subjectPt String?
   bodyFr    String              @db.Text
   bodyEn    String              @db.Text
+  bodyPt    String?             @db.Text
   variables Json? // liste des variables disponibles, ex. ["prenom", "lien_badge"]
   createdAt DateTime            @default(now())
   updatedAt DateTime            @updatedAt

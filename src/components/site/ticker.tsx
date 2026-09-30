@@ -14,14 +14,14 @@ import { plageDeDates } from "@/lib/dates-edition";
  */
 export async function Ticker() {
   const t = await getTranslations("constellation.ticker");
-  const en = (await getLocale()) === "en";
+  const locale = await getLocale();
   const edition = await getActiveEdition();
 
   const items = [
     edition.title,
     t("dates", {
       venue: edition.venue,
-      dates: plageDeDates(edition.startDate, edition.endDate, en),
+      dates: plageDeDates(edition.startDate, edition.endDate, locale),
     }),
     t("registrations"),
     t("translation"),

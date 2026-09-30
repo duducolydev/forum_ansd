@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Ticket, UserPlus } from "lucide-react";
 import { getServerTheme } from "@/lib/theme";
+import { languesProposees } from "@/i18n/locale";
 import { ThemeToggle } from "./theme-toggle";
 import { LocaleSwitcher } from "./locale-switcher";
 import { LogoForum } from "./logo-forum";
@@ -30,6 +31,7 @@ export const SUR_ENTETE =
 export async function SiteHeader() {
   const t = await getTranslations("nav");
   const theme = await getServerTheme();
+  const langues = await languesProposees();
 
   const entries: ResolvedNavEntry[] = NAV_ENTRIES.map((entry) =>
     isGroup(entry)
@@ -104,7 +106,7 @@ export async function SiteHeader() {
         </nav>
 
         <div className="hidden shrink-0 items-center gap-2 xl:flex">
-          <LocaleSwitcher variante="entete" />
+          <LocaleSwitcher variante="entete" langues={langues} />
           <ThemeToggle initialTheme={theme} variante="entete" />
           <Link
             href="/mon-espace"
@@ -124,7 +126,7 @@ export async function SiteHeader() {
           </Link>
         </div>
 
-        <MobileNav entries={entries} theme={theme} />
+        <MobileNav entries={entries} theme={theme} langues={langues} />
       </div>
     </header>
   );

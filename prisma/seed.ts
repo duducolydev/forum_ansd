@@ -12,6 +12,7 @@
 import "dotenv/config";
 import argon2 from "argon2";
 import { prisma } from "../src/lib/db";
+import MODELES_PT from "./modeles-pt.json";
 import { jobQueue } from "../src/lib/queue";
 import { DEFAULT_ROLE_PERMISSIONS } from "../src/lib/permissions";
 import {
@@ -1213,6 +1214,26 @@ async function main() {
       create: { ...tpl, channel: "EMAIL", editionId: edition.id },
     });
   }
+
+  // Portugais (30 septembre 2026) : traductions de départ des modèles destinés
+  // aux participants, des catégories et du nom du Forum — même source que la
+  // migration `portugais_contenus`. Une saisie existante n'est jamais écrasée.
+  for (const [key, modele] of Object.entries(MODELES_PT.modeles)) {
+    await prisma.notificationTemplate.updateMany({
+      where: { editionId: edition.id, key, channel: "EMAIL", bodyPt: null },
+      data: { subjectPt: modele.subject, bodyPt: modele.body },
+    });
+  }
+  for (const [code, labelPt] of Object.entries(MODELES_PT.categories)) {
+    await prisma.participantCategory.updateMany({
+      where: { editionId: edition.id, code, labelPt: null },
+      data: { labelPt },
+    });
+  }
+  await prisma.edition.updateMany({
+    where: { id: edition.id, titlePt: null },
+    data: { titlePt: MODELES_PT.edition.titlePt },
+  });
 
   // ---------------------------------------------------------------------
   // Participants et délégations [DEMO] (brief §11) — jeu restreint pour

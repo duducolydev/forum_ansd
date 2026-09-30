@@ -1,5 +1,6 @@
 "use client";
 
+import { selon, type Langue } from "@/lib/langue";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getCountries, getCountryCallingCode } from "libphonenumber-js/min";
 import { joindreTelephone, listeIndicatifs, separerTelephone } from "@/lib/telephone";
@@ -42,7 +43,7 @@ export function ChampTelephone({
   /** Classes des champs du formulaire hôte, pour que les deux contrôles s'y fondent. */
   classeChamp: string;
   disabled?: boolean;
-  langue?: "fr" | "en";
+  langue?: Langue;
 }) {
   /*
    * La liste est construite dans le navigateur seulement. Les noms de pays
@@ -87,7 +88,11 @@ export function ChampTelephone({
         name={`${name}_indicatif`}
         defaultValue={initial.pays}
         disabled={disabled}
-        aria-label={langue === "en" ? "Country calling code" : "Indicatif du pays"}
+        aria-label={selon(langue, {
+          fr: "Indicatif du pays",
+          en: "Country calling code",
+          pt: "Indicativo do país",
+        })}
         className={`${classeChamp} w-40 shrink-0 sm:w-52`}
       >
         {indicatifs.map((indicatif) => (

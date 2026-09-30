@@ -1,0 +1,116 @@
+{
+  "nav": {
+    "home": "Início",
+    "theForum": "O Fórum",
+    "infoServices": "Informações e serviços",
+    "about": "Sobre",
+    "program": "Programa",
+    "speakers": "Oradores",
+    "sponsors": "Parceiros",
+    "contributions": "Contribuições e atas",
+    "practicalInfo": "Informações práticas",
+    "news": "Notícias",
+    "mediaLibrary": "Mediateca",
+    "verifyBadge": "Verificar um crachá",
+    "admin": "Organizadores",
+    "myRegistrations": "O meu espaço",
+    "register": "Inscrever-se",
+    "menu": "Menu",
+    "skipToContent": "Ir para o conteúdo",
+    "newsletters": "Newsletters"
+  },
+  "theme": {
+    "toggleToDark": "Mudar para o tema escuro",
+    "toggleToLight": "Mudar para o tema claro"
+  },
+  "locale": {
+    "fr": "FR",
+    "en": "EN",
+    "pt": "PT",
+    "switchTo": "Mudar para {locale}"
+  },
+  "common": {
+    "loading": "A carregar…",
+    "error": "Ocorreu um erro.",
+    "comingSoon": "Esta página está em construção."
+  },
+  "home": {
+    "ctaRegister": "Inscrever-se no Fórum",
+    "ctaProgram": "Ver o programa",
+    "ctaBadge": "Descarregar o meu crachá",
+    "liveTitle": "Abertura dentro de",
+    "liveSubtitle": "Em direto",
+    "confirmedParticipants": "participantes confirmados",
+    "countries": "países",
+    "seeAllNews": "Todas as notícias",
+    "noNews": "Ainda não há notícias publicadas."
+  },
+  "speakersPage": {
+    "empty": "A lista de oradores será publicada em breve."
+  },
+  "sponsorsPage": {
+    "empty": "A lista de parceiros será publicada em breve."
+  },
+  "newsPage": {
+    "empty": "Ainda não há notícias publicadas."
+  },
+  "constellation": {
+    "backToTop": "Voltar ao topo",
+    "ticker": {
+      "dates": "{venue}, Dacar · {dates}",
+      "registrations": "Inscrições abertas a 5 de outubro de 2026",
+      "translation": "Interpretação simultânea FR · EN",
+      "motto": "Dados · Inovação · Impacto"
+    },
+    "footer": {
+      "seeYou": "Encontro",
+      "preposition": "em",
+      "city": "Dacar.",
+      "initiative": "Uma iniciativa da ANSD",
+      "follow": "Seguir",
+      "privacy": "Política de privacidade",
+      "legal": "Aviso legal",
+      "writeToUs": "Escreva-nos",
+      "anniversaryLogo": "ANSD, 20 anos ao serviço da estatística pública e do desenvolvimento",
+      "motto": "Dados · Inovação · Impacto"
+    },
+    "countdown": {
+      "label": "DIA D −",
+      "days": "d",
+      "hours": "h",
+      "minutes": "min",
+      "seconds": "s",
+      "aria": "Contagem decrescente até à abertura do Fórum: {days} dias, {hours} horas e {minutes} minutos",
+      "live": "O Fórum está a decorrer",
+      "over": "Obrigado! Consulte as atas do Fórum"
+    },
+    "hero": {
+      "scroll": "Deslizar para baixo"
+    },
+    "speakers": {
+      "hover": "PASSAR ↻",
+      "touch": "TOCAR ↻",
+      "profile": "Ver o perfil",
+      "seeAll": "Ver tudo",
+      "turnHint": "Virar o cartão de {name}",
+      "roles": {
+        "MODERATOR": "Moderador(a)",
+        "PANELIST": "Painelista",
+        "KEYNOTE": "Orador(a) principal",
+        "GUEST_OF_HONOR": "Convidado(a) de honra"
+      },
+      "rolesLabel": "funções"
+    },
+    "news": {
+      "eyebrow": "ACOMPANHAR O FÓRUM",
+      "label": "NOTÍCIAS",
+      "read": "Ler o artigo",
+      "all": "Todas as notícias"
+    },
+    "partners": {
+      "pause": "Pausar o desfile",
+      "resume": "Retomar o desfile",
+      "seeAll": "Ver tudo"
+    }
+  }
+}

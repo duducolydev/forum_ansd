@@ -1,5 +1,6 @@
 "use client";
 
+import { localeIntl, type Langue } from "@/lib/langue";
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -41,7 +42,7 @@ export function NewsTimeline({
   prioritaire = false,
 }: {
   articles: ArticleFrise[];
-  locale: "fr" | "en";
+  locale: Langue;
   /** `h2` sur la page Actualités, qui n'a pas d'autre intertitre ; `h3` sur l'accueil. */
   niveau?: "h2" | "h3";
   /** Première couverture chargée en priorité : c'est l'image du premier écran (LCP). */
@@ -85,7 +86,7 @@ export function NewsTimeline({
     };
   }, [articles.length]);
 
-  const formatDate = new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "fr-FR", {
+  const formatDate = new Intl.DateTimeFormat(localeIntl(locale), {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",

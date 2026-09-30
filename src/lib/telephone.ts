@@ -27,7 +27,7 @@ export interface Indicatif {
   nom: string;
 }
 
-export function listeIndicatifs(langue: "fr" | "en" = "fr"): Indicatif[] {
+export function listeIndicatifs(langue: string = "fr"): Indicatif[] {
   const noms = new Intl.DisplayNames([langue], { type: "region" });
   return getCountries()
     .map((pays) => ({ pays, code: getCountryCallingCode(pays), nom: noms.of(pays) ?? pays }))

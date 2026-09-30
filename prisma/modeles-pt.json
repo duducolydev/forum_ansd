@@ -1,0 +1,82 @@
+{
+  "_commentaire": "Traduction portugaise des modèles d'e-mails destinés aux participants (30 septembre 2026). Source unique : lue par prisma/seed.ts et par la migration 20260930100000_portugais_contenus. Les modèles internes (BackOffice, référents, contact) restent en FR/EN.",
+  "modeles": {
+    "accreditation_granted": {
+      "subject": "A sua acreditação de imprensa foi concedida",
+      "body": "Olá {{prenom}},\n\nA sua acreditação de imprensa para o Fórum Internacional sobre Dados foi concedida: a sua conta está ativa.\n\nAceda diretamente ao seu espaço: {{lien_espace}}\nEsta ligação é pessoal e é válida durante 14 dias.\n\nCódigo de acesso de reserva, a introduzir com o seu endereço de e-mail na página «O meu espaço»: {{code6}}\n\nO seu crachá de imprensa, com a menção «Acreditação de imprensa», estará aí disponível assim que for gerado.\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "accreditation_pending": {
+      "subject": "O seu pedido de acreditação de imprensa foi recebido",
+      "body": "Olá {{prenom}},\n\nRecebemos o seu pedido de acreditação de imprensa para o Fórum Internacional sobre Dados.\n\nA sua conta será ativada assim que a administração do Fórum conceder a sua acreditação. Receberá então um e-mail com acesso direto ao seu espaço, onde estará disponível o seu crachá de imprensa.\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "badge_ready": {
+      "subject": "O seu crachá está disponível",
+      "body": "Olá {{prenom}},\n\nO seu crachá para o Fórum Internacional sobre Dados está pronto. Descarregue-o aqui: {{lien_badge}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "invitation": {
+      "subject": "Está convidado(a) para o Fórum Internacional sobre Dados",
+      "body": "Olá {{prenom}},\n\nEstá convidado(a) para o Fórum Internacional sobre Dados da ANSD, de 23 a 25 de novembro de 2026, em Dacar.\n\nInscreva-se através da sua ligação pessoal: {{lien_inscription}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "invitation_reminder": {
+      "subject": "Lembrete — Inscrição no Fórum Internacional sobre Dados",
+      "body": "Olá {{prenom}},\n\nAinda não recebemos a sua inscrição no Fórum. Ainda há lugares disponíveis: {{lien_inscription}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "magic_link": {
+      "subject": "A sua ligação de acesso a «O meu espaço»",
+      "body": "Olá,\n\nEis a sua ligação de acesso ao seu espaço de participante, válida durante 30 minutos: {{lien_connexion}}\n\nCódigo de reserva: {{code6}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "newsletter_published": {
+      "subject": "{{titre}}",
+      "body": "Olá {{prenom}},\n\n{{titre}}\n\n{{chapo}}\n\nLeia o texto completo com ilustrações e descarregue-o em PDF:\n{{lien_newsletter}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "registration_confirmed": {
+      "subject": "A sua participação no Fórum está confirmada",
+      "body": "Olá {{prenom}},\n\nA sua participação no Fórum Internacional sobre Dados está confirmada.\n\nAceda diretamente ao seu espaço, sem mais nenhum passo: {{lien_espace}}\nEsta ligação é pessoal e é válida durante 14 dias.\n\nCódigo de acesso de reserva, a introduzir com o seu endereço de e-mail na página «O meu espaço»: {{code6}}\n{{referent_bloc}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "registration_imported": {
+      "subject": "A sua inscrição no Fórum Internacional sobre Dados",
+      "body": "Olá {{prenom}},\n\nNa sequência da confirmação da sua participação, o comité organizador inscreveu-o(a) no Fórum Internacional sobre Dados. Não tem nenhum passo de inscrição a realizar.\n\nAceda diretamente ao seu espaço: {{lien_espace}}\nEsta ligação é pessoal e é válida durante 14 dias.\n\nCódigo de acesso de reserva, a introduzir com o seu endereço de e-mail na página «O meu espaço»: {{code6}}\n\nNo seu espaço, pode verificar e completar os seus dados, acrescentar a sua fotografia e descarregar o seu crachá. Um e-mail avisá-lo(a)-á assim que o crachá estiver pronto.\n{{referent_bloc}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "registration_received": {
+      "subject": "A sua inscrição foi recebida",
+      "body": "Olá {{prenom}},\n\nA sua inscrição no Fórum foi recebida e aguarda validação pelo comité organizador.\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "reminder_j1": {
+      "subject": "O Fórum começa amanhã",
+      "body": "Olá {{prenom}},\n\nO Fórum Internacional sobre Dados abre amanhã de manhã no Hotel King Fahd Palace, em Dacar. O balcão de acolhimento abre às 8h00.\n\nApresente o código QR do seu crachá à entrada, no telemóvel ou impresso: {{lien_espace}}\n\nTenha um bom dia,\nO comité organizador"
+    },
+    "reminder_j7": {
+      "subject": "O Fórum abre dentro de uma semana",
+      "body": "Olá {{prenom}},\n\nO Fórum Internacional sobre Dados abre dentro de uma semana, de 23 a 25 de novembro de 2026, no Hotel King Fahd Palace, em Dacar.\n\nDescarregue o seu crachá antes de vir: será verificado à entrada. Encontra-o no seu espaço pessoal: {{lien_espace}}\n\nAté breve,\nO comité organizador"
+    },
+    "session_promoted": {
+      "subject": "Vagou um lugar: {{session}}",
+      "body": "Olá {{prenom}},\n\nVagou um lugar na sessão «{{session}}» e era o(a) primeiro(a) na lista de espera: a sua inscrição está agora confirmada.\n\nConsulte o seu programa no seu espaço pessoal: {{lien_espace}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "speaker_link": {
+      "subject": "O seu espaço de orador — Fórum Internacional sobre Dados",
+      "body": "Olá {{prenom}},\n\nEis a sua ligação de acesso ao espaço de orador, válida durante 30 minutos: {{lien_connexion}}\n\nPode aí carregar a sua fotografia, a sua biografia e a sua apresentação.\n\nCódigo de reserva: {{code6}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "thank_you": {
+      "subject": "Obrigado pela sua participação no Fórum",
+      "body": "Olá {{prenom}},\n\nObrigado por ter participado no Fórum Internacional sobre Dados. As atas do Fórum estarão em breve disponíveis no portal.\n\nCom os melhores cumprimentos,\nO comité organizador"
+    }
+  },
+  "categories": {
+    "AUTORITE_VIP": "Autoridade / VIP",
+    "AUTORITE_ADMIN": "Autoridades administrativas",
+    "PARTICIPANT_NATIONAL": "Participante nacional",
+    "PARTICIPANT_INTERNATIONAL": "Participante internacional",
+    "INS": "Instituto nacional de estatística",
+    "ORG_INTERNATIONALE": "Organização internacional",
+    "PTF": "Parceiro técnico e financeiro",
+    "SPONSOR": "Patrocinador",
+    "MEDIA": "Comunicação social",
+    "PERSONNEL_ANSD": "Pessoal da ANSD",
+    "PRESTATAIRE": "Prestador de serviços/Fornecedor",
+    "INVITE_SPECIAL": "Convidado especial"
+  },
+  "edition": {
+    "titlePt": "Fórum Internacional sobre Dados"
+  }
+}

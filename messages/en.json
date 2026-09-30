@@ -26,6 +26,7 @@
   "locale": {
     "fr": "FR",
     "en": "EN",
+    "pt": "PT",
     "switchTo": "Switch to {locale}"
   },
   "common": {

@@ -1,5 +1,6 @@
 "use client";
 
+import { selon, type Langue } from "@/lib/langue";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Building2, Check, Globe2, Mic, Plus, Tag } from "lucide-react";
 import { SpeakersFlipGrid, type IntervenantCarte } from "./SpeakersFlipGrid";
@@ -36,11 +37,11 @@ const PAR_PAGE = 12;
 export function AnnuaireIntervenants({
   intervenants,
   initial,
-  en,
+  locale,
 }: {
   intervenants: IntervenantAnnuaire[];
   initial: Partial<Filtres>;
-  en: boolean;
+  locale: Langue;
 }) {
   const [filtres, setFiltres] = useState<Filtres>({
     theme: initial.theme ?? null,
@@ -116,12 +117,12 @@ export function AnnuaireIntervenants({
         {options.themes.length > 0 && (
           <div
             role="group"
-            aria-label={en ? "Themes" : "Thèmes"}
+            aria-label={selon(locale, { fr: "Thèmes", en: "Themes", pt: "Temas" })}
             className="flex flex-wrap items-center gap-2"
           >
             <span className="flex w-20 shrink-0 items-center gap-1.5 text-xs font-bold tracking-wide text-[var(--muted)] uppercase">
               <Tag aria-hidden size={13} />
-              {en ? "Themes" : "Thèmes"}
+              {selon(locale, { fr: "Thèmes", en: "Themes", pt: "Temas" })}
             </span>
             {options.themes.map((theme) => (
               <Pastille
@@ -138,29 +139,41 @@ export function AnnuaireIntervenants({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Choix
             id="filtre-pays"
-            libelle={en ? "Country" : "Pays"}
+            libelle={selon(locale, { fr: "Pays", en: "Country", pt: "País" })}
             icone={<Globe2 aria-hidden size={13} />}
             valeur={filtres.pays}
             options={options.pays}
-            tous={en ? "All countries" : "Tous les pays"}
+            tous={selon(locale, {
+              fr: "Tous les pays",
+              en: "All countries",
+              pt: "Todos os países",
+            })}
             onChange={(valeur) => changer("pays", valeur)}
           />
           <Choix
             id="filtre-organisation"
-            libelle={en ? "Organisation" : "Organisation"}
+            libelle={selon(locale, { fr: "Organisation", en: "Organisation", pt: "Organização" })}
             icone={<Building2 aria-hidden size={13} />}
             valeur={filtres.organisation}
             options={options.organisations}
-            tous={en ? "All organisations" : "Toutes les organisations"}
+            tous={selon(locale, {
+              fr: "Toutes les organisations",
+              en: "All organisations",
+              pt: "Todas as organizações",
+            })}
             onChange={(valeur) => changer("organisation", valeur)}
           />
           <Choix
             id="filtre-panel"
-            libelle={en ? "Panel" : "Panel"}
+            libelle={selon(locale, { fr: "Panel", en: "Panel", pt: "Painel" })}
             icone={<Mic aria-hidden size={13} />}
             valeur={filtres.panel}
             options={options.panels}
-            tous={en ? "All sessions" : "Toutes les sessions"}
+            tous={selon(locale, {
+              fr: "Toutes les sessions",
+              en: "All sessions",
+              pt: "Todas as sessões",
+            })}
             onChange={(valeur) => changer("panel", valeur)}
           />
         </div>
@@ -174,22 +187,30 @@ export function AnnuaireIntervenants({
             }}
             className="self-start text-sm font-semibold text-[var(--title)] underline underline-offset-4"
           >
-            {en ? "Clear filters" : "Effacer les filtres"}
+            {selon(locale, {
+              fr: "Effacer les filtres",
+              en: "Clear filters",
+              pt: "Limpar os filtros",
+            })}
           </button>
         )}
       </div>
 
       <p aria-live="polite" className="mb-4 text-sm text-[var(--muted)]">
-        {en
-          ? `${retenus.length} speaker${retenus.length > 1 ? "s" : ""}`
-          : `${retenus.length} intervenant${retenus.length > 1 ? "s" : ""}`}
+        {selon(locale, {
+          fr: `${retenus.length} intervenant${retenus.length > 1 ? "s" : ""}`,
+          en: `${retenus.length} speaker${retenus.length > 1 ? "s" : ""}`,
+          pt: `${retenus.length} orador${retenus.length > 1 ? "es" : ""}`,
+        })}
       </p>
 
       {retenus.length === 0 ? (
         <p className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center text-[var(--muted)]">
-          {en
-            ? "No speaker matches these filters yet."
-            : "Aucun intervenant ne correspond à ces filtres pour l'instant."}
+          {selon(locale, {
+            fr: "Aucun intervenant ne correspond à ces filtres pour l'instant.",
+            en: "No speaker matches these filters yet.",
+            pt: "Ainda nenhum orador corresponde a estes filtros.",
+          })}
         </p>
       ) : (
         // Nouvelle clé à chaque filtre : les cartes se réorganisent en cascade.
@@ -205,9 +226,11 @@ export function AnnuaireIntervenants({
             className="relative inline-flex items-center gap-2 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)] px-5 py-3 font-semibold text-[var(--title)]"
           >
             <Plus aria-hidden size={17} />
-            {en
-              ? `Show more (${retenus.length - visibles})`
-              : `Afficher plus (${retenus.length - visibles})`}
+            {selon(locale, {
+              fr: `Afficher plus (${retenus.length - visibles})`,
+              en: `Show more (${retenus.length - visibles})`,
+              pt: `Mostrar mais (${retenus.length - visibles})`,
+            })}
           </button>
         </div>
       )}
