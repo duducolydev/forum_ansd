@@ -23,6 +23,7 @@ export async function generateMetadata() {
 export const dynamic = "force-dynamic";
 
 interface Filtres {
+  q?: string;
   theme?: string;
   pays?: string;
   organisation?: string;

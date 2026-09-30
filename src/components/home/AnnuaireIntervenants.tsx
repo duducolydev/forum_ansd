@@ -2,7 +2,7 @@
 
 import { selon, type Langue } from "@/lib/langue";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Building2, Check, Globe2, Mic, Plus, Tag } from "lucide-react";
+import { Building2, Check, Globe2, Mic, Plus, Search, Tag, X } from "lucide-react";
 import { SpeakersFlipGrid, type IntervenantCarte } from "./SpeakersFlipGrid";
 
 export interface IntervenantAnnuaire extends IntervenantCarte {
@@ -13,6 +13,8 @@ export interface IntervenantAnnuaire extends IntervenantCarte {
 }
 
 interface Filtres {
+  /** Recherche libre (30 septembre 2026). */
+  q: string | null;
   theme: string | null;
   pays: string | null;
   organisation: string | null;
@@ -20,6 +22,31 @@ interface Filtres {
 }
 
 const PAR_PAGE = 12;
+
+/** « Rencontre à Dakar » → « rencontre a dakar » : accents et casse ignorés. */
+function normaliser(texte: string): string {
+  return texte
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+/** Texte dans lequel la recherche s'applique : tout ce que montre la carte. */
+function texteRecherchable(intervenant: IntervenantAnnuaire): string {
+  return normaliser(
+    [
+      intervenant.firstName,
+      intervenant.lastName,
+      intervenant.jobTitle,
+      intervenant.organization,
+      intervenant.country,
+      ...intervenant.themes,
+      ...intervenant.panels,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+}
 
 /**
  * Annuaire des intervenants (brief « Constellation » §6).
@@ -44,6 +71,7 @@ export function AnnuaireIntervenants({
   locale: Langue;
 }) {
   const [filtres, setFiltres] = useState<Filtres>({
+    q: initial.q ?? null,
     theme: initial.theme ?? null,
     pays: initial.pays ?? null,
     organisation: initial.organisation ?? null,
@@ -64,8 +92,19 @@ export function AnnuaireIntervenants({
     };
   }, [intervenants]);
 
+  const index = useMemo(
+    () => new Map(intervenants.map((i) => [i.id, texteRecherchable(i)])),
+    [intervenants],
+  );
+  // Chaque mot saisi doit figurer quelque part : « diallo sénégal » trouve
+  // Mariam Diallo, de Dakar, sans exiger l'ordre des mots.
+  const mots = normaliser(filtres.q ?? "")
+    .split(/\s+/)
+    .filter(Boolean);
+
   const retenus = intervenants.filter(
     (i) =>
+      mots.every((mot) => index.get(i.id)?.includes(mot)) &&
       (!filtres.theme || i.themes.includes(filtres.theme)) &&
       (!filtres.pays || i.country === filtres.pays) &&
       (!filtres.organisation || i.organization === filtres.organisation) &&
@@ -91,6 +130,7 @@ export function AnnuaireIntervenants({
   // L'adresse suit les filtres, sans navigation ni retour en haut de page.
   useEffect(() => {
     const parametres = new URLSearchParams();
+    if (filtres.q) parametres.set("q", filtres.q);
     if (filtres.theme) parametres.set("theme", filtres.theme);
     if (filtres.pays) parametres.set("pays", filtres.pays);
     if (filtres.organisation) parametres.set("organisation", filtres.organisation);
@@ -114,6 +154,48 @@ export function AnnuaireIntervenants({
   return (
     <>
       <div className="mb-8 flex flex-col gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
+        <div role="search" className="relative">
+          <label htmlFor="recherche-intervenant" className="sr-only">
+            {selon(locale, {
+              fr: "Rechercher un intervenant",
+              en: "Search for a speaker",
+              pt: "Pesquisar um orador",
+            })}
+          </label>
+          <Search
+            aria-hidden
+            size={17}
+            className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--muted)]"
+          />
+          <input
+            id="recherche-intervenant"
+            type="search"
+            value={filtres.q ?? ""}
+            onChange={(evenement) => changer("q", evenement.target.value || null)}
+            placeholder={selon(locale, {
+              fr: "Rechercher : nom, organisation, pays, thème…",
+              en: "Search: name, organisation, country, theme…",
+              pt: "Pesquisar: nome, organização, país, tema…",
+            })}
+            autoComplete="off"
+            className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] py-2.5 pr-10 pl-10 text-[var(--text)] placeholder:text-[var(--muted)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--gold)] [&::-webkit-search-cancel-button]:appearance-none"
+          />
+          {filtres.q && (
+            <button
+              type="button"
+              onClick={() => changer("q", null)}
+              aria-label={selon(locale, {
+                fr: "Effacer la recherche",
+                en: "Clear the search",
+                pt: "Limpar a pesquisa",
+              })}
+              className="absolute top-1/2 right-2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-[var(--muted)] hover:text-[var(--title)]"
+            >
+              <X aria-hidden size={15} />
+            </button>
+          )}
+        </div>
+
         {options.themes.length > 0 && (
           <div
             role="group"
@@ -182,7 +264,7 @@ export function AnnuaireIntervenants({
           <button
             type="button"
             onClick={() => {
-              setFiltres({ theme: null, pays: null, organisation: null, panel: null });
+              setFiltres({ q: null, theme: null, pays: null, organisation: null, panel: null });
               setVisibles(PAR_PAGE);
             }}
             className="self-start text-sm font-semibold text-[var(--title)] underline underline-offset-4"

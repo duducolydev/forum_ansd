@@ -98,6 +98,11 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
       ? (inscription.status as StatutParticipant)
       : "AUCUN";
 
+  const titreSeance = traduire(locale, {
+    fr: session.titleFr,
+    en: session.titleEn,
+    pt: session.titlePt,
+  });
   const description = traduire(locale, {
     fr: session.descriptionFr,
     en: session.descriptionEn,
@@ -113,16 +118,8 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
 
   return (
     <article>
-      <BandeauPage largeur="moyen">
-        <SplitTitle
-          texte={traduire(locale, {
-            fr: session.titleFr,
-            en: session.titleEn,
-            pt: session.titlePt,
-          })}
-          delaiInitial={0.1}
-          className="titre-page"
-        />
+      <BandeauPage largeur="moyen" filCourant={titreSeance}>
+        <SplitTitle texte={titreSeance} delaiInitial={0.1} className="titre-page" />
       </BandeauPage>
 
       <CorpsPage largeur="moyen" className="flex flex-col gap-10">

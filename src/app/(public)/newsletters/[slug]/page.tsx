@@ -55,7 +55,7 @@ export default async function NewsletterPage({ params }: { params: Promise<{ slu
 
   return (
     <>
-      <BandeauPage largeur="moyen">
+      <BandeauPage largeur="moyen" filCourant={titre}>
         <EnteteSection bandeau niveau="h1" titre={titre} icone={Mails} />
       </BandeauPage>
 

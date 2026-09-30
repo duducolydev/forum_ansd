@@ -59,7 +59,7 @@ export default async function DetailRubriquePage({
 
   return (
     <>
-      <BandeauPage largeur="moyen">
+      <BandeauPage largeur="moyen" filCourant={libelle(rubrique, locale)}>
         <EnteteSection
           bandeau
           niveau="h1"

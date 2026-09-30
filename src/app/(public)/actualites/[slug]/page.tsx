@@ -56,7 +56,10 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
 
   return (
     <article>
-      <BandeauPage largeur="moyen">
+      <BandeauPage
+        largeur="moyen"
+        filCourant={traduire(locale, { fr: post.titleFr, en: post.titleEn, pt: post.titlePt })}
+      >
         <SplitTitle
           texte={traduire(locale, { fr: post.titleFr, en: post.titleEn, pt: post.titlePt })}
           delaiInitial={0.1}

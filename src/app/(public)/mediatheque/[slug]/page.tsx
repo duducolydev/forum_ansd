@@ -46,7 +46,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ slug: st
 
   return (
     <>
-      <BandeauPage>
+      <BandeauPage filCourant={titre}>
         <EnteteSection bandeau niveau="h1" titre={titre} icone={Images} />
       </BandeauPage>
 

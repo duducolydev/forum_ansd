@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Globe, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { ecrireEtatMenu, type EtatMenu } from "@/lib/sidebar";
 import { utiliseLaCamera } from "@/lib/pages-camera";
 import { menuPour, type NavGroup } from "./nav";
@@ -224,6 +224,22 @@ export function AdminSidebar({
       </nav>
 
       <div className="border-dark-panel-line mt-3 border-t pt-3">
+        {/*
+         * Retour au portail public (demande du 30 septembre 2026). Même ligne
+         * que les entrées du menu, icône seule et infobulle quand il est replié.
+         */}
+        <Link
+          href="/"
+          title={replie ? "Portail public" : undefined}
+          aria-label={replie ? "Portail public" : undefined}
+          className={`transition-tout group text-dark-panel-muted mb-2 flex items-center gap-2.5 rounded-lg py-2.5 text-[0.88rem] hover:bg-white/8 hover:text-white ${
+            replie ? "justify-center px-0" : "px-2.5"
+          }`}
+        >
+          <Globe aria-hidden size={17} className="transition-tout shrink-0 group-hover:scale-110" />
+          {!replie && <span className="flex-1 truncate">Portail public</span>}
+          {!replie && <ArrowUpRight aria-hidden size={14} className="shrink-0 opacity-70" />}
+        </Link>
         <MenuUtilisateur userName={userName} roleName={roleName} replie={replie} />
       </div>
     </aside>

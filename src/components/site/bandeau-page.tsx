@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ReseauHero } from "@/components/home/ReseauHero";
 import { WaveDivider } from "@/components/motion/WaveDivider";
+import { FilAriane } from "./fil-ariane";
 
 /**
  * Bandeau d'ouverture d'une page intérieure (§10).
@@ -29,6 +30,11 @@ import { WaveDivider } from "@/components/motion/WaveDivider";
  * Ce qui figurait dans le bandeau d'une page passe en tête de son contenu.
  *
  * `reseau={false}` pour les espaces personnels (Mon espace) : aucun canvas.
+ *
+ * **Fil d'Ariane** (demande du 30 septembre 2026) : posé **sous** le bandeau,
+ * en tête du contenu, pour que le bandeau reste réduit au titre. Il est
+ * calculé depuis l'adresse ; une page de détail lui donne son titre par
+ * `filCourant`.
  */
 export const LARGEURS = {
   large: "max-w-[1200px]",
@@ -41,11 +47,14 @@ export type LargeurPage = keyof typeof LARGEURS;
 export function BandeauPage({
   largeur = "large",
   reseau = true,
+  filCourant,
   children,
 }: {
   largeur?: LargeurPage;
   /** Réseau de données animé en fond. Faux sur les espaces personnels. */
   reseau?: boolean;
+  /** Dernier maillon du fil d'Ariane, pour une page de détail (titre de l'article…). */
+  filCourant?: string;
   children: ReactNode;
 }) {
   return (
@@ -55,6 +64,11 @@ export function BandeauPage({
         <div className={`relative mx-auto px-6 ${LARGEURS[largeur]}`}>{children}</div>
       </section>
       <WaveDivider dessus="var(--surface-2)" dessous="var(--bg)" basse />
+      {/* Marge négative : le contenu qui suit garde son propre espacement, et
+          le fil s'y loge sans creuser un second vide. */}
+      <div className={`relative mx-auto -mb-6 px-6 pt-4 ${LARGEURS[largeur]}`}>
+        <FilAriane courant={filCourant} />
+      </div>
     </>
   );
 }
