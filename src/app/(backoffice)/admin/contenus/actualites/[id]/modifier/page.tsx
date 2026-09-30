@@ -30,10 +30,13 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
             slug: post.slug,
             titleFr: post.titleFr,
             titleEn: post.titleEn,
+            titlePt: post.titlePt ?? "",
             excerptFr: post.excerptFr ?? "",
             excerptEn: post.excerptEn ?? "",
+            excerptPt: post.excerptPt ?? "",
             bodyFr: post.bodyFr,
             bodyEn: post.bodyEn,
+            bodyPt: post.bodyPt ?? "",
             isPublished: post.isPublished,
           }}
         />

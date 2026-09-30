@@ -97,6 +97,7 @@ export default async function SectionsPage({
                 isVisible: section.isVisible,
                 contentFr: lireContenu(section.contentFr),
                 contentEn: lireContenu(section.contentEn),
+                contentPt: lireContenu(section.contentPt),
                 settings: (section.settings as Record<string, unknown> | null) ?? {},
                 premiere: rang === 0,
                 derniere: rang === sections.length - 1,

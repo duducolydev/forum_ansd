@@ -1,3 +1,4 @@
+import { lireLangue, localeIntl, selon, traduire } from "@/lib/langue";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import {
@@ -12,8 +13,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
-import { getSessionBySlug, ETAT_LABELS } from "@/modules/sessions/service";
-import { TYPE_LABELS } from "@/modules/sessions/schema";
+import { getLocale } from "next-intl/server";
+import { getSessionBySlug } from "@/modules/sessions/service";
+import { libelleEtat, libelleRole, libelleType } from "@/modules/sessions/libelles";
 import { prisma } from "@/lib/db";
 import { getParticipantSession } from "@/modules/auth/participant-session";
 import {
@@ -29,23 +31,9 @@ import { SplitTitle } from "@/components/motion/SplitTitle";
 
 export const dynamic = "force-dynamic";
 
-const jourLong = new Intl.DateTimeFormat("fr-FR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
 function heure(date: Date): string {
   return `${String(date.getUTCHours()).padStart(2, "0")}h${String(date.getUTCMinutes()).padStart(2, "0")}`;
 }
-
-const ROLE_LABELS: Record<string, string> = {
-  MODERATOR: "Modération",
-  PANELIST: "Panéliste",
-  KEYNOTE: "Intervention principale",
-};
 
 /** Repère factuel du bandeau : jour, horaire, salle. */
 function Repere({ icone: Icone, children }: { icone: LucideIcon; children: ReactNode }) {
@@ -61,13 +49,26 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const edition = await getActiveEdition();
   const session = await getSessionBySlug(edition.id, slug);
-  return { title: session?.titleFr ?? "Session" };
+  const locale = await getLocale();
+  return {
+    title: session
+      ? traduire(locale, { fr: session.titleFr, en: session.titleEn, pt: session.titlePt })
+      : "Session",
+  };
 }
 
 export default async function SessionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const locale = lireLangue(await getLocale());
   const edition = await getActiveEdition();
   const session = await getSessionBySlug(edition.id, slug);
+  const jourLong = new Intl.DateTimeFormat(localeIntl(locale), {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 
   // Une session en brouillon n'existe pas pour le public : 404 et non 403, pour
   // ne pas révéler qu'un panel est en préparation sous ce nom.
@@ -97,6 +98,14 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
       ? (inscription.status as StatutParticipant)
       : "AUCUN";
 
+  const description = traduire(locale, {
+    fr: session.descriptionFr,
+    en: session.descriptionEn,
+    pt: session.descriptionPt,
+  });
+  const bioDe = (speaker: { bioFr: string | null; bioEn: string | null; bioPt: string | null }) =>
+    traduire(locale, { fr: speaker.bioFr, en: speaker.bioEn, pt: speaker.bioPt });
+
   const complet =
     session.places.capacite !== null && session.places.capacite > 0
       ? Math.min(100, Math.round((session.places.inscrits / session.places.capacite) * 100))
@@ -105,7 +114,15 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
   return (
     <article>
       <BandeauPage largeur="moyen">
-        <SplitTitle texte={session.titleFr} delaiInitial={0.1} className="titre-page" />
+        <SplitTitle
+          texte={traduire(locale, {
+            fr: session.titleFr,
+            en: session.titleEn,
+            pt: session.titlePt,
+          })}
+          delaiInitial={0.1}
+          className="titre-page"
+        />
       </BandeauPage>
 
       <CorpsPage largeur="moyen" className="flex flex-col gap-10">
@@ -119,10 +136,10 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
             icone={ArrowLeft}
             className="self-start"
           >
-            Programme
+            {selon(locale, { fr: "Programme", en: "Programme", pt: "Programa" })}
           </LienSite>
           <p className="surtitre">
-            {TYPE_LABELS[session.type]}
+            {libelleType(session.type, locale)}
             {session.theme ? ` · ${session.theme}` : ""}
           </p>
           <div className="flex flex-wrap gap-2.5">
@@ -138,11 +155,13 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
             <div className="filet-haut border-border bg-surface relative overflow-hidden rounded-2xl border p-6">
               <p className="text-heading flex flex-wrap items-center gap-2 text-sm font-semibold">
                 <Users aria-hidden size={16} className="text-accent-text" />
-                {ETAT_LABELS[session.places.etat]}
+                {libelleEtat(session.places.etat, locale)}
                 {session.places.capacite !== null && (
                   <span className="text-text-3 font-normal">
-                    · {session.places.inscrits} / {session.places.capacite} inscrits
-                    {session.places.attente > 0 && ` · ${session.places.attente} en attente`}
+                    · {session.places.inscrits} / {session.places.capacite}{" "}
+                    {selon(locale, { fr: "inscrits", en: "registered", pt: "inscritos" })}
+                    {session.places.attente > 0 &&
+                      ` · ${session.places.attente} ${selon(locale, { fr: "en attente", en: "waiting", pt: "em espera" })}`}
                   </span>
                 )}
               </p>
@@ -167,22 +186,21 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
                   etat={session.places.etat}
                   statut={statut}
                   connecte={participant !== null}
+                  locale={locale}
                 />
               </div>
             </div>
           </Reveal>
         )}
 
-        {session.descriptionFr && (
+        {description && (
           <Reveal>
             <section>
               <h2 className="mb-3 flex items-center gap-2.5 text-lg">
                 <FileText aria-hidden size={19} className="text-accent-text" />
-                Présentation
+                {selon(locale, { fr: "Présentation", en: "Overview", pt: "Apresentação" })}
               </h2>
-              <p className="text-text-2 leading-relaxed whitespace-pre-line">
-                {session.descriptionFr}
-              </p>
+              <p className="text-text-2 leading-relaxed whitespace-pre-line">{description}</p>
             </section>
           </Reveal>
         )}
@@ -192,7 +210,7 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
             <section className="bg-bg-2 border-border rounded-2xl border p-6">
               <h2 className="mb-3 flex items-center gap-2.5 text-lg">
                 <Target aria-hidden size={19} className="text-accent-text" />
-                Objectifs
+                {selon(locale, { fr: "Objectifs", en: "Objectives", pt: "Objetivos" })}
               </h2>
               <p className="text-text-2 leading-relaxed whitespace-pre-line">
                 {session.objectives}
@@ -205,7 +223,11 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
           <div className="flex flex-wrap gap-3">
             {session.tdrPath && (
               <LienSiteExterne href={`/api/v1/sessions/${session.id}/tdr`} icone={FileText}>
-                Termes de référence (PDF)
+                {selon(locale, {
+                  fr: "Termes de référence (PDF)",
+                  en: "Terms of reference (PDF)",
+                  pt: "Termos de referência (PDF)",
+                })}
               </LienSiteExterne>
             )}
             {session.liveStreamUrl && (
@@ -215,7 +237,11 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
                 ton="principal"
                 icone={Radio}
               >
-                Suivre en direct
+                {selon(locale, {
+                  fr: "Suivre en direct",
+                  en: "Watch live",
+                  pt: "Acompanhar em direto",
+                })}
               </LienSiteExterne>
             )}
           </div>
@@ -224,7 +250,9 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
         {intervenants.length > 0 && (
           <section>
             <h2 className="mb-5 flex items-center gap-4 text-base">
-              <span className="surtitre">Intervenants</span>
+              <span className="surtitre">
+                {selon(locale, { fr: "Intervenants", en: "Speakers", pt: "Oradores" })}
+              </span>
               <span className="from-border h-px flex-1 bg-gradient-to-r to-transparent" />
               <span className="text-text-3 text-sm font-normal">{intervenants.length}</span>
             </h2>
@@ -243,7 +271,7 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-accent-text text-xs font-semibold tracking-wide uppercase">
-                        {ROLE_LABELS[lien.role] ?? lien.role}
+                        {libelleRole(lien.role, locale)}
                       </p>
                       <p className="text-heading font-semibold">
                         {lien.speaker.firstName} {lien.speaker.lastName}
@@ -253,13 +281,13 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
                           .filter(Boolean)
                           .join(" · ")}
                       </p>
-                      {lien.speaker.bioFr && (
+                      {bioDe(lien.speaker) && (
                         <details className="mt-2.5">
                           <summary className="text-link hover:text-secondary-hover cursor-pointer text-sm font-semibold">
-                            Biographie
+                            {selon(locale, { fr: "Biographie", en: "Biography", pt: "Biografia" })}
                           </summary>
                           <p className="text-text-2 mt-2 text-sm leading-relaxed whitespace-pre-line">
-                            {lien.speaker.bioFr}
+                            {bioDe(lien.speaker)}
                           </p>
                         </details>
                       )}
@@ -290,7 +318,11 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
 
         <div className="border-border flex flex-wrap gap-3 border-t pt-8">
           <LienSite href="/programme" icone={CalendarDays}>
-            Revenir au programme
+            {selon(locale, {
+              fr: "Revenir au programme",
+              en: "Back to the programme",
+              pt: "Voltar ao programa",
+            })}
           </LienSite>
         </div>
       </CorpsPage>

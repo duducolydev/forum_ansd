@@ -1,3 +1,4 @@
+import { lireLangue, localeIntl, selon } from "@/lib/langue";
 import Link from "next/link";
 import { getLocale } from "next-intl/server";
 import { ArrowRight, Mails } from "lucide-react";
@@ -16,15 +17,13 @@ export const metadata = { title: "Newsletters" };
  */
 export const dynamic = "force-dynamic";
 
-const dateLongue = new Intl.DateTimeFormat("fr-FR", {
-  dateStyle: "long",
-  timeZone: "Africa/Dakar",
-});
-
 /** Newsletters du Forum (§34) : la liste, la plus récente d'abord. */
 export default async function NewslettersPage() {
-  const locale = (await getLocale()) === "en" ? "en" : "fr";
-  const en = locale === "en";
+  const locale = lireLangue(await getLocale());
+  const dateLongue = new Intl.DateTimeFormat(localeIntl(locale), {
+    dateStyle: "long",
+    timeZone: "Africa/Dakar",
+  });
   const edition = await getActiveEdition();
   const newsletters = await listerPubliees(edition.id);
 
@@ -34,7 +33,7 @@ export default async function NewslettersPage() {
         <EnteteSection
           bandeau
           niveau="h1"
-          titre={en ? "Newsletters" : "Newsletters"}
+          titre={selon(locale, { fr: "Newsletters", en: "Newsletters", pt: "Newsletters" })}
           icone={Mails}
         />
       </BandeauPage>
@@ -42,7 +41,11 @@ export default async function NewslettersPage() {
       <CorpsPage largeur="moyen">
         {newsletters.length === 0 ? (
           <p className="border-border bg-surface text-text-3 rounded-xl border p-8 text-center">
-            {en ? "No newsletter published yet." : "Aucune newsletter publiée pour l'instant."}
+            {selon(locale, {
+              fr: "Aucune newsletter publiée pour l'instant.",
+              en: "No newsletter published yet.",
+              pt: "Ainda não foi publicada nenhuma newsletter.",
+            })}
           </p>
         ) : (
           <RevealListe className="flex flex-col gap-4">
@@ -60,13 +63,23 @@ export default async function NewslettersPage() {
                 {/* `h2` : la page n'a qu'un `h1`, sauter un palier désoriente la
                     navigation par titres. */}
                 <h2 className="font-display text-heading mt-1 text-lg leading-snug">
-                  {resolveLocaleValue(newsletter.titleFr, newsletter.titleEn, locale)}
+                  {resolveLocaleValue(
+                    newsletter.titleFr,
+                    newsletter.titleEn,
+                    locale,
+                    newsletter.titlePt,
+                  )}
                 </h2>
                 <p className="text-text-2 mt-2 leading-relaxed">
-                  {resolveLocaleValue(newsletter.excerptFr, newsletter.excerptEn, locale)}
+                  {resolveLocaleValue(
+                    newsletter.excerptFr,
+                    newsletter.excerptEn,
+                    locale,
+                    newsletter.excerptPt,
+                  )}
                 </p>
                 <span className="text-link mt-3 flex items-center gap-1.5 text-sm font-semibold">
-                  {en ? "Read" : "Lire"}
+                  {selon(locale, { fr: "Lire", en: "Read", pt: "Ler" })}
                   <ArrowRight
                     aria-hidden
                     size={15}

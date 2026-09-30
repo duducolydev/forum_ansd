@@ -5,6 +5,7 @@ import { getActiveEdition } from "@/lib/edition";
 import { lireTexteRiche, texteBrut } from "@/lib/texte-riche";
 import { TexteRiche } from "@/components/site/texte-riche";
 import { getPostBySlug, resolveLocaleValue } from "@/modules/content/service";
+import { lireLangue, localeIntl, selon, traduire } from "@/lib/langue";
 import { lireGalerie } from "@/modules/content/schema";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
 import { LienSite } from "@/components/site/bouton-site";
@@ -39,16 +40,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function NewsDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const locale = (await getLocale()) === "en" ? "en" : "fr";
-  const en = locale === "en";
+  const locale = lireLangue(await getLocale());
   const edition = await getActiveEdition();
   const post = await getPostBySlug(edition.id, slug);
   if (!post || !post.isPublished) notFound();
 
-  const chapo = resolveLocaleValue(post.excerptFr, post.excerptEn, locale);
+  const chapo = resolveLocaleValue(post.excerptFr, post.excerptEn, locale, post.excerptPt);
   const galerie = lireGalerie(post.gallery);
   const date = post.publishedAt
-    ? new Intl.DateTimeFormat(en ? "en-GB" : "fr-FR", {
+    ? new Intl.DateTimeFormat(localeIntl(locale), {
         dateStyle: "long",
         timeZone: "Africa/Dakar",
       }).format(post.publishedAt)
@@ -58,7 +58,7 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
     <article>
       <BandeauPage largeur="moyen">
         <SplitTitle
-          texte={(en ? post.titleEn : post.titleFr) || post.titleFr}
+          texte={traduire(locale, { fr: post.titleFr, en: post.titleEn, pt: post.titlePt })}
           delaiInitial={0.1}
           className="titre-page"
         />
@@ -73,7 +73,11 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
          */}
         <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
           <LienSite href="/actualites" ton="discret" taille="compact" icone={ArrowLeft}>
-            {en ? "All news" : "Toutes les actualités"}
+            {selon(locale, {
+              fr: "Toutes les actualités",
+              en: "All news",
+              pt: "Todas as notícias",
+            })}
           </LienSite>
           {date && (
             <p className="text-text-3 flex items-center gap-1.5 text-sm">
@@ -114,7 +118,7 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
             le confort de lecture d'un article passe avant l'effet (brief §6). */}
         <Reveal>
           <TexteRiche
-            valeur={en ? post.bodyEn : post.bodyFr}
+            valeur={traduire(locale, { fr: post.bodyFr, en: post.bodyEn, pt: post.bodyPt })}
             className="text-text-2 text-lg leading-relaxed"
           />
         </Reveal>
@@ -122,12 +126,19 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
         {galerie.length > 0 && (
           <div className="mt-12">
             <h2 className="mb-5 flex items-center gap-4 text-base">
-              <span className="surtitre">{en ? "Gallery" : "Galerie"}</span>
+              <span className="surtitre">
+                {selon(locale, { fr: "Galerie", en: "Gallery", pt: "Galeria" })}
+              </span>
               <span className="from-border h-px flex-1 bg-gradient-to-r to-transparent" />
             </h2>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               {galerie.map((image, rang) => {
-                const legende = resolveLocaleValue(image.captionFr, image.captionEn, locale);
+                const legende = resolveLocaleValue(
+                  image.captionFr,
+                  image.captionEn,
+                  locale,
+                  image.captionPt,
+                );
                 return (
                   <Reveal key={image.path} delai={rang * 70}>
                     <figure className="border-border bg-surface carte-relief overflow-hidden rounded-xl border">
@@ -152,10 +163,14 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
 
         <div className="border-border mt-12 flex flex-wrap gap-3 border-t pt-8">
           <LienSite href="/actualites" icone={Newspaper}>
-            {en ? "Other news" : "Autres actualités"}
+            {selon(locale, { fr: "Autres actualités", en: "Other news", pt: "Outras notícias" })}
           </LienSite>
           <LienSite href="/inscription" ton="principal" icone={UserPlus}>
-            {en ? "Register for the Forum" : "S'inscrire au Forum"}
+            {selon(locale, {
+              fr: "S'inscrire au Forum",
+              en: "Register for the Forum",
+              pt: "Inscrever-se no Fórum",
+            })}
           </LienSite>
         </div>
       </CorpsPage>

@@ -47,8 +47,10 @@ export default async function TemplatePage({ params }: { params: Promise<{ key: 
         templateKey={template.key}
         subjectFr={template.subjectFr ?? ""}
         subjectEn={template.subjectEn ?? ""}
+        subjectPt={template.subjectPt ?? ""}
         bodyFr={template.bodyFr}
         bodyEn={template.bodyEn}
+        bodyPt={template.bodyPt ?? ""}
         declared={declared}
         sampleVariables={SAMPLE}
       />

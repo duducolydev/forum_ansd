@@ -1,3 +1,4 @@
+import { selon, type Langue } from "@/lib/langue";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { ArrowRight, Info } from "lucide-react";
@@ -28,7 +29,7 @@ export async function generateMetadata() {
  */
 export default async function PracticalInfoPage() {
   const t = await getTranslations("nav");
-  const locale = (await getLocale()) as "fr" | "en";
+  const locale = (await getLocale()) as Langue;
   const edition = await getActiveEdition();
 
   const valeurs = await Promise.all(
@@ -41,7 +42,11 @@ export default async function PracticalInfoPage() {
         <EnteteSection
           bandeau
           niveau="h1"
-          surtitre={locale === "en" ? "Before you come" : "Avant de venir"}
+          surtitre={selon(locale, {
+            fr: "Avant de venir",
+            en: "Before you come",
+            pt: "Antes de vir",
+          })}
           titre={t("practicalInfo")}
           icone={Info}
           description={`${edition.venue} · ${edition.city}`}
@@ -78,7 +83,7 @@ export default async function PracticalInfoPage() {
                     <p className="text-text-2 text-sm leading-relaxed">—</p>
                   )}
                   <span className="text-link mt-auto flex items-center gap-1.5 pt-3 text-sm font-semibold">
-                    {locale === "en" ? "Read more" : "En savoir plus"}
+                    {selon(locale, { fr: "En savoir plus", en: "Read more", pt: "Saber mais" })}
                     <ArrowRight
                       aria-hidden
                       size={15}

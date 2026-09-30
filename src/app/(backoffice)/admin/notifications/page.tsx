@@ -94,8 +94,10 @@ export default async function NotificationsPage() {
           const undeclared = undeclaredVariables({
             bodyFr: template.bodyFr,
             bodyEn: template.bodyEn,
+            bodyPt: template.bodyPt,
             subjectFr: template.subjectFr,
             subjectEn: template.subjectEn,
+            subjectPt: template.subjectPt,
             declared,
           });
           return (

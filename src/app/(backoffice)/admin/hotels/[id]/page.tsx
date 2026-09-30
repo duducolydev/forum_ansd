@@ -59,6 +59,7 @@ export default async function FicheHotelPage({ params }: { params: Promise<{ id:
             mapUrl: hotel.mapUrl ?? undefined,
             descriptionFr: hotel.descriptionFr ?? undefined,
             descriptionEn: hotel.descriptionEn ?? undefined,
+            descriptionPt: hotel.descriptionPt ?? undefined,
             amenities: prestations(hotel.amenities).join(", "),
             bookingCode: hotel.bookingCode ?? undefined,
             bookingUrl: hotel.bookingUrl ?? undefined,

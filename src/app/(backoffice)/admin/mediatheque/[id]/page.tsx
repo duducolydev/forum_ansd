@@ -59,8 +59,10 @@ export default async function AlbumAdminPage({ params }: { params: Promise<{ id:
             id: album.id,
             titleFr: album.titleFr,
             titleEn: album.titleEn === album.titleFr ? "" : album.titleEn,
+            titlePt: album.titlePt ?? "",
             descriptionFr: album.descriptionFr ?? "",
             descriptionEn: album.descriptionEn ?? "",
+            descriptionPt: album.descriptionPt ?? "",
             eventDate: album.eventDate?.toISOString().slice(0, 10) ?? "",
             isPublished: album.isPublished,
           }}

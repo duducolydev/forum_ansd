@@ -1,3 +1,4 @@
+import { lireLangue } from "@/lib/langue";
 import { getLocale } from "next-intl/server";
 import { getActiveEdition } from "@/lib/edition";
 import { chargerDonnees } from "@/modules/sections/donnees";
@@ -23,7 +24,7 @@ export async function generateMetadata() {
  * afficher une page blanche.
  */
 export default async function HomePage() {
-  const locale = (await getLocale()) === "en" ? "en" : "fr";
+  const locale = lireLangue(await getLocale());
   const edition = await getActiveEdition();
   const sections = await sectionsVisibles(edition.id, "accueil");
 

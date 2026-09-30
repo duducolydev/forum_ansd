@@ -1,3 +1,4 @@
+import type { Langue } from "@/lib/langue";
 import { getLocale } from "next-intl/server";
 import { Scale } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
@@ -18,7 +19,7 @@ export const metadata = {
 export default async function LegalNoticePage() {
   const locale = await getLocale();
   const edition = await getActiveEdition();
-  const body = await getContentText(edition.id, "legal.terms", locale as "fr" | "en");
+  const body = await getContentText(edition.id, "legal.terms", locale as Langue);
 
   return (
     <>

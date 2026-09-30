@@ -77,10 +77,13 @@ export default async function FicheNewsletterPage({ params }: { params: Promise<
           defaultValues={{
             titleFr: newsletter.titleFr,
             titleEn: newsletter.titleEn,
+            titlePt: newsletter.titlePt ?? "",
             excerptFr: newsletter.excerptFr,
             excerptEn: newsletter.excerptEn,
+            excerptPt: newsletter.excerptPt ?? "",
             bodyFr: newsletter.bodyFr,
             bodyEn: newsletter.bodyEn,
+            bodyPt: newsletter.bodyPt ?? "",
             isPublished: newsletter.isPublished,
           }}
         />

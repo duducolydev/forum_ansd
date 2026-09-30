@@ -78,6 +78,7 @@ export default async function EspaceIntervenantPage({
     country: speaker.country ?? "",
     bioFr: speaker.bioFr ?? "",
     bioEn: speaker.bioEn ?? "",
+    bioPt: speaker.bioPt ?? "",
     aPhoto: speaker.photoPath !== null,
     aPresentation: speaker.presentationPath !== null,
     aConsenti: speaker.presentationConsentement,

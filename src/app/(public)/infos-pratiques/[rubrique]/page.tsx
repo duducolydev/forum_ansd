@@ -1,3 +1,4 @@
+import { selon, type Langue } from "@/lib/langue";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getLocale } from "next-intl/server";
@@ -30,7 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ rubrique:
   const { rubrique: segment } = await params;
   const rubrique = rubriqueParSegment(segment);
   if (!rubrique) return {};
-  const locale = (await getLocale()) as "fr" | "en";
+  const locale = (await getLocale()) as Langue;
   return { title: `${libelle(rubrique, locale)} — Infos pratiques` };
 }
 
@@ -43,7 +44,7 @@ export default async function DetailRubriquePage({
   const rubrique = rubriqueParSegment(segment);
   if (!rubrique) notFound();
 
-  const locale = (await getLocale()) as "fr" | "en";
+  const locale = (await getLocale()) as Langue;
   const edition = await getActiveEdition();
 
   // Le résumé sert de chapeau : le visiteur arrive d'un encart qui le portait,
@@ -73,7 +74,11 @@ export default async function DetailRubriquePage({
           className="text-link mb-6 inline-flex items-center gap-1.5 text-sm"
         >
           <ArrowLeft aria-hidden size={15} />
-          {locale === "en" ? "All practical information" : "Toutes les infos pratiques"}
+          {selon(locale, {
+            fr: "Toutes les infos pratiques",
+            en: "All practical information",
+            pt: "Todas as informações práticas",
+          })}
         </Link>
 
         {resume && (
@@ -88,9 +93,11 @@ export default async function DetailRubriquePage({
           <>
             {contacts.length === 0 ? (
               <p className="text-text-2">
-                {locale === "en"
-                  ? "Contact details will be published shortly."
-                  : "Les contacts seront publiés prochainement."}
+                {selon(locale, {
+                  fr: "Les contacts seront publiés prochainement.",
+                  en: "Contact details will be published shortly.",
+                  pt: "Os contactos serão publicados em breve.",
+                })}
               </p>
             ) : (
               <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -100,7 +107,12 @@ export default async function DetailRubriquePage({
                     className="border-border bg-surface rounded-xl border p-5 shadow-sm"
                   >
                     <h2 className="text-heading font-display text-base font-semibold">
-                      {resolveLocaleValue(contact.labelFr, contact.labelEn, locale)}
+                      {resolveLocaleValue(
+                        contact.labelFr,
+                        contact.labelEn,
+                        locale,
+                        contact.labelPt,
+                      )}
                     </h2>
                     {contact.name && <p className="text-text-2 mt-1 text-sm">{contact.name}</p>}
                     <ul className="mt-2 flex flex-col gap-1 text-sm">
@@ -135,11 +147,13 @@ export default async function DetailRubriquePage({
                 className="text-heading font-display mb-4 flex items-center gap-2 text-xl font-semibold"
               >
                 <Send aria-hidden size={19} className="text-accent-text" />
-                {locale === "en"
-                  ? "Write to the organising committee"
-                  : "Écrire au comité d'organisation"}
+                {selon(locale, {
+                  fr: "Écrire au comité d'organisation",
+                  en: "Write to the organising committee",
+                  pt: "Escrever ao comité organizador",
+                })}
               </h2>
-              <FormulaireContact en={locale === "en"} />
+              <FormulaireContact locale={locale} />
             </section>
           </>
         )}
@@ -150,9 +164,11 @@ export default async function DetailRubriquePage({
         */}
         {!resume && !detail && !rubrique.liste && (
           <p className="text-text-2">
-            {locale === "en"
-              ? "This section will be published shortly."
-              : "Cette rubrique sera publiée prochainement."}
+            {selon(locale, {
+              fr: "Cette rubrique sera publiée prochainement.",
+              en: "This section will be published shortly.",
+              pt: "Esta secção será publicada em breve.",
+            })}
           </p>
         )}
       </CorpsPage>

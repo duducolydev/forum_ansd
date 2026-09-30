@@ -48,6 +48,7 @@ export default async function CategoriesPage() {
               code: categorie.code,
               labelFr: categorie.labelFr,
               labelEn: categorie.labelEn,
+              labelPt: categorie.labelPt ?? "",
               color: categorie.color ?? "",
               sortOrder: categorie.sortOrder,
               isActive: categorie.isActive,

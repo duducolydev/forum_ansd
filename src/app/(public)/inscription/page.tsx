@@ -1,3 +1,4 @@
+import { lireLangue, localeIntl, selon, traduire } from "@/lib/langue";
 import { getLocale, getTranslations } from "next-intl/server";
 import { CalendarClock, Clock, LockKeyhole, Save, UserPlus } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
@@ -49,8 +50,7 @@ export default async function RegisterPage({
   searchParams: Promise<{ inv?: string }>;
 }) {
   const t = await getTranslations("nav");
-  const locale = await getLocale();
-  const en = locale === "en";
+  const locale = lireLangue(await getLocale());
   const { inv } = await searchParams;
   const edition = await getActiveEdition();
 
@@ -84,9 +84,11 @@ export default async function RegisterPage({
   const guichet = etatInscriptions(parametres.inscriptions);
 
   if (!guichet.ouvertes && !usableInvitation) {
-    const message = en
-      ? parametres.inscriptions.messageFermeEn
-      : parametres.inscriptions.messageFermeFr;
+    const message = traduire(locale, {
+      fr: parametres.inscriptions.messageFermeFr,
+      en: parametres.inscriptions.messageFermeEn,
+      pt: parametres.inscriptions.messageFermePt,
+    });
 
     return (
       <>
@@ -94,7 +96,11 @@ export default async function RegisterPage({
           <EnteteSection
             bandeau
             niveau="h1"
-            surtitre={en ? "Registrations closed" : "Inscriptions fermées"}
+            surtitre={selon(locale, {
+              fr: "Inscriptions fermées",
+              en: "Registrations closed",
+              pt: "Inscrições encerradas",
+            })}
             titre={t("register")}
             icone={LockKeyhole}
           />
@@ -108,8 +114,12 @@ export default async function RegisterPage({
           {guichet.ouvreLe && (
             <p className="text-text-3 mt-4 flex items-center gap-2 text-sm">
               <CalendarClock aria-hidden size={15} className="text-accent-text" />
-              {en ? "Opening on " : "Ouverture prévue le "}
-              {new Intl.DateTimeFormat(en ? "en-GB" : "fr-FR", {
+              {selon(locale, {
+                fr: "Ouverture prévue le ",
+                en: "Opening on ",
+                pt: "Abertura prevista a ",
+              })}
+              {new Intl.DateTimeFormat(localeIntl(locale), {
                 dateStyle: "long",
                 timeZone: "Africa/Dakar",
               }).format(new Date(`${guichet.ouvreLe}T12:00:00.000Z`))}
@@ -118,8 +128,20 @@ export default async function RegisterPage({
           )}
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <LienSite href="/programme">{en ? "See the programme" : "Voir le programme"}</LienSite>
-            <LienSite href="/actualites">{en ? "Read the news" : "Lire les actualités"}</LienSite>
+            <LienSite href="/programme">
+              {selon(locale, {
+                fr: "Voir le programme",
+                en: "See the programme",
+                pt: "Ver o programa",
+              })}
+            </LienSite>
+            <LienSite href="/actualites">
+              {selon(locale, {
+                fr: "Lire les actualités",
+                en: "Read the news",
+                pt: "Ler as notícias",
+              })}
+            </LienSite>
           </div>
         </CorpsPage>
       </>
@@ -150,17 +172,29 @@ export default async function RegisterPage({
   const promesses = [
     {
       icone: UserPlus,
-      titre: en ? `${minimum} to ${maximum} steps` : `${minimum} à ${maximum} étapes`,
+      titre: selon(locale, {
+        fr: `${minimum} à ${maximum} étapes`,
+        en: `${minimum} to ${maximum} steps`,
+        pt: `${minimum} a ${maximum} etapas`,
+      }),
       ton: "bg-blue-soft text-blue-text",
     },
     {
       icone: Clock,
-      titre: en ? "About 4 minutes" : "Environ 4 minutes",
+      titre: selon(locale, {
+        fr: "Environ 4 minutes",
+        en: "About 4 minutes",
+        pt: "Cerca de 4 minutos",
+      }),
       ton: "bg-accent-soft text-accent-text",
     },
     {
       icone: Save,
-      titre: en ? "Progress kept on this device" : "Progression gardée sur cet appareil",
+      titre: selon(locale, {
+        fr: "Progression gardée sur cet appareil",
+        en: "Progress kept on this device",
+        pt: "Progresso guardado neste dispositivo",
+      }),
       ton: "bg-gold-soft text-gold-text",
     },
   ];
@@ -171,7 +205,11 @@ export default async function RegisterPage({
         <EnteteSection
           bandeau
           niveau="h1"
-          surtitre={en ? "Join the Forum" : "Rejoindre le Forum"}
+          surtitre={selon(locale, {
+            fr: "Rejoindre le Forum",
+            en: "Join the Forum",
+            pt: "Juntar-se ao Fórum",
+          })}
           titre={t("register")}
           icone={UserPlus}
           action={

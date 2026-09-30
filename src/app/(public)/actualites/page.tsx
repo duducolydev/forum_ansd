@@ -1,3 +1,4 @@
+import { selon, traduire, type Langue } from "@/lib/langue";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { ArrowLeft, ArrowRight, Newspaper } from "lucide-react";
@@ -27,10 +28,9 @@ export default async function NewsPage({
 }) {
   const t = await getTranslations("nav");
   const tPage = await getTranslations("newsPage");
-  const locale = (await getLocale()) as "fr" | "en";
+  const locale = (await getLocale()) as Langue;
   const edition = await getActiveEdition();
   const posts = await listPosts(edition.id, { onlyPublished: true });
-  const en = locale === "en";
 
   const pages = Math.max(1, Math.ceil(posts.length / PAR_PAGE));
   const demandee = Number.parseInt((await searchParams).page ?? "1", 10);
@@ -43,7 +43,11 @@ export default async function NewsPage({
         <EnteteSection
           bandeau
           niveau="h1"
-          surtitre={en ? "Follow the Forum" : "Suivre le Forum"}
+          surtitre={selon(locale, {
+            fr: "Suivre le Forum",
+            en: "Follow the Forum",
+            pt: "Acompanhar o Fórum",
+          })}
           titre={t("news")}
           icone={Newspaper}
         />
@@ -64,16 +68,16 @@ export default async function NewsPage({
               articles={affiches.map((post) => ({
                 id: post.id,
                 href: `/actualites/${post.slug}`,
-                titre: (en ? post.titleEn : post.titleFr) || post.titleFr,
+                titre: traduire(locale, { fr: post.titleFr, en: post.titleEn, pt: post.titlePt }),
                 date: (post.publishedAt ?? post.createdAt).toISOString(),
                 couverture: post.coverPath ? `/api/v1/posts/${post.id}/image/couverture` : null,
-                etiquette: en ? "NEWS" : "ACTUALITÉ",
+                etiquette: selon(locale, { fr: "ACTUALITÉ", en: "NEWS", pt: "NOTÍCIA" }),
               }))}
             />
 
             {pages > 1 && (
               <nav
-                aria-label={en ? "Pages" : "Pages"}
+                aria-label={selon(locale, { fr: "Pages", en: "Pages", pt: "Páginas" })}
                 className="mt-14 flex flex-wrap items-center justify-center gap-3"
               >
                 {page > 1 && (
@@ -82,7 +86,7 @@ export default async function NewsPage({
                     className="inline-flex items-center gap-1.5 font-semibold text-[var(--title)]"
                   >
                     <ArrowLeft aria-hidden size={16} />
-                    {en ? "Newer" : "Plus récentes"}
+                    {selon(locale, { fr: "Plus récentes", en: "Newer", pt: "Mais recentes" })}
                   </Link>
                 )}
                 <span className="police-grotesk text-sm text-[var(--muted)]">
@@ -93,7 +97,7 @@ export default async function NewsPage({
                     href={`/actualites?page=${page + 1}`}
                     className="inline-flex items-center gap-1.5 font-semibold text-[var(--title)]"
                   >
-                    {en ? "Older" : "Plus anciennes"}
+                    {selon(locale, { fr: "Plus anciennes", en: "Older", pt: "Mais antigas" })}
                     <ArrowRight aria-hidden size={16} />
                   </Link>
                 )}

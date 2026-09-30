@@ -45,6 +45,7 @@ export default async function SponsorPage({ params }: { params: Promise<{ id: st
             levelId: sponsor.levelId,
             descriptionFr: sponsor.descriptionFr ?? "",
             descriptionEn: sponsor.descriptionEn ?? "",
+            descriptionPt: sponsor.descriptionPt ?? "",
             website: sponsor.website ?? "",
             videoUrl: sponsor.videoUrl ?? "",
             standNumber: sponsor.standNumber ?? "",

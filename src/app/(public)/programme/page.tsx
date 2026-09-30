@@ -1,3 +1,4 @@
+import { lireLangue, localeIntl, selon, traduire } from "@/lib/langue";
 import {
   CalendarDays,
   Check,
@@ -14,16 +15,15 @@ import { EnteteSection } from "@/components/site/entete-section";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
 import { LienSite } from "@/components/site/bouton-site";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { getActiveEdition } from "@/lib/edition";
 import { listRooms, listSessions } from "@/modules/sessions/service";
-import { TYPE_LABELS } from "@/modules/sessions/schema";
 import {
   ProgrammeGrid,
   type SessionAffichable,
 } from "@/modules/sessions/components/programme-grid";
 import { ProgrammeFrise } from "@/modules/sessions/components/programme-frise";
-import { ETAT_LABELS } from "@/modules/sessions/service";
+import { libelleEtat, libelleType } from "@/modules/sessions/libelles";
 import { MiniCountdown } from "@/components/home/MiniCountdown";
 
 export const dynamic = "force-dynamic";
@@ -32,13 +32,6 @@ export async function generateMetadata() {
   const t = await getTranslations("nav");
   return { title: t("program") };
 }
-
-const jourLong = new Intl.DateTimeFormat("fr-FR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  timeZone: "UTC",
-});
 
 interface Filtres {
   jour?: string;
@@ -122,8 +115,16 @@ function RangeeFiltres({
 
 export default async function ProgramPage({ searchParams }: { searchParams: Promise<Filtres> }) {
   const t = await getTranslations("nav");
+  const locale = lireLangue(await getLocale());
   const edition = await getActiveEdition();
   const filtres = await searchParams;
+  const jourLong = new Intl.DateTimeFormat(localeIntl(locale), {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
+  const surtitre = selon(locale, { fr: "Trois journées", en: "Three days", pt: "Três dias" });
 
   const [sessions, salles] = await Promise.all([
     listSessions(edition.id, { onlyPublished: true }),
@@ -137,7 +138,7 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
           <EnteteSection
             bandeau
             niveau="h1"
-            surtitre="Trois journées"
+            surtitre={surtitre}
             titre={t("program")}
             icone={CalendarDays}
           />
@@ -145,12 +146,19 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
 
         <CorpsPage>
           <p className="border-border bg-surface text-text-3 rounded-xl border p-8 text-center">
-            Le programme détaillé sera publié prochainement. Les grandes lignes figurent dans la
-            présentation du Forum.
+            {selon(locale, {
+              fr: "Le programme détaillé sera publié prochainement. Les grandes lignes figurent dans la présentation du Forum.",
+              en: "The detailed programme will be published shortly. The main lines are set out in the presentation of the Forum.",
+              pt: "O programa detalhado será publicado em breve. As grandes linhas constam da apresentação do Fórum.",
+            })}
           </p>
           <div className="mt-6 flex justify-center">
             <LienSite href="/#a-propos" icone={Info}>
-              Découvrir le Forum
+              {selon(locale, {
+                fr: "Découvrir le Forum",
+                en: "Discover the Forum",
+                pt: "Descobrir o Fórum",
+              })}
             </LienSite>
           </div>
         </CorpsPage>
@@ -182,7 +190,11 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
       id: session.id,
       slug: session.slug,
       type: session.type,
-      titre: session.titleFr,
+      titre: traduire(locale, {
+        fr: session.titleFr,
+        en: session.titleEn,
+        pt: session.titlePt,
+      }),
       theme: session.theme,
       debut: session.startTime,
       fin: session.endTime,
@@ -196,7 +208,7 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
         <EnteteSection
           bandeau
           niveau="h1"
-          surtitre="Trois journées"
+          surtitre={surtitre}
           titre={t("program")}
           icone={CalendarDays}
           action={
@@ -215,7 +227,10 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
           Ce sont des liens : chaque journée a son adresse, partageable.
         */}
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-          <nav aria-label="Journées" className="onglets-jour">
+          <nav
+            aria-label={selon(locale, { fr: "Journées", en: "Days", pt: "Dias" })}
+            className="onglets-jour"
+          >
             {jours.map((jour) => (
               <Link
                 key={jour.iso}
@@ -227,14 +242,17 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
               </Link>
             ))}
           </nav>
-          <nav aria-label="Affichage" className="flex gap-1.5">
+          <nav
+            aria-label={selon(locale, { fr: "Affichage", en: "Display", pt: "Apresentação" })}
+            className="flex gap-1.5"
+          >
             <Pastille actif={!vueSalles} href={lienVue(filtres, null)}>
               <ListTree aria-hidden size={14} />
-              Frise
+              {selon(locale, { fr: "Frise", en: "Timeline", pt: "Cronologia" })}
             </Pastille>
             <Pastille actif={vueSalles} href={lienVue(filtres, "salles")}>
               <Columns3 aria-hidden size={14} />
-              Par salle
+              {selon(locale, { fr: "Par salle", en: "By room", pt: "Por sala" })}
             </Pastille>
           </nav>
         </div>
@@ -248,7 +266,10 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
              * plutôt qu'une salle.
              */}
             {themes.length > 0 && (
-              <RangeeFiltres libelle="Thèmes" icone={Tag}>
+              <RangeeFiltres
+                libelle={selon(locale, { fr: "Thèmes", en: "Themes", pt: "Temas" })}
+                icone={Tag}
+              >
                 {themes.map((theme) => (
                   <Pastille
                     key={theme}
@@ -261,20 +282,26 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
               </RangeeFiltres>
             )}
 
-            <RangeeFiltres libelle="Formats" icone={LayoutList}>
+            <RangeeFiltres
+              libelle={selon(locale, { fr: "Formats", en: "Formats", pt: "Formatos" })}
+              icone={LayoutList}
+            >
               {types.map((type) => (
                 <Pastille
                   key={type}
                   actif={filtres.type === type}
                   href={lienFiltre(filtres, "type", type)}
                 >
-                  {TYPE_LABELS[type]}
+                  {libelleType(type, locale)}
                 </Pastille>
               ))}
             </RangeeFiltres>
 
             {salles.length > 0 && (
-              <RangeeFiltres libelle="Salles" icone={DoorOpen}>
+              <RangeeFiltres
+                libelle={selon(locale, { fr: "Salles", en: "Rooms", pt: "Salas" })}
+                icone={DoorOpen}
+              >
                 {salles.map((salle) => (
                   <Pastille
                     key={salle.id}
@@ -293,10 +320,11 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
           <ProgrammeGrid
             sessions={duJour}
             salles={salles.map((salle) => ({ id: salle.id, name: salle.name }))}
+            locale={locale}
           />
         ) : (
           <ProgrammeFrise
-            en={false}
+            locale={locale}
             sessions={duJour.map((session) => ({
               id: session.id,
               slug: session.slug,
@@ -309,7 +337,7 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
               etat:
                 session.places.etat === "SANS_RESERVATION"
                   ? null
-                  : ETAT_LABELS[session.places.etat],
+                  : libelleEtat(session.places.etat, locale),
             }))}
           />
         )}

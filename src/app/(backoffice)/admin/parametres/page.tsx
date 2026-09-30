@@ -8,6 +8,7 @@ import { getActiveEdition } from "@/lib/edition";
 import { lireParametres } from "@/modules/settings/service";
 import { FormulaireIdentite } from "@/modules/settings/components/formulaire-identite";
 import { FormulaireInscriptions } from "@/modules/settings/components/formulaire-inscriptions";
+import { FormulaireLangues } from "@/modules/settings/components/formulaire-langues";
 import { FormulaireTheme } from "@/modules/settings/components/formulaire-theme";
 import { FormulairePiedDePage } from "@/modules/settings/components/formulaire-pied-de-page";
 
@@ -61,6 +62,7 @@ export default async function ParametresPage() {
           valeurs={{
             title: edition.title,
             titleEn: edition.titleEn ?? "",
+            titlePt: edition.titlePt ?? "",
             theme: edition.theme ?? "",
             startDate: jour(edition.startDate),
             endDate: jour(edition.endDate),
@@ -68,6 +70,7 @@ export default async function ParametresPage() {
             city: edition.city,
           }}
         />
+        <FormulaireLangues valeurs={parametres.langues} />
         <FormulaireInscriptions valeurs={parametres.inscriptions} />
         <FormulaireTheme valeurs={parametres.theme} />
         <FormulairePiedDePage valeurs={parametres.piedDePage} />

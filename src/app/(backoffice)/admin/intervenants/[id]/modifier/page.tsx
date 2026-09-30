@@ -76,6 +76,7 @@ export default async function ModifierIntervenantPage({
           country: speaker.country ?? "",
           bioFr: speaker.bioFr ?? "",
           bioEn: speaker.bioEn ?? "",
+          bioPt: speaker.bioPt ?? "",
           isPublished: speaker.isPublished,
           isFeatured: speaker.isFeatured,
           featuredOrder: speaker.featuredOrder,

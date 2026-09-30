@@ -1,3 +1,4 @@
+import { localeIntl, selon, type Langue } from "@/lib/langue";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import {
@@ -30,16 +31,16 @@ export async function generateMetadata() {
 type Vue = "albums" | "photos" | "videos" | "actualites";
 const VUES: Vue[] = ["albums", "photos", "videos", "actualites"];
 
-const LIBELLES: Record<Vue, { fr: string; en: string; icone: typeof Images }> = {
-  albums: { fr: "Albums", en: "Albums", icone: FolderOpen },
-  photos: { fr: "Photos", en: "Photos", icone: ImageIcon },
-  videos: { fr: "Vidéos", en: "Videos", icone: Film },
-  actualites: { fr: "Actualités", en: "News", icone: Newspaper },
+const LIBELLES: Record<Vue, { fr: string; en: string; pt: string; icone: typeof Images }> = {
+  albums: { fr: "Albums", en: "Albums", pt: "Álbuns", icone: FolderOpen },
+  photos: { fr: "Photos", en: "Photos", pt: "Fotografias", icone: ImageIcon },
+  videos: { fr: "Vidéos", en: "Videos", pt: "Vídeos", icone: Film },
+  actualites: { fr: "Actualités", en: "News", pt: "Notícias", icone: Newspaper },
 };
 
-function dateLisible(date: Date | null, en: boolean): string | null {
+function dateLisible(date: Date | null, locale: Langue): string | null {
   return date
-    ? new Intl.DateTimeFormat(en ? "en-GB" : "fr-FR", {
+    ? new Intl.DateTimeFormat(localeIntl(locale), {
         day: "numeric",
         month: "long",
         year: "numeric",
@@ -67,8 +68,7 @@ export default async function MediathequePage({
   searchParams: Promise<{ vue?: string; page?: string }>;
 }) {
   const t = await getTranslations("nav");
-  const locale = (await getLocale()) as "fr" | "en";
-  const en = locale === "en";
+  const locale = (await getLocale()) as Langue;
   const edition = await getActiveEdition();
   const parametres = await searchParams;
   const vue: Vue = VUES.includes(parametres.vue as Vue) ? (parametres.vue as Vue) : "albums";
@@ -81,19 +81,21 @@ export default async function MediathequePage({
     contenu =
       albums.length === 0 ? (
         <Vide>
-          {en
-            ? "No album yet. Photos and videos will be published during the Forum."
-            : "Aucun album pour l'instant. Photos et vidéos seront publiées au fil du Forum."}
+          {selon(locale, {
+            fr: "Aucun album pour l'instant. Photos et vidéos seront publiées au fil du Forum.",
+            en: "No album yet. Photos and videos will be published during the Forum.",
+            pt: "Ainda não há álbuns. As fotografias e os vídeos serão publicados ao longo do Fórum.",
+          })}
         </Vide>
       ) : (
         <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {albums.map((album) => {
-            const titre = resolveLocaleValue(album.titleFr, album.titleEn, locale);
-            const date = dateLisible(album.eventDate, en);
+            const titre = resolveLocaleValue(album.titleFr, album.titleEn, locale, album.titlePt);
+            const date = dateLisible(album.eventDate, locale);
             const decompte = [
               album.photos > 0 && `${album.photos} photo${album.photos > 1 ? "s" : ""}`,
               album.videos > 0 &&
-                `${album.videos} ${en ? "video" : "vidéo"}${album.videos > 1 ? "s" : ""}`,
+                `${album.videos} ${selon(locale, { fr: "vidéo", en: "video", pt: "vídeo" })}${album.videos > 1 ? "s" : ""}`,
             ]
               .filter(Boolean)
               .join(" · ");
@@ -142,10 +144,16 @@ export default async function MediathequePage({
     );
     contenu =
       resultat.total === 0 ? (
-        <Vide>{en ? "No photo yet." : "Aucune photo pour l'instant."}</Vide>
+        <Vide>
+          {selon(locale, {
+            fr: "Aucune photo pour l'instant.",
+            en: "No photo yet.",
+            pt: "Ainda não há fotografias.",
+          })}
+        </Vide>
       ) : (
         <>
-          <Galerie key={resultat.page} elements={resultat.elements} en={en} />
+          <Galerie key={resultat.page} elements={resultat.elements} locale={locale} />
           {resultat.pages > 1 && (
             <nav
               aria-label="Pages"
@@ -157,7 +165,7 @@ export default async function MediathequePage({
                   className="inline-flex items-center gap-1.5 font-semibold text-[var(--title)]"
                 >
                   <ArrowLeft aria-hidden size={16} />
-                  {en ? "Newer" : "Plus récentes"}
+                  {selon(locale, { fr: "Plus récentes", en: "Newer", pt: "Mais recentes" })}
                 </Link>
               )}
               <span className="police-grotesk text-sm text-[var(--muted)]">
@@ -168,7 +176,7 @@ export default async function MediathequePage({
                   href={`/mediatheque?vue=photos&page=${resultat.page + 1}`}
                   className="inline-flex items-center gap-1.5 font-semibold text-[var(--title)]"
                 >
-                  {en ? "Older" : "Plus anciennes"}
+                  {selon(locale, { fr: "Plus anciennes", en: "Older", pt: "Mais antigas" })}
                   <ArrowRight aria-hidden size={16} />
                 </Link>
               )}
@@ -180,15 +188,30 @@ export default async function MediathequePage({
     const videos = await videosPubliques(edition.id);
     contenu =
       videos.length === 0 ? (
-        <Vide>{en ? "No video yet." : "Aucune vidéo pour l'instant."}</Vide>
+        <Vide>
+          {selon(locale, {
+            fr: "Aucune vidéo pour l'instant.",
+            en: "No video yet.",
+            pt: "Ainda não há vídeos.",
+          })}
+        </Vide>
       ) : (
-        <Galerie elements={videos.map((video) => versElementGalerie(video, locale))} en={en} />
+        <Galerie
+          elements={videos.map((video) => versElementGalerie(video, locale))}
+          locale={locale}
+        />
       );
   } else {
     const groupes = await imagesActualites(edition.id, locale);
     contenu =
       groupes.length === 0 ? (
-        <Vide>{en ? "No news image yet." : "Aucune image d'actualité pour l'instant."}</Vide>
+        <Vide>
+          {selon(locale, {
+            fr: "Aucune image d'actualité pour l'instant.",
+            en: "No news image yet.",
+            pt: "Ainda não há imagens de notícias.",
+          })}
+        </Vide>
       ) : (
         <div className="flex flex-col gap-12">
           {groupes.map((groupe) => (
@@ -200,17 +223,21 @@ export default async function MediathequePage({
                   </Link>
                 </h2>
                 <span className="text-text-3 text-sm">
-                  {dateLisible(groupe.article.date, en)}
+                  {dateLisible(groupe.article.date, locale)}
                   {" · "}
                   <Link
                     href={groupe.article.href}
                     className="text-link underline underline-offset-2"
                   >
-                    {en ? "Read the article" : "Lire l'article"}
+                    {selon(locale, {
+                      fr: "Lire l'article",
+                      en: "Read the article",
+                      pt: "Ler o artigo",
+                    })}
                   </Link>
                 </span>
               </div>
-              <Galerie elements={groupe.images} en={en} />
+              <Galerie elements={groupe.images} locale={locale} />
             </section>
           ))}
         </div>
@@ -225,7 +252,11 @@ export default async function MediathequePage({
 
       <CorpsPage>
         <nav
-          aria-label={en ? "Media library sections" : "Rubriques de la médiathèque"}
+          aria-label={selon(locale, {
+            fr: "Rubriques de la médiathèque",
+            en: "Media library sections",
+            pt: "Secções da mediateca",
+          })}
           className="mb-8"
         >
           <ul className="flex flex-wrap gap-2">
@@ -244,7 +275,7 @@ export default async function MediathequePage({
                     }`}
                   >
                     <Icone aria-hidden size={16} />
-                    {en ? libelle.en : libelle.fr}
+                    {libelle[locale]}
                   </Link>
                 </li>
               );

@@ -1,3 +1,4 @@
+import { localeIntl, selon, type Langue } from "@/lib/langue";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale } from "next-intl/server";
@@ -11,29 +12,31 @@ import { Galerie } from "@/modules/medias/components/galerie";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const locale = (await getLocale()) as "fr" | "en";
+  const locale = (await getLocale()) as Langue;
   const edition = await getActiveEdition();
   const album = await albumPublie(edition.id, slug);
   if (!album) return {};
-  return { title: `${resolveLocaleValue(album.titleFr, album.titleEn, locale)} — Médiathèque` };
+  return {
+    title: `${resolveLocaleValue(album.titleFr, album.titleEn, locale, album.titlePt)} — Médiathèque`,
+  };
 }
 
 export default async function AlbumPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const locale = (await getLocale()) as "fr" | "en";
-  const en = locale === "en";
+  const locale = (await getLocale()) as Langue;
   const edition = await getActiveEdition();
   const album = await albumPublie(edition.id, slug);
   if (!album) notFound();
 
-  const titre = resolveLocaleValue(album.titleFr, album.titleEn, locale);
+  const titre = resolveLocaleValue(album.titleFr, album.titleEn, locale, album.titlePt);
   const description = resolveLocaleValue(
     album.descriptionFr ?? "",
     album.descriptionEn ?? "",
     locale,
+    album.descriptionPt,
   );
   const date = album.eventDate
-    ? new Intl.DateTimeFormat(en ? "en-GB" : "fr-FR", {
+    ? new Intl.DateTimeFormat(localeIntl(locale), {
         day: "numeric",
         month: "long",
         year: "numeric",
@@ -53,7 +56,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ slug: st
           className="text-link mb-6 inline-flex items-center gap-1.5 text-sm"
         >
           <ArrowLeft aria-hidden size={15} />
-          {en ? "Media library" : "Médiathèque"}
+          {selon(locale, { fr: "Médiathèque", en: "Media library", pt: "Mediateca" })}
         </Link>
         {(date || description) && (
           <div className="mb-8 max-w-[70ch]">
@@ -67,10 +70,17 @@ export default async function AlbumPage({ params }: { params: Promise<{ slug: st
         )}
         {album.items.length === 0 ? (
           <p className="border-border bg-surface text-text-3 rounded-xl border p-8 text-center">
-            {en ? "This album is empty for now." : "Cet album est vide pour l'instant."}
+            {selon(locale, {
+              fr: "Cet album est vide pour l'instant.",
+              en: "This album is empty for now.",
+              pt: "Este álbum ainda está vazio.",
+            })}
           </p>
         ) : (
-          <Galerie elements={album.items.map((item) => versElementGalerie(item, locale))} en={en} />
+          <Galerie
+            elements={album.items.map((item) => versElementGalerie(item, locale))}
+            locale={locale}
+          />
         )}
       </CorpsPage>
     </>

@@ -1,3 +1,4 @@
+import { lireLangue, selon } from "@/lib/langue";
 import { getLocale, getTranslations } from "next-intl/server";
 import { ExternalLink, Handshake, Store } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
@@ -33,8 +34,7 @@ export async function generateMetadata() {
 export default async function SponsorsPage() {
   const t = await getTranslations("nav");
   const tPage = await getTranslations("sponsorsPage");
-  const locale = (await getLocale()) === "en" ? "en" : "fr";
-  const en = locale === "en";
+  const locale = lireLangue(await getLocale());
   const edition = await getActiveEdition();
 
   const sponsors = await listerSponsorsPublies(edition.id);
@@ -55,14 +55,20 @@ export default async function SponsorsPage() {
         <EnteteSection
           bandeau
           niveau="h1"
-          surtitre={en ? "They support the Forum" : "Ils soutiennent le Forum"}
+          surtitre={selon(locale, {
+            fr: "Ils soutiennent le Forum",
+            en: "They support the Forum",
+            pt: "Apoiam o Fórum",
+          })}
           titre={t("sponsors")}
           icone={Handshake}
           description={
             total > 0
-              ? en
-                ? `${total} partner${pluriel ? "s" : ""} committed to this edition.`
-                : `${total} partenaire${pluriel ? "s" : ""} engagé${pluriel ? "s" : ""} auprès de cette édition.`
+              ? selon(locale, {
+                  fr: `${total} partenaire${pluriel ? "s" : ""} engagé${pluriel ? "s" : ""} auprès de cette édition.`,
+                  en: `${total} partner${pluriel ? "s" : ""} committed to this edition.`,
+                  pt: `${total} parceiro${pluriel ? "s" : ""} empenhado${pluriel ? "s" : ""} nesta edição.`,
+                })
               : undefined
           }
         />
@@ -81,6 +87,7 @@ export default async function SponsorsPage() {
                 sponsor.descriptionFr,
                 sponsor.descriptionEn,
                 locale,
+                sponsor.descriptionPt,
               );
               const ton = tonDuNiveau(sponsor.level);
 
@@ -145,7 +152,7 @@ export default async function SponsorsPage() {
                       {sponsor.website && (
                         <span className="text-link mt-0.5 flex items-center gap-1 text-xs">
                           <ExternalLink aria-hidden size={11} />
-                          {en ? "Website" : "Site web"}
+                          {selon(locale, { fr: "Site web", en: "Website", pt: "Sítio web" })}
                         </span>
                       )}
                     </span>
@@ -198,7 +205,7 @@ export default async function SponsorsPage() {
         {total > 0 && (
           <div className="mt-16">
             <PartnersMarquee
-              libelle={en ? "Partners" : "Partenaires"}
+              libelle={selon(locale, { fr: "Partenaires", en: "Partners", pt: "Parceiros" })}
               partenaires={sponsors.map((sponsor) => ({
                 id: sponsor.id,
                 nom: sponsor.name,
@@ -216,16 +223,26 @@ export default async function SponsorsPage() {
           <div className="filet-haut border-border bg-surface relative mt-14 flex flex-wrap items-center justify-between gap-4 overflow-hidden rounded-2xl border p-7">
             <div className="max-w-[52ch]">
               <h2 className="text-lg">
-                {en ? "Become a partner of the Forum" : "Devenir partenaire du Forum"}
+                {selon(locale, {
+                  fr: "Devenir partenaire du Forum",
+                  en: "Become a partner of the Forum",
+                  pt: "Tornar-se parceiro do Fórum",
+                })}
               </h2>
               <p className="text-text-2 mt-1.5 text-sm">
-                {en
-                  ? "Stands, visibility and support packages: the organising committee will send you the file."
-                  : "Stands, visibilité et formules de soutien : le comité d'organisation vous transmet le dossier."}
+                {selon(locale, {
+                  fr: "Stands, visibilité et formules de soutien : le comité d'organisation vous transmet le dossier.",
+                  en: "Stands, visibility and support packages: the organising committee will send you the file.",
+                  pt: "Stands, visibilidade e modalidades de apoio: o comité organizador envia-lhe o dossiê.",
+                })}
               </p>
             </div>
             <LienSite href="/infos-pratiques" ton="principal">
-              {en ? "Contact the committee" : "Contacter le comité"}
+              {selon(locale, {
+                fr: "Contacter le comité",
+                en: "Contact the committee",
+                pt: "Contactar o comité",
+              })}
             </LienSite>
           </div>
         </Reveal>

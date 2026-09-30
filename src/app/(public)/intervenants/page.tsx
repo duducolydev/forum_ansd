@@ -1,3 +1,4 @@
+import { selon, traduire, type Langue } from "@/lib/langue";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Mic } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -44,9 +45,8 @@ interface Filtres {
 export default async function SpeakersPage({ searchParams }: { searchParams: Promise<Filtres> }) {
   const t = await getTranslations("nav");
   const tPage = await getTranslations("speakersPage");
-  const locale = (await getLocale()) as "fr" | "en";
+  const locale = (await getLocale()) as Langue;
   const edition = await getActiveEdition();
-  const en = locale === "en";
   const filtres = await searchParams;
 
   const speakers = await prisma.speaker.findMany({
@@ -56,7 +56,7 @@ export default async function SpeakersPage({ searchParams }: { searchParams: Pro
         where: { session: { isPublished: true, deletedAt: null } },
         select: {
           role: true,
-          session: { select: { theme: true, titleFr: true, titleEn: true } },
+          session: { select: { theme: true, titleFr: true, titleEn: true, titlePt: true } },
         },
       },
     },
@@ -76,12 +76,16 @@ export default async function SpeakersPage({ searchParams }: { searchParams: Pro
     organization: speaker.organization,
     country: speaker.country,
     photoPath: speaker.photoPath,
-    bio: en ? speaker.bioEn || speaker.bioFr : speaker.bioFr,
+    bio: traduire(locale, { fr: speaker.bioFr, en: speaker.bioEn, pt: speaker.bioPt }),
     themes: unique(speaker.sessions.map((lien) => lien.session.theme)),
     roles: [...new Set(speaker.sessions.map((lien) => lien.role))],
     panels: unique(
       speaker.sessions.map((lien) =>
-        en ? lien.session.titleEn || lien.session.titleFr : lien.session.titleFr,
+        traduire(locale, {
+          fr: lien.session.titleFr,
+          en: lien.session.titleEn,
+          pt: lien.session.titlePt,
+        }),
       ),
     ),
   }));
@@ -92,7 +96,11 @@ export default async function SpeakersPage({ searchParams }: { searchParams: Pro
         <EnteteSection
           bandeau
           niveau="h1"
-          surtitre={en ? "They speak" : "Ils interviennent"}
+          surtitre={selon(locale, {
+            fr: "Ils interviennent",
+            en: "They speak",
+            pt: "Quem intervém",
+          })}
           titre={t("speakers")}
           icone={Mic}
         />
@@ -104,7 +112,7 @@ export default async function SpeakersPage({ searchParams }: { searchParams: Pro
             {tPage("empty")}
           </p>
         ) : (
-          <AnnuaireIntervenants intervenants={intervenants} initial={filtres} en={en} />
+          <AnnuaireIntervenants intervenants={intervenants} initial={filtres} locale={locale} />
         )}
       </CorpsPage>
     </>

@@ -27,6 +27,7 @@ export default async function NouvelIntervenantPage() {
           country: "",
           bioFr: "",
           bioEn: "",
+          bioPt: "",
           isPublished: false,
           isFeatured: false,
           featuredOrder: 0,

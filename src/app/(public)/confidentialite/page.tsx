@@ -1,3 +1,4 @@
+import type { Langue } from "@/lib/langue";
 import { getLocale } from "next-intl/server";
 import { ShieldCheck } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
@@ -24,7 +25,7 @@ export const metadata = {
 export default async function PrivacyPage() {
   const locale = await getLocale();
   const edition = await getActiveEdition();
-  const body = await getContentText(edition.id, "legal.privacy", locale as "fr" | "en");
+  const body = await getContentText(edition.id, "legal.privacy", locale as Langue);
 
   return (
     <>

@@ -42,6 +42,7 @@ export default async function ContentBlocksPage() {
               max={max}
               valueFr={typeof block?.valueFr === "string" ? block.valueFr : ""}
               valueEn={typeof block?.valueEn === "string" ? block.valueEn : ""}
+              valuePt={typeof block?.valuePt === "string" ? block.valuePt : ""}
             />
           );
         })}

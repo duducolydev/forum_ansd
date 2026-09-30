@@ -1,3 +1,4 @@
+import { lireLangue, localeIntl, selon, traduire } from "@/lib/langue";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale } from "next-intl/server";
@@ -11,11 +12,6 @@ import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
 import { LienSite } from "@/components/site/bouton-site";
 
 export const dynamic = "force-dynamic";
-
-const dateLongue = new Intl.DateTimeFormat("fr-FR", {
-  dateStyle: "long",
-  timeZone: "Africa/Dakar",
-});
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -33,8 +29,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
  */
 export default async function NewsletterPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const locale = (await getLocale()) === "en" ? "en" : "fr";
-  const en = locale === "en";
+  const locale = lireLangue(await getLocale());
+  const dateLongue = new Intl.DateTimeFormat(localeIntl(locale), {
+    dateStyle: "long",
+    timeZone: "Africa/Dakar",
+  });
   const edition = await getActiveEdition();
 
   const newsletter = await trouverParSlug(edition.id, slug);
@@ -42,8 +41,17 @@ export default async function NewsletterPage({ params }: { params: Promise<{ slu
   // message d'accès refusé qui confirmerait qu'elle existe.
   if (!newsletter?.isPublished) notFound();
 
-  const titre = resolveLocaleValue(newsletter.titleFr, newsletter.titleEn, locale);
-  const corps = locale === "en" && newsletter.bodyEn ? newsletter.bodyEn : newsletter.bodyFr;
+  const titre = resolveLocaleValue(
+    newsletter.titleFr,
+    newsletter.titleEn,
+    locale,
+    newsletter.titlePt,
+  );
+  const corps = traduire(locale, {
+    fr: newsletter.bodyFr,
+    en: newsletter.bodyEn,
+    pt: newsletter.bodyPt,
+  });
 
   return (
     <>
@@ -55,7 +63,11 @@ export default async function NewsletterPage({ params }: { params: Promise<{ slu
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <Link href="/newsletters" className="text-link inline-flex items-center gap-1.5 text-sm">
             <ArrowLeft aria-hidden size={15} />
-            {en ? "All newsletters" : "Toutes les newsletters"}
+            {selon(locale, {
+              fr: "Toutes les newsletters",
+              en: "All newsletters",
+              pt: "Todas as newsletters",
+            })}
           </Link>
           {newsletter.publishedAt && (
             <span className="text-text-3 text-sm">{dateLongue.format(newsletter.publishedAt)}</span>
@@ -63,7 +75,12 @@ export default async function NewsletterPage({ params }: { params: Promise<{ slu
         </div>
 
         <p className="text-text-2 mb-8 text-lg leading-relaxed">
-          {resolveLocaleValue(newsletter.excerptFr, newsletter.excerptEn, locale)}
+          {resolveLocaleValue(
+            newsletter.excerptFr,
+            newsletter.excerptEn,
+            locale,
+            newsletter.excerptPt,
+          )}
         </p>
 
         <TexteRiche
@@ -74,7 +91,11 @@ export default async function NewsletterPage({ params }: { params: Promise<{ slu
 
         <div className="border-border mt-10 border-t pt-6">
           <LienSite href={`/api/v1/newsletters/${newsletter.id}/pdf`} icone={Download}>
-            {en ? "Download as PDF" : "Télécharger en PDF"}
+            {selon(locale, {
+              fr: "Télécharger en PDF",
+              en: "Download as PDF",
+              pt: "Descarregar em PDF",
+            })}
           </LienSite>
         </div>
       </CorpsPage>
