@@ -42,13 +42,20 @@ export function MiniCountdown({
   cibleIso,
   finIso,
   petit = false,
+  entete = false,
 }: {
   cibleIso: string;
   finIso: string;
-  /** Version réduite, posée dans le coin supérieur droit du bandeau d'accueil. */
+  /** Version réduite (bandeau d'accueil sur téléphone). */
   petit?: boolean;
+  /** Version compacte, sur une ligne, sous « S'inscrire » dans la barre de navigation. */
+  entete?: boolean;
 }) {
-  const classe = petit ? "mini-compte mini-compte--petit" : "mini-compte";
+  const classe = entete
+    ? "mini-compte mini-compte--petit mini-compte--entete"
+    : petit
+      ? "mini-compte mini-compte--petit"
+      : "mini-compte";
   const t = useTranslations("constellation.countdown");
   const [etat, setEtat] = useState<Etat>({ phase: "attente" });
 

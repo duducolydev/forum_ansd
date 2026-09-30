@@ -715,18 +715,7 @@ html[data-motion] .titre-decoupe__lettre {
     white-space: nowrap;
   }
 }
-/* À côté du compte à rebours (30 septembre 2026) : titre à gauche, un peu
-   plus petit pour tenir sur la même ligne que le compteur. Entre 1 024 et
-   1 280 px, le compteur passe au-dessus et le titre reprend toute la largeur. */
-@media (min-width: 1280px) {
-  .titre-accueil-bloc--compteur {
-    text-align: left;
-  }
-  .titre-accueil-bloc--compteur .titre-accueil {
-    /* Plafond : tenir, avec le compteur, dans le cadre de 1 400 px. */
-    font-size: clamp(2rem, 3.1vw, 3.15rem);
-  }
-}
+
 .titre-accueil-second {
   margin-top: 0.6rem;
   color: var(--muted);
@@ -2239,6 +2228,43 @@ html[data-motion] [data-reveal]:not([data-vu]) .icone-dessinee * {
 .mini-compte--petit .mini-compte__deux-points {
   margin-top: -0.6rem;
   font-size: 0.8rem;
+}
+
+/* Barre de navigation (30 septembre 2026) : une ligne d'une trentaine de
+   pixels sous « S'inscrire » — chiffres et unités côte à côte, sans cases. */
+.mini-compte--entete {
+  gap: 0.4rem;
+  padding: 0.2rem 0.55rem 0.2rem 0.45rem;
+  border-radius: 9px;
+}
+.mini-compte--entete .mini-compte__libelle {
+  font-size: 0.58rem;
+  gap: 0.3rem;
+}
+.mini-compte--entete .point-direct {
+  width: 6px;
+  height: 6px;
+}
+.mini-compte--entete .mini-compte__unites {
+  gap: 0.1rem;
+}
+.mini-compte--entete .mini-compte__case {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0.05rem 0.2rem;
+  border-radius: 5px;
+}
+.mini-compte--entete .mini-compte__chiffre {
+  font-size: 0.78rem;
+}
+.mini-compte--entete .mini-compte__case small {
+  font-size: 0.5rem;
+}
+.mini-compte--entete .mini-compte__deux-points {
+  margin-top: 0;
+  font-size: 0.7rem;
 }
 
 /* Rôles de l'intervenant, au verso (panéliste, modérateur…) : une pastille

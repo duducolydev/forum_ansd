@@ -24,7 +24,6 @@ import {
 } from "@/modules/sessions/components/programme-grid";
 import { ProgrammeFrise } from "@/modules/sessions/components/programme-frise";
 import { libelleEtat, libelleType } from "@/modules/sessions/libelles";
-import { MiniCountdown } from "@/components/home/MiniCountdown";
 
 export const dynamic = "force-dynamic";
 
@@ -182,8 +181,6 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
 
   const jourActif = jours.find((jour) => jour.iso === filtres.jour) ?? jours[0]!;
   const vueSalles = filtres.vue === "salles";
-  // Cible du compte à rebours : la première session du programme publié.
-  const ouverture = new Date(Math.min(...sessions.map((session) => session.startTime.getTime())));
   const duJour: SessionAffichable[] = retenues
     .filter((session) => session.day.toISOString().slice(0, 10) === jourActif.iso)
     .map((session) => ({
@@ -211,13 +208,6 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
           surtitre={surtitre}
           titre={t("program")}
           icone={CalendarDays}
-          action={
-            <MiniCountdown
-              petit
-              cibleIso={ouverture.toISOString()}
-              finIso={edition.endDate.toISOString()}
-            />
-          }
         />
       </BandeauPage>
 

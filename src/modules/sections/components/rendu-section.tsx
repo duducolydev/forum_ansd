@@ -266,46 +266,31 @@ export function RenduSection({ section, donnees, locale }: Props) {
           <span aria-hidden className="tache tache--2" />
           <span aria-hidden className="tache tache--3" />
 
-          {/* Titre et compte à rebours dans le cadre de l'en-tête (1 400 px) : le titre
-              s'aligne sous le logo, le compteur sous « S'inscrire ». */}
-          <div className="relative mx-auto w-full max-w-[1400px] px-6 pt-6">
-            {/*
-             * Nom du Forum et compte à rebours sur la même ligne (demande du
-             * 30 septembre 2026) : le titre à gauche, dimensionné pour tenir à
-             * côté, le compteur à droite. Sous 1 280 px, le compteur passe
-             * au-dessus du titre, qui se replie en lignes équilibrées.
-             *
-             * Le nom dans l'autre langue suit en dessous. Le premier porte le
-             * `h1` ; l'accroche plus bas est un `h2`.
-             */}
-            <div
-              className={
-                avecLogo
-                  ? "flex flex-col-reverse gap-5 xl:flex-row xl:items-center xl:gap-8"
-                  : undefined
-              }
-            >
-              <div
-                className={`titre-accueil-bloc min-w-0 xl:flex-1${
-                  avecLogo ? "titre-accueil-bloc--compteur" : ""
-                }`}
-              >
-                <SplitTitle texte={titrePrincipal} className="titre-accueil uppercase" />
-                {titreSecond && titreSecond !== titrePrincipal && (
-                  <RevealMotion variant="up" delay={0.8}>
-                    <p lang={langueSecond} className="titre-accueil-second police-grotesk">
-                      {titreSecond}
-                    </p>
-                  </RevealMotion>
-                )}
-              </div>
-              {avecLogo && (
-                <RevealMotion variant="right" delay={0.1} className="flex shrink-0 justify-end">
-                  <MiniCountdown
-                    petit
-                    cibleIso={ouverture.toISOString()}
-                    finIso={edition.endDate.toISOString()}
-                  />
+          {/*
+           * Nom du Forum sur toute la largeur de l'écran, centré (demande du
+           * 30 septembre 2026), avec son nom dans l'autre langue en dessous.
+           * Le premier porte le `h1` ; l'accroche plus bas est un `h2`.
+           *
+           * Le compte à rebours est dans la barre de navigation ; sous
+           * 1 280 px, où la barre se réduit au menu, il reste ici.
+           */}
+          <div className="relative w-full px-6 pt-6">
+            {avecLogo && (
+              <RevealMotion variant="up" delay={0.1} className="mb-5 flex justify-center xl:hidden">
+                <MiniCountdown
+                  petit
+                  cibleIso={ouverture.toISOString()}
+                  finIso={edition.endDate.toISOString()}
+                />
+              </RevealMotion>
+            )}
+            <div className="titre-accueil-bloc">
+              <SplitTitle texte={titrePrincipal} className="titre-accueil uppercase" />
+              {titreSecond && titreSecond !== titrePrincipal && (
+                <RevealMotion variant="up" delay={0.8}>
+                  <p lang={langueSecond} className="titre-accueil-second police-grotesk">
+                    {titreSecond}
+                  </p>
                 </RevealMotion>
               )}
             </div>

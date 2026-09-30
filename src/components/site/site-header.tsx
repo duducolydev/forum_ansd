@@ -4,6 +4,9 @@ import { getTranslations } from "next-intl/server";
 import { Ticket, UserPlus } from "lucide-react";
 import { getServerTheme } from "@/lib/theme";
 import { languesProposees } from "@/i18n/locale";
+import { getActiveEdition } from "@/lib/edition";
+import { heureOuverture } from "@/lib/ouverture";
+import { MiniCountdown } from "@/components/home/MiniCountdown";
 import { ThemeToggle } from "./theme-toggle";
 import { LocaleSwitcher } from "./locale-switcher";
 import { LogoForum } from "./logo-forum";
@@ -28,10 +31,25 @@ export type ResolvedNavEntry =
 export const SUR_ENTETE =
   "text-ansd-bleu-nuit hover:bg-white/60 focus-visible:outline-ansd-bleu-nuit transition-tout";
 
+/**
+ * Cible du compte à rebours. Une base injoignable ne doit pas empêcher la
+ * barre de navigation de s'afficher : sans cible, pas de compteur.
+ */
+async function cibleCompteur(): Promise<{ cible: string; fin: string } | null> {
+  try {
+    const edition = await getActiveEdition();
+    const ouverture = await heureOuverture(edition);
+    return { cible: ouverture.toISOString(), fin: edition.endDate.toISOString() };
+  } catch {
+    return null;
+  }
+}
+
 export async function SiteHeader() {
   const t = await getTranslations("nav");
   const theme = await getServerTheme();
   const langues = await languesProposees();
+  const compteur = await cibleCompteur();
 
   const entries: ResolvedNavEntry[] = NAV_ENTRIES.map((entry) =>
     isGroup(entry)
@@ -105,25 +123,34 @@ export async function SiteHeader() {
           )}
         </nav>
 
-        <div className="hidden shrink-0 items-center gap-2 xl:flex">
-          <LocaleSwitcher variante="entete" langues={langues} />
-          <ThemeToggle initialTheme={theme} variante="entete" />
-          <Link
-            href="/mon-espace"
-            data-magnetic
-            className={`${SUR_ENTETE} border-ansd-bleu-nuit/25 hidden items-center gap-2 rounded-[10px] border px-3 py-2 text-[0.84rem] font-semibold whitespace-nowrap hover:-translate-y-0.5 xl:inline-flex`}
-          >
-            <Ticket aria-hidden size={15} strokeWidth={2.2} />
-            {t("myRegistrations")}
-          </Link>
-          <Link
-            href="/inscription"
-            data-magnetic
-            className="bouton-reflet bg-primary text-primary-text hover:bg-primary-hover transition-tout focus-visible:outline-ansd-bleu-nuit relative inline-flex items-center gap-2 overflow-hidden rounded-[10px] px-3 py-2 text-[0.84rem] font-semibold whitespace-nowrap shadow-sm hover:-translate-y-0.5 hover:shadow-lg"
-          >
-            <UserPlus aria-hidden size={15} strokeWidth={2.2} />
-            {t("register")}
-          </Link>
+        {/*
+         * Boutons, puis compte à rebours aligné sous « S'inscrire » (demande du
+         * 30 septembre 2026) : visible sur toutes les pages, sans occuper le
+         * bandeau d'accueil. Sous 1 280 px, la barre se réduit au menu et le
+         * compteur reste en tête de l'accueil.
+         */}
+        <div className="hidden shrink-0 flex-col items-end gap-1.5 xl:flex">
+          <div className="flex items-center gap-2">
+            <LocaleSwitcher variante="entete" langues={langues} />
+            <ThemeToggle initialTheme={theme} variante="entete" />
+            <Link
+              href="/mon-espace"
+              data-magnetic
+              className={`${SUR_ENTETE} border-ansd-bleu-nuit/25 hidden items-center gap-2 rounded-[10px] border px-3 py-2 text-[0.84rem] font-semibold whitespace-nowrap hover:-translate-y-0.5 xl:inline-flex`}
+            >
+              <Ticket aria-hidden size={15} strokeWidth={2.2} />
+              {t("myRegistrations")}
+            </Link>
+            <Link
+              href="/inscription"
+              data-magnetic
+              className="bouton-reflet bg-primary text-primary-text hover:bg-primary-hover transition-tout focus-visible:outline-ansd-bleu-nuit relative inline-flex items-center gap-2 overflow-hidden rounded-[10px] px-3 py-2 text-[0.84rem] font-semibold whitespace-nowrap shadow-sm hover:-translate-y-0.5 hover:shadow-lg"
+            >
+              <UserPlus aria-hidden size={15} strokeWidth={2.2} />
+              {t("register")}
+            </Link>
+          </div>
+          {compteur && <MiniCountdown entete cibleIso={compteur.cible} finIso={compteur.fin} />}
         </div>
 
         <MobileNav entries={entries} theme={theme} langues={langues} />
