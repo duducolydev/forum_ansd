@@ -1,3 +1,4 @@
+import { lireLangue } from "@/lib/langue";
 import type { Participant, ParticipantStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
@@ -192,10 +193,7 @@ export async function envoyerConfirmation(
         ...acces,
         referent_bloc: presse
           ? ""
-          : blocReferent(
-              participant.delegation?.referent ?? null,
-              participant.locale === "en" ? "en" : "fr",
-            ),
+          : blocReferent(participant.delegation?.referent ?? null, lireLangue(participant.locale)),
       },
     },
     `confirmation-${participant.id}`,

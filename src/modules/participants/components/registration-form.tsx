@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Send } from "lucide-react";
 
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useLocale } from "next-intl";
 import {
   REGISTRATION_STEPS,
   registrationConsentSchema,
@@ -41,6 +42,7 @@ interface Props {
 }
 
 export function RegistrationForm({ categories, days, invitation }: Props) {
+  const langue = useLocale();
   const formRef = useRef<HTMLFormElement>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [stepError, setStepError] = useState<string | null>(null);
@@ -227,7 +229,8 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-6">
       <input type="hidden" name="invitationToken" value={invitation?.token ?? ""} />
-      <input type="hidden" name="locale" value="fr" />
+      {/* Langue des e-mails : celle dans laquelle la personne remplit le formulaire. */}
+      <input type="hidden" name="locale" value={langue} />
       {/* Honeypot : masqué aux utilisateurs, rempli par les robots. */}
       <input
         type="text"

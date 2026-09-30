@@ -35,6 +35,7 @@ function lireFormulaire(formData: FormData) {
     levelId: formData.get("levelId"),
     descriptionFr: formData.get("descriptionFr") ?? "",
     descriptionEn: formData.get("descriptionEn") ?? "",
+    descriptionPt: formData.get("descriptionPt") ?? "",
     website: formData.get("website") ?? "",
     videoUrl: formData.get("videoUrl") ?? "",
     standNumber: formData.get("standNumber") ?? "",

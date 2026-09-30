@@ -25,6 +25,7 @@ export interface SpeakerVue {
   country: string;
   bioFr: string;
   bioEn: string;
+  bioPt: string;
   aPhoto: boolean;
   aPresentation: boolean;
   /** Accord pour que la présentation soit publiée sur le site (§15). */
@@ -311,6 +312,19 @@ export function SpeakerSpace({ speaker }: { speaker: SpeakerVue }) {
               rows={6}
               maxLength={3000}
               defaultValue={speaker.bioEn}
+              className={champ}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="bioPt" className={etiquette}>
+              Biographie (portugais — repli EN si vide)
+            </label>
+            <textarea
+              id="bioPt"
+              name="bioPt"
+              rows={6}
+              maxLength={3000}
+              defaultValue={speaker.bioPt}
               className={champ}
             />
           </div>

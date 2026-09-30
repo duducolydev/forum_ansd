@@ -1,5 +1,6 @@
 "use server";
 
+import { lireLangue } from "@/lib/langue";
 import { revalidatePath } from "next/cache";
 import type { Session } from "next-auth";
 import { auth } from "@/auth";
@@ -101,7 +102,7 @@ function parseParticipantForm(formData: FormData): ParticipantInput {
     city: formData.get("city") ?? undefined,
     categoryId: formData.get("categoryId"),
     delegationId: formData.get("delegationId") ?? undefined,
-    locale: (formData.get("locale") as "fr" | "en") ?? "fr",
+    locale: lireLangue(formData.get("locale")),
     attendsOpening: formData.get("attendsOpening") === "on",
     attendsInaugural: formData.get("attendsInaugural") === "on",
     attendsClosing: formData.get("attendsClosing") === "on",

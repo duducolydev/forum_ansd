@@ -23,6 +23,7 @@ export const sponsorInputSchema = z.object({
   levelId: z.string().min(1, "Le niveau est requis."),
   descriptionFr: z.string().trim().max(3000).optional().or(z.literal("")),
   descriptionEn: z.string().trim().max(3000).optional().or(z.literal("")),
+  descriptionPt: z.string().trim().max(3000).optional().or(z.literal("")),
   website: url,
   videoUrl: url,
   standNumber: z.string().trim().max(40).optional().or(z.literal("")),

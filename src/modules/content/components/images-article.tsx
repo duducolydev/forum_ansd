@@ -176,6 +176,12 @@ export function ImagesArticle({
             aria-label="Légende en anglais"
             className={`${CHAMP} min-w-[160px] flex-1`}
           />
+          <input
+            name="captionPt"
+            placeholder="Légende (portugais)"
+            aria-label="Légende en portugais"
+            className={`${CHAMP} min-w-[160px] flex-1`}
+          />
           <Bouton ton="secondaire" icone={Plus} type="submit" disabled={galerieEnCours}>
             {galerieEnCours ? "Envoi…" : "Ajouter"}
           </Bouton>

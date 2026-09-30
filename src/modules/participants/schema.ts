@@ -22,7 +22,7 @@ export const participantInputSchema = z.object({
   city: z.string().trim().max(100).optional().or(z.literal("")),
   categoryId: z.string().min(1, "La catégorie est requise"),
   delegationId: z.string().optional().or(z.literal("")),
-  locale: z.enum(["fr", "en"]).default("fr"),
+  locale: z.enum(["fr", "en", "pt"]).default("fr"),
   attendsOpening: z.boolean().default(false),
   attendsInaugural: z.boolean().default(false),
   attendsClosing: z.boolean().default(false),

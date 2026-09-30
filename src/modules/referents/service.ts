@@ -1,3 +1,4 @@
+import { selon, type Langue } from "@/lib/langue";
 import { Prisma } from "@prisma/client";
 import { audit } from "@/lib/audit";
 import type { Actor } from "@/modules/participants/service";
@@ -123,24 +124,20 @@ export interface CoordonneesReferent {
  */
 export function blocReferent(
   referent: CoordonneesReferent | null | undefined,
-  locale: "fr" | "en",
+  locale: Langue,
 ): string {
   if (!referent) return "";
 
-  const lignes =
-    locale === "en"
-      ? [
-          "",
-          "Your delegation's internal contact:",
-          `  ${referent.name}${referent.role ? ` — ${referent.role}` : ""}`,
-          `  ${referent.email}`,
-        ]
-      : [
-          "",
-          "Le référent de votre délégation :",
-          `  ${referent.name}${referent.role ? ` — ${referent.role}` : ""}`,
-          `  ${referent.email}`,
-        ];
+  const lignes = [
+    "",
+    selon(locale, {
+      fr: "Le référent de votre délégation :",
+      en: "Your delegation's internal contact:",
+      pt: "O referente da sua delegação:",
+    }),
+    `  ${referent.name}${referent.role ? ` — ${referent.role}` : ""}`,
+    `  ${referent.email}`,
+  ];
 
   if (referent.phone) lignes.push(`  ${referent.phone}`);
   return lignes.join("\n");

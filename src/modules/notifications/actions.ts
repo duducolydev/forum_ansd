@@ -49,6 +49,8 @@ export async function updateTemplateAction(
       subjectEn: formData.get("subjectEn") ?? "",
       bodyFr: formData.get("bodyFr"),
       bodyEn: formData.get("bodyEn"),
+      subjectPt: formData.get("subjectPt") ?? "",
+      bodyPt: formData.get("bodyPt") ?? "",
     });
     const edition = await getActiveEdition();
     await updateTemplate(edition.id, key, input, actor);

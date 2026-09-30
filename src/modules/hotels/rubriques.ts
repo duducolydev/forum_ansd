@@ -1,3 +1,4 @@
+import { traduire, type Langue } from "@/lib/langue";
 import { Bed, Building2, BusFront, Mail, PlaneLanding, StampIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -19,6 +20,7 @@ export interface Rubrique {
   cleDetail?: string;
   labelFr: string;
   labelEn: string;
+  labelPt: string;
   icone: LucideIcon;
   ton: string;
   /** Contenu structuré de la page de détail, s'il y en a un. */
@@ -32,6 +34,7 @@ export const RUBRIQUES: readonly Rubrique[] = [
     cleDetail: "practical.venue.detail",
     labelFr: "Lieu",
     labelEn: "Venue",
+    labelPt: "Local",
     icone: Building2,
     ton: "bg-blue-soft text-blue-text",
   },
@@ -41,6 +44,7 @@ export const RUBRIQUES: readonly Rubrique[] = [
     cleDetail: "practical.arrival.detail",
     labelFr: "Arrivée",
     labelEn: "Arrival",
+    labelPt: "Chegada",
     icone: PlaneLanding,
     ton: "bg-accent-soft text-accent-text",
   },
@@ -49,6 +53,7 @@ export const RUBRIQUES: readonly Rubrique[] = [
     cle: "practical.accommodation",
     labelFr: "Hébergement",
     labelEn: "Accommodation",
+    labelPt: "Alojamento",
     icone: Bed,
     ton: "bg-gold-soft text-gold-text",
     liste: "hotels",
@@ -59,6 +64,7 @@ export const RUBRIQUES: readonly Rubrique[] = [
     cleDetail: "practical.visa.detail",
     labelFr: "Visas",
     labelEn: "Visas",
+    labelPt: "Vistos",
     icone: StampIcon,
     ton: "bg-warn-soft text-warn-text",
   },
@@ -68,6 +74,7 @@ export const RUBRIQUES: readonly Rubrique[] = [
     cleDetail: "practical.transport.detail",
     labelFr: "Transports",
     labelEn: "Transport",
+    labelPt: "Transportes",
     icone: BusFront,
     ton: "bg-blue-soft text-blue-text",
   },
@@ -76,6 +83,7 @@ export const RUBRIQUES: readonly Rubrique[] = [
     cle: "practical.contacts",
     labelFr: "Contacts",
     labelEn: "Contacts",
+    labelPt: "Contactos",
     icone: Mail,
     ton: "bg-accent-soft text-accent-text",
     liste: "contacts",
@@ -86,6 +94,6 @@ export function rubriqueParSegment(segment: string): Rubrique | undefined {
   return RUBRIQUES.find((r) => r.segment === segment);
 }
 
-export function libelle(rubrique: Rubrique, locale: "fr" | "en"): string {
-  return locale === "en" ? rubrique.labelEn : rubrique.labelFr;
+export function libelle(rubrique: Rubrique, locale: Langue): string {
+  return traduire(locale, { fr: rubrique.labelFr, en: rubrique.labelEn, pt: rubrique.labelPt });
 }

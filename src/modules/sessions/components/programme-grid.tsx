@@ -1,3 +1,4 @@
+import { selon, type Langue } from "@/lib/langue";
 import Link from "next/link";
 import {
   Award,
@@ -10,8 +11,9 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
-import { ETAT_LABELS, type EtatSession, type PlacesSession } from "../service";
-import { TYPE_LABELS } from "../schema";
+import type { EtatSession, PlacesSession } from "../service";
+import { libelleEtat, libelleType } from "../libelles";
+import type { TYPE_LABELS } from "../schema";
 
 export interface SessionAffichable {
   id: string;
@@ -72,19 +74,21 @@ function heure(date: Date): string {
   return `${String(date.getUTCHours()).padStart(2, "0")}h${String(date.getUTCMinutes()).padStart(2, "0")}`;
 }
 
-function EtatBadge({ places }: { places: PlacesSession }) {
+function EtatBadge({ places, locale }: { places: PlacesSession; locale: Langue }) {
   if (places.etat === "SANS_RESERVATION") return null;
   return (
     <span
       className={`rounded-md px-1.5 py-0.5 text-[0.68rem] font-semibold ${COULEUR_ETAT[places.etat]}`}
     >
-      {ETAT_LABELS[places.etat]}
-      {places.etat === "OUVERTE" && places.restantes !== null && ` · ${places.restantes} places`}
+      {libelleEtat(places.etat, locale)}
+      {places.etat === "OUVERTE" &&
+        places.restantes !== null &&
+        ` · ${places.restantes} ${selon(locale, { fr: "places", en: "seats", pt: "lugares" })}`}
     </span>
   );
 }
 
-function Carte({ session }: { session: SessionAffichable }) {
+function Carte({ session, locale }: { session: SessionAffichable; locale: Langue }) {
   const allure = ALLURE_TYPE[session.type];
   const Icone = allure.icone;
 
@@ -98,14 +102,14 @@ function Carte({ session }: { session: SessionAffichable }) {
         <Clock aria-hidden size={11} className="shrink-0" />
         {heure(session.debut)} – {heure(session.fin)}
         <Icone aria-hidden size={11} className={`ml-0.5 shrink-0 ${allure.pastille}`} />
-        <span className="truncate">{TYPE_LABELS[session.type]}</span>
+        <span className="truncate">{libelleType(session.type, locale)}</span>
       </span>
       <span className="text-heading titre-carte text-sm leading-snug font-semibold">
         {session.titre}
       </span>
       {session.theme && <span className="text-text-3 text-[0.7rem]">{session.theme}</span>}
       <span className="mt-auto pt-1">
-        <EtatBadge places={session.places} />
+        <EtatBadge places={session.places} locale={locale} />
       </span>
     </Link>
   );
@@ -130,12 +134,22 @@ function Carte({ session }: { session: SessionAffichable }) {
 export function ProgrammeGrid({
   sessions,
   salles,
+  locale,
 }: {
   sessions: SessionAffichable[];
   salles: { id: string; name: string }[];
+  locale: Langue;
 }) {
   if (sessions.length === 0) {
-    return <p className="text-text-2 text-sm">Aucune session ne correspond à ces filtres.</p>;
+    return (
+      <p className="text-text-2 text-sm">
+        {selon(locale, {
+          fr: "Aucune session ne correspond à ces filtres.",
+          en: "No session matches these filters.",
+          pt: "Nenhuma sessão corresponde a estes filtros.",
+        })}
+      </p>
+    );
   }
 
   const debutJour = Math.min(...sessions.map((session) => minutes(session.debut)));
@@ -195,7 +209,7 @@ export function ProgrammeGrid({
                   gridColumn: session.salle ? colonne : `2 / ${Math.max(colonnes.length, 1) + 2}`,
                 }}
               >
-                <Carte session={session} />
+                <Carte session={session} locale={locale} />
               </div>
             );
           })}
@@ -206,7 +220,7 @@ export function ProgrammeGrid({
       <ul className="flex flex-col gap-2 md:hidden">
         {sessions.map((session) => (
           <li key={session.id}>
-            <Carte session={session} />
+            <Carte session={session} locale={locale} />
             {session.salle && (
               <span className="text-text-3 mt-1 block text-[0.7rem]">{session.salle.name}</span>
             )}

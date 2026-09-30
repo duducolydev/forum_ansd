@@ -68,7 +68,7 @@ export function FormulaireVideo({ albumId }: { albumId: string | null }) {
               : "Lien non reconnu : YouTube (youtube.com, youtu.be) ou Vimeo uniquement."}
         </p>
       </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <input
           name="captionFr"
           placeholder="Titre ou légende (français)"
@@ -80,6 +80,13 @@ export function FormulaireVideo({ albumId }: { albumId: string | null }) {
           name="captionEn"
           placeholder="Titre ou légende (anglais)"
           aria-label="Légende en anglais"
+          maxLength={500}
+          className={CHAMP}
+        />
+        <input
+          name="captionPt"
+          placeholder="Titre ou légende (portugais)"
+          aria-label="Légende en portugais"
           maxLength={500}
           className={CHAMP}
         />

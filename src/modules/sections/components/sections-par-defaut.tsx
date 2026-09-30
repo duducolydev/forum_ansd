@@ -1,3 +1,4 @@
+import type { Langue } from "@/lib/langue";
 import type { Edition, PageSection } from "@prisma/client";
 import { getContentText } from "@/modules/content/service";
 import { chargerDonnees } from "../donnees";
@@ -24,7 +25,7 @@ export async function SectionsParDefaut({
 }: {
   edition: Edition;
   page: string;
-  locale: "fr" | "en";
+  locale: Langue;
 }) {
   const composition = COMPOSITIONS[page] ?? [];
   if (composition.length === 0) return null;
@@ -44,6 +45,7 @@ export async function SectionsParDefaut({
     settings: modele.settings as object,
     contentFr: resoudreContenu(modele, textes, "fr"),
     contentEn: resoudreContenu(modele, textes, "en"),
+    contentPt: resoudreContenu(modele, textes, "pt"),
     createdAt: new Date(0),
     updatedAt: new Date(0),
   }));

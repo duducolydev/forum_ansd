@@ -1,3 +1,4 @@
+import { LANGUES, traduire } from "@/lib/langue";
 import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
@@ -35,8 +36,10 @@ const CHAMPS_LISTE = {
   slug: true,
   titleFr: true,
   titleEn: true,
+  titlePt: true,
   excerptFr: true,
   excerptEn: true,
+  excerptPt: true,
   coverPath: true,
   isPublished: true,
   publishedAt: true,
@@ -99,10 +102,13 @@ export async function creerNewsletter(editionId: string, input: NewsletterInput,
       slug,
       titleFr: propre.titleFr,
       titleEn: propre.titleEn || propre.titleFr,
+      titlePt: propre.titlePt || null,
       excerptFr: propre.excerptFr,
       excerptEn: propre.excerptEn || propre.excerptFr,
+      excerptPt: propre.excerptPt || null,
       bodyFr: propre.bodyFr,
       bodyEn: propre.bodyEn,
+      bodyPt: propre.bodyPt || null,
       isPublished: propre.isPublished,
       publishedAt: propre.isPublished ? new Date() : null,
     },
@@ -135,10 +141,13 @@ export async function modifierNewsletter(id: string, input: NewsletterInput, act
     data: {
       titleFr: propre.titleFr,
       titleEn: propre.titleEn || propre.titleFr,
+      titlePt: propre.titlePt || null,
       excerptFr: propre.excerptFr,
       excerptEn: propre.excerptEn || propre.excerptFr,
+      excerptPt: propre.excerptPt || null,
       bodyFr: propre.bodyFr,
       bodyEn: propre.bodyEn,
+      bodyPt: propre.bodyPt || null,
       isPublished: propre.isPublished,
       // La date de publication marque la **première** mise en ligne : la
       // réécrire à chaque enregistrement ferait remonter en tête de liste une
@@ -222,11 +231,26 @@ export async function envoyerNewsletter(
     editionId,
     templateKey: "newsletter_published",
     filter: { statuts: ["REGISTERED", "CONFIRMED", "BADGED", "CHECKED_IN"] },
-    variables: {
-      titre: newsletter.titleFr,
-      chapo: newsletter.excerptFr,
-      lien_newsletter: `${baseUrl}/newsletters/${newsletter.slug}`,
-    },
+    variables: { lien_newsletter: `${baseUrl}/newsletters/${newsletter.slug}` },
+    // Titre et chapô dans la langue de chaque destinataire (30 septembre 2026) :
+    // l'annonce partait jusqu'ici en français à tout le monde.
+    variablesParLangue: Object.fromEntries(
+      LANGUES.map((langue) => [
+        langue,
+        {
+          titre: traduire(langue, {
+            fr: newsletter.titleFr,
+            en: newsletter.titleEn,
+            pt: newsletter.titlePt,
+          }),
+          chapo: traduire(langue, {
+            fr: newsletter.excerptFr,
+            en: newsletter.excerptEn,
+            pt: newsletter.excerptPt,
+          }),
+        },
+      ]),
+    ),
     actor: acteur,
   });
 

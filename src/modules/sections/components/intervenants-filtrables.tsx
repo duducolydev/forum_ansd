@@ -1,5 +1,6 @@
 "use client";
 
+import { selon, type Langue } from "@/lib/langue";
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, Tag } from "lucide-react";
@@ -22,11 +23,11 @@ type Intervenant = NonNullable<DonneesSections["intervenants"]>[number];
 export function IntervenantsFiltrables({
   intervenants,
   nombre,
-  en,
+  locale,
 }: {
   intervenants: Intervenant[];
   nombre: number;
-  en: boolean;
+  locale: Langue;
 }) {
   const [theme, setTheme] = useState<string | null>(null);
 
@@ -56,15 +57,19 @@ export function IntervenantsFiltrables({
         <div className="mb-8 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
           <div
             role="group"
-            aria-label={en ? "Filter by theme" : "Filtrer par thème"}
+            aria-label={selon(locale, {
+              fr: "Filtrer par thème",
+              en: "Filter by theme",
+              pt: "Filtrar por tema",
+            })}
             className="flex flex-wrap items-center gap-2"
           >
             <span className="flex w-20 shrink-0 items-center gap-1.5 text-xs font-bold tracking-wide text-[var(--muted)] uppercase">
               <Tag aria-hidden size={13} />
-              {en ? "Themes" : "Thèmes"}
+              {selon(locale, { fr: "Thèmes", en: "Themes", pt: "Temas" })}
             </span>
             <Pastille actif={theme === null} onClick={() => setTheme(null)}>
-              {en ? "All" : "Tous"}
+              {selon(locale, { fr: "Tous", en: "All", pt: "Todos" })}
             </Pastille>
             {themes.map((valeur) => (
               <Pastille
@@ -81,14 +86,20 @@ export function IntervenantsFiltrables({
       )}
 
       <p aria-live="polite" className="sr-only">
-        {en
-          ? `${retenus.length} speaker${retenus.length > 1 ? "s" : ""}`
-          : `${retenus.length} intervenant${retenus.length > 1 ? "s" : ""}`}
+        {selon(locale, {
+          fr: `${retenus.length} intervenant${retenus.length > 1 ? "s" : ""}`,
+          en: `${retenus.length} speaker${retenus.length > 1 ? "s" : ""}`,
+          pt: `${retenus.length} orador${retenus.length > 1 ? "es" : ""}`,
+        })}
       </p>
 
       {affiches.length === 0 ? (
         <p className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center text-[var(--muted)]">
-          {en ? "No speaker on this theme yet." : "Aucun intervenant sur ce thème pour l'instant."}
+          {selon(locale, {
+            fr: "Aucun intervenant sur ce thème pour l'instant.",
+            en: "No speaker on this theme yet.",
+            pt: "Ainda não há oradores neste tema.",
+          })}
         </p>
       ) : (
         // La clé change avec le filtre : les cartes sont remontées et rejouent
@@ -102,7 +113,11 @@ export function IntervenantsFiltrables({
             href={`/intervenants?theme=${encodeURIComponent(theme)}`}
             className="text-link inline-flex items-center gap-1.5 text-sm font-semibold"
           >
-            {en ? `All speakers on “${theme}”` : `Tous les intervenants sur « ${theme} »`}
+            {selon(locale, {
+              fr: `Tous les intervenants sur « ${theme} »`,
+              en: `All speakers on “${theme}”`,
+              pt: `Todos os oradores sobre « ${theme} »`,
+            })}
             <ArrowRight aria-hidden size={14} />
           </Link>
         </p>

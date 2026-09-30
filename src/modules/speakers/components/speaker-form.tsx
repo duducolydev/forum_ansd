@@ -19,6 +19,7 @@ export interface SpeakerFormValues {
   country: string;
   bioFr: string;
   bioEn: string;
+  bioPt: string;
   isPublished: boolean;
   isFeatured: boolean;
   featuredOrder: number;
@@ -136,6 +137,19 @@ export function SpeakerForm({ valeurs }: { valeurs: SpeakerFormValues }) {
               rows={5}
               maxLength={3000}
               defaultValue={valeurs.bioEn}
+              className={champ}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="bioPt" className={etiquette}>
+              Biographie (portugais — repli EN si vide)
+            </label>
+            <textarea
+              id="bioPt"
+              name="bioPt"
+              rows={5}
+              maxLength={3000}
+              defaultValue={valeurs.bioPt}
               className={champ}
             />
           </div>

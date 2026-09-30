@@ -7,6 +7,7 @@ export const boutonSchema = z.object({
   href: z.string().trim().min(1).max(300),
   labelFr: z.string().trim().min(1).max(60),
   labelEn: z.string().trim().max(60).default(""),
+  labelPt: z.string().trim().max(60).optional(),
   style: z.enum(["principal", "secondaire"]).default("secondaire"),
 });
 
@@ -20,6 +21,7 @@ export const sectionInputSchema = z.object({
   // chaque champ est vérifiée à part, contre le catalogue.
   contentFr: z.record(z.string(), z.string().max(TAILLE_MAX_DOCUMENT)),
   contentEn: z.record(z.string(), z.string().max(TAILLE_MAX_DOCUMENT)),
+  contentPt: z.record(z.string(), z.string().max(TAILLE_MAX_DOCUMENT)).optional(),
   settings: z.record(z.string(), z.unknown()),
 });
 
@@ -130,6 +132,7 @@ export function normaliserSection(input: SectionInput): SectionInput {
     settings: reglages,
     contentFr: normaliserContenu(input.contentFr, "français"),
     contentEn: normaliserContenu(input.contentEn, "anglais"),
+    contentPt: normaliserContenu(input.contentPt ?? {}, "portugais"),
   };
 }
 

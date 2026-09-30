@@ -124,9 +124,11 @@ async function materialiserComposition(editionId: string, page: string): Promise
   const cles = blocsRequis(composition);
   const textesFr: Record<string, string> = {};
   const textesEn: Record<string, string> = {};
+  const textesPt: Record<string, string> = {};
   for (const cle of cles) {
     textesFr[cle] = await getContentText(editionId, cle, "fr");
     textesEn[cle] = await getContentText(editionId, cle, "en");
+    textesPt[cle] = await getContentText(editionId, cle, "pt");
   }
 
   await prisma.pageSection.createMany({
@@ -140,6 +142,7 @@ async function materialiserComposition(editionId: string, page: string): Promise
       settings: modele.settings as object,
       contentFr: resoudreContenu(modele, textesFr, "fr"),
       contentEn: resoudreContenu(modele, textesEn, "en"),
+      contentPt: resoudreContenu(modele, textesPt, "pt"),
     })),
   });
 }
@@ -240,6 +243,7 @@ export async function enregistrerSection(
       settings: normalise.settings as object,
       contentFr: normalise.contentFr,
       contentEn: normalise.contentEn,
+      contentPt: normalise.contentPt,
     },
   });
 

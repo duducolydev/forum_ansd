@@ -1,5 +1,6 @@
 "use client";
 
+import { selon, type Langue } from "@/lib/langue";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Send } from "lucide-react";
 import { BoutonSite } from "@/components/site/bouton-site";
@@ -13,7 +14,7 @@ const ETIQUETTE = "text-heading text-sm font-semibold";
  * Formulaire « Écrire au comité » (rubrique Contacts). Le message part vers
  * la boîte du Forum ; la réponse revient à l'adresse saisie ici.
  */
-export function FormulaireContact({ en }: { en: boolean }) {
+export function FormulaireContact({ locale }: { locale: Langue }) {
   const [etat, action, enCours] = useActionState(envoyerMessageContactAction, etatInitial);
   // Heure d'ouverture du formulaire, posée au montage : un envoi dans la
   // seconde trahit un robot (cf. `actions.ts`).
@@ -34,9 +35,11 @@ export function FormulaireContact({ en }: { en: boolean }) {
       >
         <CheckCircle2 aria-hidden size={22} className="mt-0.5 shrink-0" />
         <p>
-          {en
-            ? "Your message has been sent to the organising committee. We will reply to the address you gave."
-            : "Votre message a bien été transmis au comité d'organisation. La réponse vous parviendra à l'adresse indiquée."}
+          {selon(locale, {
+            fr: "Votre message a bien été transmis au comité d'organisation. La réponse vous parviendra à l'adresse indiquée.",
+            en: "Your message has been sent to the organising committee. We will reply to the address you gave.",
+            pt: "A sua mensagem foi transmitida ao comité organizador. A resposta será enviada para o endereço indicado.",
+          })}
         </p>
       </div>
     );
@@ -57,7 +60,7 @@ export function FormulaireContact({ en }: { en: boolean }) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="contact-nom" className={ETIQUETTE}>
-            {en ? "Name" : "Nom"} *
+            {selon(locale, { fr: "Nom", en: "Name", pt: "Nome" })} *
           </label>
           <input
             id="contact-nom"
@@ -70,7 +73,12 @@ export function FormulaireContact({ en }: { en: boolean }) {
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="contact-email" className={ETIQUETTE}>
-            {en ? "E-mail address" : "Adresse e-mail"} *
+            {selon(locale, {
+              fr: "Adresse e-mail",
+              en: "E-mail address",
+              pt: "Endereço de e-mail",
+            })}{" "}
+            *
           </label>
           <input
             id="contact-email"
@@ -84,7 +92,7 @@ export function FormulaireContact({ en }: { en: boolean }) {
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="contact-organisation" className={ETIQUETTE}>
-            {en ? "Organisation" : "Organisation"}
+            {selon(locale, { fr: "Organisation", en: "Organisation", pt: "Organização" })}
           </label>
           <input
             id="contact-organisation"
@@ -96,7 +104,7 @@ export function FormulaireContact({ en }: { en: boolean }) {
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="contact-objet" className={ETIQUETTE}>
-            {en ? "Subject" : "Objet"} *
+            {selon(locale, { fr: "Objet", en: "Subject", pt: "Assunto" })} *
           </label>
           <input id="contact-objet" name="objet" required maxLength={150} className={CHAMP} />
         </div>
@@ -125,12 +133,16 @@ export function FormulaireContact({ en }: { en: boolean }) {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-text-3 text-xs">
-          {en
-            ? "Your details are used only to answer your message."
-            : "Vos coordonnées servent uniquement à répondre à votre message."}
+          {selon(locale, {
+            fr: "Vos coordonnées servent uniquement à répondre à votre message.",
+            en: "Your details are used only to answer your message.",
+            pt: "Os seus dados servem apenas para responder à sua mensagem.",
+          })}
         </p>
         <BoutonSite type="submit" ton="principal" icone={Send} disabled={enCours}>
-          {enCours ? (en ? "Sending…" : "Envoi…") : en ? "Send" : "Envoyer"}
+          {enCours
+            ? selon(locale, { fr: "Envoi…", en: "Sending…", pt: "A enviar…" })
+            : selon(locale, { fr: "Envoyer", en: "Send", pt: "Enviar" })}
         </BoutonSite>
       </div>
     </form>

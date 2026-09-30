@@ -90,6 +90,7 @@ export async function enregistrerFicheAction(
       country: formData.get("country") ?? undefined,
       bioFr: formData.get("bioFr") ?? undefined,
       bioEn: formData.get("bioEn") ?? undefined,
+      bioPt: formData.get("bioPt") ?? undefined,
     });
     await updateSelf(speakerId, input);
   } catch (error) {
@@ -167,6 +168,7 @@ export async function enregistrerIntervenantAction(
       country: formData.get("country") ?? undefined,
       bioFr: formData.get("bioFr") ?? undefined,
       bioEn: formData.get("bioEn") ?? undefined,
+      bioPt: formData.get("bioPt") ?? undefined,
       isPublished: formData.get("isPublished") === "on",
       isFeatured: formData.get("isFeatured") === "on",
       featuredOrder: formData.get("featuredOrder") || 0,

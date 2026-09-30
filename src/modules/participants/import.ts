@@ -196,11 +196,12 @@ function lireBooleen(valeur: string | undefined, champ: string): boolean {
   );
 }
 
-function lireLangue(valeur: string | undefined): "fr" | "en" {
+function lireLangueImport(valeur: string | undefined): "fr" | "en" | "pt" {
   const cle = normaliserCle(valeur ?? "");
-  if (["en", "anglais", "english", "eng"].includes(cle)) return "en";
-  if (["", "fr", "francais", "french", "fra"].includes(cle)) return "fr";
-  throw new Error(`Langue « ${valeur} » non reconnue (fr / en).`);
+  if (["en", "anglais", "english", "eng", "ingles"].includes(cle)) return "en";
+  if (["pt", "portugais", "portuguese", "portugues", "por"].includes(cle)) return "pt";
+  if (["", "fr", "francais", "french", "fra", "frances"].includes(cle)) return "fr";
+  throw new Error(`Langue « ${valeur} » non reconnue (fr / en / pt).`);
 }
 
 interface Referentiels {
@@ -295,7 +296,7 @@ export async function analyserImport(
         city: valeurs.city ?? "",
         categoryId: categorie.id,
         delegationId: delegation?.id ?? "",
-        locale: lireLangue(valeurs.locale),
+        locale: lireLangueImport(valeurs.locale),
         attendsOpening: lireBooleen(valeurs.attendsOpening, "attendsOpening"),
         attendsInaugural: false,
         attendsClosing: lireBooleen(valeurs.attendsClosing, "attendsClosing"),
@@ -443,7 +444,7 @@ const COLONNES_MODELE: { entete: string; exemple: string; aide: string }[] = [
     exemple: "",
     aide: "Facultatif : nom exact d'une délégation déjà créée dans le BackOffice.",
   },
-  { entete: "langue", exemple: "fr", aide: "fr ou en — langue des e-mails. fr par défaut." },
+  { entete: "langue", exemple: "fr", aide: "fr, en ou pt — langue des e-mails. fr par défaut." },
   { entete: "ceremonie_ouverture", exemple: "oui", aide: "oui / non (non par défaut)." },
   { entete: "ceremonie_cloture", exemple: "oui", aide: "oui / non (non par défaut)." },
   { entete: "ceremonie_distinction", exemple: "non", aide: "oui / non (non par défaut)." },

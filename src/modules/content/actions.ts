@@ -41,6 +41,7 @@ export async function saveContentBlockAction(
       key: formData.get("key"),
       valueFr: formData.get("valueFr"),
       valueEn: formData.get("valueEn") ?? undefined,
+      valuePt: formData.get("valuePt") ?? undefined,
     });
 
     const edition = await getActiveEdition();
@@ -62,10 +63,13 @@ function parsePostForm(formData: FormData): PostInput {
     slug: formData.get("slug"),
     titleFr: formData.get("titleFr"),
     titleEn: formData.get("titleEn") ?? undefined,
+    titlePt: formData.get("titlePt") ?? undefined,
     excerptFr: formData.get("excerptFr") ?? undefined,
     excerptEn: formData.get("excerptEn") ?? undefined,
+    excerptPt: formData.get("excerptPt") ?? undefined,
     bodyFr: formData.get("bodyFr"),
     bodyEn: formData.get("bodyEn") ?? undefined,
+    bodyPt: formData.get("bodyPt") ?? undefined,
     isPublished: formData.get("isPublished") === "on",
   });
 }
@@ -156,6 +160,7 @@ export async function ajouterImageGalerieAction(
       {
         fr: String(formData.get("captionFr") ?? "").trim(),
         en: String(formData.get("captionEn") ?? "").trim(),
+        pt: String(formData.get("captionPt") ?? "").trim(),
       },
       { type: "USER", userId: session.user.id },
     );

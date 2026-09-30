@@ -19,8 +19,10 @@ export interface SessionFormValues {
   number: number | null;
   titleFr: string;
   titleEn: string;
+  titlePt: string;
   descriptionFr: string;
   descriptionEn: string;
+  descriptionPt: string;
   objectives: string;
   theme: string;
   day: string;
@@ -82,6 +84,18 @@ export function SessionForm({
               name="titleEn"
               maxLength={200}
               defaultValue={valeurs.titleEn}
+              className={champ}
+            />
+          </div>
+          <div className={bloc}>
+            <label htmlFor="titlePt" className={etiquette}>
+              Titre (portugais) — repli sur l&apos;anglais si vide
+            </label>
+            <input
+              id="titlePt"
+              name="titlePt"
+              maxLength={200}
+              defaultValue={valeurs.titlePt}
               className={champ}
             />
           </div>
@@ -293,6 +307,19 @@ export function SessionForm({
               rows={3}
               maxLength={5000}
               defaultValue={valeurs.descriptionEn}
+              className={champ}
+            />
+          </div>
+          <div className={bloc}>
+            <label htmlFor="descriptionPt" className={etiquette}>
+              Présentation (portugais)
+            </label>
+            <textarea
+              id="descriptionPt"
+              name="descriptionPt"
+              rows={3}
+              maxLength={5000}
+              defaultValue={valeurs.descriptionPt}
               className={champ}
             />
           </div>

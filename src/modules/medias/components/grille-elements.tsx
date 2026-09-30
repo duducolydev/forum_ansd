@@ -31,6 +31,7 @@ export interface ElementAdmin {
   fournisseur: string | null;
   captionFr: string;
   captionEn: string;
+  captionPt: string;
   credit: string;
   isPublished: boolean;
 }
@@ -132,6 +133,14 @@ function CarteElement({
           defaultValue={element.captionEn}
           placeholder="Légende (anglais)"
           aria-label="Légende en anglais"
+          maxLength={500}
+          className={CHAMP}
+        />
+        <input
+          name="captionPt"
+          defaultValue={element.captionPt}
+          placeholder="Légende (portugais)"
+          aria-label="Légende en portugais"
           maxLength={500}
           className={CHAMP}
         />

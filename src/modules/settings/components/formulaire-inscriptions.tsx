@@ -85,6 +85,15 @@ export function FormulaireInscriptions({ valeurs }: { valeurs: Inscriptions }) {
             className={CHAMP}
           />
         </Champ>
+        <Champ id="insc-msg-pt" label="Message affiché quand c'est fermé (portugais)">
+          <textarea
+            id="insc-msg-pt"
+            name="messageFermePt"
+            rows={2}
+            defaultValue={valeurs.messageFermePt}
+            className={CHAMP}
+          />
+        </Champ>
 
         <div className="md:col-span-2">
           <p

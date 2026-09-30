@@ -1,3 +1,4 @@
+import type { Langue } from "@/lib/langue";
 import { Fragment } from "react";
 import type { PageSection } from "@prisma/client";
 import { WaveDivider } from "@/components/motion/WaveDivider";
@@ -19,7 +20,7 @@ export function SectionsComposees({
 }: {
   sections: PageSection[];
   donnees: DonneesSections;
-  locale: "fr" | "en";
+  locale: Langue;
 }) {
   let premier = true;
 

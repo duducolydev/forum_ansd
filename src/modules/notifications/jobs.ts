@@ -1,3 +1,4 @@
+import { lireLangue } from "@/lib/langue";
 import { jobQueue } from "@/lib/queue";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
@@ -60,6 +61,8 @@ export async function enqueueBulk(options: {
   templateKey: string;
   filter: BulkFilter;
   variables?: Record<string, string>;
+  /** Variables propres à la langue du destinataire (titre et chapô d'une newsletter…). */
+  variablesParLangue?: Partial<Record<string, Record<string, string>>>;
   actor: Actor;
 }): Promise<{ campaignId: string; queued: number }> {
   const campaignId = crypto.randomUUID();
@@ -67,7 +70,14 @@ export async function enqueueBulk(options: {
 
   const recipients = await prisma.participant.findMany({
     where: bulkWhere(options.editionId, options.filter),
-    select: { id: true, email: true, firstName: true, lastName: true, publicId: true },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      publicId: true,
+      locale: true,
+    },
   });
 
   for (const recipient of recipients) {
@@ -84,6 +94,7 @@ export async function enqueueBulk(options: {
           lien_espace: `${baseUrl}/mon-espace`,
           lien_badge: `${baseUrl}/mon-espace`,
           ...options.variables,
+          ...options.variablesParLangue?.[lireLangue(recipient.locale)],
         },
       },
       `bulk-${campaignId}-${recipient.id}`,

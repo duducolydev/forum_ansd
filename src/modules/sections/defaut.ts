@@ -1,3 +1,4 @@
+import { traduire } from "@/lib/langue";
 import type { BoutonSection } from "./catalogue";
 
 /**
@@ -18,36 +19,52 @@ export interface SectionParDefaut {
   sortOrder: number;
   settings: Record<string, unknown>;
   /** Clé du bloc éditorial dont provient chaque champ, quand il y en a un. */
-  contenu: Record<string, { bloc?: string; fr?: string; en?: string }>;
+  contenu: Record<string, { bloc?: string; fr?: string; en?: string; pt?: string }>;
 }
 
 const BOUTONS_ACCUEIL: BoutonSection[] = [
-  { href: "/inscription", labelFr: "S'inscrire", labelEn: "Register", style: "principal" },
+  {
+    href: "/inscription",
+    labelFr: "S'inscrire",
+    labelEn: "Register",
+    labelPt: "Inscrever-se",
+    style: "principal",
+  },
   {
     href: "/programme",
     labelFr: "Voir le programme",
     labelEn: "See the programme",
+    labelPt: "Ver o programa",
     style: "secondaire",
   },
-  { href: "/mon-espace", labelFr: "Mon espace", labelEn: "My space", style: "secondaire" },
+  {
+    href: "/mon-espace",
+    labelFr: "Mon espace",
+    labelEn: "My space",
+    labelPt: "O meu espaço",
+    style: "secondaire",
+  },
 ];
 
 /** Les trois piliers du Forum (brief « Constellation » §4.2), modifiables en BackOffice. */
 export const PILIERS: SectionParDefaut["contenu"] = {
-  pilier1Titre: { fr: "Produire", en: "Produce" },
+  pilier1Titre: { fr: "Produire", en: "Produce", pt: "Produzir" },
   pilier1Texte: {
     fr: "Comment produire des données de qualité, comparables et à temps ?",
     en: "How can we produce quality, comparable and timely data?",
+    pt: "Como produzir dados de qualidade, comparáveis e atempados?",
   },
-  pilier2Titre: { fr: "Partager", en: "Share" },
+  pilier2Titre: { fr: "Partager", en: "Share", pt: "Partilhar" },
   pilier2Texte: {
     fr: "Comment les partager en confiance, dans le respect des standards ?",
     en: "How can we share them with confidence, in line with standards?",
+    pt: "Como partilhá-los com confiança, respeitando as normas?",
   },
-  pilier3Titre: { fr: "Décider", en: "Decide" },
+  pilier3Titre: { fr: "Décider", en: "Decide", pt: "Decidir" },
   pilier3Texte: {
     fr: "Comment décider avec elles et mesurer l'impact des politiques ?",
     en: "How can we decide with them and measure the impact of policies?",
+    pt: "Como decidir com eles e medir o impacto das políticas?",
   },
 };
 
@@ -79,8 +96,8 @@ export const COMPOSITION_ACCUEIL: SectionParDefaut[] = [
     // Texte qui s'allume mot à mot au défilement (brief « Constellation » §4.2).
     settings: { ancre: "a-propos", defilement: true },
     contenu: {
-      etiquette: { fr: "Le Forum", en: "The Forum" },
-      titre: { fr: "À propos du Forum", en: "About the Forum" },
+      etiquette: { fr: "Le Forum", en: "The Forum", pt: "O Fórum" },
+      titre: { fr: "À propos du Forum", en: "About the Forum", pt: "Sobre o Fórum" },
       corps: { bloc: "about.body" },
     },
   },
@@ -106,23 +123,44 @@ export const COMPOSITION_ACCUEIL: SectionParDefaut[] = [
     variant: "grille",
     sortOrder: 25,
     settings: { nombre: 8 },
-    contenu: { titre: { fr: "Intervenants", en: "Speakers" } },
+    contenu: { titre: { fr: "Intervenants", en: "Speakers", pt: "Oradores" } },
   },
   {
     type: "actualites",
     variant: "frise",
     sortOrder: 30,
     settings: { nombre: 3 },
-    contenu: { titre: { fr: "Actualités", en: "News" } },
+    contenu: { titre: { fr: "Actualités", en: "News", pt: "Notícias" } },
   },
   {
     type: "sponsors",
     variant: "carrousel",
     sortOrder: 40,
     settings: {},
-    contenu: { titre: { fr: "Partenaires", en: "Partners" } },
+    contenu: { titre: { fr: "Partenaires", en: "Partners", pt: "Parceiros" } },
   },
 ];
+
+/**
+ * Portugais des textes d'origine, indexé par leur version française.
+ *
+ * Les sections enregistrées avant l'arrivée du portugais n'ont pas de champ
+ * PT. Tant que leur texte français est resté celui d'origine (« Intervenants »,
+ * les trois piliers…), la traduction d'origine est connue : le rendu s'en
+ * sert plutôt que de retomber sur l'anglais. Un texte modifié en BackOffice
+ * n'est plus dans cette table, et suit le repli ordinaire.
+ */
+export const PORTUGAIS_PAR_DEFAUT: ReadonlyMap<string, string> = new Map([
+  ...COMPOSITION_ACCUEIL.flatMap((section) =>
+    Object.values(section.contenu).flatMap((champ) =>
+      champ.fr && champ.pt ? [[champ.fr, champ.pt] as const] : [],
+    ),
+  ),
+  // Libellés des boutons du bandeau.
+  ...BOUTONS_ACCUEIL.flatMap((bouton) =>
+    bouton.labelPt ? [[bouton.labelFr, bouton.labelPt] as const] : [],
+  ),
+]);
 
 /** Compositions par page. Une seule page est composable pour l'instant (T49). */
 export const COMPOSITIONS: Record<string, SectionParDefaut[]> = {
@@ -150,12 +188,12 @@ export function blocsRequis(composition: SectionParDefaut[]): string[] {
 export function resoudreContenu(
   section: SectionParDefaut,
   textes: Record<string, string>,
-  langue: "fr" | "en",
+  langue: string,
 ): Record<string, string> {
   const resultat: Record<string, string> = {};
   for (const [cle, champ] of Object.entries(section.contenu)) {
     if (champ.bloc) resultat[cle] = textes[champ.bloc] ?? "";
-    else resultat[cle] = (langue === "en" ? champ.en : champ.fr) ?? "";
+    else resultat[cle] = traduire(langue, champ);
   }
   return resultat;
 }

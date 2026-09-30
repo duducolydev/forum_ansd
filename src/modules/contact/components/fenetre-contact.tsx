@@ -1,5 +1,6 @@
 "use client";
 
+import { selon, type Langue } from "@/lib/langue";
 import { useEffect, useRef, useState } from "react";
 import { Send, X } from "lucide-react";
 import { FormulaireContact } from "./formulaire-contact";
@@ -18,7 +19,7 @@ import { ATTRIBUT_NOUS_ECRIRE } from "./lien-nous-ecrire";
  * `<dialog>` natif : piège du focus, touche Échap et retour du focus au
  * déclencheur sont assurés par le navigateur.
  */
-export function FenetreContact({ en }: { en: boolean }) {
+export function FenetreContact({ locale }: { locale: Langue }) {
   const refFenetre = useRef<HTMLDialogElement>(null);
   const [ouverte, setOuverte] = useState(false);
   // Change à chaque ouverture : formulaire vierge, et délai anti-robot remis
@@ -71,24 +72,26 @@ export function FenetreContact({ en }: { en: boolean }) {
                 className="text-heading font-display flex items-center gap-2 text-xl font-semibold"
               >
                 <Send aria-hidden size={19} className="text-accent-text" />
-                {en ? "Write to us" : "Nous écrire"}
+                {selon(locale, { fr: "Nous écrire", en: "Write to us", pt: "Escreva-nos" })}
               </h2>
               <p className="text-text-2 mt-1 text-sm">
-                {en
-                  ? "Your message goes straight to the organising committee."
-                  : "Votre message parvient directement au comité d'organisation."}
+                {selon(locale, {
+                  fr: "Votre message parvient directement au comité d'organisation.",
+                  en: "Your message goes straight to the organising committee.",
+                  pt: "A sua mensagem chega diretamente ao comité organizador.",
+                })}
               </p>
             </div>
             <button
               type="button"
               onClick={() => refFenetre.current?.close()}
-              aria-label={en ? "Close" : "Fermer"}
+              aria-label={selon(locale, { fr: "Fermer", en: "Close", pt: "Fechar" })}
               className="text-text-2 hover:bg-surface-2 hover:text-heading shrink-0 rounded-lg p-2"
             >
               <X aria-hidden size={20} />
             </button>
           </div>
-          <FormulaireContact key={ouverture} en={en} />
+          <FormulaireContact key={ouverture} locale={locale} />
         </div>
       )}
     </dialog>

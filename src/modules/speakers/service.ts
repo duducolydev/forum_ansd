@@ -47,6 +47,7 @@ export const speakerInputSchema = z.object({
   country: z.string().trim().max(80).optional().or(z.literal("")),
   bioFr: z.string().trim().max(3000).optional().or(z.literal("")),
   bioEn: z.string().trim().max(3000).optional().or(z.literal("")),
+  bioPt: z.string().trim().max(3000).optional().or(z.literal("")),
   isPublished: z.boolean().default(false),
   isFeatured: z.boolean().default(false),
   featuredOrder: z.coerce.number().int().min(0).max(999).default(0),
@@ -61,6 +62,7 @@ export const selfEditSchema = z.object({
   country: z.string().trim().max(80).optional().or(z.literal("")),
   bioFr: z.string().trim().max(3000).optional().or(z.literal("")),
   bioEn: z.string().trim().max(3000).optional().or(z.literal("")),
+  bioPt: z.string().trim().max(3000).optional().or(z.literal("")),
 });
 
 export type SelfEditInput = z.infer<typeof selfEditSchema>;
@@ -79,6 +81,7 @@ const SELECTION = {
   presentationConsentement: true,
   bioFr: true,
   bioEn: true,
+  bioPt: true,
   isPublished: true,
   isFeatured: true,
   featuredOrder: true,
@@ -121,6 +124,7 @@ export async function createSpeaker(editionId: string, input: SpeakerInput, acto
       country: input.country || null,
       bioFr: input.bioFr || null,
       bioEn: input.bioEn || null,
+      bioPt: input.bioPt || null,
       isPublished: input.isPublished,
       isFeatured: input.isFeatured,
       featuredOrder: input.featuredOrder,
@@ -152,6 +156,7 @@ export async function updateSpeaker(id: string, input: SpeakerInput, actor: Acto
       country: input.country || null,
       bioFr: input.bioFr || null,
       bioEn: input.bioEn || null,
+      bioPt: input.bioPt || null,
       isPublished: input.isPublished,
       isFeatured: input.isFeatured,
       featuredOrder: input.featuredOrder,
@@ -181,6 +186,7 @@ export async function updateSelf(speakerId: string, input: SelfEditInput) {
       country: input.country || null,
       bioFr: input.bioFr || null,
       bioEn: input.bioEn || null,
+      bioPt: input.bioPt || null,
     },
   });
 

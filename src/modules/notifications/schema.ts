@@ -6,6 +6,8 @@ export const templateSchema = z.object({
   subjectEn: z.string().trim().max(300).optional().or(z.literal("")),
   bodyFr: z.string().trim().min(1, "Le corps en français est requis").max(20000),
   bodyEn: z.string().trim().min(1, "Le corps en anglais est requis").max(20000),
+  subjectPt: z.string().trim().max(300).optional().or(z.literal("")),
+  bodyPt: z.string().trim().max(20000).optional().or(z.literal("")),
 });
 
 export type TemplateInput = z.infer<typeof templateSchema>;

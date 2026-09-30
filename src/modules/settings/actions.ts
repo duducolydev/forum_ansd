@@ -9,6 +9,7 @@ import {
   categorieSchema,
   identiteSchema,
   inscriptionsSchema,
+  languesSchema,
   piedDePageSchema,
   themeSchema,
   RESEAUX_LABELS,
@@ -50,6 +51,7 @@ export async function enregistrerIdentiteAction(
     const valeurs = identiteSchema.parse({
       title: formData.get("title"),
       titleEn: formData.get("titleEn") ?? "",
+      titlePt: formData.get("titlePt") ?? "",
       theme: formData.get("theme") ?? "",
       startDate: formData.get("startDate"),
       endDate: formData.get("endDate"),
@@ -65,6 +67,22 @@ export async function enregistrerIdentiteAction(
   return { avis: "Édition enregistrée." };
 }
 
+export async function enregistrerLanguesAction(
+  _etat: EtatAction,
+  formData: FormData,
+): Promise<EtatAction> {
+  try {
+    const { acteur, editionId } = await exigerParametreur();
+    const valeurs = languesSchema.parse({ portugais: formData.get("portugais") === "on" });
+    await service.enregistrerLangues(editionId, valeurs, acteur);
+  } catch (erreur) {
+    return { erreur: messageErreur(erreur) };
+  }
+
+  rafraichirToutLePublic();
+  return { avis: "Langues enregistrées." };
+}
+
 export async function enregistrerInscriptionsAction(
   _etat: EtatAction,
   formData: FormData,
@@ -77,6 +95,7 @@ export async function enregistrerInscriptionsAction(
       fermetureLe: formData.get("fermetureLe") ?? "",
       messageFermeFr: formData.get("messageFermeFr") ?? undefined,
       messageFermeEn: formData.get("messageFermeEn") ?? undefined,
+      messageFermePt: formData.get("messageFermePt") ?? undefined,
     });
     await service.enregistrerInscriptions(editionId, valeurs, acteur);
   } catch (erreur) {
@@ -160,6 +179,7 @@ export async function enregistrerCategorieAction(
     const valeurs = categorieSchema.parse({
       labelFr: formData.get("labelFr"),
       labelEn: formData.get("labelEn"),
+      labelPt: formData.get("labelPt") ?? "",
       color: formData.get("color") ?? "",
       sortOrder: formData.get("sortOrder") ?? 0,
       isActive: formData.get("isActive") === "on",

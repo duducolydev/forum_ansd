@@ -1,5 +1,6 @@
 "use client";
 
+import type { Langue } from "@/lib/langue";
 import { useRouter } from "next/navigation";
 import { useActionState, useRef, useState, useTransition, type ChangeEvent } from "react";
 import { auClicConfirme } from "@/components/ui/confirmer";
@@ -29,6 +30,7 @@ export interface SectionAffichee {
   isVisible: boolean;
   contentFr: Record<string, string>;
   contentEn: Record<string, string>;
+  contentPt: Record<string, string>;
   settings: Record<string, unknown>;
   premiere: boolean;
   derniere: boolean;
@@ -46,7 +48,7 @@ function ChampsBoutons({
   // Une ligne vide de plus : ajouter un bouton ne demande pas de chercher où.
   const lignes = [...boutons];
   if (lignes.length < max) {
-    lignes.push({ href: "", labelFr: "", labelEn: "", style: "secondaire" });
+    lignes.push({ href: "", labelFr: "", labelEn: "", labelPt: "", style: "secondaire" });
   }
 
   return (
@@ -76,6 +78,13 @@ function ChampsBoutons({
               defaultValue={bouton.labelEn}
               placeholder="Label (en)"
               aria-label={`Libellé anglais du bouton ${index + 1}`}
+              className={`${CHAMP} min-w-[130px] flex-1`}
+            />
+            <input
+              name={`bouton-pt-${index}`}
+              defaultValue={bouton.labelPt ?? ""}
+              placeholder="Rótulo (pt)"
+              aria-label={`Libellé portugais du bouton ${index + 1}`}
               className={`${CHAMP} min-w-[130px] flex-1`}
             />
             <select
@@ -254,12 +263,15 @@ function ChampLangue({
 }: {
   sectionId: string;
   champ: ChampContenu;
-  langue: "fr" | "en";
+  langue: Langue;
   valeur: string;
 }) {
   const id = `${langue}-${sectionId}-${champ.cle}`;
-  const libelle =
-    langue === "fr" ? `${champ.label} (français)` : `${champ.label} (anglais — repli FR si vide)`;
+  const libelle = {
+    fr: `${champ.label} (français)`,
+    en: `${champ.label} (anglais — repli FR si vide)`,
+    pt: `${champ.label} (portugais — repli EN si vide)`,
+  }[langue];
 
   if (champ.type === "riche") {
     return (
@@ -418,7 +430,7 @@ export function CarteSection({
         </div>
 
         {modele.champs.length > 0 && (
-          <div className="mt-3 grid grid-cols-1 gap-3.5 md:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-3.5 lg:grid-cols-3">
             {modele.champs.map((champ) => (
               <div key={champ.cle} className="contents">
                 <ChampLangue
@@ -432,6 +444,12 @@ export function CarteSection({
                   champ={champ}
                   langue="en"
                   valeur={section.contentEn[champ.cle] ?? ""}
+                />
+                <ChampLangue
+                  sectionId={section.id}
+                  champ={champ}
+                  langue="pt"
+                  valeur={section.contentPt[champ.cle] ?? ""}
                 />
               </div>
             ))}

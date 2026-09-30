@@ -1,5 +1,6 @@
 "use client";
 
+import { selon, type Langue } from "@/lib/langue";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ExternalLink, Film, Newspaper, Play, X } from "lucide-react";
@@ -14,7 +15,7 @@ import type { ElementGalerie } from "../service";
  * qu'à l'ouverture : aucune requête vers YouTube ou Vimeo tant que le
  * visiteur n'a rien demandé.
  */
-export function Galerie({ elements, en }: { elements: ElementGalerie[]; en: boolean }) {
+export function Galerie({ elements, locale }: { elements: ElementGalerie[]; locale: Langue }) {
   const fenetre = useRef<HTMLDialogElement>(null);
   const [rang, setRang] = useState<number | null>(null);
   const depart = useRef<number | null>(null);
@@ -60,7 +61,7 @@ export function Galerie({ elements, en }: { elements: ElementGalerie[]; en: bool
               type="button"
               onClick={() => ouvrir(index)}
               className="group border-border bg-bg-3 relative block aspect-[4/3] w-full overflow-hidden rounded-xl border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]"
-              aria-label={`${element.type === "video" ? (en ? "Play video" : "Lire la vidéo") : en ? "Enlarge photo" : "Agrandir la photo"}${element.legende ? ` : ${element.legende}` : ""}`}
+              aria-label={`${element.type === "video" ? selon(locale, { fr: "Lire la vidéo", en: "Play video", pt: "Reproduzir o vídeo" }) : selon(locale, { fr: "Agrandir la photo", en: "Enlarge photo", pt: "Ampliar a fotografia" })}${element.legende ? ` : ${element.legende}` : ""}`}
             >
               {/* Pictogramme de repli, sous la vignette : il reste visible si
                   elle manque ou ne charge pas (fournisseur injoignable). */}
@@ -105,7 +106,7 @@ export function Galerie({ elements, en }: { elements: ElementGalerie[]; en: bool
         onClick={(evenement) => {
           if (evenement.target === fenetre.current) fermer();
         }}
-        aria-label={en ? "Media viewer" : "Visionneuse"}
+        aria-label={selon(locale, { fr: "Visionneuse", en: "Media viewer", pt: "Visualizador" })}
         className="m-0 h-[100dvh] max-h-none w-screen max-w-none bg-transparent p-0 backdrop:bg-[#050d1c]/95 backdrop:backdrop-blur-md"
       >
         {courant && (
@@ -128,7 +129,7 @@ export function Galerie({ elements, en }: { elements: ElementGalerie[]; en: bool
               <button
                 type="button"
                 onClick={fermer}
-                aria-label={en ? "Close" : "Fermer"}
+                aria-label={selon(locale, { fr: "Fermer", en: "Close", pt: "Fechar" })}
                 className="grid h-11 w-11 place-items-center rounded-full bg-white/10 transition-colors hover:bg-white/20"
               >
                 <X aria-hidden size={22} />
@@ -146,7 +147,9 @@ export function Galerie({ elements, en }: { elements: ElementGalerie[]; en: bool
                   <iframe
                     key={courant.id}
                     src={courant.lecteur}
-                    title={courant.legende || (en ? "Video" : "Vidéo")}
+                    title={
+                      courant.legende || selon(locale, { fr: "Vidéo", en: "Video", pt: "Vídeo" })
+                    }
                     allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
                     referrerPolicy="strict-origin-when-cross-origin"
                     className="h-full w-full"
@@ -170,7 +173,7 @@ export function Galerie({ elements, en }: { elements: ElementGalerie[]; en: bool
                   <button
                     type="button"
                     onClick={() => aller(-1)}
-                    aria-label={en ? "Previous" : "Précédent"}
+                    aria-label={selon(locale, { fr: "Précédent", en: "Previous", pt: "Anterior" })}
                     className="absolute left-2 hidden h-12 w-12 place-items-center rounded-full bg-white/10 transition-colors hover:bg-white/25 sm:grid"
                   >
                     <ChevronLeft aria-hidden size={26} />
@@ -178,7 +181,7 @@ export function Galerie({ elements, en }: { elements: ElementGalerie[]; en: bool
                   <button
                     type="button"
                     onClick={() => aller(1)}
-                    aria-label={en ? "Next" : "Suivant"}
+                    aria-label={selon(locale, { fr: "Suivant", en: "Next", pt: "Seguinte" })}
                     className="absolute right-2 hidden h-12 w-12 place-items-center rounded-full bg-white/10 transition-colors hover:bg-white/25 sm:grid"
                   >
                     <ChevronRight aria-hidden size={26} />
@@ -197,7 +200,11 @@ export function Galerie({ elements, en }: { elements: ElementGalerie[]; en: bool
                     className="inline-flex items-center gap-1.5 text-white underline underline-offset-4"
                   >
                     <Newspaper aria-hidden size={14} />
-                    {en ? "Read the article" : "Lire l'article"}
+                    {selon(locale, {
+                      fr: "Lire l'article",
+                      en: "Read the article",
+                      pt: "Ler o artigo",
+                    })}
                   </Link>
                 )}
                 {courant.pageVideo && (
@@ -209,12 +216,16 @@ export function Galerie({ elements, en }: { elements: ElementGalerie[]; en: bool
                   >
                     <ExternalLink aria-hidden size={14} />
                     {courant.pageVideo.includes("vimeo")
-                      ? en
-                        ? "Watch on Vimeo"
-                        : "Voir sur Vimeo"
-                      : en
-                        ? "Watch on YouTube"
-                        : "Voir sur YouTube"}
+                      ? selon(locale, {
+                          fr: "Voir sur Vimeo",
+                          en: "Watch on Vimeo",
+                          pt: "Ver no Vimeo",
+                        })
+                      : selon(locale, {
+                          fr: "Voir sur YouTube",
+                          en: "Watch on YouTube",
+                          pt: "Ver no YouTube",
+                        })}
                   </a>
                 )}
               </p>
@@ -223,7 +234,7 @@ export function Galerie({ elements, en }: { elements: ElementGalerie[]; en: bool
                   <button
                     type="button"
                     onClick={() => aller(-1)}
-                    aria-label={en ? "Previous" : "Précédent"}
+                    aria-label={selon(locale, { fr: "Précédent", en: "Previous", pt: "Anterior" })}
                     className="grid h-11 w-11 place-items-center rounded-full bg-white/10"
                   >
                     <ChevronLeft aria-hidden size={22} />
@@ -231,7 +242,7 @@ export function Galerie({ elements, en }: { elements: ElementGalerie[]; en: bool
                   <button
                     type="button"
                     onClick={() => aller(1)}
-                    aria-label={en ? "Next" : "Suivant"}
+                    aria-label={selon(locale, { fr: "Suivant", en: "Next", pt: "Seguinte" })}
                     className="grid h-11 w-11 place-items-center rounded-full bg-white/10"
                   >
                     <ChevronRight aria-hidden size={22} />

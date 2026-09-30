@@ -14,8 +14,10 @@ export interface ValeursAlbum {
   id: string;
   titleFr: string;
   titleEn: string;
+  titlePt: string;
   descriptionFr: string;
   descriptionEn: string;
+  descriptionPt: string;
   eventDate: string;
   isPublished: boolean;
 }
@@ -35,7 +37,7 @@ export function FormulaireAlbum({ album }: { album?: ValeursAlbum }) {
 
   return (
     <form action={action} className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
         <label className="flex flex-col gap-1">
           <span className={ETIQUETTE}>Titre (français) *</span>
           <input
@@ -50,6 +52,10 @@ export function FormulaireAlbum({ album }: { album?: ValeursAlbum }) {
         <label className="flex flex-col gap-1">
           <span className={ETIQUETTE}>Titre (anglais — repli FR si vide)</span>
           <input name="titleEn" maxLength={150} defaultValue={album?.titleEn} className={CHAMP} />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className={ETIQUETTE}>Titre (portugais — repli EN si vide)</span>
+          <input name="titlePt" maxLength={150} defaultValue={album?.titlePt} className={CHAMP} />
         </label>
         {album && (
           <>
@@ -70,6 +76,16 @@ export function FormulaireAlbum({ album }: { album?: ValeursAlbum }) {
                 rows={3}
                 maxLength={2000}
                 defaultValue={album.descriptionEn}
+                className={CHAMP}
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className={ETIQUETTE}>Description (portugais)</span>
+              <textarea
+                name="descriptionPt"
+                rows={3}
+                maxLength={2000}
+                defaultValue={album.descriptionPt}
                 className={CHAMP}
               />
             </label>

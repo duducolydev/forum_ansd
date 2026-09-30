@@ -1,11 +1,13 @@
 "use client";
 
+import { selon, type Langue } from "@/lib/langue";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Clock, DoorOpen } from "lucide-react";
 import { mouvementReduit } from "@/components/motion/hooks";
 import { Reveal } from "@/components/motion/Reveal";
-import { TYPE_LABELS } from "../schema";
+import type { TYPE_LABELS } from "../schema";
+import { libelleType } from "../libelles";
 
 export interface SessionFrise {
   id: string;
@@ -36,7 +38,7 @@ function heure(iso: string): string {
  *
  * Heures en UTC, qui est l'heure de Dakar : rien à convertir.
  */
-export function ProgrammeFrise({ sessions, en }: { sessions: SessionFrise[]; en: boolean }) {
+export function ProgrammeFrise({ sessions, locale }: { sessions: SessionFrise[]; locale: Langue }) {
   const ref = useRef<HTMLDivElement>(null);
   const refEncre = useRef<SVGLineElement>(null);
   const [anime, setAnime] = useState(false);
@@ -87,7 +89,11 @@ export function ProgrammeFrise({ sessions, en }: { sessions: SessionFrise[]; en:
   if (sessions.length === 0) {
     return (
       <p className="text-sm text-[var(--muted)]">
-        {en ? "No session matches these filters." : "Aucune session ne correspond à ces filtres."}
+        {selon(locale, {
+          fr: "Aucune session ne correspond à ces filtres.",
+          en: "No session matches these filters.",
+          pt: "Nenhuma sessão corresponde a estes filtros.",
+        })}
       </p>
     );
   }
@@ -140,11 +146,13 @@ export function ProgrammeFrise({ sessions, en }: { sessions: SessionFrise[]; en:
                       <span className="carte-session__meta">
                         <Clock aria-hidden size={13} />
                         {heure(session.debut)} – {heure(session.fin)}
-                        <span className="carte-session__type">{TYPE_LABELS[session.type]}</span>
+                        <span className="carte-session__type">
+                          {libelleType(session.type, locale)}
+                        </span>
                         {enCours && (
                           <span className="carte-session__direct">
                             <span aria-hidden className="point-direct" />
-                            {en ? "Now" : "En cours"}
+                            {selon(locale, { fr: "En cours", en: "Now", pt: "A decorrer" })}
                           </span>
                         )}
                       </span>

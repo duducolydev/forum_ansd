@@ -1,3 +1,4 @@
+import { selon, type Langue } from "@/lib/langue";
 import { ExternalLink, MapPin, Phone, Mail, Ticket } from "lucide-react";
 import { TexteRiche } from "@/components/site/texte-riche";
 import { resolveLocaleValue } from "@/modules/content/service";
@@ -24,6 +25,7 @@ interface HotelPublic {
   mapUrl: string | null;
   descriptionFr: string | null;
   descriptionEn: string | null;
+  descriptionPt: string | null;
   amenities: unknown;
   bookingCode: string | null;
   bookingUrl: string | null;
@@ -60,13 +62,15 @@ function distance(valeur: unknown): string | null {
  * confirmation d'inscription, et l'afficher publiquement le rendrait utilisable
  * par n'importe qui.
  */
-export function ListeHotels({ hotels, locale }: { hotels: HotelPublic[]; locale: "fr" | "en" }) {
+export function ListeHotels({ hotels, locale }: { hotels: HotelPublic[]; locale: Langue }) {
   if (hotels.length === 0) {
     return (
       <p className="text-text-2">
-        {locale === "en"
-          ? "The list of partner hotels will be published shortly."
-          : "La liste des hôtels partenaires sera publiée prochainement."}
+        {selon(locale, {
+          fr: "La liste des hôtels partenaires sera publiée prochainement.",
+          en: "The list of partner hotels will be published shortly.",
+          pt: "A lista dos hotéis parceiros será publicada em breve.",
+        })}
       </p>
     );
   }
@@ -74,7 +78,12 @@ export function ListeHotels({ hotels, locale }: { hotels: HotelPublic[]; locale:
   return (
     <div className="flex flex-col gap-5">
       {hotels.map((hotel) => {
-        const description = resolveLocaleValue(hotel.descriptionFr, hotel.descriptionEn, locale);
+        const description = resolveLocaleValue(
+          hotel.descriptionFr,
+          hotel.descriptionEn,
+          locale,
+          hotel.descriptionPt,
+        );
         const services = prestations(hotel.amenities);
         const aDistance = distance(hotel.distanceKm);
 
@@ -97,7 +106,7 @@ export function ListeHotels({ hotels, locale }: { hotels: HotelPublic[]; locale:
                   rel="noopener noreferrer"
                   className="text-link flex items-center gap-1.5 text-sm underline"
                 >
-                  {locale === "en" ? "Website" : "Site web"}
+                  {selon(locale, { fr: "Site web", en: "Website", pt: "Sítio web" })}
                   <ExternalLink aria-hidden size={13} />
                 </a>
               )}
@@ -127,18 +136,26 @@ export function ListeHotels({ hotels, locale }: { hotels: HotelPublic[]; locale:
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full text-sm">
                   <caption className="text-text-3 mb-2 text-left text-xs">
-                    {locale === "en" ? "Negotiated rates" : "Tarifs négociés"}
+                    {selon(locale, {
+                      fr: "Tarifs négociés",
+                      en: "Negotiated rates",
+                      pt: "Tarifas negociadas",
+                    })}
                   </caption>
                   <thead>
                     <tr>
                       <th className="border-border text-text-3 border-b py-2 pr-3 text-left text-xs font-semibold">
-                        {locale === "en" ? "Room" : "Chambre"}
+                        {selon(locale, { fr: "Chambre", en: "Room", pt: "Quarto" })}
                       </th>
                       <th className="border-border text-text-3 border-b py-2 pr-3 text-left text-xs font-semibold">
-                        {locale === "en" ? "Rate / night" : "Tarif / nuit"}
+                        {selon(locale, {
+                          fr: "Tarif / nuit",
+                          en: "Rate / night",
+                          pt: "Tarifa / noite",
+                        })}
                       </th>
                       <th className="border-border text-text-3 border-b py-2 text-left text-xs font-semibold">
-                        {locale === "en" ? "Conditions" : "Conditions"}
+                        {selon(locale, { fr: "Conditions", en: "Conditions", pt: "Condições" })}
                       </th>
                     </tr>
                   </thead>
@@ -204,7 +221,7 @@ export function ListeHotels({ hotels, locale }: { hotels: HotelPublic[]; locale:
                     rel="noopener noreferrer"
                     className="text-link underline"
                   >
-                    {locale === "en" ? "Book" : "Réserver"}
+                    {selon(locale, { fr: "Réserver", en: "Book", pt: "Reservar" })}
                   </a>
                 </li>
               )}

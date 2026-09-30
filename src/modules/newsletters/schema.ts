@@ -24,14 +24,17 @@ export const IMAGE_NEWSLETTER_MAX_BYTES = 3 * 1024 * 1024;
 export const newsletterInputSchema = z.object({
   titleFr: z.string().trim().min(1, "Le titre en français est requis").max(200),
   titleEn: z.string().trim().max(200).optional().or(z.literal("")),
+  titlePt: z.string().trim().max(200).optional().or(z.literal("")),
   excerptFr: z
     .string()
     .trim()
     .min(1, "Le chapô en français est requis")
     .max(600, "Le chapô tient en 600 caractères : c'est lui qui part dans l'e-mail."),
   excerptEn: z.string().trim().max(600).optional().or(z.literal("")),
+  excerptPt: z.string().trim().max(600).optional().or(z.literal("")),
   bodyFr: z.string().max(TAILLE_MAX_DOCUMENT),
   bodyEn: z.string().max(TAILLE_MAX_DOCUMENT),
+  bodyPt: z.string().max(TAILLE_MAX_DOCUMENT).default(""),
   isPublished: z.coerce.boolean().default(false),
 });
 
@@ -69,6 +72,7 @@ export function normaliserNewsletter(input: NewsletterInput): NewsletterInput {
     ...input,
     bodyFr: nettoyer(input.bodyFr, "français"),
     bodyEn: nettoyer(input.bodyEn, "anglais"),
+    bodyPt: nettoyer(input.bodyPt, "portugais"),
   };
 }
 
@@ -106,10 +110,13 @@ export function parseNewsletterForm(formData: FormData): NewsletterInput {
   return newsletterInputSchema.parse({
     titleFr: formData.get("titleFr"),
     titleEn: formData.get("titleEn") ?? "",
+    titlePt: formData.get("titlePt") ?? "",
     excerptFr: formData.get("excerptFr"),
     excerptEn: formData.get("excerptEn") ?? "",
+    excerptPt: formData.get("excerptPt") ?? "",
     bodyFr: formData.get("bodyFr") ?? "",
     bodyEn: formData.get("bodyEn") ?? "",
+    bodyPt: formData.get("bodyPt") ?? "",
     isPublished: formData.get("isPublished") === "on",
   });
 }

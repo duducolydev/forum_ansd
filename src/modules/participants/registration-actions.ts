@@ -1,5 +1,6 @@
 "use server";
 
+import { lireLangue, selon } from "@/lib/langue";
 import { headers } from "next/headers";
 import { getActiveEdition } from "@/lib/edition";
 import { registrationSchema } from "./registration-schema";
@@ -39,7 +40,7 @@ export async function submitRegistrationAction(
       phone: formData.get("phone") ?? undefined,
       country: formData.get("country"),
       city: formData.get("city") ?? undefined,
-      locale: (formData.get("locale") as "fr" | "en") ?? "fr",
+      locale: lireLangue(formData.get("locale")),
       categoryId: formData.get("categoryId"),
       organization: formData.get("organization") ?? undefined,
       organizationType: formData.get("organizationType") ?? undefined,
@@ -97,10 +98,11 @@ export async function submitRegistrationAction(
         return { error: result.message };
       case "CATEGORY_INVALID":
         return {
-          error:
-            input.locale === "en"
-              ? "This participation category is no longer offered. Please reload the page."
-              : "Cette catégorie de participation n'est plus proposée. Rechargez la page.",
+          error: selon(input.locale, {
+            fr: "Cette catégorie de participation n'est plus proposée. Rechargez la page.",
+            en: "This participation category is no longer offered. Please reload the page.",
+            pt: "Esta categoria de participação já não está disponível. Recarregue a página.",
+          }),
         };
       case "REJECTED":
         return { error: "Requête rejetée." };

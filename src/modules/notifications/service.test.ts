@@ -52,6 +52,19 @@ describe("choix de la langue (le squelette initial envoyait toujours en françai
     expect(picked.subject).toBe("Votre badge est disponible");
     expect(picked.body).toBe(template.bodyFr);
   });
+
+  it("sert le portugais s'il existe, sinon l'anglais (30 septembre 2026)", () => {
+    const avecPortugais = {
+      ...template,
+      subjectPt: "O seu crachá está disponível",
+      bodyPt: "Olá {{prenom}}, o seu crachá está pronto.",
+    };
+    expect(pickLocalised(avecPortugais, "pt").subject).toBe("O seu crachá está disponível");
+    expect(pickLocalised(template, "pt").subject).toBe("Your badge is ready");
+    expect(pickLocalised({ ...template, subjectEn: "", bodyEn: "" }, "pt").body).toBe(
+      template.bodyFr,
+    );
+  });
 });
 
 describe("variables non déclarées", () => {

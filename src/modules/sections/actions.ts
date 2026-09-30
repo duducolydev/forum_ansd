@@ -70,6 +70,7 @@ function lireBoutonsDuFormulaire(formData: FormData, max: number) {
       href,
       labelFr,
       labelEn: String(formData.get(`bouton-en-${index}`) ?? "").trim(),
+      labelPt: String(formData.get(`bouton-pt-${index}`) ?? "").trim(),
       style: formData.get(`bouton-style-${index}`) === "principal" ? "principal" : "secondaire",
     });
   }
@@ -91,9 +92,11 @@ export async function enregistrerSectionAction(
 
     const contentFr: Record<string, string> = {};
     const contentEn: Record<string, string> = {};
+    const contentPt: Record<string, string> = {};
     for (const champ of modele.champs) {
       contentFr[champ.cle] = String(formData.get(`fr-${champ.cle}`) ?? "");
       contentEn[champ.cle] = String(formData.get(`en-${champ.cle}`) ?? "");
+      contentPt[champ.cle] = String(formData.get(`pt-${champ.cle}`) ?? "");
     }
 
     /*
@@ -140,6 +143,7 @@ export async function enregistrerSectionAction(
       isVisible: formData.get("isVisible") === "on",
       contentFr,
       contentEn,
+      contentPt,
       settings,
     });
 

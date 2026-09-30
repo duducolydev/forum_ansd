@@ -35,6 +35,7 @@ export const hotelInputSchema = z.object({
   mapUrl: z.union([z.literal(""), z.string().trim().url("Lien de carte invalide")]).optional(),
   descriptionFr: texteFacultatif(3000),
   descriptionEn: texteFacultatif(3000),
+  descriptionPt: texteFacultatif(3000),
   /*
    * Prestations saisies en une ligne, séparées par des virgules : c'est la
    * façon dont on les dicte au téléphone en négociant avec un hôtel. Le
@@ -81,6 +82,7 @@ export type HotelRateInput = z.infer<typeof hotelRateInputSchema>;
 export const practicalContactInputSchema = z.object({
   labelFr: z.string().trim().min(1, "L'intitulé est requis").max(160),
   labelEn: texteFacultatif(160),
+  labelPt: texteFacultatif(160),
   name: texteFacultatif(200),
   email: z
     .union([z.literal(""), z.string().trim().toLowerCase().email("Adresse e-mail invalide")])
@@ -104,6 +106,7 @@ export function parseHotelForm(formData: FormData): HotelInput {
     mapUrl: formData.get("mapUrl") ?? "",
     descriptionFr: formData.get("descriptionFr") ?? "",
     descriptionEn: formData.get("descriptionEn") ?? "",
+    descriptionPt: formData.get("descriptionPt") ?? "",
     amenities: formData.get("amenities") ?? "",
     bookingCode: formData.get("bookingCode") ?? "",
     bookingUrl: formData.get("bookingUrl") ?? "",
@@ -126,6 +129,7 @@ export function parsePracticalContactForm(formData: FormData): PracticalContactI
   return practicalContactInputSchema.parse({
     labelFr: formData.get("labelFr"),
     labelEn: formData.get("labelEn") ?? "",
+    labelPt: formData.get("labelPt") ?? "",
     name: formData.get("name") ?? "",
     email: formData.get("email") ?? "",
     phone: formData.get("phone") ?? "",

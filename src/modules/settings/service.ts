@@ -216,6 +216,24 @@ export async function enregistrerPiedDePage(
   );
 }
 
+export async function enregistrerLangues(
+  editionId: string,
+  valeurs: Parametres["langues"],
+  acteur: Acteur,
+): Promise<void> {
+  const edition = await prisma.edition.findUniqueOrThrow({ where: { id: editionId } });
+  const parametres = lireParametres(edition);
+
+  await enregistrer(
+    editionId,
+    { ...parametres, langues: valeurs },
+    acteur,
+    "edition.languages_updated",
+    parametres.langues,
+    valeurs,
+  );
+}
+
 export async function enregistrerIdentite(
   editionId: string,
   valeurs: Identite,
@@ -228,6 +246,7 @@ export async function enregistrerIdentite(
     data: {
       title: valeurs.title,
       titleEn: valeurs.titleEn?.trim() || null,
+      titlePt: valeurs.titlePt?.trim() || null,
       theme: valeurs.theme?.trim() || null,
       // Minuit UTC, qui est minuit à Dakar : les dates du Forum sont des jours,
       // pas des instants.
@@ -277,6 +296,7 @@ export async function enregistrerCategorie(
     data: {
       labelFr: valeurs.labelFr,
       labelEn: valeurs.labelEn,
+      labelPt: valeurs.labelPt?.trim() || null,
       color: valeurs.color?.trim() || null,
       sortOrder: valeurs.sortOrder,
       isActive: valeurs.isActive,

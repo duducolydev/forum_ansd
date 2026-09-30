@@ -30,6 +30,7 @@ function champsHotel(input: HotelInput) {
     mapUrl: input.mapUrl || null,
     descriptionFr: input.descriptionFr || null,
     descriptionEn: input.descriptionEn || null,
+    descriptionPt: input.descriptionPt || null,
     amenities: input.amenities,
     bookingCode: input.bookingCode || null,
     bookingUrl: input.bookingUrl || null,
@@ -131,6 +132,7 @@ function champsContact(input: PracticalContactInput) {
   return {
     labelFr: input.labelFr,
     labelEn: input.labelEn || null,
+    labelPt: input.labelPt || null,
     name: input.name || null,
     email: input.email || null,
     phone: input.phone || null,

@@ -17,6 +17,7 @@ interface Valeurs {
   mapUrl?: string;
   descriptionFr?: string;
   descriptionEn?: string;
+  descriptionPt?: string;
   amenities?: string;
   bookingCode?: string;
   bookingUrl?: string;
@@ -128,7 +129,7 @@ export function HotelForm({ action, defaultValues, submitLabel }: Props) {
         <input id="amenities" name="amenities" defaultValue={d.amenities} className={CHAMP} />
       </Champ>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Champ nom="descriptionFr" label="Description (français)">
           <textarea
             id="descriptionFr"
@@ -148,6 +149,19 @@ export function HotelForm({ action, defaultValues, submitLabel }: Props) {
             name="descriptionEn"
             rows={4}
             defaultValue={d.descriptionEn}
+            className={CHAMP}
+          />
+        </Champ>
+        <Champ
+          nom="descriptionPt"
+          label="Description (portugais)"
+          aide="Vide, l'anglais est repris."
+        >
+          <textarea
+            id="descriptionPt"
+            name="descriptionPt"
+            rows={4}
+            defaultValue={d.descriptionPt}
             className={CHAMP}
           />
         </Champ>

@@ -22,7 +22,7 @@ export function PostForm({ action, defaultValues, submitLabel }: Props) {
 
   return (
     <form action={formAction} className="flex flex-col gap-3.5">
-      <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="titleFr" className="text-heading text-sm font-semibold">
             Titre (français)
@@ -46,6 +46,17 @@ export function PostForm({ action, defaultValues, submitLabel }: Props) {
             className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
           />
         </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="titlePt" className="text-heading text-sm font-semibold">
+            Titre (portugais — repli EN si vide)
+          </label>
+          <input
+            id="titlePt"
+            name="titlePt"
+            defaultValue={d.titlePt}
+            className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
+          />
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -66,7 +77,7 @@ export function PostForm({ action, defaultValues, submitLabel }: Props) {
       {/* Chapô : c'est ce que montrent la liste d'actualités et les aperçus
           partagés sur les réseaux. Sans lui, la liste coupait le corps au
           hasard, souvent au milieu d'un mot. */}
-      <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="excerptFr" className="text-heading text-sm font-semibold">
             Chapô (français)
@@ -94,13 +105,26 @@ export function PostForm({ action, defaultValues, submitLabel }: Props) {
             className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
           />
         </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="excerptPt" className="text-heading text-sm font-semibold">
+            Chapô (portugais)
+          </label>
+          <textarea
+            id="excerptPt"
+            name="excerptPt"
+            rows={2}
+            maxLength={300}
+            defaultValue={d.excerptPt}
+            className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
+          />
+        </div>
       </div>
 
       {/* Corps de l'article : même éditeur que les sections et les zones
           éditoriales (§26). Le chapô, lui, reste du texte simple — il part dans
           la balise `description` de la page et dans les aperçus partagés, où le
           balisage n'a pas sa place. */}
-      <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <label id="bodyFr-label" htmlFor="bodyFr" className="text-heading text-sm font-semibold">
             Contenu (français)
@@ -124,6 +148,19 @@ export function PostForm({ action, defaultValues, submitLabel }: Props) {
             labelId="bodyEn-label"
             libelle="Contenu (anglais)"
             valeurInitiale={d.bodyEn ?? ""}
+            max={LONGUEUR_MAX_ARTICLE}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label id="bodyPt-label" htmlFor="bodyPt" className="text-heading text-sm font-semibold">
+            Contenu (portugais)
+          </label>
+          <EditeurTexteRiche
+            id="bodyPt"
+            name="bodyPt"
+            labelId="bodyPt-label"
+            libelle="Contenu (portugais)"
+            valeurInitiale={d.bodyPt ?? ""}
             max={LONGUEUR_MAX_ARTICLE}
           />
         </div>

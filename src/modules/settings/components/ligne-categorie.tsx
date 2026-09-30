@@ -13,6 +13,7 @@ export interface CategorieAffichee {
   code: string;
   labelFr: string;
   labelEn: string;
+  labelPt: string;
   color: string;
   sortOrder: number;
   isActive: boolean;
@@ -85,6 +86,18 @@ export function LigneCategorie({ categorie }: { categorie: CategorieAffichee }) 
             name="labelEn"
             required
             defaultValue={categorie.labelEn}
+            className={CHAMP}
+          />
+        </div>
+        <div className="flex min-w-[170px] flex-1 flex-col gap-1.5">
+          <label htmlFor={`pt-${categorie.id}`} className="text-text-3 text-xs font-semibold">
+            Libellé portugais
+          </label>
+          <input
+            id={`pt-${categorie.id}`}
+            name="labelPt"
+            defaultValue={categorie.labelPt}
+            placeholder={categorie.labelEn}
             className={CHAMP}
           />
         </div>

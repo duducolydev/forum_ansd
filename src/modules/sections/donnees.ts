@@ -48,6 +48,7 @@ export interface DonneesSections {
     slug: string;
     titleFr: string;
     titleEn: string;
+    titlePt: string | null;
     startTime: Date;
   }[];
 }
@@ -148,7 +149,14 @@ export async function chargerDonnees(
           where: { editionId: edition.id, isPublished: true, deletedAt: null },
           orderBy: { startTime: "asc" },
           take: PLAFOND,
-          select: { id: true, slug: true, titleFr: true, titleEn: true, startTime: true },
+          select: {
+            id: true,
+            slug: true,
+            titleFr: true,
+            titleEn: true,
+            titlePt: true,
+            startTime: true,
+          },
         })
         .then((sessions) => {
           donnees.sessions = sessions;

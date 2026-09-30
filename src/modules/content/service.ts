@@ -1,5 +1,7 @@
 import { revalidateTag, unstable_cache } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { traduire } from "@/lib/langue";
 import { audit } from "@/lib/audit";
 import * as repo from "./repository";
 import { normaliserArticle, normaliserBlocContenu } from "./schema";
@@ -28,18 +30,19 @@ export interface Actor {
   userId?: string;
 }
 
-/** Résout un bloc pour une locale donnée, avec repli sur le FR si l'EN est vide (brief §10). */
+/**
+ * Résout un contenu pour une langue donnée (brief §10), avec repli : le
+ * portugais retombe sur l'anglais puis le français, l'anglais sur le français
+ * (voir `lib/langue.ts`). `valuePt` est facultatif : les contenus saisis avant
+ * l'ajout du portugais n'en ont pas.
+ */
 export function resolveLocaleValue(
   valueFr: unknown,
   valueEn: unknown,
-  locale: "fr" | "en",
+  locale: string,
+  valuePt?: unknown,
 ): string {
-  const fr = typeof valueFr === "string" ? valueFr : "";
-  const en = typeof valueEn === "string" ? valueEn : "";
-  if (locale === "en") {
-    return en.trim().length > 0 ? en : fr;
-  }
-  return fr;
+  return traduire(locale, { fr: valueFr, en: valueEn, pt: valuePt });
 }
 
 /**
@@ -58,12 +61,12 @@ const blocsEnCache = unstable_cache(
 export async function getContentText(
   editionId: string,
   key: string,
-  locale: "fr" | "en",
+  locale: string,
 ): Promise<string> {
   const blocs = await blocsEnCache(editionId);
   const block = blocs.find((candidat) => candidat.key === key);
   if (!block) return "";
-  return resolveLocaleValue(block.valueFr, block.valueEn, locale);
+  return resolveLocaleValue(block.valueFr, block.valueEn, locale, block.valuePt);
 }
 
 export async function listContentBlocks(editionId: string) {
@@ -78,6 +81,8 @@ export async function saveContentBlock(editionId: string, input: ContentBlockInp
   const updated = await repo.upsertContentBlock(editionId, propre.key, {
     valueFr: propre.valueFr,
     valueEn: propre.valueEn || propre.valueFr,
+    // Pas de recopie ici : un portugais vide doit laisser l'anglais s'afficher.
+    valuePt: propre.valuePt ? propre.valuePt : Prisma.DbNull,
     updatedById: actor.userId,
   });
 
@@ -121,10 +126,13 @@ export async function createPost(editionId: string, entree: PostInput, actor: Ac
     slug: input.slug,
     titleFr: input.titleFr,
     titleEn: input.titleEn || input.titleFr,
+    titlePt: input.titlePt?.trim() || null,
     excerptFr: input.excerptFr?.trim() || null,
     excerptEn: input.excerptEn?.trim() || input.excerptFr?.trim() || null,
+    excerptPt: input.excerptPt?.trim() || null,
     bodyFr: input.bodyFr,
     bodyEn: input.bodyEn || input.bodyFr,
+    bodyPt: input.bodyPt || null,
     isPublished: input.isPublished,
     publishedAt: input.isPublished ? new Date() : null,
   });
@@ -150,10 +158,13 @@ export async function updatePost(postId: string, entree: PostInput, actor: Actor
     slug: input.slug,
     titleFr: input.titleFr,
     titleEn: input.titleEn || input.titleFr,
+    titlePt: input.titlePt?.trim() || null,
     excerptFr: input.excerptFr?.trim() || null,
     excerptEn: input.excerptEn?.trim() || input.excerptFr?.trim() || null,
+    excerptPt: input.excerptPt?.trim() || null,
     bodyFr: input.bodyFr,
     bodyEn: input.bodyEn || input.bodyFr,
+    bodyPt: input.bodyPt || null,
     isPublished: input.isPublished,
     publishedAt: becomingPublished ? new Date() : before.publishedAt,
   });

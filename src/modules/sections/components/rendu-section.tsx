@@ -1,3 +1,4 @@
+import { localeIntl, selon, traduire, type Langue } from "@/lib/langue";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { PageSection } from "@prisma/client";
@@ -40,6 +41,7 @@ import {
 } from "@/components/site/bouton-site";
 import { LienNousEcrire } from "@/modules/contact/components/lien-nous-ecrire";
 import { resolveLocaleValue } from "@/modules/content/service";
+import { PORTUGAIS_PAR_DEFAUT } from "../defaut";
 import type { BoutonSection } from "../catalogue";
 import { lireBooleen, lireBoutons, lireContenu, lireNombre, lireTexte } from "../schema";
 import { tonDuNiveau } from "@/modules/sponsors/palette";
@@ -61,14 +63,15 @@ import { IntervenantsFiltrables } from "./intervenants-filtrables";
 interface Props {
   section: PageSection;
   donnees: DonneesSections;
-  locale: "fr" | "en";
+  locale: Langue;
 }
 
 /** Texte d'un champ, dans la langue du visiteur, avec repli sur le français. */
-function texte(section: PageSection, cle: string, locale: "fr" | "en"): string {
+function texte(section: PageSection, cle: string, locale: string): string {
   const fr = lireContenu(section.contentFr)[cle] ?? "";
   const en = lireContenu(section.contentEn)[cle] ?? "";
-  return resolveLocaleValue(fr, en, locale);
+  const pt = lireContenu(section.contentPt)[cle] || PORTUGAIS_PAR_DEFAUT.get(fr.trim()) || "";
+  return resolveLocaleValue(fr, en, locale, pt);
 }
 
 function lireReglage(section: PageSection, cle: string): unknown {
@@ -123,7 +126,7 @@ function Boutons({
   children,
 }: {
   boutons: BoutonSection[];
-  locale: "fr" | "en";
+  locale: Langue;
   /** Boutons tenus par le code, placés après ceux de la section. */
   children?: ReactNode;
 }) {
@@ -132,7 +135,12 @@ function Boutons({
   return (
     <div className="flex flex-wrap gap-2.5">
       {boutons.map((bouton) => {
-        const libelle = resolveLocaleValue(bouton.labelFr, bouton.labelEn, locale);
+        const libelle = resolveLocaleValue(
+          bouton.labelFr,
+          bouton.labelEn,
+          locale,
+          bouton.labelPt || PORTUGAIS_PAR_DEFAUT.get(bouton.labelFr.trim()),
+        );
         const Icone = iconeDeLien(bouton.href) ?? undefined;
         const ton = bouton.style === "principal" ? "principal" : "secondaire";
 
@@ -174,7 +182,6 @@ type Partenaire = NonNullable<DonneesSections["sponsors"]>[number];
 
 export function RenduSection({ section, donnees, locale }: Props) {
   const { edition } = donnees;
-  const en = locale === "en";
 
   /*
    * Ancre de la section, quand elle en porte une.
@@ -214,10 +221,15 @@ export function RenduSection({ section, donnees, locale }: Props) {
       // demandé le 29 septembre 2026, y compris pour la composition d'origine.
       const logo = lireTexte(section.settings, "logo") === "anime" ? "animated" : "official";
       const ouverture = donnees.ouverture ?? edition.startDate;
-      // Nom du Forum dans la langue de la page, et dans l'autre en dessous.
-      const titrePrincipal = en ? edition.titleEn || edition.title : edition.title;
-      // Sans titre anglais saisi, pas de second titre (il répéterait le premier).
-      const titreSecond = edition.titleEn ? (en ? edition.title : edition.titleEn) : null;
+      // Nom du Forum dans la langue de la page, et en dessous : l'anglais sur
+      // la page française, le français sur les pages anglaise et portugaise.
+      const titrePrincipal = traduire(locale, {
+        fr: edition.title,
+        en: edition.titleEn,
+        pt: edition.titlePt,
+      });
+      const titreSecond = locale === "fr" ? edition.titleEn : edition.title;
+      const langueSecond = locale === "fr" ? "en" : "fr";
 
       /*
        * Bandeau « Constellation » (brief §4.1) : deux colonnes, texte à gauche
@@ -281,9 +293,9 @@ export function RenduSection({ section, donnees, locale }: Props) {
              */}
             <div className="titre-accueil-bloc">
               <SplitTitle texte={titrePrincipal} className="titre-accueil uppercase" />
-              {titreSecond && (
+              {titreSecond && titreSecond !== titrePrincipal && (
                 <RevealMotion variant="up" delay={0.8}>
-                  <p lang={en ? "fr" : "en"} className="titre-accueil-second police-grotesk">
+                  <p lang={langueSecond} className="titre-accueil-second police-grotesk">
                     {titreSecond}
                   </p>
                 </RevealMotion>
@@ -302,7 +314,7 @@ export function RenduSection({ section, donnees, locale }: Props) {
                   <span className="pastille-conique text-sm sm:text-base">
                     <span className="inline-flex items-center gap-2">
                       <CalendarDays aria-hidden size={17} className="text-[var(--green-text)]" />
-                      {plageDeDates(edition.startDate, edition.endDate, en)}
+                      {plageDeDates(edition.startDate, edition.endDate, locale)}
                     </span>
                     <span aria-hidden className="hidden h-[18px] w-px bg-[var(--line)] sm:block" />
                     <span className="inline-flex items-center gap-2">
@@ -330,7 +342,7 @@ export function RenduSection({ section, donnees, locale }: Props) {
                     {/* Formulaire de contact en fenêtre (demande du 29 septembre 2026). */}
                     <LienNousEcrire data-magnetic className={classesBoutonSite("secondaire")}>
                       <Mail aria-hidden size={17} strokeWidth={2.2} />
-                      {en ? "Write to us" : "Nous écrire"}
+                      {selon(locale, { fr: "Nous écrire", en: "Write to us", pt: "Escreva-nos" })}
                     </LienNousEcrire>
                   </Boutons>
                 </RevealMotion>
@@ -488,31 +500,43 @@ export function RenduSection({ section, donnees, locale }: Props) {
       const chiffres = [
         lireBooleen(section.settings, "participants", true) && {
           valeur: stats.confirmedParticipants,
-          label: en ? "Confirmed participants" : "Participants confirmés",
+          label: selon(locale, {
+            fr: "Participants confirmés",
+            en: "Confirmed participants",
+            pt: "Participantes confirmados",
+          }),
           icone: Users,
           ton: "bg-blue-soft text-blue-text",
         },
         lireBooleen(section.settings, "pays", true) && {
           valeur: stats.countryCount,
-          label: en ? "Countries" : "Pays représentés",
+          label: selon(locale, {
+            fr: "Pays représentés",
+            en: "Countries",
+            pt: "Países representados",
+          }),
           icone: Globe2,
           ton: "bg-accent-soft text-accent-text",
         },
         lireBooleen(section.settings, "sessions", true) && {
           valeur: stats.publishedSessions,
-          label: en ? "Published sessions" : "Sessions publiées",
+          label: selon(locale, {
+            fr: "Sessions publiées",
+            en: "Published sessions",
+            pt: "Sessões publicadas",
+          }),
           icone: CalendarDays,
           ton: "bg-gold-soft text-gold-text",
         },
         lireBooleen(section.settings, "intervenants", true) && {
           valeur: stats.publishedSpeakers,
-          label: en ? "Speakers" : "Intervenants",
+          label: selon(locale, { fr: "Intervenants", en: "Speakers", pt: "Oradores" }),
           icone: Mic,
           ton: "bg-blue-soft text-blue-text",
         },
         lireBooleen(section.settings, "jours", false) && {
           valeur: jours,
-          label: en ? "Days" : "Journées",
+          label: selon(locale, { fr: "Journées", en: "Days", pt: "Dias" }),
           icone: Clock,
           ton: "bg-accent-soft text-accent-text",
         },
@@ -531,7 +555,14 @@ export function RenduSection({ section, donnees, locale }: Props) {
           <div className={CADRE}>
             {titre && (
               <Reveal>
-                <EnteteSection surtitre={en ? "In figures" : "En chiffres"} titre={titre} />
+                <EnteteSection
+                  surtitre={selon(locale, {
+                    fr: "En chiffres",
+                    en: "In figures",
+                    pt: "Em números",
+                  })}
+                  titre={titre}
+                />
               </Reveal>
             )}
             <div
@@ -589,22 +620,44 @@ export function RenduSection({ section, donnees, locale }: Props) {
           >
             <div className={CADRE}>
               <TeteSection
-                etiquette={<ScrambleText texte={en ? "FOLLOW THE FORUM" : "SUIVRE LE FORUM"} />}
-                titre={texte(section, "titre", locale) || (en ? "News" : "Actualités")}
+                etiquette={
+                  <ScrambleText
+                    texte={selon(locale, {
+                      fr: "SUIVRE LE FORUM",
+                      en: "FOLLOW THE FORUM",
+                      pt: "ACOMPANHAR O FÓRUM",
+                    })}
+                  />
+                }
+                titre={
+                  texte(section, "titre", locale) ||
+                  selon(locale, { fr: "Actualités", en: "News", pt: "Notícias" })
+                }
                 icone={Newspaper}
-                lien={{ href: "/actualites", libelle: en ? "All news" : "Toutes les actualités" }}
+                lien={{
+                  href: "/actualites",
+                  libelle: selon(locale, {
+                    fr: "Toutes les actualités",
+                    en: "All news",
+                    pt: "Todas as notícias",
+                  }),
+                }}
               />
               <NewsTimeline
                 locale={locale}
                 articles={articles.map((article) => ({
                   id: article.id,
                   href: `/actualites/${article.slug}`,
-                  titre: en ? article.titleEn || article.titleFr : article.titleFr,
+                  titre: traduire(locale, {
+                    fr: article.titleFr,
+                    en: article.titleEn,
+                    pt: article.titlePt,
+                  }),
                   date: (article.publishedAt ?? article.createdAt).toISOString(),
                   couverture: article.coverPath
                     ? `/api/v1/posts/${article.id}/image/couverture`
                     : null,
-                  etiquette: en ? "NEWS" : "ACTUALITÉ",
+                  etiquette: selon(locale, { fr: "ACTUALITÉ", en: "NEWS", pt: "NOTÍCIA" }),
                 }))}
               />
             </div>
@@ -617,13 +670,24 @@ export function RenduSection({ section, donnees, locale }: Props) {
           <div className={CADRE}>
             <Reveal>
               <EnteteSection
-                surtitre={en ? "Keep up" : "Suivre le Forum"}
-                titre={texte(section, "titre", locale) || (en ? "News" : "Actualités")}
+                surtitre={selon(locale, {
+                  fr: "Suivre le Forum",
+                  en: "Keep up",
+                  pt: "Acompanhar o Fórum",
+                })}
+                titre={
+                  texte(section, "titre", locale) ||
+                  selon(locale, { fr: "Actualités", en: "News", pt: "Notícias" })
+                }
                 icone={Newspaper}
                 action={
                   <LienTout
                     href="/actualites"
-                    libelle={en ? "All news" : "Toutes les actualités"}
+                    libelle={selon(locale, {
+                      fr: "Toutes les actualités",
+                      en: "All news",
+                      pt: "Todas as notícias",
+                    })}
                   />
                 }
               />
@@ -663,14 +727,18 @@ export function RenduSection({ section, donnees, locale }: Props) {
                       <span className="text-text-3 flex items-center gap-1.5 text-sm">
                         <Clock aria-hidden size={13} />
                         {article.publishedAt
-                          ? new Intl.DateTimeFormat(locale).format(article.publishedAt)
+                          ? new Intl.DateTimeFormat(localeIntl(locale)).format(article.publishedAt)
                           : ""}
                       </span>
                       <span className="titre-carte text-heading font-display mt-2 block text-lg leading-snug font-semibold">
-                        {en ? article.titleEn : article.titleFr}
+                        {traduire(locale, {
+                          fr: article.titleFr,
+                          en: article.titleEn,
+                          pt: article.titlePt,
+                        })}
                       </span>
                       <span className="text-link mt-auto flex items-center gap-1.5 pt-4 text-sm font-semibold">
-                        {en ? "Read" : "Lire"}
+                        {selon(locale, { fr: "Lire", en: "Read", pt: "Ler" })}
                         <ArrowRight aria-hidden size={14} />
                       </span>
                     </span>
@@ -692,13 +760,13 @@ export function RenduSection({ section, donnees, locale }: Props) {
         const jour = seance.startTime.toISOString().slice(0, 10);
         parJour.set(jour, [...(parJour.get(jour) ?? []), seance]);
       }
-      const formatJour = new Intl.DateTimeFormat(en ? "en-GB" : "fr-FR", {
+      const formatJour = new Intl.DateTimeFormat(localeIntl(locale), {
         weekday: "long",
         day: "numeric",
         month: "long",
         timeZone: "Africa/Dakar",
       });
-      const formatHeure = new Intl.DateTimeFormat(en ? "en-GB" : "fr-FR", {
+      const formatHeure = new Intl.DateTimeFormat(localeIntl(locale), {
         hour: "2-digit",
         minute: "2-digit",
         timeZone: "Africa/Dakar",
@@ -709,13 +777,21 @@ export function RenduSection({ section, donnees, locale }: Props) {
           <div className={CADRE}>
             <Reveal>
               <EnteteSection
-                surtitre={en ? "Three days" : "Trois journées"}
+                surtitre={selon(locale, {
+                  fr: "Trois journées",
+                  en: "Three days",
+                  pt: "Três dias",
+                })}
                 titre={texte(section, "titre", locale) || "Programme"}
                 icone={CalendarDays}
                 action={
                   <LienTout
                     href="/programme"
-                    libelle={en ? "Full programme" : "Tout le programme"}
+                    libelle={selon(locale, {
+                      fr: "Tout le programme",
+                      en: "Full programme",
+                      pt: "Programa completo",
+                    })}
                   />
                 }
               />
@@ -738,7 +814,11 @@ export function RenduSection({ section, donnees, locale }: Props) {
                           {formatHeure.format(seance.startTime)}
                         </span>
                         <span className="titre-carte text-heading text-sm leading-snug font-semibold">
-                          {en ? seance.titleEn : seance.titleFr}
+                          {traduire(locale, {
+                            fr: seance.titleFr,
+                            en: seance.titleEn,
+                            pt: seance.titlePt,
+                          })}
                         </span>
                       </Link>
                     ))}
@@ -759,17 +839,27 @@ export function RenduSection({ section, donnees, locale }: Props) {
         <section id={ancre} className={`section-constellation${classeAncre}`}>
           <div className={CADRE}>
             <TeteSection
-              etiquette={en ? "They speak" : "Ils interviennent"}
-              titre={texte(section, "titre", locale) || (en ? "Speakers" : "Intervenants")}
+              etiquette={selon(locale, {
+                fr: "Ils interviennent",
+                en: "They speak",
+                pt: "Quem intervém",
+              })}
+              titre={
+                texte(section, "titre", locale) ||
+                selon(locale, { fr: "Intervenants", en: "Speakers", pt: "Oradores" })
+              }
               icone={Mic}
-              lien={{ href: "/intervenants", libelle: en ? "See all" : "Voir tout" }}
+              lien={{
+                href: "/intervenants",
+                libelle: selon(locale, { fr: "Voir tout", en: "See all", pt: "Ver tudo" }),
+              }}
             />
 
             {/* Filtre par thème et cartes retournables : `intervenants-filtrables.tsx`. */}
             <IntervenantsFiltrables
               intervenants={intervenants}
               nombre={lireNombre(section.settings, "nombre", 8)}
-              en={en}
+              locale={locale}
             />
           </div>
         </section>
@@ -783,10 +873,22 @@ export function RenduSection({ section, donnees, locale }: Props) {
       const entete = (
         <Reveal>
           <EnteteSection
-            surtitre={en ? "With the support of" : "Avec le soutien de"}
-            titre={texte(section, "titre", locale) || (en ? "Partners" : "Partenaires")}
+            surtitre={selon(locale, {
+              fr: "Avec le soutien de",
+              en: "With the support of",
+              pt: "Com o apoio de",
+            })}
+            titre={
+              texte(section, "titre", locale) ||
+              selon(locale, { fr: "Partenaires", en: "Partners", pt: "Parceiros" })
+            }
             icone={Handshake}
-            action={<LienTout href="/sponsors" libelle={en ? "See all" : "Voir tout"} />}
+            action={
+              <LienTout
+                href="/sponsors"
+                libelle={selon(locale, { fr: "Voir tout", en: "See all", pt: "Ver tudo" })}
+              />
+            }
           />
         </Reveal>
       );
@@ -801,15 +903,25 @@ export function RenduSection({ section, donnees, locale }: Props) {
           <section id={ancre} className={`section-constellation${classeAncre}`}>
             <div className={CADRE}>
               <TeteSection
-                etiquette={en ? "With the support of" : "Avec le soutien de"}
-                titre={texte(section, "titre", locale) || (en ? "Partners" : "Partenaires")}
+                etiquette={selon(locale, {
+                  fr: "Avec le soutien de",
+                  en: "With the support of",
+                  pt: "Com o apoio de",
+                })}
+                titre={
+                  texte(section, "titre", locale) ||
+                  selon(locale, { fr: "Partenaires", en: "Partners", pt: "Parceiros" })
+                }
                 icone={Handshake}
-                lien={{ href: "/sponsors", libelle: en ? "See all" : "Voir tout" }}
+                lien={{
+                  href: "/sponsors",
+                  libelle: selon(locale, { fr: "Voir tout", en: "See all", pt: "Ver tudo" }),
+                }}
               />
             </div>
             <RevealMotion variant="blur">
               <PartnersMarquee
-                libelle={en ? "Partners" : "Partenaires"}
+                libelle={selon(locale, { fr: "Partenaires", en: "Partners", pt: "Parceiros" })}
                 partenaires={sponsors.map((sponsor) => ({
                   id: sponsor.id,
                   nom: sponsor.name,

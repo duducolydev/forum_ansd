@@ -1,4 +1,5 @@
 "use client";
+import { selon, type Langue } from "@/lib/langue";
 import { Hourglass, Lock, TicketCheck, X } from "lucide-react";
 
 import { useState, useTransition } from "react";
@@ -20,11 +21,13 @@ export function RegisterButton({
   etat,
   statut,
   connecte,
+  locale,
 }: {
   sessionId: string;
   etat: EtatSession;
   statut: StatutParticipant;
   connecte: boolean;
+  locale: Langue;
 }) {
   const [message, setMessage] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -49,11 +52,29 @@ export function RegisterButton({
       }
 
       if (corps.statut === "LISTE_ATTENTE") {
-        setMessage(`Vous êtes en liste d'attente, position ${corps.position}.`);
+        setMessage(
+          selon(locale, {
+            fr: `Vous êtes en liste d'attente, position ${corps.position}.`,
+            en: `You are on the waiting list, position ${corps.position}.`,
+            pt: `Está na lista de espera, posição ${corps.position}.`,
+          }),
+        );
       } else if (methode === "POST") {
-        setMessage("Votre place est réservée.");
+        setMessage(
+          selon(locale, {
+            fr: "Votre place est réservée.",
+            en: "Your seat is booked.",
+            pt: "O seu lugar está reservado.",
+          }),
+        );
       } else {
-        setMessage("Votre réservation est annulée.");
+        setMessage(
+          selon(locale, {
+            fr: "Votre réservation est annulée.",
+            en: "Your booking is cancelled.",
+            pt: "A sua reserva foi cancelada.",
+          }),
+        );
       }
       router.refresh();
     });
@@ -65,9 +86,17 @@ export function RegisterButton({
     return (
       <p className="text-text-2 text-sm">
         <Link href="/mon-espace" className="font-semibold underline">
-          Connectez-vous à votre espace
+          {selon(locale, {
+            fr: "Connectez-vous à votre espace",
+            en: "Sign in to your space",
+            pt: "Entre no seu espaço",
+          })}
         </Link>{" "}
-        pour réserver votre place.
+        {selon(locale, {
+          fr: "pour réserver votre place.",
+          en: "to book your seat.",
+          pt: "para reservar o seu lugar.",
+        })}
       </p>
     );
   }
@@ -76,7 +105,17 @@ export function RegisterButton({
     return (
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-heading text-sm font-semibold">
-          {statut === "WAITLISTED" ? "Vous êtes en liste d'attente" : "Votre place est réservée"}
+          {statut === "WAITLISTED"
+            ? selon(locale, {
+                fr: "Vous êtes en liste d'attente",
+                en: "You are on the waiting list",
+                pt: "Está na lista de espera",
+              })
+            : selon(locale, {
+                fr: "Votre place est réservée",
+                en: "Your seat is booked",
+                pt: "O seu lugar está reservado",
+              })}
         </span>
         <button
           type="button"
@@ -85,7 +124,13 @@ export function RegisterButton({
           className="border-danger-text text-danger-text hover:bg-danger-soft transition-tout inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-60"
         >
           <X aria-hidden size={15} strokeWidth={2.2} />
-          {enCours ? "…" : "Annuler ma réservation"}
+          {enCours
+            ? "…"
+            : selon(locale, {
+                fr: "Annuler ma réservation",
+                en: "Cancel my booking",
+                pt: "Cancelar a minha reserva",
+              })}
         </button>
         {message && <p className="text-text-3 basis-full text-sm">{message}</p>}
         {erreur && <p className="text-danger-text basis-full text-sm">{erreur}</p>}
@@ -114,11 +159,23 @@ export function RegisterButton({
         )}
         {ferme
           ? etat === "CLOTUREE"
-            ? "Réservations closes"
-            : "Session complète"
+            ? selon(locale, {
+                fr: "Réservations closes",
+                en: "Bookings closed",
+                pt: "Reservas encerradas",
+              })
+            : selon(locale, { fr: "Session complète", en: "Session full", pt: "Sessão esgotada" })
           : etat === "LISTE_ATTENTE"
-            ? "Rejoindre la liste d'attente"
-            : "Réserver ma place"}
+            ? selon(locale, {
+                fr: "Rejoindre la liste d'attente",
+                en: "Join the waiting list",
+                pt: "Entrar na lista de espera",
+              })
+            : selon(locale, {
+                fr: "Réserver ma place",
+                en: "Book my seat",
+                pt: "Reservar o meu lugar",
+              })}
       </button>
       {message && <p className="text-text-3 basis-full text-sm">{message}</p>}
       {erreur && <p className="text-danger-text basis-full text-sm">{erreur}</p>}

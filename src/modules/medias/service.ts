@@ -1,3 +1,4 @@
+import type { Langue } from "@/lib/langue";
 import { randomBytes } from "node:crypto";
 import type { MediaAlbum, MediaItem } from "@prisma/client";
 import { prisma } from "@/lib/db";
@@ -70,8 +71,10 @@ function donneesAlbum(input: AlbumInput) {
   return {
     titleFr: input.titleFr,
     titleEn: input.titleEn || input.titleFr,
+    titlePt: input.titlePt || null,
     descriptionFr: input.descriptionFr || null,
     descriptionEn: input.descriptionEn || null,
+    descriptionPt: input.descriptionPt || null,
     eventDate: input.eventDate ? new Date(`${input.eventDate}T12:00:00Z`) : null,
     isPublished: input.isPublished,
   };
@@ -195,6 +198,7 @@ function legendes(input: LegendeInput) {
   return {
     captionFr: input.captionFr || null,
     captionEn: input.captionEn || null,
+    captionPt: input.captionPt || null,
     credit: input.credit || null,
   };
 }
@@ -418,7 +422,7 @@ export function urlFichier(
   return chemin ? urlVersionnee(`/api/v1/medias/${element.id}/${taille}`, chemin) : null;
 }
 
-export function versElementGalerie(element: MediaItem, locale: "fr" | "en"): ElementGalerie {
+export function versElementGalerie(element: MediaItem, locale: Langue): ElementGalerie {
   const video = element.type === "VIDEO";
   const provider = element.videoProvider ?? "";
   const videoId = element.videoId ?? "";
@@ -430,7 +434,12 @@ export function versElementGalerie(element: MediaItem, locale: "fr" | "en"): Ele
     image: video ? null : urlFichier(element, "photo"),
     lecteur: video ? urlLecteur(provider, videoId) : null,
     pageVideo: video ? urlPageVideo(provider, videoId) : null,
-    legende: resolveLocaleValue(element.captionFr ?? "", element.captionEn ?? "", locale),
+    legende: resolveLocaleValue(
+      element.captionFr ?? "",
+      element.captionEn ?? "",
+      locale,
+      element.captionPt,
+    ),
     credit: element.credit,
     largeur: element.width,
     hauteur: element.height,
@@ -476,6 +485,7 @@ export async function albumsPublies(editionId: string) {
         slug: album.slug,
         titleFr: album.titleFr,
         titleEn: album.titleEn,
+        titlePt: album.titlePt,
         eventDate: album.eventDate,
         vignette,
         photos: album.items.filter((item) => item.type === "PHOTO").length,
@@ -499,7 +509,7 @@ export async function videosPubliques(editionId: string): Promise<MediaItem[]> {
 }
 
 /** Images des actualités publiées : couverture puis galerie, par article. */
-export async function imagesActualites(editionId: string, locale: "fr" | "en") {
+export async function imagesActualites(editionId: string, locale: Langue) {
   const articles = await prisma.post.findMany({
     where: { editionId, isPublished: true },
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
@@ -508,6 +518,7 @@ export async function imagesActualites(editionId: string, locale: "fr" | "en") {
       slug: true,
       titleFr: true,
       titleEn: true,
+      titlePt: true,
       publishedAt: true,
       coverPath: true,
       gallery: true,
@@ -516,7 +527,7 @@ export async function imagesActualites(editionId: string, locale: "fr" | "en") {
 
   return articles
     .map((article) => {
-      const titre = resolveLocaleValue(article.titleFr, article.titleEn, locale);
+      const titre = resolveLocaleValue(article.titleFr, article.titleEn, locale, article.titlePt);
       const source = { titre, href: `/actualites/${article.slug}` };
       const base = `/api/v1/posts/${article.id}/image`;
       const images: ElementGalerie[] = [];
@@ -545,7 +556,8 @@ export async function imagesActualites(editionId: string, locale: "fr" | "en") {
           image: url,
           lecteur: null,
           pageVideo: null,
-          legende: resolveLocaleValue(image.captionFr, image.captionEn, locale) || titre,
+          legende:
+            resolveLocaleValue(image.captionFr, image.captionEn, locale, image.captionPt) || titre,
           credit: null,
           largeur: null,
           hauteur: null,
@@ -561,7 +573,7 @@ export async function imagesActualites(editionId: string, locale: "fr" | "en") {
  * Toutes les photos publiques — médiathèque et actualités — des plus récentes
  * aux plus anciennes, par page.
  */
-export async function photosPubliques(editionId: string, locale: "fr" | "en", page: number) {
+export async function photosPubliques(editionId: string, locale: Langue, page: number) {
   const [photos, actualites] = await Promise.all([
     prisma.mediaItem.findMany({
       where: { editionId, type: "PHOTO", ...VISIBLE },

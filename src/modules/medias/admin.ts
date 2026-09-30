@@ -14,6 +14,7 @@ export function versElementAdmin(element: MediaItem): ElementAdmin {
     fournisseur: element.videoProvider,
     captionFr: element.captionFr ?? "",
     captionEn: element.captionEn ?? "",
+    captionPt: element.captionPt ?? "",
     credit: element.credit ?? "",
     isPublished: element.isPublished,
   };

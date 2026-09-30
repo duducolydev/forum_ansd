@@ -1,3 +1,4 @@
+import { traduire } from "@/lib/langue";
 import type { ParticipantStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
@@ -70,10 +71,11 @@ export async function registerPublicParticipant(options: {
     if (!etat.ouvertes) {
       return {
         status: "CLOSED",
-        message:
-          input.locale === "en"
-            ? parametres.inscriptions.messageFermeEn
-            : parametres.inscriptions.messageFermeFr,
+        message: traduire(input.locale, {
+          fr: parametres.inscriptions.messageFermeFr,
+          en: parametres.inscriptions.messageFermeEn,
+          pt: parametres.inscriptions.messageFermePt,
+        }),
       };
     }
   }

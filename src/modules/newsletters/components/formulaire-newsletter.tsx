@@ -14,10 +14,13 @@ const CHAMP = "border-border bg-surface text-text w-full rounded-lg border px-3 
 interface Valeurs {
   titleFr?: string;
   titleEn?: string;
+  titlePt?: string;
   excerptFr?: string;
   excerptEn?: string;
+  excerptPt?: string;
   bodyFr?: string;
   bodyEn?: string;
+  bodyPt?: string;
   isPublished?: boolean;
 }
 
@@ -47,6 +50,7 @@ export function FormulaireNewsletter({
   const d = defaultValues ?? {};
   const idFr = useId();
   const idEn = useId();
+  const idPt = useId();
 
   const images = newsletterId
     ? {
@@ -63,7 +67,7 @@ export function FormulaireNewsletter({
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="titleFr" className="text-heading text-sm font-semibold">
             Titre (français)
@@ -77,9 +81,16 @@ export function FormulaireNewsletter({
           <input id="titleEn" name="titleEn" defaultValue={d.titleEn} className={CHAMP} />
           <span className="text-text-3 text-xs">Vide, le français est repris.</span>
         </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="titlePt" className="text-heading text-sm font-semibold">
+            Titre (portugais)
+          </label>
+          <input id="titlePt" name="titlePt" defaultValue={d.titlePt} className={CHAMP} />
+          <span className="text-text-3 text-xs">Vide, l&apos;anglais est repris.</span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="excerptFr" className="text-heading text-sm font-semibold">
             Chapô (français)
@@ -108,6 +119,19 @@ export function FormulaireNewsletter({
             rows={3}
             maxLength={600}
             defaultValue={d.excerptEn}
+            className={CHAMP}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="excerptPt" className="text-heading text-sm font-semibold">
+            Chapô (portugais)
+          </label>
+          <textarea
+            id="excerptPt"
+            name="excerptPt"
+            rows={3}
+            maxLength={600}
+            defaultValue={d.excerptPt}
             className={CHAMP}
           />
         </div>
@@ -147,6 +171,22 @@ export function FormulaireNewsletter({
           max={LONGUEUR_MAX_CORPS}
           images={images}
         />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <span id={idPt} className="text-heading text-sm font-semibold">
+          Corps (portugais)
+        </span>
+        <EditeurTexteRiche
+          id="corps-pt"
+          name="bodyPt"
+          labelId={idPt}
+          libelle="Corps en portugais"
+          valeurInitiale={d.bodyPt ?? ""}
+          max={LONGUEUR_MAX_CORPS}
+          images={images}
+        />
+        <span className="text-text-3 text-xs">Vide, la version anglaise est affichée.</span>
       </div>
 
       <label className="text-text flex items-center gap-2.5 text-sm">

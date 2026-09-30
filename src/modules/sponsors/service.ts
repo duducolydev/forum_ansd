@@ -65,6 +65,7 @@ export async function listerSponsorsPublies(editionId: string) {
       standNumber: true,
       descriptionFr: true,
       descriptionEn: true,
+      descriptionPt: true,
       sortOrder: true,
       level: {
         select: {
@@ -153,6 +154,7 @@ function donnees(input: SponsorInput) {
     levelId: input.levelId,
     descriptionFr: ouNull(input.descriptionFr),
     descriptionEn: ouNull(input.descriptionEn),
+    descriptionPt: ouNull(input.descriptionPt),
     website: ouNull(input.website),
     videoUrl: ouNull(input.videoUrl),
     standNumber: ouNull(input.standNumber),

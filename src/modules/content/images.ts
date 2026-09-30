@@ -85,7 +85,7 @@ export const GALERIE_MAX = 20;
 export async function ajouterImageGalerie(
   postId: string,
   fichier: File,
-  legendes: { fr: string; en: string },
+  legendes: { fr: string; en: string; pt: string },
   acteur: Actor,
 ): Promise<void> {
   const article = await prisma.post.findUniqueOrThrow({
@@ -100,7 +100,12 @@ export async function ajouterImageGalerie(
   const chemin = await verifierEtEcrire(postId, fichier, "articles/galeries");
   const suivante: ImageGalerie[] = [
     ...galerie,
-    { path: chemin, captionFr: legendes.fr, captionEn: legendes.en || legendes.fr },
+    {
+      path: chemin,
+      captionFr: legendes.fr,
+      captionEn: legendes.en || legendes.fr,
+      captionPt: legendes.pt,
+    },
   ];
 
   await prisma.post.update({ where: { id: postId }, data: { gallery: suivante } });

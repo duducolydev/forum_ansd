@@ -17,6 +17,7 @@ export const contentBlockInputSchema = z.object({
   key: z.string().min(1),
   valueFr: z.string().max(TAILLE_MAX_DOCUMENT),
   valueEn: z.string().max(TAILLE_MAX_DOCUMENT).optional().or(z.literal("")),
+  valuePt: z.string().max(TAILLE_MAX_DOCUMENT).optional().or(z.literal("")),
 });
 
 export type ContentBlockInput = z.infer<typeof contentBlockInputSchema>;
@@ -48,8 +49,14 @@ export function normaliserBlocContenu(input: ContentBlockInput): ContentBlockInp
   const fr = nettoyer(input.valueFr, "français");
   if (fr.longueur === 0) throw new ContenuError("Le texte français est requis.");
   const en = nettoyer(input.valueEn ?? "", "anglais");
+  const pt = nettoyer(input.valuePt ?? "", "portugais");
 
-  return { key: input.key, valueFr: fr.valeur, valueEn: en.longueur === 0 ? "" : en.valeur };
+  return {
+    key: input.key,
+    valueFr: fr.valeur,
+    valueEn: en.longueur === 0 ? "" : en.valeur,
+    valuePt: pt.longueur === 0 ? "" : pt.valeur,
+  };
 }
 
 export const postInputSchema = z.object({
@@ -64,6 +71,7 @@ export const postInputSchema = z.object({
     ),
   titleFr: z.string().trim().min(1, "Le titre français est requis").max(200),
   titleEn: z.string().trim().max(200).optional().or(z.literal("")),
+  titlePt: z.string().trim().max(200).optional().or(z.literal("")),
   /*
    * Chapô : ce que la liste d'actualités et les partages affichent. Plafonné à
    * 300 signes parce qu'au-delà ce n'est plus un résumé — et parce que les
@@ -71,6 +79,7 @@ export const postInputSchema = z.object({
    */
   excerptFr: z.string().trim().max(300).optional().or(z.literal("")),
   excerptEn: z.string().trim().max(300).optional().or(z.literal("")),
+  excerptPt: z.string().trim().max(300).optional().or(z.literal("")),
   /*
    * Corps mis en forme (§26) : le contrôle de longueur porte sur le texte
    * visible et vit dans `normaliserArticle`, pas ici — le document structuré
@@ -78,6 +87,7 @@ export const postInputSchema = z.object({
    */
   bodyFr: z.string().max(TAILLE_MAX_DOCUMENT),
   bodyEn: z.string().max(TAILLE_MAX_DOCUMENT).optional().or(z.literal("")),
+  bodyPt: z.string().max(TAILLE_MAX_DOCUMENT).optional().or(z.literal("")),
   isPublished: z.boolean().default(false),
 });
 
@@ -89,6 +99,7 @@ export const imageGalerieSchema = z.object({
   path: z.string().min(1),
   captionFr: z.string().trim().max(200).default(""),
   captionEn: z.string().trim().max(200).default(""),
+  captionPt: z.string().trim().max(200).default(""),
 });
 
 export const galerieSchema = z.array(imageGalerieSchema).max(20);
@@ -121,6 +132,12 @@ export function normaliserArticle(input: PostInput): PostInput {
   const fr = nettoyer(input.bodyFr, "français");
   if (fr.longueur === 0) throw new ContenuError("Le contenu français est requis.");
   const en = nettoyer(input.bodyEn ?? "", "anglais");
+  const pt = nettoyer(input.bodyPt ?? "", "portugais");
 
-  return { ...input, bodyFr: fr.valeur, bodyEn: en.longueur === 0 ? "" : en.valeur };
+  return {
+    ...input,
+    bodyFr: fr.valeur,
+    bodyEn: en.longueur === 0 ? "" : en.valeur,
+    bodyPt: pt.longueur === 0 ? "" : pt.valeur,
+  };
 }

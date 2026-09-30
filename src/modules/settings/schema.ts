@@ -31,6 +31,19 @@ export const inscriptionsSchema = z.object({
     .max(600)
     .default("Les inscriptions ne sont pas ouvertes pour le moment."),
   messageFermeEn: z.string().trim().max(600).default("Registration is not open at the moment."),
+  messageFermePt: z.string().trim().max(600).default("As inscrições não estão abertas de momento."),
+});
+
+/**
+ * Langues proposées aux visiteurs (30 septembre 2026).
+ *
+ * Le français et l'anglais le sont toujours. Le portugais s'active ici : on
+ * peut le préparer en BackOffice — traduire les contenus — avant de l'ouvrir
+ * au public. Désactivé, il disparaît du sélecteur, et un visiteur qui l'avait
+ * choisi retombe sur l'anglais.
+ */
+export const languesSchema = z.object({
+  portugais: z.boolean().default(true),
 });
 
 /** Couleur hexadécimale à six chiffres — la forme courte complique le calcul de contraste. */
@@ -141,6 +154,7 @@ export const piedDePageSchema = z.object({
 export const INSCRIPTIONS_PAR_DEFAUT = inscriptionsSchema.parse({});
 export const THEME_PAR_DEFAUT = themeSchema.parse({});
 export const PIED_DE_PAGE_PAR_DEFAUT = piedDePageSchema.parse({});
+export const LANGUES_PAR_DEFAUT = languesSchema.parse({});
 
 /**
  * Document complet. `.passthrough()` volontaire : le seed d'origine y avait posé
@@ -152,12 +166,14 @@ export const parametresSchema = z
     inscriptions: inscriptionsSchema.default(INSCRIPTIONS_PAR_DEFAUT),
     theme: themeSchema.default(THEME_PAR_DEFAUT),
     piedDePage: piedDePageSchema.default(PIED_DE_PAGE_PAR_DEFAUT),
+    langues: languesSchema.default(LANGUES_PAR_DEFAUT),
   })
   .passthrough();
 
 export type Inscriptions = z.infer<typeof inscriptionsSchema>;
 export type ThemeEdition = z.infer<typeof themeSchema>;
 export type PiedDePage = z.infer<typeof piedDePageSchema>;
+export type Langues = z.infer<typeof languesSchema>;
 export type Parametres = z.infer<typeof parametresSchema>;
 
 /** Identité de l'édition : ces champs sont des colonnes, pas du JSON. */
@@ -165,6 +181,7 @@ export const identiteSchema = z
   .object({
     title: z.string().trim().min(3, "Le titre est requis.").max(200),
     titleEn: z.string().trim().max(200).optional().or(z.literal("")),
+    titlePt: z.string().trim().max(200).optional().or(z.literal("")),
     theme: z.string().trim().max(300).optional().or(z.literal("")),
     startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date de début attendue (AAAA-MM-JJ)"),
     endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date de fin attendue (AAAA-MM-JJ)"),
@@ -179,6 +196,7 @@ export const identiteSchema = z
 export const categorieSchema = z.object({
   labelFr: z.string().trim().min(2, "Le libellé français est requis.").max(120),
   labelEn: z.string().trim().min(2, "Le libellé anglais est requis.").max(120),
+  labelPt: z.string().trim().max(120).optional().or(z.literal("")),
   color: couleur.optional().or(z.literal("")),
   sortOrder: z.coerce.number().int().min(0).max(999),
   isActive: z.boolean(),

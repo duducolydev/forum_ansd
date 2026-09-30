@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 export async function listContentBlocks(editionId: string) {
@@ -12,7 +12,13 @@ export async function findContentBlock(editionId: string, key: string) {
 export async function upsertContentBlock(
   editionId: string,
   key: string,
-  data: { valueFr: Prisma.InputJsonValue; valueEn: Prisma.InputJsonValue; updatedById?: string },
+  data: {
+    valueFr: Prisma.InputJsonValue;
+    valueEn: Prisma.InputJsonValue;
+    /** `DbNull` : pas de portugais, c'est l'anglais qui s'affiche. */
+    valuePt: Prisma.InputJsonValue | typeof Prisma.DbNull;
+    updatedById?: string;
+  },
 ) {
   return prisma.contentBlock.upsert({
     where: { editionId_key: { editionId, key } },

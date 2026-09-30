@@ -10,6 +10,7 @@ interface Contact {
   id: string;
   labelFr: string;
   labelEn: string | null;
+  labelPt: string | null;
   name: string | null;
   email: string | null;
   phone: string | null;
@@ -110,6 +111,17 @@ export function ContactsPratiques({ contacts }: { contacts: Contact[] }) {
             id="labelEn"
             name="labelEn"
             placeholder="Vide, le français est repris"
+            className={CHAMP}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="labelPt" className="text-heading text-xs font-semibold">
+            Intitulé (portugais)
+          </label>
+          <input
+            id="labelPt"
+            name="labelPt"
+            placeholder="Vide, l'anglais est repris"
             className={CHAMP}
           />
         </div>

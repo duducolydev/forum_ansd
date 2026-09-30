@@ -20,7 +20,7 @@ export const registrationIdentitySchema = z.object({
   phone: optionalText(30),
   country: z.string().trim().min(1, "Le pays est requis").max(100),
   city: optionalText(100),
-  locale: z.enum(["fr", "en"]).default("fr"),
+  locale: z.enum(["fr", "en", "pt"]).default("fr"),
   categoryId: z.string().min(1, "La catégorie de participation est requise"),
 });
 

@@ -79,6 +79,8 @@ export interface BoutonSection {
   href: string;
   labelFr: string;
   labelEn: string;
+  /** Facultatif : les boutons enregistrés avant le portugais n'en ont pas. */
+  labelPt?: string;
   style: "principal" | "secondaire";
 }
 

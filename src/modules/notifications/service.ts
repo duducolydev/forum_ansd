@@ -1,3 +1,4 @@
+import { lireLangue, traduire, type Langue } from "@/lib/langue";
 import type { NotificationTemplate, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { sendMail } from "@/lib/mail";
@@ -5,7 +6,7 @@ import { audit } from "@/lib/audit";
 import type { Actor } from "@/modules/participants/service";
 import type { TemplateInput } from "./schema";
 
-export type Locale = "fr" | "en";
+export type Locale = Langue;
 
 /** Variables communes injectées dans tous les modèles, sans que l'appelant ait à les fournir. */
 export interface TemplateVariables {
@@ -24,19 +25,22 @@ export function interpolate(template: string, variables: TemplateVariables): str
  * Choix de la langue du modèle. Le portail est bilingue et `Participant.locale`
  * est renseigné dès l'inscription : envoyer systématiquement la version
  * française à un participant anglophone était un défaut du squelette initial.
- * Repli sur le français si la version anglaise est vide.
+ * Repli sur le français si la version anglaise est vide ; le portugais
+ * (30 septembre 2026) retombe sur l'anglais, puis le français.
  */
 export function pickLocalised(
-  template: Pick<NotificationTemplate, "subjectFr" | "subjectEn" | "bodyFr" | "bodyEn">,
+  template: Pick<NotificationTemplate, "subjectFr" | "subjectEn" | "bodyFr" | "bodyEn"> &
+    Partial<Pick<NotificationTemplate, "subjectPt" | "bodyPt">>,
   locale: Locale,
 ): { subject: string; body: string } {
-  if (locale === "en") {
-    return {
-      subject: template.subjectEn?.trim() || template.subjectFr?.trim() || "",
-      body: template.bodyEn?.trim() || template.bodyFr,
-    };
-  }
-  return { subject: template.subjectFr?.trim() || "", body: template.bodyFr };
+  return {
+    subject: traduire(locale, {
+      fr: template.subjectFr?.trim(),
+      en: template.subjectEn?.trim(),
+      pt: template.subjectPt?.trim(),
+    }),
+    body: traduire(locale, { fr: template.bodyFr, en: template.bodyEn, pt: template.bodyPt }),
+  };
 }
 
 export function renderHtml(text: string): string {
@@ -159,7 +163,7 @@ async function resolveLocale(participantId?: string): Promise<Locale> {
     where: { id: participantId },
     select: { locale: true },
   });
-  return participant?.locale === "en" ? "en" : "fr";
+  return lireLangue(participant?.locale);
 }
 
 // ---------------------------------------------------------------------------
@@ -196,8 +200,10 @@ export async function updateTemplate(
     data: {
       subjectFr: input.subjectFr,
       subjectEn: input.subjectEn,
+      subjectPt: input.subjectPt || null,
       bodyFr: input.bodyFr,
       bodyEn: input.bodyEn,
+      bodyPt: input.bodyPt || null,
     },
   });
 
@@ -227,12 +233,21 @@ export function templateVariables(template: NotificationTemplate): string[] {
 export function undeclaredVariables(template: {
   bodyFr: string;
   bodyEn: string;
+  bodyPt?: string | null;
   subjectFr?: string | null;
   subjectEn?: string | null;
+  subjectPt?: string | null;
   declared: string[];
 }): string[] {
   const used = new Set<string>();
-  const texts = [template.bodyFr, template.bodyEn, template.subjectFr, template.subjectEn];
+  const texts = [
+    template.bodyFr,
+    template.bodyEn,
+    template.bodyPt,
+    template.subjectFr,
+    template.subjectEn,
+    template.subjectPt,
+  ];
   for (const text of texts) {
     for (const match of (text ?? "").matchAll(/\{\{(\w+)\}\}/g)) {
       used.add(match[1]!);

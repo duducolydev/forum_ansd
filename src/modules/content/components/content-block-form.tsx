@@ -5,6 +5,7 @@ import { Save } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 import { EditeurTexteRiche } from "@/components/ui/editeur-texte-riche";
 import { saveContentBlockAction, type ActionState } from "../actions";
+import type { Langue } from "@/lib/langue";
 
 const initialState: ActionState = {};
 
@@ -23,6 +24,7 @@ export function ContentBlockForm({
   max,
   valueFr,
   valueEn,
+  valuePt,
 }: {
   contentKey: string;
   label: string;
@@ -30,14 +32,19 @@ export function ContentBlockForm({
   max: number;
   valueFr: string;
   valueEn: string;
+  valuePt: string;
 }) {
   const [state, formAction, pending] = useActionState(saveContentBlockAction, initialState);
 
-  const champ = (langue: "fr" | "en") => {
+  const champ = (langue: Langue) => {
     const id = `${contentKey}-${langue}`;
-    const intitule = langue === "fr" ? "Français" : "English (repli FR si vide)";
-    const valeur = langue === "fr" ? valueFr : valueEn;
-    const nom = langue === "fr" ? "valueFr" : "valueEn";
+    const intitule = {
+      fr: "Français",
+      en: "English (repli FR si vide)",
+      pt: "Português (repli EN si vide)",
+    }[langue];
+    const valeur = { fr: valueFr, en: valueEn, pt: valuePt }[langue];
+    const nom = { fr: "valueFr", en: "valueEn", pt: "valuePt" }[langue];
 
     return (
       <div className="flex flex-col gap-1.5">
@@ -76,9 +83,10 @@ export function ContentBlockForm({
     >
       <input type="hidden" name="key" value={contentKey} />
       <h3 className="text-heading mb-3 text-sm font-semibold">{label}</h3>
-      <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
         {champ("fr")}
         {champ("en")}
+        {champ("pt")}
       </div>
       {state.error && <p className="text-danger-text mt-2 text-sm">{state.error}</p>}
       {state.message && !state.error && (

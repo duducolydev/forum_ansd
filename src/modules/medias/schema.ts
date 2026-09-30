@@ -24,8 +24,10 @@ const texteCourt = (max: number) => z.string().trim().max(max).optional().or(z.l
 export const albumSchema = z.object({
   titleFr: z.string().trim().min(2, "Donnez un titre à l'album.").max(150),
   titleEn: texteCourt(150),
+  titlePt: texteCourt(150),
   descriptionFr: texteCourt(2000),
   descriptionEn: texteCourt(2000),
+  descriptionPt: texteCourt(2000),
   eventDate: z
     .string()
     .trim()
@@ -39,6 +41,7 @@ export type AlbumInput = z.infer<typeof albumSchema>;
 export const legendeSchema = z.object({
   captionFr: texteCourt(500),
   captionEn: texteCourt(500),
+  captionPt: texteCourt(500),
   credit: texteCourt(150),
 });
 

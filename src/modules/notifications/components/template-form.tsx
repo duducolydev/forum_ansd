@@ -1,5 +1,6 @@
 "use client";
 
+import { LANGUES, traduire, type Langue } from "@/lib/langue";
 import { useActionState, useMemo, useState } from "react";
 import { updateTemplateAction, type NotificationActionState } from "../actions";
 import { Save } from "lucide-react";
@@ -11,8 +12,10 @@ interface Props {
   templateKey: string;
   subjectFr: string;
   subjectEn: string;
+  subjectPt: string;
   bodyFr: string;
   bodyEn: string;
+  bodyPt: string;
   declared: string[];
   /** Valeurs d'exemple pour la prévisualisation, par variable. */
   sampleVariables: Record<string, string>;
@@ -22,19 +25,33 @@ export function TemplateForm({
   templateKey,
   subjectFr,
   subjectEn,
+  subjectPt,
   bodyFr,
   bodyEn,
+  bodyPt,
   declared,
   sampleVariables,
 }: Props) {
   const action = updateTemplateAction.bind(null, templateKey);
   const [state, formAction, pending] = useActionState(action, initialState);
 
-  const [values, setValues] = useState({ subjectFr, subjectEn, bodyFr, bodyEn });
-  const [locale, setLocale] = useState<"fr" | "en">("fr");
+  const [values, setValues] = useState({
+    subjectFr,
+    subjectEn,
+    subjectPt,
+    bodyFr,
+    bodyEn,
+    bodyPt,
+  });
+  const [locale, setLocale] = useState<Langue>("fr");
 
-  const subject = locale === "fr" ? values.subjectFr : values.subjectEn;
-  const body = locale === "fr" ? values.bodyFr : values.bodyEn;
+  // Aperçu : un portugais vide montre l'anglais, comme à l'envoi.
+  const subject = traduire(locale, {
+    fr: values.subjectFr,
+    en: values.subjectEn,
+    pt: values.subjectPt,
+  });
+  const body = traduire(locale, { fr: values.bodyFr, en: values.bodyEn, pt: values.bodyPt });
 
   /**
    * Prévisualisation calculée côté client à partir de la saisie en cours : elle
@@ -50,7 +67,7 @@ export function TemplateForm({
 
   const undeclared = useMemo(() => {
     const used = new Set<string>();
-    for (const text of [values.bodyFr, values.bodyEn, values.subjectFr, values.subjectEn]) {
+    for (const text of Object.values(values)) {
       for (const match of text.matchAll(/\{\{(\w+)\}\}/g)) used.add(match[1]!);
     }
     return [...used].filter((name) => !declared.includes(name)).sort();
@@ -60,7 +77,7 @@ export function TemplateForm({
     <form action={formAction} className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <div className="flex flex-col gap-4">
         <div className="flex gap-1">
-          {(["fr", "en"] as const).map((code) => (
+          {LANGUES.map((code) => (
             <button
               key={code}
               type="button"
@@ -79,9 +96,11 @@ export function TemplateForm({
         {/* Les deux langues restent dans le DOM : masquer par `hidden` conserve
             les champs dans le FormData, sinon basculer FR→EN avant d'enregistrer
             effacerait la langue non affichée. */}
-        {(["fr", "en"] as const).map((code) => {
-          const subjectName = code === "fr" ? "subjectFr" : "subjectEn";
-          const bodyName = code === "fr" ? "bodyFr" : "bodyEn";
+        {LANGUES.map((code) => {
+          const subjectName = ({ fr: "subjectFr", en: "subjectEn", pt: "subjectPt" } as const)[
+            code
+          ];
+          const bodyName = ({ fr: "bodyFr", en: "bodyEn", pt: "bodyPt" } as const)[code];
           return (
             <div key={code} hidden={locale !== code} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">

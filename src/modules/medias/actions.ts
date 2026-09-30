@@ -41,8 +41,10 @@ function lireAlbum(formData: FormData) {
   return albumSchema.parse({
     titleFr: formData.get("titleFr") ?? "",
     titleEn: formData.get("titleEn") ?? "",
+    titlePt: formData.get("titlePt") ?? "",
     descriptionFr: formData.get("descriptionFr") ?? "",
     descriptionEn: formData.get("descriptionEn") ?? "",
+    descriptionPt: formData.get("descriptionPt") ?? "",
     eventDate: formData.get("eventDate") ?? "",
     isPublished: formData.get("isPublished") === "on",
   });
@@ -52,6 +54,7 @@ function lireLegende(formData: FormData) {
   return legendeSchema.parse({
     captionFr: formData.get("captionFr") ?? "",
     captionEn: formData.get("captionEn") ?? "",
+    captionPt: formData.get("captionPt") ?? "",
     credit: formData.get("credit") ?? "",
   });
 }

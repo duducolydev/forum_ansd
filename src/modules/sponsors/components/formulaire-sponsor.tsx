@@ -12,6 +12,7 @@ export interface ValeursSponsor {
   levelId: string;
   descriptionFr: string;
   descriptionEn: string;
+  descriptionPt: string;
   website: string;
   videoUrl: string;
   standNumber: string;
@@ -125,6 +126,15 @@ export function FormulaireSponsor({
             name="descriptionEn"
             rows={4}
             defaultValue={valeurs?.descriptionEn ?? ""}
+            className={CHAMP}
+          />
+        </Champ>
+        <Champ id="sponsor-desc-pt" label="Description (portugais, repli EN si vide)">
+          <textarea
+            id="sponsor-desc-pt"
+            name="descriptionPt"
+            rows={4}
+            defaultValue={valeurs?.descriptionPt ?? ""}
             className={CHAMP}
           />
         </Champ>
