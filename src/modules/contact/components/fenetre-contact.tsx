@@ -25,6 +25,7 @@ export function FenetreContact({ locale }: { locale: Langue }) {
   // Change à chaque ouverture : formulaire vierge, et délai anti-robot remis
   // à zéro (il court depuis le montage du formulaire).
   const [ouverture, setOuverture] = useState(0);
+  const [objet, setObjet] = useState("");
 
   useEffect(() => {
     function surClic(evenement: MouseEvent) {
@@ -33,6 +34,7 @@ export function FenetreContact({ locale }: { locale: Langue }) {
       const cible = (evenement.target as Element | null)?.closest(`[${ATTRIBUT_NOUS_ECRIRE}]`);
       if (!cible) return;
       evenement.preventDefault();
+      setObjet(cible.getAttribute(ATTRIBUT_NOUS_ECRIRE) ?? "");
       setOuverture((n) => n + 1);
       setOuverte(true);
       refFenetre.current?.showModal();
@@ -91,7 +93,7 @@ export function FenetreContact({ locale }: { locale: Langue }) {
               <X aria-hidden size={20} />
             </button>
           </div>
-          <FormulaireContact key={ouverture} locale={locale} />
+          <FormulaireContact key={ouverture} locale={locale} objet={objet} />
         </div>
       )}
     </dialog>

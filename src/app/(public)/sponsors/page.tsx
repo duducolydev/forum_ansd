@@ -8,7 +8,8 @@ import { listerSponsorsPublies } from "@/modules/sponsors/service";
 import { tonDuNiveau } from "@/modules/sponsors/palette";
 import { EnteteSection } from "@/components/site/entete-section";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
-import { LienSite } from "@/components/site/bouton-site";
+import { classesBoutonSite } from "@/components/site/bouton-site";
+import { LienNousEcrire } from "@/modules/contact/components/lien-nous-ecrire";
 import { Reveal } from "@/components/site/reveal";
 import { Reveal as RevealMotion } from "@/components/motion/Reveal";
 import { PartnersMarquee } from "@/components/home/PartnersMarquee";
@@ -237,13 +238,21 @@ export default async function SponsorsPage() {
                 })}
               </p>
             </div>
-            <LienSite href="/infos-pratiques" ton="principal">
+            {/* Ouvre la fenêtre « Nous écrire », objet déjà rempli. */}
+            <LienNousEcrire
+              className={classesBoutonSite("principal")}
+              objet={selon(locale, {
+                fr: "Devenir partenaire du Forum",
+                en: "Becoming a partner of the Forum",
+                pt: "Tornar-se parceiro do Fórum",
+              })}
+            >
               {selon(locale, {
                 fr: "Contacter le comité",
                 en: "Contact the committee",
                 pt: "Contactar o comité",
               })}
-            </LienSite>
+            </LienNousEcrire>
           </div>
         </Reveal>
       </CorpsPage>

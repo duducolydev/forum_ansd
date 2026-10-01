@@ -15,7 +15,13 @@ export const HREF_NOUS_ECRIRE = "/infos-pratiques/contacts#ecrire-comite";
  * Déclencheur de la fenêtre « Nous écrire » (`FenetreContact`). Lien simple,
  * utilisable dans un composant serveur : sans JavaScript, il mène au
  * formulaire de la rubrique Contacts.
+ *
+ * `objet` : pré-remplit le champ Objet (« Devenir partenaire du Forum » depuis
+ * la page Partenaires), porté par la valeur de l'attribut.
  */
-export function LienNousEcrire(props: Omit<ComponentProps<"a">, "href">) {
-  return <a href={HREF_NOUS_ECRIRE} {...{ [ATTRIBUT_NOUS_ECRIRE]: "" }} {...props} />;
+export function LienNousEcrire({
+  objet,
+  ...props
+}: Omit<ComponentProps<"a">, "href"> & { objet?: string }) {
+  return <a href={HREF_NOUS_ECRIRE} {...{ [ATTRIBUT_NOUS_ECRIRE]: objet ?? "" }} {...props} />;
 }

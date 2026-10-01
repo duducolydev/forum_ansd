@@ -14,7 +14,7 @@ const ETIQUETTE = "text-heading text-sm font-semibold";
  * Formulaire « Écrire au comité » (rubrique Contacts). Le message part vers
  * la boîte du Forum ; la réponse revient à l'adresse saisie ici.
  */
-export function FormulaireContact({ locale }: { locale: Langue }) {
+export function FormulaireContact({ locale, objet }: { locale: Langue; objet?: string }) {
   const [etat, action, enCours] = useActionState(envoyerMessageContactAction, etatInitial);
   // Heure d'ouverture du formulaire, posée au montage : un envoi dans la
   // seconde trahit un robot (cf. `actions.ts`).
@@ -106,7 +106,14 @@ export function FormulaireContact({ locale }: { locale: Langue }) {
           <label htmlFor="contact-objet" className={ETIQUETTE}>
             {selon(locale, { fr: "Objet", en: "Subject", pt: "Assunto" })} *
           </label>
-          <input id="contact-objet" name="objet" required maxLength={150} className={CHAMP} />
+          <input
+            id="contact-objet"
+            name="objet"
+            required
+            maxLength={150}
+            defaultValue={objet}
+            className={CHAMP}
+          />
         </div>
       </div>
 
