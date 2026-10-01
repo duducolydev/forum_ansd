@@ -102,18 +102,43 @@ const lienPiedDePage = z.object({
   url: z.string().trim().min(1).max(300),
 });
 
-const RESEAUX = ["linkedin", "x", "facebook", "youtube", "instagram", "site"] as const;
+/** Ordre d'affichage dans le pied de page et dans le formulaire. */
+export const RESEAUX = [
+  "facebook",
+  "linkedin",
+  "x",
+  "instagram",
+  "tiktok",
+  "youtube",
+  "site",
+] as const;
 
 export type Reseau = (typeof RESEAUX)[number];
 
 export const RESEAUX_LABELS: Record<Reseau, string> = {
-  linkedin: "LinkedIn",
-  x: "X / Twitter",
   facebook: "Facebook",
-  youtube: "YouTube",
+  linkedin: "LinkedIn",
+  x: "X",
   instagram: "Instagram",
+  tiktok: "TikTok",
+  youtube: "YouTube",
   site: "Site web",
 };
+
+/**
+ * Comptes de l'ANSD (1er octobre 2026) : valeur par défaut d'une installation
+ * neuve. Une base en service les reçoit par migration, sans écraser une saisie.
+ */
+export const RESEAUX_ANSD: { reseau: Reseau; url: string }[] = [
+  { reseau: "facebook", url: "https://web.facebook.com/ansdsn" },
+  {
+    reseau: "linkedin",
+    url: "https://www.linkedin.com/company/agence-nationale-de-la-statistique-et-de-la-d%C3%A9mographie-ansd/",
+  },
+  { reseau: "x", url: "https://x.com/statsenegal" },
+  { reseau: "instagram", url: "https://www.instagram.com/ansdsenegal/" },
+  { reseau: "tiktok", url: "https://www.tiktok.com/@ansdsenegal" },
+];
 
 export const piedDePageSchema = z.object({
   organisation: z
@@ -142,7 +167,7 @@ export const piedDePageSchema = z.object({
   reseaux: z
     .array(z.object({ reseau: z.enum(RESEAUX), url: z.string().trim().max(300) }))
     .max(RESEAUX.length)
-    .default([]),
+    .default(RESEAUX_ANSD),
   liens: z.array(lienPiedDePage).max(12).default([]),
 });
 

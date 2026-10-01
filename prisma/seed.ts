@@ -8,6 +8,14 @@
  * pour les faire naviguer dans un état cohérent plutôt que des lignes orphelines.
  *
  * Idempotent : peut être exécuté plusieurs fois (`pnpm db:seed`) sans dupliquer les données.
+ *
+ * **Création seulement** (1er octobre 2026) : le seed crée ce qui manque et ne
+ * modifie ni ne supprime jamais une donnée existante. Une base en service est
+ * réglée et traduite en BackOffice — textes, modèles d'e-mails, catégories,
+ * rôles, zones, salles, traductions portugaises ; rejouer le seed ne doit rien
+ * y défaire. Un changement de donnée sur une base existante passe par une
+ * **migration**, écrite pour ne remplir que ce qui est vide.
+ * `prisma/seed.test.ts` refuse toute réécriture qui reviendrait ici.
  */
 import "dotenv/config";
 import argon2 from "argon2";
@@ -59,7 +67,9 @@ async function main() {
   for (const [name, permissions] of roleEntries) {
     roles[name] = await prisma.role.upsert({
       where: { name },
-      update: { permissions },
+      // Permissions modifiables en BackOffice : une nouvelle permission arrive
+      // par migration, jamais en réécrivant le rôle.
+      update: {},
       create: { name, permissions },
     });
   }
@@ -208,7 +218,7 @@ async function main() {
   for (const cat of categoriesData) {
     categories[cat.code] = await prisma.participantCategory.upsert({
       where: { editionId_code: { editionId: edition.id, code: cat.code } },
-      update: cat,
+      update: {},
       create: { ...cat, editionId: edition.id },
     });
   }
@@ -237,33 +247,16 @@ async function main() {
   for (const zone of zonesData) {
     zones[zone.code] = await prisma.zone.upsert({
       where: { editionId_code: { editionId: edition.id, code: zone.code } },
-      update: zone,
+      update: {},
       create: { ...zone, editionId: edition.id },
     });
   }
 
   /*
-   * Zones d'une liste précédente : retirées, mais **seulement** si aucun point
-   * de contrôle ne les vise. Les autorisations par catégorie et les
-   * dérogations individuelles disparaissent avec elles, par cascade — ce sont
-   * des droits sur une zone qui n'existe plus.
-   *
-   * Un point de contrôle, lui, a été posé physiquement quelque part : le seed
-   * ne le défait pas, il le signale.
+   * Le seed supprimait ici les zones absentes de sa liste — y compris celles
+   * créées en BackOffice. Retiré le 1er octobre 2026 : le seed ne supprime
+   * rien de ce qu'il n'a pas créé dans la même exécution.
    */
-  const zonesObsoletes = await prisma.zone.findMany({
-    where: { editionId: edition.id, code: { notIn: zonesData.map((z) => z.code) } },
-    include: { _count: { select: { checkpoints: true } } },
-  });
-  for (const zone of zonesObsoletes) {
-    if (zone._count.checkpoints > 0) {
-      console.warn(
-        `[seed] zone « ${zone.name} » conservée : ${zone._count.checkpoints} point(s) de contrôle la visent.`,
-      );
-      continue;
-    }
-    await prisma.zone.delete({ where: { id: zone.id } });
-  }
 
   /*
    * Points de contrôle — un par zone (brief §5.6).
@@ -299,9 +292,7 @@ async function main() {
       where: { editionId: edition.id, name: point.name },
     });
     const donnees = { name: point.name, zoneId: zones[point.zoneCode]!.id };
-    if (existant) {
-      await prisma.checkpoint.update({ where: { id: existant.id }, data: donnees });
-    } else {
+    if (!existant) {
       await prisma.checkpoint.create({ data: { ...donnees, editionId: edition.id } });
     }
   }
@@ -368,9 +359,8 @@ async function main() {
     const existante = await prisma.room.findFirst({
       where: { editionId: edition.id, name: room.name },
     });
-    rooms[room.name] = existante
-      ? await prisma.room.update({ where: { id: existante.id }, data: room })
-      : await prisma.room.create({ data: { ...room, editionId: edition.id } });
+    rooms[room.name] =
+      existante ?? (await prisma.room.create({ data: { ...room, editionId: edition.id } }));
   }
 
   const speakersData = [
@@ -407,9 +397,8 @@ async function main() {
       bioFr: `[DEMO] ${firstName} ${lastName} intervient au Forum au titre de ses fonctions à ${organization}.`,
       isPublished: true,
     };
-    speakers[cle] = existant
-      ? await prisma.speaker.update({ where: { id: existant.id }, data: donnees })
-      : await prisma.speaker.create({ data: { ...donnees, editionId: edition.id } });
+    speakers[cle] =
+      existant ?? (await prisma.speaker.create({ data: { ...donnees, editionId: edition.id } }));
   }
 
   // Trois journées, dix sessions par jour (brief §11). Les moments communs
@@ -797,7 +786,7 @@ async function main() {
 
       const session = await prisma.session.upsert({
         where: { editionId_slug: { editionId: edition.id, slug } },
-        update: donnees,
+        update: {},
         create: { ...donnees, slug, editionId: edition.id },
       });
 
@@ -806,7 +795,7 @@ async function main() {
           where: {
             sessionId_speakerId: { sessionId: session.id, speakerId: speakers[nom]!.id },
           },
-          update: { role, sortOrder: index, confirmationStatus: "CONFIRME" },
+          update: {},
           create: {
             sessionId: session.id,
             speakerId: speakers[nom]!.id,
@@ -820,30 +809,10 @@ async function main() {
   }
 
   /*
-   * Salles d'une liste précédente : retirées, mais **seulement** si aucune
-   * séance ne s'y tient.
-   *
-   * Ce nettoyage vient **après** le programme, et non juste après la création
-   * des salles : à cet endroit-là, les séances de démonstration pointaient
-   * encore sur les anciennes salles, qui étaient donc toutes conservées. Le
-   * seed converge ainsi vers la liste de référence sans jamais détruire ce
-   * qu'il n'a pas créé — une salle ajoutée en BackOffice et utilisée par une
-   * vraie séance reste en place, et le cas est signalé plutôt que tranché en
-   * silence.
+   * Le seed supprimait ici les salles absentes de sa liste, même créées en
+   * BackOffice, dès qu'aucune séance n'y était rattachée. Retiré le 1er octobre
+   * 2026 : le seed ne supprime rien de ce qu'il n'a pas créé.
    */
-  const sallesObsoletes = await prisma.room.findMany({
-    where: { editionId: edition.id, name: { notIn: roomsData.map((r) => r.name) } },
-    include: { _count: { select: { sessions: true } } },
-  });
-  for (const salle of sallesObsoletes) {
-    if (salle._count.sessions > 0) {
-      console.warn(
-        `[seed] salle « ${salle.name} » conservée : ${salle._count.sessions} séance(s) s'y tiennent.`,
-      );
-      continue;
-    }
-    await prisma.room.delete({ where: { id: salle.id } });
-  }
 
   // ---------------------------------------------------------------------
   // Niveaux de sponsors (docx §12 / brief §5.9)
@@ -862,7 +831,7 @@ async function main() {
   for (const level of sponsorLevelsData) {
     sponsorLevels[level.code] = await prisma.sponsorLevel.upsert({
       where: { editionId_code: { editionId: edition.id, code: level.code } },
-      update: level,
+      update: {},
       create: { ...level, editionId: edition.id },
     });
   }
@@ -924,9 +893,9 @@ async function main() {
     const existant = await prisma.hotel.findFirst({
       where: { editionId: edition.id, name: hotel.name },
     });
-    const enregistre = existant
-      ? await prisma.hotel.update({ where: { id: existant.id }, data: hotel })
-      : await prisma.hotel.create({ data: { ...hotel, editionId: edition.id } });
+    // Hôtel déjà en base : ni la fiche ni ses tarifs ne sont réécrits.
+    if (existant) continue;
+    const enregistre = await prisma.hotel.create({ data: { ...hotel, editionId: edition.id } });
 
     // Les tarifs sont réécrits en bloc : ils n'ont pas de clé naturelle, et
     // rejouer le seed ne doit pas les empiler.
@@ -970,9 +939,7 @@ async function main() {
     const existant = await prisma.practicalContact.findFirst({
       where: { editionId: edition.id, labelFr: contact.labelFr },
     });
-    if (existant) {
-      await prisma.practicalContact.update({ where: { id: existant.id }, data: contact });
-    } else {
+    if (!existant) {
       await prisma.practicalContact.create({ data: { ...contact, editionId: edition.id } });
     }
   }
@@ -1210,7 +1177,7 @@ async function main() {
       where: {
         editionId_key_channel: { editionId: edition.id, key: tpl.key, channel: "EMAIL" },
       },
-      update: tpl,
+      update: {},
       create: { ...tpl, channel: "EMAIL", editionId: edition.id },
     });
   }
@@ -1750,7 +1717,7 @@ async function main() {
   for (const [key, value] of Object.entries(contentBlocksData)) {
     await prisma.contentBlock.upsert({
       where: { editionId_key: { editionId: edition.id, key } },
-      update: { valueFr: value.fr, valueEn: value.en },
+      update: {},
       create: { editionId: edition.id, key, valueFr: value.fr, valueEn: value.en },
     });
   }

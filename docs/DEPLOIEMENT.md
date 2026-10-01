@@ -458,6 +458,15 @@ Constaté le 22 septembre 2026 sur un changement de `SMTP_PASSWORD`, où Compose
 répondait « Running » au lieu de « Recreated ». Le sous-shell meurt avec la
 sauvegarde et n'en laisse rien derrière lui.
 
+**Ce que le BackOffice a réglé n'est jamais écrasé.** Depuis le 1er octobre
+2026, le seed (`pnpm db:seed`) **crée seulement** ce qui manque : il ne modifie
+ni ne supprime une donnée existante — textes, traductions portugaises, modèles
+d'e-mails, catégories, rôles, zones, salles. Le rejouer sur une base en service
+est sans risque. Les migrations de données, elles, ne remplissent que des champs
+encore vides (les traductions portugaises de départ, les réseaux sociaux du pied
+de page). Un test (`prisma/seed.test.ts`) refuse toute réécriture qui
+reviendrait dans le seed.
+
 **Sections ajoutées à l'accueil.** Une section ajoutée à la composition du code
 (`src/modules/sections/defaut.ts`) n'apparaît pas sur une installation dont
 l'accueil a déjà été modifié en BackOffice : c'est alors la base qui pilote la

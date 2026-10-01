@@ -1,22 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import {
-  AtSign,
-  Briefcase,
-  Camera,
-  CirclePlay,
-  Globe,
-  Mail,
-  MapPin,
-  Phone,
-  Send,
-  ShieldCheck,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { Mail, MapPin, Phone, Send, ShieldCheck } from "lucide-react";
 import { parametresPourGabarit } from "@/modules/settings/service";
 import { RESEAUX_LABELS, type Reseau } from "@/modules/settings/schema";
+import { IconeReseau } from "./icone-reseau";
 import { LienNousEcrire } from "@/modules/contact/components/lien-nous-ecrire";
 
 /**
@@ -31,24 +19,6 @@ import { LienNousEcrire } from "@/modules/contact/components/lien-nous-ecrire";
  * pointerait vers une page inexistante reproduirait exactement le défaut des
  * quatre 404 du BackOffice.
  */
-
-/**
- * Icône de chaque réseau.
- *
- * lucide a retiré ses pictogrammes de marque en version 1 ; les redessiner de
- * mémoire donnerait des logos approximatifs, ce qui est pire que pas de logo
- * du tout. Chaque réseau reçoit donc une icône qui décrit **le média** — un
- * réseau professionnel, une poignée, une communauté, de la vidéo, de la photo,
- * un site. Le nom du réseau reste écrit à côté : rien ne repose sur l'icône.
- */
-const ICONES_RESEAU: Record<Reseau, LucideIcon> = {
-  linkedin: Briefcase,
-  x: AtSign,
-  facebook: Users,
-  youtube: CirclePlay,
-  instagram: Camera,
-  site: Globe,
-};
 
 const LIEN = "pied-lien text-[#b8c9e2] flex w-fit items-center gap-2 py-1 text-sm";
 
@@ -191,7 +161,6 @@ export async function SiteFooter() {
             ) : (
               <ul>
                 {reseaux.map((entree) => {
-                  const Icone = ICONES_RESEAU[entree.reseau as Reseau] ?? Globe;
                   return (
                     <li key={entree.reseau}>
                       <a
@@ -200,7 +169,11 @@ export async function SiteFooter() {
                         rel="noopener noreferrer"
                         className={LIEN}
                       >
-                        <Icone aria-hidden size={15} className="shrink-0 opacity-70" />
+                        <IconeReseau
+                          reseau={entree.reseau}
+                          taille={15}
+                          className="shrink-0 opacity-80"
+                        />
                         {RESEAUX_LABELS[entree.reseau as Reseau] ?? entree.reseau}
                       </a>
                     </li>
