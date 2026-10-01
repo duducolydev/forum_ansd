@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { creerSponsorAction, modifierSponsorAction, type EtatAction } from "../actions";
 import { Save } from "lucide-react";
-import { Bouton } from "@/components/ui/bouton";
+import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
 
 const etatInitial: EtatAction = {};
 
@@ -168,16 +168,22 @@ export function FormulaireSponsor({
       {etat.erreur && <p className="text-danger-text mt-3 text-sm">{etat.erreur}</p>}
       {etat.avis && <p className="text-accent-text mt-3 text-sm">{etat.avis}</p>}
 
-      <Bouton
+      <BoutonEnvoiConfirme
         ton="principal"
         icone={Save}
-        type="submit"
+        siNecessaire={siDecoche("isPublished")}
+        confirmation={{
+          titre: "Dépublier ce sponsor ?",
+          texte: "Son logo disparaîtra du site public.",
+          confirmer: "Dépublier",
+          ton: "danger",
+        }}
         disabled={enCours}
 
         className="mt-4"
       >
         {enCours ? "Enregistrement…" : sponsorId ? "Enregistrer" : "Créer le sponsor"}
-      </Bouton>
+      </BoutonEnvoiConfirme>
     </form>
   );
 }

@@ -4,6 +4,7 @@ import { useActionState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import { auClicConfirme } from "@/components/ui/confirmer";
 import { createContactAction, deleteContactAction, type ActionState } from "../actions";
 
 interface Contact {
@@ -72,12 +73,19 @@ export function ContactsPratiques({ contacts }: { contacts: Contact[] }) {
                       icone={Trash2}
                       aria-label={`Supprimer le contact ${contact.labelFr}`}
                       disabled={suppressionEnCours}
-                      onClick={() =>
-                        startTransition(async () => {
-                          await deleteContactAction(contact.id, {});
-                          router.refresh();
-                        })
-                      }
+                      onClick={auClicConfirme(
+                        {
+                          titre: "Supprimer ce contact ?",
+                          texte: `« ${contact.labelFr} » disparaîtra de la page Hébergement.`,
+                          confirmer: "Supprimer",
+                          ton: "danger",
+                        },
+                        () =>
+                          startTransition(async () => {
+                            await deleteContactAction(contact.id, {});
+                            router.refresh();
+                          }),
+                      )}
                     />
                   </td>
                 </tr>

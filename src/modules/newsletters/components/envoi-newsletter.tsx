@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Trash2 } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import { auClicConfirme } from "@/components/ui/confirmer";
 import { envoyerNewsletterAction, supprimerNewsletterAction } from "../actions";
 
 /**
@@ -27,8 +28,6 @@ export function EnvoiNewsletter({
   destinataires: number;
 }) {
   const router = useRouter();
-  const [confirme, setConfirme] = useState(false);
-  const [confirmeSuppression, setConfirmeSuppression] = useState(false);
   const [message, setMessage] = useState<{ texte: string; erreur: boolean } | null>(null);
   const [enCours, startTransition] = useTransition();
 
@@ -62,17 +61,20 @@ export function EnvoiNewsletter({
             Publiez d&apos;abord la newsletter : le message porte un lien vers sa page, qui serait
             introuvable.
           </p>
-        ) : confirme ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-text text-sm">
-              Envoyer <strong>{titre}</strong> à tous les participants ?
-            </span>
-            <Bouton
-              ton="principal"
-              taille="petit"
-              icone={Send}
-              disabled={enCours}
-              onClick={() =>
+        ) : (
+          <Bouton
+            ton="principal"
+            icone={Send}
+            disabled={enCours}
+            onClick={auClicConfirme(
+              {
+                titre: `Envoyer « ${titre} » à tous les participants ?`,
+                texte:
+                  "Les messages partis ne se rappellent pas, et un second envoi ne sera pas possible.",
+                confirmer: "Envoyer",
+                ton: "neutre",
+              },
+              () =>
                 startTransition(async () => {
                   const resultat = await envoyerNewsletterAction(id, {});
                   setMessage(
@@ -80,25 +82,11 @@ export function EnvoiNewsletter({
                       ? { texte: resultat.erreur, erreur: true }
                       : { texte: resultat.avis ?? "Envoi lancé.", erreur: false },
                   );
-                  setConfirme(false);
                   router.refresh();
-                })
-              }
-            >
-              {enCours ? "Envoi…" : "Oui, envoyer"}
-            </Bouton>
-            <Bouton
-              ton="discret"
-              taille="petit"
-              disabled={enCours}
-              onClick={() => setConfirme(false)}
-            >
-              Annuler
-            </Bouton>
-          </div>
-        ) : (
-          <Bouton ton="principal" icone={Send} onClick={() => setConfirme(true)}>
-            Envoyer aux participants
+                }),
+            )}
+          >
+            {enCours ? "Envoi…" : "Envoyer aux participants"}
           </Bouton>
         )}
 
@@ -118,49 +106,31 @@ export function EnvoiNewsletter({
           Possible tant que la newsletter n&apos;a pas été envoyée. Ses images sont supprimées avec
           elle : plus rien ne les désignerait.
         </p>
-        {confirmeSuppression ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-text text-sm">
-              Supprimer définitivement <strong>{titre}</strong> ?
-            </span>
-            <Bouton
-              ton="danger"
-              taille="petit"
-              icone={Trash2}
-              disabled={enCours}
-              onClick={() =>
-                startTransition(async () => {
-                  const resultat = await supprimerNewsletterAction(id, {});
-                  if (resultat.erreur) {
-                    setMessage({ texte: resultat.erreur, erreur: true });
-                    setConfirmeSuppression(false);
-                    return;
-                  }
-                  router.push("/admin/newsletters");
-                })
-              }
-            >
-              {enCours ? "Suppression…" : "Oui, supprimer"}
-            </Bouton>
-            <Bouton
-              ton="discret"
-              taille="petit"
-              disabled={enCours}
-              onClick={() => setConfirmeSuppression(false)}
-            >
-              Annuler
-            </Bouton>
-          </div>
-        ) : (
-          <Bouton
-            ton="danger"
-            taille="petit"
-            icone={Trash2}
-            onClick={() => setConfirmeSuppression(true)}
-          >
-            Supprimer cette newsletter
-          </Bouton>
-        )}
+        <Bouton
+          ton="danger"
+          taille="petit"
+          icone={Trash2}
+          disabled={enCours}
+          onClick={auClicConfirme(
+            {
+              titre: `Supprimer « ${titre} » ?`,
+              texte: "La newsletter et ses images sont supprimées définitivement.",
+              confirmer: "Supprimer",
+              ton: "danger",
+            },
+            () =>
+              startTransition(async () => {
+                const resultat = await supprimerNewsletterAction(id, {});
+                if (resultat.erreur) {
+                  setMessage({ texte: resultat.erreur, erreur: true });
+                  return;
+                }
+                router.push("/admin/newsletters");
+              }),
+          )}
+        >
+          Supprimer cette newsletter
+        </Bouton>
       </div>
     </div>
   );

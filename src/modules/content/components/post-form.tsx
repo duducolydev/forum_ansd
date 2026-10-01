@@ -1,7 +1,7 @@
 "use client";
 
 import { Save } from "lucide-react";
-import { Bouton } from "@/components/ui/bouton";
+import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
 import { EditeurTexteRiche } from "@/components/ui/editeur-texte-riche";
 
 import { useActionState } from "react";
@@ -184,9 +184,20 @@ export function PostForm({ action, defaultValues, submitLabel }: Props) {
       )}
 
       <div>
-        <Bouton ton="principal" icone={Save} type="submit" disabled={pending}>
+        <BoutonEnvoiConfirme
+          ton="principal"
+          icone={Save}
+          siNecessaire={siDecoche("isPublished")}
+          confirmation={{
+            titre: "Dépublier ce contenu ?",
+            texte: "Il disparaîtra du site public.",
+            confirmer: "Dépublier",
+            ton: "danger",
+          }}
+          disabled={pending}
+        >
           {pending ? "Enregistrement…" : submitLabel}
-        </Bouton>
+        </BoutonEnvoiConfirme>
       </div>
     </form>
   );

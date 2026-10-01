@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Save } from "lucide-react";
-import { Bouton } from "@/components/ui/bouton";
+import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
 import type { ActionState } from "../actions";
 
 interface Valeurs {
@@ -212,9 +212,20 @@ export function HotelForm({ action, defaultValues, submitLabel }: Props) {
       {state.error && <p className="text-danger-text text-sm">{state.error}</p>}
 
       <div>
-        <Bouton ton="principal" icone={Save} type="submit" disabled={pending}>
+        <BoutonEnvoiConfirme
+          ton="principal"
+          icone={Save}
+          siNecessaire={siDecoche("isPublished")}
+          confirmation={{
+            titre: "Dépublier cet hôtel ?",
+            texte: "Il ne sera plus proposé aux participants sur la page Hébergement.",
+            confirmer: "Dépublier",
+            ton: "danger",
+          }}
+          disabled={pending}
+        >
           {pending ? "Enregistrement…" : submitLabel}
-        </Bouton>
+        </BoutonEnvoiConfirme>
       </div>
     </form>
   );

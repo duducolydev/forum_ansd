@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { enregistrerIntervenantAction, type ActionState } from "../actions";
 import { Save } from "lucide-react";
-import { Bouton } from "@/components/ui/bouton";
+import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
 
 const initialState: ActionState = {};
 const champ = "border-border bg-bg text-text w-full rounded-lg border px-3 py-2 text-sm";
@@ -187,9 +187,20 @@ export function SpeakerForm({ valeurs }: { valeurs: SpeakerFormValues }) {
             className="border-border bg-bg text-text w-20 rounded-lg border px-2 py-1.5 text-sm"
           />
         </label>
-        <Bouton ton="principal" icone={Save} type="submit" disabled={pending}>
+        <BoutonEnvoiConfirme
+          ton="principal"
+          icone={Save}
+          siNecessaire={siDecoche("isPublished")}
+          confirmation={{
+            titre: "Dépublier cet intervenant ?",
+            texte: "Sa fiche disparaîtra du site public.",
+            confirmer: "Dépublier",
+            ton: "danger",
+          }}
+          disabled={pending}
+        >
           {pending ? "Enregistrement…" : "Enregistrer"}
-        </Bouton>
+        </BoutonEnvoiConfirme>
         {state.error && <p className="text-danger-text text-sm">{state.error}</p>}
         {state.message && !state.error && <p className="text-text-3 text-sm">{state.message}</p>}
       </div>

@@ -4,6 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import { auClicConfirme } from "@/components/ui/confirmer";
 import { renommerRoleAction, supprimerRoleAction, type EtatAction } from "../actions";
 
 const etatInitial: EtatAction = {};
@@ -34,7 +35,6 @@ export function GestionRole({
     renommerRoleAction.bind(null, roleId),
     etatInitial,
   );
-  const [confirme, setConfirme] = useState(false);
   const [erreurSuppression, setErreurSuppression] = useState<string | null>(null);
   const [suppressionEnCours, startTransition] = useTransition();
 
@@ -66,43 +66,33 @@ export function GestionRole({
           {comptes} compte(s) portent ce rôle : il ne peut pas être supprimé tant qu&apos;ils ne
           sont pas rattachés ailleurs.
         </p>
-      ) : confirme ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-text text-sm">
-            Supprimer définitivement <strong>{label}</strong> ?
-          </span>
+      ) : (
+        <div>
           <Bouton
             ton="danger"
             taille="petit"
             icone={Trash2}
             disabled={suppressionEnCours}
-            onClick={() =>
-              startTransition(async () => {
-                const resultat = await supprimerRoleAction(roleId, {});
-                if (resultat.erreur) {
-                  setErreurSuppression(resultat.erreur);
-                  setConfirme(false);
-                  return;
-                }
-                router.refresh();
-              })
-            }
+            onClick={auClicConfirme(
+              {
+                titre: `Supprimer le rôle « ${label} » ?`,
+                texte: "La suppression est définitive.",
+                confirmer: "Supprimer le rôle",
+                ton: "danger",
+              },
+              () =>
+                startTransition(async () => {
+                  setErreurSuppression(null);
+                  const resultat = await supprimerRoleAction(roleId, {});
+                  if (resultat.erreur) {
+                    setErreurSuppression(resultat.erreur);
+                    return;
+                  }
+                  router.refresh();
+                }),
+            )}
           >
-            {suppressionEnCours ? "Suppression…" : "Oui, supprimer"}
-          </Bouton>
-          <Bouton
-            ton="discret"
-            taille="petit"
-            disabled={suppressionEnCours}
-            onClick={() => setConfirme(false)}
-          >
-            Annuler
-          </Bouton>
-        </div>
-      ) : (
-        <div>
-          <Bouton ton="danger" taille="petit" icone={Trash2} onClick={() => setConfirme(true)}>
-            Supprimer ce rôle
+            {suppressionEnCours ? "Suppression…" : "Supprimer ce rôle"}
           </Bouton>
         </div>
       )}

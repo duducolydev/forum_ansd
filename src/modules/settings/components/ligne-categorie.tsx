@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Save } from "lucide-react";
-import { Bouton } from "@/components/ui/bouton";
+import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
 import { enregistrerCategorieAction, type EtatAction } from "../actions";
 import { CHAMP, Retour } from "./champs";
 
@@ -155,9 +155,25 @@ export function LigneCategorie({ categorie }: { categorie: CategorieAffichee }) 
           </Case>
         </div>
 
-        <Bouton ton="principal" icone={Save} type="submit" disabled={enCours}>
+        <BoutonEnvoiConfirme
+          ton="principal"
+          icone={Save}
+          disabled={enCours}
+          // Confirmation seulement quand l'enregistrement désactive la catégorie.
+          siNecessaire={siDecoche("isActive")}
+          confirmation={{
+            titre: `Désactiver la catégorie « ${categorie.labelFr} » ?`,
+            texte: `Elle ne sera plus proposée à l'inscription.${
+              categorie.inscrits > 0
+                ? ` Les ${categorie.inscrits} inscrit(s) qui la portent la gardent.`
+                : ""
+            }`,
+            confirmer: "Désactiver",
+            ton: "danger",
+          }}
+        >
           {enCours ? "…" : "Enregistrer"}
-        </Bouton>
+        </BoutonEnvoiConfirme>
       </form>
       <Retour etat={etat} />
     </div>

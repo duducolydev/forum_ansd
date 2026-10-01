@@ -192,7 +192,19 @@ function CarteElement({
           type="button"
           className={PETIT}
           disabled={enCours}
-          onClick={() => agir(() => basculerVisibiliteAction(element.id))}
+          onClick={
+            element.isPublished
+              ? auClicConfirme(
+                  {
+                    titre: "Masquer ce média ?",
+                    texte: "Il ne sera plus visible sur le site, mais reste dans la médiathèque.",
+                    confirmer: "Masquer",
+                    ton: "danger",
+                  },
+                  () => agir(() => basculerVisibiliteAction(element.id)),
+                )
+              : () => agir(() => basculerVisibiliteAction(element.id))
+          }
         >
           {element.isPublished ? <EyeOff aria-hidden size={13} /> : <Eye aria-hidden size={13} />}
           {element.isPublished ? "Masquer" : "Afficher"}

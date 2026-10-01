@@ -4,6 +4,7 @@ import { useActionState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import { auClicConfirme } from "@/components/ui/confirmer";
 import { createRateAction, deleteRateAction, type ActionState } from "../actions";
 
 interface Tarif {
@@ -73,12 +74,19 @@ export function TarifsHotel({ hotelId, tarifs }: { hotelId: string; tarifs: Tari
                       icone={Trash2}
                       aria-label={`Supprimer le tarif ${tarif.roomType}`}
                       disabled={suppressionEnCours}
-                      onClick={() =>
-                        startTransition(async () => {
-                          await deleteRateAction(tarif.id, hotelId, {});
-                          router.refresh();
-                        })
-                      }
+                      onClick={auClicConfirme(
+                        {
+                          titre: "Supprimer ce tarif ?",
+                          texte: `Le tarif « ${tarif.roomType} » ne sera plus affiché.`,
+                          confirmer: "Supprimer",
+                          ton: "danger",
+                        },
+                        () =>
+                          startTransition(async () => {
+                            await deleteRateAction(tarif.id, hotelId, {});
+                            router.refresh();
+                          }),
+                      )}
                     />
                   </td>
                 </tr>

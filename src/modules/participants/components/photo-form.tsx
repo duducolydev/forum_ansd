@@ -4,6 +4,7 @@ import { BoutonSite } from "@/components/site/bouton-site";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { confirmer } from "@/components/ui/confirmer";
 import { PhotoField } from "./photo-field";
 import { removeMyPhotoAction, updateMyPhotoAction, type MySpaceState } from "../my-space-actions";
 
@@ -42,9 +43,18 @@ export function PhotoForm({
   }
 
   function retirer() {
-    demarrer(async () => {
-      setEtat(await removeMyPhotoAction());
-      router.refresh();
+    void confirmer({
+      titre: "Retirer votre photo ?",
+      texte: "Votre badge sera imprimé sans photo, à moins d'en déposer une nouvelle.",
+      confirmer: "Retirer la photo",
+      annuler: "Garder la photo",
+      ton: "danger",
+    }).then((accepte) => {
+      if (!accepte) return;
+      demarrer(async () => {
+        setEtat(await removeMyPhotoAction());
+        router.refresh();
+      });
     });
   }
 

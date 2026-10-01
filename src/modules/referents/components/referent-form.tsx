@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Save } from "lucide-react";
-import { Bouton } from "@/components/ui/bouton";
+import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
 import type { ActionState } from "../actions";
 import type { ReferentInput } from "../schema";
 import { ChampTelephone } from "@/components/ui/champ-telephone";
@@ -96,9 +96,20 @@ export function ReferentForm({ action, defaultValues, submitLabel }: Props) {
       {state.error && <p className="text-danger-text text-sm">{state.error}</p>}
 
       <div>
-        <Bouton ton="principal" icone={Save} type="submit" disabled={pending}>
+        <BoutonEnvoiConfirme
+          ton="principal"
+          icone={Save}
+          siNecessaire={siDecoche("isActive")}
+          confirmation={{
+            titre: "Retirer ce référent du service ?",
+            texte: "Il ne sera plus proposé au rattachement et ne recevra plus d'alerte.",
+            confirmer: "Retirer du service",
+            ton: "danger",
+          }}
+          disabled={pending}
+        >
           {pending ? "Enregistrement…" : submitLabel}
-        </Bouton>
+        </BoutonEnvoiConfirme>
       </div>
     </form>
   );

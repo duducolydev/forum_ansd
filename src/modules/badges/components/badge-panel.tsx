@@ -162,7 +162,15 @@ export function BadgePanel({ participantId, badges, canGenerate, canRevoke, canP
               ton="principal"
               icone={RefreshCw}
               disabled={pending}
-              onClick={() => run(() => reissueBadgeAction(participantId, reason))}
+              onClick={auClicConfirme(
+                {
+                  titre: `Réémettre le badge en v${current.version + 1} ?`,
+                  texte: `Le QR de la version ${current.version} cesse immédiatement d'être valide : un badge déjà imprimé sera refusé aux contrôles.`,
+                  confirmer: "Réémettre",
+                  ton: "danger",
+                },
+                () => run(() => reissueBadgeAction(participantId, reason)),
+              )}
             >
               Réémettre en v{current.version + 1}
             </Bouton>

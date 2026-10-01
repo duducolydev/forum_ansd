@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Copy, Eye, EyeOff, Trash2 } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
-import { confirmer } from "@/components/ui/confirmer";
+import { auClicConfirme, confirmer } from "@/components/ui/confirmer";
 import { deleteSessionAction, duplicateSessionAction, togglePublishedAction } from "../actions";
 
 /**
@@ -60,7 +60,19 @@ export function SessionActions({
         icone={isPublished ? EyeOff : Eye}
         titre={isPublished ? "Dépublier" : "Publier"}
         disabled={enCours}
-        onClick={() => lancer(() => togglePublishedAction(id, !isPublished))}
+        onClick={
+          isPublished
+            ? auClicConfirme(
+                {
+                  titre: "Dépublier cette session ?",
+                  texte: `« ${titre} » disparaîtra du programme public.`,
+                  confirmer: "Dépublier",
+                  ton: "danger",
+                },
+                () => lancer(() => togglePublishedAction(id, false)),
+              )
+            : () => lancer(() => togglePublishedAction(id, true))
+        }
       />
       <Bouton
         ton="discret"

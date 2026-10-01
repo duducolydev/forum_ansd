@@ -3,7 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FolderPlus, Save } from "lucide-react";
-import { Bouton } from "@/components/ui/bouton";
+import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
 import { creerAlbumAction, modifierAlbumAction, type EtatMedia } from "../actions";
 
 const etatInitial: EtatMedia = {};
@@ -101,9 +101,20 @@ export function FormulaireAlbum({ album }: { album?: ValeursAlbum }) {
         </label>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Bouton ton="principal" icone={album ? Save : FolderPlus} type="submit" disabled={enCours}>
+        <BoutonEnvoiConfirme
+          ton="principal"
+          icone={album ? Save : FolderPlus}
+          siNecessaire={siDecoche("isPublished")}
+          confirmation={{
+            titre: "Dépublier cet album ?",
+            texte: "Il disparaîtra de la médiathèque publique ; ses médias sont conservés.",
+            confirmer: "Dépublier",
+            ton: "danger",
+          }}
+          disabled={enCours}
+        >
           {enCours ? "Enregistrement…" : album ? "Enregistrer l'album" : "Créer l'album"}
-        </Bouton>
+        </BoutonEnvoiConfirme>
         {etat.erreur && (
           <p role="alert" className="text-danger-text text-sm">
             {etat.erreur}

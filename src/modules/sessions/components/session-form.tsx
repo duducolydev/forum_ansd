@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { saveSessionAction, type ActionState } from "../actions";
 import { SESSION_TYPES, TYPE_LABELS } from "../schema";
 import { Save } from "lucide-react";
-import { Bouton } from "@/components/ui/bouton";
+import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
 
 const initialState: ActionState = {};
 
@@ -362,9 +362,20 @@ export function SessionForm({
           />
           Publier sur le site
         </label>
-        <Bouton ton="principal" icone={Save} type="submit" disabled={pending}>
+        <BoutonEnvoiConfirme
+          ton="principal"
+          icone={Save}
+          siNecessaire={siDecoche("isPublished")}
+          confirmation={{
+            titre: "Dépublier cette session ?",
+            texte: "Elle disparaîtra du programme public.",
+            confirmer: "Dépublier",
+            ton: "danger",
+          }}
+          disabled={pending}
+        >
           {pending ? "Enregistrement…" : "Enregistrer"}
-        </Bouton>
+        </BoutonEnvoiConfirme>
         {state.error && <p className="text-danger-text text-sm">{state.error}</p>}
         {state.message && !state.error && <p className="text-text-3 text-sm">{state.message}</p>}
       </div>

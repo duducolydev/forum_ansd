@@ -2,7 +2,7 @@
 
 import { useActionState, useId } from "react";
 import { Save } from "lucide-react";
-import { Bouton } from "@/components/ui/bouton";
+import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
 import { EditeurTexteRiche } from "@/components/ui/editeur-texte-riche";
 import { TAILLE_MAX_DOCUMENT } from "@/lib/texte-riche";
 import { ajouterImageAction, type EtatAction } from "../actions";
@@ -206,9 +206,20 @@ export function FormulaireNewsletter({
       {etat.avis && <p className="text-accent-text text-sm">{etat.avis}</p>}
 
       <div>
-        <Bouton ton="principal" icone={Save} type="submit" disabled={enCours}>
+        <BoutonEnvoiConfirme
+          ton="principal"
+          icone={Save}
+          siNecessaire={siDecoche("isPublished")}
+          confirmation={{
+            titre: "Dépublier cette newsletter ?",
+            texte: "Sa page disparaîtra du site.",
+            confirmer: "Dépublier",
+            ton: "danger",
+          }}
+          disabled={enCours}
+        >
           {enCours ? "Enregistrement…" : submitLabel}
-        </Bouton>
+        </BoutonEnvoiConfirme>
       </div>
 
       {/* La limite du document sérialisé est bien plus haute que celle du texte

@@ -11,6 +11,7 @@ import {
 import { GenerateurMotDePasse } from "./generateur-mdp";
 import { KeyRound, LockOpen, Save } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
 
 const etatInitial: EtatAction = {};
 
@@ -133,9 +134,21 @@ export function CarteUtilisateur({
           />
           Compte actif
         </label>
-        <Bouton ton="principal" icone={Save} type="submit" disabled={modifEnCours}>
+        <BoutonEnvoiConfirme
+          ton="principal"
+          icone={Save}
+          disabled={modifEnCours}
+          // Confirmation seulement quand l'enregistrement désactive le compte.
+          siNecessaire={siDecoche("isActive")}
+          confirmation={{
+            titre: `Désactiver le compte de ${utilisateur.name} ?`,
+            texte: "La personne ne pourra plus se connecter au BackOffice jusqu'à sa réactivation.",
+            confirmer: "Désactiver le compte",
+            ton: "danger",
+          }}
+        >
           {modifEnCours ? "Enregistrement…" : "Enregistrer"}
-        </Bouton>
+        </BoutonEnvoiConfirme>
       </form>
       {etatModif.erreur && <p className="text-danger-text mb-3 text-sm">{etatModif.erreur}</p>}
       {etatModif.avis && <p className="text-accent-text mb-3 text-sm">{etatModif.avis}</p>}
@@ -145,9 +158,19 @@ export function CarteUtilisateur({
           <div className="flex-1">
             <GenerateurMotDePasse id={`mdp-${utilisateur.id}`} label="Nouveau mot de passe" />
           </div>
-          <Bouton ton="secondaire" icone={KeyRound} type="submit" disabled={mdpEnCours}>
+          <BoutonEnvoiConfirme
+            ton="secondaire"
+            icone={KeyRound}
+            disabled={mdpEnCours}
+            confirmation={{
+              titre: `Remplacer le mot de passe de ${utilisateur.name} ?`,
+              texte: "L'ancien mot de passe cessera aussitôt de fonctionner.",
+              confirmer: "Remplacer",
+              ton: "danger",
+            }}
+          >
             {mdpEnCours ? "…" : "Remplacer"}
-          </Bouton>
+          </BoutonEnvoiConfirme>
         </form>
 
         {verrouille && (
