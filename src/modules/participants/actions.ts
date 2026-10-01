@@ -160,6 +160,10 @@ export async function cancelParticipantAction(participantId: string): Promise<Ac
   return runTransition(participantId, "participants.write", service.cancelParticipant);
 }
 
+export async function reactivateParticipantAction(participantId: string): Promise<ActionState> {
+  return runTransition(participantId, "participants.write", service.reactivateParticipant);
+}
+
 export async function deleteParticipantAction(participantId: string): Promise<ActionState> {
   try {
     const session = await requireSession();

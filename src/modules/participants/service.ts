@@ -476,6 +476,77 @@ export async function cancelParticipant(participantId: string, actor: Actor): Pr
   return updated;
 }
 
+/** Statuts qu'une annulation ou un refus ont pu interrompre. */
+const STATUTS_RESTAURABLES: ParticipantStatus[] = [
+  "INVITED",
+  "INVITATION_SENT",
+  "REGISTRATION_STARTED",
+  "REGISTERED",
+  "CONFIRMED",
+  "BADGED",
+];
+
+/**
+ * Réactive un participant annulé ou décliné (demande du 1er octobre 2026 : une
+ * annulation faite par erreur ne se rattrapait pas).
+ *
+ * Le statut d'avant est relu dans le journal d'audit, qui garde l'état
+ * précédent de chaque transition : la réactivation rend **exactement** ce que
+ * l'annulation avait retiré, sans deviner. Deux corrections seulement :
+ * - un participant « badgé » dont le badge n'est plus actif repart confirmé, et
+ *   son badge est régénéré ;
+ * - un journaliste sans accréditation ne repart jamais confirmé.
+ *
+ * Aucun e-mail : on répare une erreur, on n'annonce rien de neuf.
+ */
+export async function reactivateParticipant(
+  participantId: string,
+  actor: Actor,
+): Promise<Participant> {
+  const participant = await prisma.participant.findUniqueOrThrow({
+    where: { id: participantId },
+    include: {
+      category: { select: { requiresAccreditation: true } },
+      badges: { where: { revokedAt: null }, select: { id: true }, take: 1 },
+    },
+  });
+  await assertStatus(participant, ["CANCELLED", "DECLINED"], "reactivate");
+
+  const trace = await prisma.auditLog.findFirst({
+    where: {
+      entity: "Participant",
+      entityId: participantId,
+      action: { in: ["participant.cancel", "participant.decline"] },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { before: true },
+  });
+  const avant = (trace?.before as { status?: string } | null)?.status as
+    ParticipantStatus | undefined;
+
+  let cible: ParticipantStatus =
+    avant && STATUTS_RESTAURABLES.includes(avant)
+      ? avant
+      : participant.confirmedAt
+        ? "CONFIRMED"
+        : participant.registeredAt
+          ? "REGISTERED"
+          : "INVITED";
+  if (cible === "BADGED" && participant.badges.length === 0) cible = "CONFIRMED";
+  if (
+    (cible === "CONFIRMED" || cible === "BADGED") &&
+    participant.category.requiresAccreditation &&
+    !participant.accreditedAt
+  ) {
+    cible = "REGISTERED";
+  }
+
+  const updated = await repo.updateParticipant(participantId, { status: cible });
+  await logTransition(participantId, "participant.reactivate", participant.status, cible, actor);
+  if (cible === "CONFIRMED") await enqueueBadgeGeneration(participantId);
+  return updated;
+}
+
 /** Appelé par le job de génération de badge (module 3.6) une fois le PDF/PNG produits. */
 export async function markBadged(participantId: string, actor: Actor): Promise<Participant> {
   const participant = await prisma.participant.findUniqueOrThrow({ where: { id: participantId } });

@@ -8,6 +8,7 @@ import {
   createParticipant,
   declineParticipant,
   markBadged,
+  reactivateParticipant,
   publicIdPrefix,
   statutInitial,
   type Actor,
@@ -266,5 +267,71 @@ describe("machine à états des participants (brief §2.3)", () => {
     await expect(cancelParticipant(registeredParticipant.id, actor)).rejects.toThrow(
       InvalidParticipantTransitionError,
     );
+  });
+
+  describe("réactivation (1er octobre 2026 : rattraper une annulation faite par erreur)", () => {
+    it("rend à un participant annulé le statut qu'il avait — confirmé", async () => {
+      const donnees = await buildInput("AUTORITE_VIP");
+      const participant = await createParticipant({ ...donnees, source: "ONSITE", actor });
+      participantIds.push(participant.id);
+      await cancelParticipant(participant.id, actor);
+
+      const reactive = await reactivateParticipant(participant.id, actor);
+      expect(reactive.status).toBe("CONFIRMED");
+      const trace = await prisma.auditLog.findFirst({
+        where: { entityId: participant.id, action: "participant.reactivate" },
+      });
+      expect(trace?.before).toEqual({ status: "CANCELLED" });
+      expect(trace?.after).toEqual({ status: "CONFIRMED" });
+    });
+
+    it("rend « badgé » quand le badge est toujours valide", async () => {
+      const donnees = await buildInput("AUTORITE_VIP");
+      const participant = await createParticipant({ ...donnees, source: "ONSITE", actor });
+      participantIds.push(participant.id);
+      await prisma.badge.create({
+        data: { participantId: participant.id, qrToken: `test-${crypto.randomUUID()}` },
+      });
+      await markBadged(participant.id, actor);
+      await cancelParticipant(participant.id, actor);
+
+      expect((await reactivateParticipant(participant.id, actor)).status).toBe("BADGED");
+    });
+
+    it("repart confirmé quand le badge a été révoqué entre-temps", async () => {
+      const donnees = await buildInput("AUTORITE_VIP");
+      const participant = await createParticipant({ ...donnees, source: "ONSITE", actor });
+      participantIds.push(participant.id);
+      await prisma.badge.create({
+        data: {
+          participantId: participant.id,
+          qrToken: `test-${crypto.randomUUID()}`,
+          revokedAt: new Date(),
+        },
+      });
+      await markBadged(participant.id, actor);
+      await cancelParticipant(participant.id, actor);
+
+      expect((await reactivateParticipant(participant.id, actor)).status).toBe("CONFIRMED");
+    });
+
+    it("rend « inscrit » à une inscription déclinée", async () => {
+      const donnees = await buildInput("AUTORITE_VIP");
+      const participant = await createParticipant({ ...donnees, source: "ONLINE", actor });
+      participantIds.push(participant.id);
+      await declineParticipant(participant.id, actor);
+
+      expect((await reactivateParticipant(participant.id, actor)).status).toBe("REGISTERED");
+    });
+
+    it("refuse de réactiver un participant qui n'est ni annulé ni décliné", async () => {
+      const donnees = await buildInput("AUTORITE_VIP");
+      const participant = await createParticipant({ ...donnees, source: "ONSITE", actor });
+      participantIds.push(participant.id);
+
+      await expect(reactivateParticipant(participant.id, actor)).rejects.toThrow(
+        InvalidParticipantTransitionError,
+      );
+    });
   });
 });
