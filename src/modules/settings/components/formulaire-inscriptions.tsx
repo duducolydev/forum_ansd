@@ -46,6 +46,26 @@ export function FormulaireInscriptions({ valeurs }: { valeurs: Inscriptions }) {
           </label>
         </div>
 
+        <div className="md:col-span-2">
+          <label className="text-text-2 flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="validationComite"
+              defaultChecked={valeurs.validationComite}
+              className="mt-1"
+            />
+            <span>
+              Valider chaque inscription avant le badge
+              <span className="text-text-3 block text-xs">
+                Toute inscription en ligne, invités compris, attend la confirmation du comité ; le
+                badge n&apos;est généré qu&apos;ensuite. Décoché, la « validation automatique » de
+                chaque catégorie s&apos;applique. Le comptoir d&apos;accueil et l&apos;import par
+                fichier confirment toujours directement.
+              </span>
+            </span>
+          </label>
+        </div>
+
         <Champ id="insc-ouverture" label="Ouverture le" aide="Vide : ouvert dès maintenant.">
           <input
             id="insc-ouverture"

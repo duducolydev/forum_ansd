@@ -136,9 +136,12 @@ async function logTransition(
 export function statutInitial(
   category: { autoConfirm: boolean; requiresAccreditation: boolean },
   source?: "ONLINE" | "ONSITE" | "IMPORT",
+  options: { validationComite?: boolean } = {},
 ): ParticipantStatus {
   if (category.requiresAccreditation) return "REGISTERED";
   if (source === "ONSITE" || source === "IMPORT") return "CONFIRMED";
+  // Réglage « Valider chaque inscription avant le badge » (6 octobre 2026).
+  if (options.validationComite) return "REGISTERED";
   return category.autoConfirm ? "CONFIRMED" : "REGISTERED";
 }
 

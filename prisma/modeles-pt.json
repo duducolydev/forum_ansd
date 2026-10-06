@@ -39,7 +39,7 @@
     },
     "registration_received": {
       "subject": "A sua inscrição foi recebida",
-      "body": "Olá {{prenom}},\n\nA sua inscrição no Fórum foi recebida e aguarda validação pelo comité organizador.\n\nCom os melhores cumprimentos,\nO comité organizador"
+      "body": "Olá {{prenom}},\n\nA sua inscrição no Fórum Internacional sobre Dados foi recebida. Deve agora ser validada pelo comité organizador.\n\nO seu crachá estará disponível no seu espaço pessoal assim que a sua inscrição for validada. Receberá então um e-mail de confirmação e, depois, um segundo quando o crachá estiver pronto.\n\nCom os melhores cumprimentos,\nO comité organizador"
     },
     "reminder_j1": {
       "subject": "O Fórum começa amanhã",

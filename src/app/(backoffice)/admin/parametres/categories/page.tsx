@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
-import { listerCategories } from "@/modules/settings/service";
+import { lireParametres, listerCategories } from "@/modules/settings/service";
 import { LigneCategorie } from "@/modules/settings/components/ligne-categorie";
 
 export const metadata = { title: "Catégories de participants" };
@@ -25,6 +25,7 @@ export default async function CategoriesPage() {
   const edition = await getActiveEdition();
   const categories = await listerCategories(edition.id);
   const auto = categories.filter((categorie) => categorie.autoConfirm).length;
+  const validationComite = lireParametres(edition).inscriptions.validationComite;
 
   return (
     <div>
@@ -34,8 +35,21 @@ export default async function CategoriesPage() {
         </Link>
         <h2 className="mt-1 text-2xl">Catégories de participants</h2>
         <span className="text-text-3 text-sm">
-          {categories.length} catégories — {auto} en validation automatique. Les autres attendent
-          une confirmation du comité.
+          {validationComite ? (
+            <>
+              {categories.length} catégories. La validation par le comité est activée pour toute
+              inscription en ligne (
+              <Link href="/admin/parametres" className="text-link">
+                Paramètres › Inscriptions
+              </Link>
+              ) : la « validation automatique » des catégories est suspendue.
+            </>
+          ) : (
+            <>
+              {categories.length} catégories — {auto} en validation automatique. Les autres
+              attendent une confirmation du comité.
+            </>
+          )}
         </span>
       </div>
 

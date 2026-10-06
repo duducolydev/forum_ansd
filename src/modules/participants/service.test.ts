@@ -50,6 +50,23 @@ describe("statut initial d'une inscription", () => {
       "REGISTERED",
     );
   });
+
+  describe("validation par le comité avant le badge (6 octobre 2026)", () => {
+    const auto = { autoConfirm: true, requiresAccreditation: false };
+
+    it("met en attente une inscription en ligne, même en validation automatique", () => {
+      expect(statutInitial(auto, "ONLINE", { validationComite: true })).toBe("REGISTERED");
+    });
+
+    it("laisse le comptoir et l'import confirmer directement", () => {
+      expect(statutInitial(auto, "ONSITE", { validationComite: true })).toBe("CONFIRMED");
+      expect(statutInitial(auto, "IMPORT", { validationComite: true })).toBe("CONFIRMED");
+    });
+
+    it("rend la main à la catégorie quand le réglage est désactivé", () => {
+      expect(statutInitial(auto, "ONLINE", { validationComite: false })).toBe("CONFIRMED");
+    });
+  });
 });
 
 describe("machine à états des participants (brief §2.3)", () => {

@@ -973,9 +973,9 @@ async function main() {
       subjectFr: "Votre inscription a bien été reçue",
       subjectEn: "Your registration has been received",
       bodyFr:
-        "Bonjour {{prenom}},\n\nVotre inscription au Forum a bien été reçue et est en attente de validation par le comité d'organisation.\n\nCordialement,\nLe comité d'organisation",
+        "Bonjour {{prenom}},\n\nVotre inscription au Forum international sur les données a bien été reçue. Elle doit maintenant être validée par le comité d'organisation.\n\nVotre badge sera disponible dans votre espace personnel dès que votre inscription aura été validée. Vous recevrez alors un e-mail de confirmation, puis un second lorsque votre badge sera prêt.\n\nCordialement,\nLe comité d'organisation",
       bodyEn:
-        "Hello {{prenom}},\n\nYour registration for the Forum has been received and is pending validation by the organising committee.\n\nBest regards,\nThe organising committee",
+        "Hello {{prenom}},\n\nYour registration for the International Data Forum has been received. It must now be validated by the organising committee.\n\nYour badge will be available in your personal space as soon as your registration has been validated. You will then receive a confirmation e-mail, followed by a second one when your badge is ready.\n\nBest regards,\nThe organising committee",
       variables: ["prenom"],
     },
     {

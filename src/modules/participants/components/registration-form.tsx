@@ -220,7 +220,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
             ? "Votre participation est confirmée. Vous allez recevoir un e-mail avec un accès direct à votre espace."
             : state.success.accreditation
               ? "Votre demande d'accréditation presse est enregistrée. Votre compte sera activé dès que l'administration du Forum aura accordé votre accréditation ; vous recevrez alors un e-mail avec un accès direct à votre espace."
-              : "Votre inscription est enregistrée et en attente de validation par le comité d'organisation. Vous recevrez un e-mail dès qu'elle sera confirmée, avec un accès direct à votre espace."}
+              : "Votre inscription est enregistrée et en attente de validation par le comité d'organisation. Votre badge sera disponible dans votre espace une fois l'inscription validée : vous recevrez un e-mail de confirmation avec un accès direct à votre espace, puis un second quand le badge sera prêt."}
         </p>
       </div>
     );

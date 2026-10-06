@@ -91,6 +91,7 @@ export async function enregistrerInscriptionsAction(
     const { acteur, editionId } = await exigerParametreur();
     const valeurs = inscriptionsSchema.parse({
       active: formData.get("active") === "on",
+      validationComite: formData.get("validationComite") === "on",
       ouvertureLe: formData.get("ouvertureLe") ?? "",
       fermetureLe: formData.get("fermetureLe") ?? "",
       messageFermeFr: formData.get("messageFermeFr") ?? undefined,

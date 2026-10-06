@@ -45,13 +45,31 @@ describe("migrations de données", () => {
     .filter((nom) => /^\d{14}_/.test(nom) && nom >= "20260930")
     .map((nom) => ({ nom, sql: readFileSync(join(dossier, nom, "migration.sql"), "utf-8") }));
 
-  it("ne remplissent que des champs portugais encore vides", () => {
+  it("ne réécrivent un champ portugais que s'il est vide ou encore d'origine", () => {
     for (const { nom, sql } of recentes) {
       for (const ordre of sql.split(";").filter((o) => /^\s*(--.*\n\s*)*UPDATE/i.test(o))) {
-        const champsPt = [...ordre.matchAll(/`(\w+Pt)`\s*=/g)].map((m) => m[1]);
+        const [ecriture, condition = ""] = ordre.split(/\bWHERE\s+(?=`)/);
+        const champsPt = [...ecriture.matchAll(/`(\w+Pt)`\s*=/g)].map((m) => m[1]);
         for (const champ of champsPt) {
-          expect(ordre, `${nom} : ${champ} écrit sans garde`).toMatch(
-            new RegExp(`\`${champ}\`\\s+IS NULL`),
+          // Vide, ou égal au texte d'origine : une retouche faite dans le
+          // BackOffice ne correspond plus et n'est donc jamais écrasée.
+          expect(condition, `${nom} : ${champ} écrit sans garde`).toMatch(
+            new RegExp(`\`${champ}\`\\s+(IS NULL|= ')`),
+          );
+        }
+      }
+    }
+  });
+
+  it("ne réécrivent un modèle d'e-mail que s'il est encore d'origine", () => {
+    for (const { nom, sql } of recentes) {
+      for (const ordre of sql
+        .split(";")
+        .filter((o) => /UPDATE\s+`NotificationTemplate`/i.test(o))) {
+        const [ecriture, condition = ""] = ordre.split(/\bWHERE\s+(?=`)/);
+        for (const [, champ] of ecriture.matchAll(/`((?:body|subject)(?:Fr|En|Pt))`\s*=/g)) {
+          expect(condition, `${nom} : ${champ} écrasé sans garde`).toMatch(
+            new RegExp(`\`${champ}\`\\s+(IS NULL|= ')`),
           );
         }
       }

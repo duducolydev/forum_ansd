@@ -98,16 +98,58 @@ describe("registerPublicParticipant (brief §5.3)", () => {
     expect(created.source).toBe("ONLINE");
   });
 
-  it("auto-confirms for a category flagged autoConfirm", async () => {
+  /** Règle le réglage « Valider chaque inscription avant le badge » le temps d'un test. */
+  async function avecValidationComite<T>(valeur: boolean, travail: () => Promise<T>): Promise<T> {
+    const edition = await prisma.edition.findFirstOrThrow({ where: { code: "FID-2026" } });
+    const avant = (edition.settings ?? {}) as { inscriptions?: object };
+    try {
+      await prisma.edition.update({
+        where: { id: edition.id },
+        data: {
+          settings: {
+            ...avant,
+            inscriptions: { ...(avant.inscriptions ?? {}), validationComite: valeur },
+          },
+        },
+      });
+      return await travail();
+    } finally {
+      await prisma.edition.update({ where: { id: edition.id }, data: { settings: avant } });
+    }
+  }
+
+  it("auto-confirms for a category flagged autoConfirm when committee validation is off", async () => {
     const { editionId, editionCode, categoryId } = await context("PARTICIPANT_NATIONAL");
-    const result = await registerPublicParticipant({
-      editionId,
-      editionCode,
-      ip: `ip-${crypto.randomUUID()}`,
-      input: baseInput({ categoryId }),
-    });
+    const result = await avecValidationComite(false, () =>
+      registerPublicParticipant({
+        editionId,
+        editionCode,
+        ip: `ip-${crypto.randomUUID()}`,
+        input: baseInput({ categoryId }),
+      }),
+    );
     expect(result.status).toBe("OK");
     if (result.status === "OK") expect(result.participantStatus).toBe("CONFIRMED");
+  });
+
+  it("met en attente du comité une catégorie à validation automatique (6 octobre 2026)", async () => {
+    const { editionId, editionCode, categoryId } = await context("PARTICIPANT_NATIONAL");
+    const input = baseInput({ categoryId });
+    const result = await avecValidationComite(true, () =>
+      registerPublicParticipant({ editionId, editionCode, ip: `ip-${crypto.randomUUID()}`, input }),
+    );
+    expect(result.status).toBe("OK");
+    if (result.status !== "OK") return;
+    expect(result.participantStatus).toBe("REGISTERED");
+
+    // Pas de badge avant la validation : aucune génération en file, et
+    // l'accusé de réception part à la place de la confirmation.
+    const participant = await prisma.participant.findUniqueOrThrow({
+      where: { id: result.participantId },
+      select: { confirmedAt: true, badges: { select: { id: true } } },
+    });
+    expect(participant.confirmedAt).toBeNull();
+    expect(participant.badges).toEqual([]);
   });
 
   it("rejects a request whose honeypot field is filled", async () => {

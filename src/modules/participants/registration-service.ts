@@ -65,8 +65,10 @@ export async function registerPublicParticipant(options: {
     : null;
   const invitation = invitationLue?.editionId === editionId ? invitationLue : null;
 
+  // Réglages lus à la source : le guichet comme la validation par le comité
+  // doivent valoir dès leur enregistrement, sans attendre le cache.
+  const { parametres } = await parametresFrais();
   if (!invitation) {
-    const { parametres } = await parametresFrais();
     const etat = etatInscriptions(parametres.inscriptions);
     if (!etat.ouvertes) {
       return {
@@ -127,7 +129,9 @@ export async function registerPublicParticipant(options: {
   if (!category) {
     return { status: "CATEGORY_INVALID" };
   }
-  const status: ParticipantStatus = statutInitial(category);
+  const status: ParticipantStatus = statutInitial(category, "ONLINE", {
+    validationComite: parametres.inscriptions.validationComite,
+  });
   const now = new Date();
 
   const participant = await prisma.participant.create({

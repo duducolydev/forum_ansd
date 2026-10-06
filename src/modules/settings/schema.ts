@@ -23,6 +23,14 @@ const jour = z
 export const inscriptionsSchema = z.object({
   /** Interrupteur manuel : ferme tout de suite, sans toucher aux dates. */
   active: z.boolean().default(true),
+  /**
+   * Validation par le comité avant le badge (6 octobre 2026) : toute
+   * inscription en ligne, invités compris, attend la confirmation du comité,
+   * quelle que soit la « validation automatique » de sa catégorie. Le comptoir
+   * et l'import par fichier n'y sont pas soumis : l'agent ou le comité y
+   * valident déjà eux-mêmes.
+   */
+  validationComite: z.boolean().default(true),
   ouvertureLe: jour.default(""),
   fermetureLe: jour.default(""),
   messageFermeFr: z
