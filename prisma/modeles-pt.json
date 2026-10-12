@@ -1,6 +1,10 @@
 {
   "_commentaire": "Traduction portugaise des modèles d'e-mails destinés aux participants (30 septembre 2026). Source unique : lue par prisma/seed.ts et par la migration 20260930100000_portugais_contenus. Les modèles internes (BackOffice, référents, contact) restent en FR/EN.",
   "modeles": {
+    "accreditation_declined": {
+      "subject": "O seu pedido de acreditação de imprensa",
+      "body": "Olá {{prenom}},\n\nAgradecemos o seu interesse pelo Fórum Internacional sobre Dados.\n\nApós análise, lamentamos não poder dar seguimento favorável ao seu pedido de acreditação de imprensa.\n\nPara qualquer questão, pode escrever ao comité organizador através da secção «Escreva-nos» do portal.\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
     "accreditation_granted": {
       "subject": "A sua acreditação de imprensa foi concedida",
       "body": "Olá {{prenom}},\n\nA sua acreditação de imprensa para o Fórum Internacional sobre Dados foi concedida: a sua conta está ativa.\n\nAceda diretamente ao seu espaço: {{lien_espace}}\nEsta ligação é pessoal e é válida durante 14 dias.\n\nCódigo de acesso de reserva, a introduzir com o seu endereço de e-mail na página «O meu espaço»: {{code6}}\n\nO seu crachá de imprensa, com a menção «Acreditação de imprensa», estará aí disponível assim que for gerado.\n\nCom os melhores cumprimentos,\nO comité organizador"
@@ -15,11 +19,11 @@
     },
     "invitation": {
       "subject": "Está convidado(a) para o Fórum Internacional sobre Dados",
-      "body": "Olá {{prenom}},\n\nEstá convidado(a) para o Fórum Internacional sobre Dados da ANSD, de 23 a 25 de novembro de 2026, em Dacar.\n\nInscreva-se através da sua ligação pessoal: {{lien_inscription}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+      "body": "Olá {{prenom}},\n\nEstá convidado(a) para o Fórum Internacional sobre Dados da ANSD, de 23 a 25 de novembro de 2026, em Dacar.\n\nConfirme a sua inscrição através da sua ligação pessoal (confirmação obrigatória!): {{lien_inscription}}\n\nCom os melhores cumprimentos,\nO comité organizador"
     },
     "invitation_reminder": {
       "subject": "Lembrete — Inscrição no Fórum Internacional sobre Dados",
-      "body": "Olá {{prenom}},\n\nAinda não recebemos a sua inscrição no Fórum. Ainda há lugares disponíveis: {{lien_inscription}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+      "body": "Olá {{prenom}},\n\nAinda não recebemos a sua inscrição no Fórum. Restam apenas alguns lugares: {{lien_inscription}}\n\nCom os melhores cumprimentos,\nO comité organizador"
     },
     "magic_link": {
       "subject": "A sua ligação de acesso a «O meu espaço»",
@@ -31,11 +35,11 @@
     },
     "registration_confirmed": {
       "subject": "A sua participação no Fórum está confirmada",
-      "body": "Olá {{prenom}},\n\nA sua participação no Fórum Internacional sobre Dados está confirmada.\n\nAceda diretamente ao seu espaço, sem mais nenhum passo: {{lien_espace}}\nEsta ligação é pessoal e é válida durante 14 dias.\n\nCódigo de acesso de reserva, a introduzir com o seu endereço de e-mail na página «O meu espaço»: {{code6}}\n{{referent_bloc}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+      "body": "Olá {{prenom}},\n\nA sua participação no Fórum Internacional sobre Dados está confirmada.\n\nPara ter acesso ao programa atualizado, à lista de painelistas e a todas as informações úteis sobre o Fórum, aceda diretamente ao seu espaço, sem mais nenhum passo: {{lien_espace}}\nEsta ligação é pessoal e é válida durante 14 dias.\n\nCódigo de acesso de reserva, a introduzir com o seu endereço de e-mail na página «O meu espaço»: {{code6}}\n{{referent_bloc}}\n\nCom os melhores cumprimentos,\nO comité organizador"
     },
     "registration_imported": {
       "subject": "A sua inscrição no Fórum Internacional sobre Dados",
-      "body": "Olá {{prenom}},\n\nNa sequência da confirmação da sua participação, o comité organizador inscreveu-o(a) no Fórum Internacional sobre Dados. Não tem nenhum passo de inscrição a realizar.\n\nAceda diretamente ao seu espaço: {{lien_espace}}\nEsta ligação é pessoal e é válida durante 14 dias.\n\nCódigo de acesso de reserva, a introduzir com o seu endereço de e-mail na página «O meu espaço»: {{code6}}\n\nNo seu espaço, pode verificar e completar os seus dados, acrescentar a sua fotografia e descarregar o seu crachá. Um e-mail avisá-lo(a)-á assim que o crachá estiver pronto.\n{{referent_bloc}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+      "body": "Olá {{prenom}},\n\nNa sequência da confirmação da sua participação, o comité organizador inscreveu-o(a) no Fórum Internacional sobre Dados. Não tem nenhum passo de inscrição a realizar.\n\nPara ter acesso ao programa atualizado, à lista de painelistas e a todas as informações úteis sobre o Fórum, aceda diretamente ao seu espaço: {{lien_espace}}\nEsta ligação é pessoal e é válida durante 14 dias.\n\nCódigo de acesso de reserva, a introduzir com o seu endereço de e-mail na página «O meu espaço»: {{code6}}\n\nNo seu espaço, pode verificar e completar os seus dados, acrescentar a sua fotografia e descarregar o seu crachá. Um e-mail avisá-lo(a)-á assim que o crachá estiver pronto.\n{{referent_bloc}}\n\nCom os melhores cumprimentos,\nO comité organizador"
     },
     "registration_received": {
       "subject": "A sua inscrição foi recebida",
@@ -47,7 +51,7 @@
     },
     "reminder_j7": {
       "subject": "O Fórum abre dentro de uma semana",
-      "body": "Olá {{prenom}},\n\nO Fórum Internacional sobre Dados abre dentro de uma semana, de 23 a 25 de novembro de 2026, no Hotel King Fahd Palace, em Dacar.\n\nDescarregue o seu crachá antes de vir: será verificado à entrada. Encontra-o no seu espaço pessoal: {{lien_espace}}\n\nAté breve,\nO comité organizador"
+      "body": "Olá {{prenom}},\n\nO Fórum Internacional sobre Dados abre dentro de uma semana, de 23 a 25 de novembro de 2026, no Hotel King Fahd Palace, em Dacar.\n\nDescarregue o seu crachá antes de vir: o crachá é obrigatório e será verificado à entrada. Descarregue-o no seu espaço pessoal: {{lien_espace}}\n\nAté breve,\nO comité organizador"
     },
     "session_promoted": {
       "subject": "Vagou um lugar: {{session}}",

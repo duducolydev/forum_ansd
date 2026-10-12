@@ -145,10 +145,15 @@ export function statutInitial(
   return category.autoConfirm ? "CONFIRMED" : "REGISTERED";
 }
 
-/** Refus explicite : une accréditation demandée par qui n'en a pas le droit. */
+/**
+ * Refus explicite : une accréditation accordée — ou refusée, depuis le
+ * 12 octobre 2026 — par qui n'en a pas le droit.
+ */
 export class AccreditationReserveeError extends Error {
   constructor() {
-    super("L'accréditation presse est réservée à l'administration du Forum, depuis le BackOffice.");
+    super(
+      "Accorder ou refuser une accréditation presse est réservé à l'administration du Forum, depuis le BackOffice.",
+    );
   }
 }
 
@@ -459,15 +464,39 @@ export async function confirmParticipant(
 export async function declineParticipant(
   participantId: string,
   actor: Actor,
+  options: { peutAccrediter?: boolean } = {},
 ): Promise<Participant> {
-  const participant = await prisma.participant.findUniqueOrThrow({ where: { id: participantId } });
+  const participant = await prisma.participant.findUniqueOrThrow({
+    where: { id: participantId },
+    include: { category: { select: { requiresAccreditation: true } } },
+  });
   await assertStatus(
     participant,
     ["INVITED", "INVITATION_SENT", "REGISTRATION_STARTED", "REGISTERED"],
     "decline",
   );
+  // Refuser une accréditation relève, comme l'accorder, de l'administration :
+  // le journaliste en est informé par e-mail.
+  if (participant.category.requiresAccreditation && !options.peutAccrediter) {
+    throw new AccreditationReserveeError();
+  }
   const updated = await repo.updateParticipant(participantId, { status: "DECLINED" });
   await logTransition(participantId, "participant.decline", participant.status, "DECLINED", actor);
+
+  // Presse : la demande d'accréditation refusée reçoit une réponse (12 octobre
+  // 2026). Les autres refus restent sans e-mail.
+  if (participant.category.requiresAccreditation && participant.status === "REGISTERED") {
+    await enqueueNotification(
+      {
+        editionId: participant.editionId,
+        templateKey: "accreditation_declined",
+        to: participant.email,
+        participantId: participant.id,
+        variables: { prenom: participant.firstName },
+      },
+      `accreditation-refusee-${participant.id}`,
+    );
+  }
   return updated;
 }
 

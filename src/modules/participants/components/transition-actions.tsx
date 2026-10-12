@@ -101,6 +101,21 @@ const ACCREDITER: Transition = {
   className: "bg-primary text-primary-text hover:bg-primary-hover",
 };
 
+/** Presse : décliner, c'est refuser l'accréditation — et le journaliste en est informé. */
+const REFUSER_ACCREDITATION: Transition = {
+  label: "Refuser l'accréditation",
+  icone: X,
+  run: declineParticipantAction,
+  className: "border border-border text-heading",
+  confirmation: {
+    titre: "Refuser cette accréditation presse ?",
+    texte:
+      "Le journaliste reçoit un e-mail l'informant du refus. Une erreur se rattrape avec « Réactiver ».",
+    confirmer: "Refuser l'accréditation",
+    ton: "danger",
+  },
+};
+
 export function TransitionActions({
   participantId,
   status,
@@ -118,15 +133,16 @@ export function TransitionActions({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  // Presse : « Accréditer » remplace « Confirmer », et disparaît pour qui n'a
-  // pas le droit d'accréditer (l'agent d'accueil, notamment).
-  const actions = (ACTIONS[status] ?? []).flatMap((action) =>
-    accreditation && action.run === confirmParticipantAction
-      ? peutAccrediter
-        ? [ACCREDITER]
-        : []
-      : [action],
-  );
+  // Presse : « Accréditer » remplace « Confirmer », « Refuser l'accréditation »
+  // remplace « Décliner », et tous deux disparaissent pour qui n'a pas le droit
+  // d'accréditer (l'agent d'accueil, notamment).
+  const actions = (ACTIONS[status] ?? []).flatMap((action) => {
+    if (!accreditation) return [action];
+    if (action.run === confirmParticipantAction) return peutAccrediter ? [ACCREDITER] : [];
+    if (action.run === declineParticipantAction)
+      return peutAccrediter ? [REFUSER_ACCREDITATION] : [];
+    return [action];
+  });
   const accreditationRefusee = accreditation && !peutAccrediter && status === "REGISTERED";
   if (actions.length === 0 && !accreditationRefusee) return null;
 
@@ -173,7 +189,8 @@ export function TransitionActions({
       </div>
       {accreditationRefusee && (
         <p className="text-text-3 text-sm">
-          L&apos;accréditation presse est réservée à l&apos;administration du Forum.
+          Accorder ou refuser l&apos;accréditation presse est réservé à l&apos;administration du
+          Forum.
         </p>
       )}
       {error && <p className="text-danger-text text-sm">{error}</p>}

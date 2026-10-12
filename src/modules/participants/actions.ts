@@ -152,8 +152,20 @@ export async function confirmParticipantAction(participantId: string): Promise<A
   return {};
 }
 
+/** Décliner, ou refuser l'accréditation pour la presse : même règle que pour l'accorder. */
 export async function declineParticipantAction(participantId: string): Promise<ActionState> {
-  return runTransition(participantId, "participants.write", service.declineParticipant);
+  try {
+    const session = await requireSession();
+    if (!can(session, "participants.write")) return { error: "Permission refusée." };
+    await service.declineParticipant(participantId, actorFromSession(session), {
+      peutAccrediter: can(session, "participants.accredit"),
+    });
+  } catch (error) {
+    return { error: firstFieldError(error) };
+  }
+  revalidatePath("/admin/participants");
+  revalidatePath(`/admin/participants/${participantId}`);
+  return {};
 }
 
 export async function cancelParticipantAction(participantId: string): Promise<ActionState> {

@@ -1,5 +1,6 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/db";
+import { jobQueue } from "@/lib/queue";
 import {
   AccreditationReserveeError,
   cancelParticipant,
@@ -265,6 +266,39 @@ describe("machine à états des participants (brief §2.3)", () => {
     await expect(declineParticipant(confirmedParticipant.id, actor)).rejects.toThrow(
       InvalidParticipantTransitionError,
     );
+  });
+
+  it("informe le journaliste dont l'accréditation est refusée, et lui seul", async () => {
+    const presse = await buildInput("MEDIA");
+    const journaliste = await createParticipant({ ...presse, source: "ONLINE", actor });
+    participantIds.push(journaliste.id);
+    const autre = await buildInput("AUTORITE_VIP");
+    const autorite = await createParticipant({ ...autre, source: "ONLINE", actor });
+    participantIds.push(autorite.id);
+
+    const enqueue = vi.spyOn(jobQueue, "enqueue");
+    try {
+      // Sans la permission d'accréditer (agent d'accueil) : refus, dossier intact, aucun e-mail.
+      await expect(declineParticipant(journaliste.id, actor)).rejects.toThrow(
+        AccreditationReserveeError,
+      );
+      const intact = await prisma.participant.findUniqueOrThrow({ where: { id: journaliste.id } });
+      expect(intact.status).toBe("REGISTERED");
+      expect(enqueue).not.toHaveBeenCalled();
+
+      await declineParticipant(journaliste.id, actor, { peutAccrediter: true });
+      expect(enqueue).toHaveBeenCalledWith(
+        "notification.send",
+        expect.objectContaining({ templateKey: "accreditation_declined", to: journaliste.email }),
+        expect.objectContaining({ idempotencyKey: `accreditation-refusee-${journaliste.id}` }),
+      );
+
+      enqueue.mockClear();
+      await declineParticipant(autorite.id, actor);
+      expect(enqueue).not.toHaveBeenCalled();
+    } finally {
+      enqueue.mockRestore();
+    }
   });
 
   it("allows cancelling a confirmed participant, but not a registered one", async () => {

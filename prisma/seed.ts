@@ -953,9 +953,9 @@ async function main() {
       subjectFr: "Vous êtes invité(e) au Forum international sur les données",
       subjectEn: "You are invited to the International Data Forum",
       bodyFr:
-        "Bonjour {{prenom}},\n\nVous êtes invité(e) à participer au Forum international sur les données de l'ANSD, du 23 au 25 novembre 2026 à Dakar.\n\nInscrivez-vous via votre lien personnalisé : {{lien_inscription}}\n\nCordialement,\nLe comité d'organisation",
+        "Bonjour {{prenom}},\n\nVous êtes invité(e) à participer au Forum international sur les données de l'ANSD, du 23 au 25 novembre 2026 à Dakar.\n\nConfirmez votre inscription via votre lien personnalisé (confirmation obligatoire !) : {{lien_inscription}}\n\nCordialement,\nLe comité d'organisation",
       bodyEn:
-        "Hello {{prenom}},\n\nYou are invited to the ANSD International Data Forum, 23–25 November 2026 in Dakar.\n\nPlease register using your personal link: {{lien_inscription}}\n\nBest regards,\nThe organising committee",
+        "Hello {{prenom}},\n\nYou are invited to the ANSD International Data Forum, 23–25 November 2026 in Dakar.\n\nPlease confirm your registration using your personal link (confirmation required!): {{lien_inscription}}\n\nBest regards,\nThe organising committee",
       variables: ["prenom", "lien_inscription"],
     },
     {
@@ -963,9 +963,9 @@ async function main() {
       subjectFr: "Rappel — Inscription au Forum international sur les données",
       subjectEn: "Reminder — Registration for the International Data Forum",
       bodyFr:
-        "Bonjour {{prenom}},\n\nNous n'avons pas encore reçu votre inscription au Forum. Il reste des places : {{lien_inscription}}\n\nCordialement,\nLe comité d'organisation",
+        "Bonjour {{prenom}},\n\nNous n'avons pas encore reçu votre inscription au Forum. Il ne reste que quelques places : {{lien_inscription}}\n\nCordialement,\nLe comité d'organisation",
       bodyEn:
-        "Hello {{prenom}},\n\nWe have not yet received your registration for the Forum. Places remain available: {{lien_inscription}}\n\nBest regards,\nThe organising committee",
+        "Hello {{prenom}},\n\nWe have not yet received your registration for the Forum. Only a few places remain: {{lien_inscription}}\n\nBest regards,\nThe organising committee",
       variables: ["prenom", "lien_inscription"],
     },
     {
@@ -986,9 +986,9 @@ async function main() {
       // `code6` est un code de secours : plus d'aller-retour par la page
       // « Mon espace » après la confirmation (29 septembre 2026).
       bodyFr:
-        "Bonjour {{prenom}},\n\nVotre participation au Forum international sur les données est confirmée.\n\nAccédez directement à votre espace, sans autre démarche : {{lien_espace}}\nCe lien vous est personnel ; il reste valable 14 jours.\n\nCode d'accès de secours, à saisir avec votre adresse e-mail sur la page « Mon espace » : {{code6}}\n{{referent_bloc}}\n\nCordialement,\nLe comité d'organisation",
+        "Bonjour {{prenom}},\n\nVotre participation au Forum international sur les données est confirmée.\n\nAfin d'avoir accès au programme mis à jour, à la liste des panélistes et à toutes les informations utiles sur le Forum, accédez directement à votre espace, sans autre démarche : {{lien_espace}}\nCe lien vous est personnel ; il reste valable 14 jours.\n\nCode d'accès de secours, à saisir avec votre adresse e-mail sur la page « Mon espace » : {{code6}}\n{{referent_bloc}}\n\nCordialement,\nLe comité d'organisation",
       bodyEn:
-        'Hello {{prenom}},\n\nYour participation in the International Data Forum is confirmed.\n\nGo straight to your personal space, with no further step: {{lien_espace}}\nThis link is personal and remains valid for 14 days.\n\nBackup access code, to enter with your e-mail address on the "My space" page: {{code6}}\n{{referent_bloc}}\n\nBest regards,\nThe organising committee',
+        'Hello {{prenom}},\n\nYour participation in the International Data Forum is confirmed.\n\nTo access the updated programme, the list of panellists and all useful information about the Forum, go straight to your personal space, with no further step: {{lien_espace}}\nThis link is personal and remains valid for 14 days.\n\nBackup access code, to enter with your e-mail address on the "My space" page: {{code6}}\n{{referent_bloc}}\n\nBest regards,\nThe organising committee',
       // `referent_bloc` est un paragraphe entier, composé côté serveur et vide
       // quand le participant n'a pas de délégation : le moteur ne sait pas
       // conditionner, et une phrase à trous aurait été envoyée telle quelle.
@@ -1000,9 +1000,9 @@ async function main() {
       subjectFr: "Votre inscription au Forum international sur les données",
       subjectEn: "Your registration for the International Data Forum",
       bodyFr:
-        "Bonjour {{prenom}},\n\nSuite à la confirmation de votre participation, le comité d'organisation vous a inscrit(e) au Forum international sur les données. Vous n'avez aucune démarche d'inscription à faire.\n\nAccédez directement à votre espace : {{lien_espace}}\nCe lien vous est personnel ; il reste valable 14 jours.\n\nCode d'accès de secours, à saisir avec votre adresse e-mail sur la page « Mon espace » : {{code6}}\n\nDans votre espace, vous pourrez vérifier et compléter vos informations, ajouter votre photo et télécharger votre badge. Un e-mail vous préviendra dès que le badge sera prêt.\n{{referent_bloc}}\n\nCordialement,\nLe comité d'organisation",
+        "Bonjour {{prenom}},\n\nSuite à la confirmation de votre participation, le comité d'organisation vous a inscrit(e) au Forum international sur les données. Vous n'avez aucune démarche d'inscription à faire.\n\nAfin d'avoir accès au programme mis à jour, à la liste des panélistes et à toutes les informations utiles sur le Forum, accédez directement à votre espace : {{lien_espace}}\nCe lien vous est personnel ; il reste valable 14 jours.\n\nCode d'accès de secours, à saisir avec votre adresse e-mail sur la page « Mon espace » : {{code6}}\n\nDans votre espace, vous pourrez vérifier et compléter vos informations, ajouter votre photo et télécharger votre badge. Un e-mail vous préviendra dès que le badge sera prêt.\n{{referent_bloc}}\n\nCordialement,\nLe comité d'organisation",
       bodyEn:
-        'Hello {{prenom}},\n\nFollowing the confirmation of your participation, the organising committee has registered you for the International Data Forum. There is no registration step left for you to complete.\n\nGo straight to your personal space: {{lien_espace}}\nThis link is personal and remains valid for 14 days.\n\nBackup access code, to enter with your e-mail address on the "My space" page: {{code6}}\n\nIn your space, you can check and complete your details, add your photo and download your badge. An e-mail will let you know as soon as the badge is ready.\n{{referent_bloc}}\n\nBest regards,\nThe organising committee',
+        'Hello {{prenom}},\n\nFollowing the confirmation of your participation, the organising committee has registered you for the International Data Forum. There is no registration step left for you to complete.\n\nTo access the updated programme, the list of panellists and all useful information about the Forum, go straight to your personal space: {{lien_espace}}\nThis link is personal and remains valid for 14 days.\n\nBackup access code, to enter with your e-mail address on the "My space" page: {{code6}}\n\nIn your space, you can check and complete your details, add your photo and download your badge. An e-mail will let you know as soon as the badge is ready.\n{{referent_bloc}}\n\nBest regards,\nThe organising committee',
       variables: ["prenom", "lien_espace", "code6", "referent_bloc"],
     },
     // Formulaire de contact du site : message transmis au comité (29/09/2026).
@@ -1036,6 +1036,17 @@ async function main() {
       bodyEn:
         'Hello {{prenom}},\n\nYour press accreditation for the International Data Forum has been granted: your account is now active.\n\nGo straight to your personal space: {{lien_espace}}\nThis link is personal and remains valid for 14 days.\n\nBackup access code, to enter with your e-mail address on the "My space" page: {{code6}}\n\nYour press badge, marked "Press accreditation", will be available there as soon as it is generated.\n\nBest regards,\nThe organising committee',
       variables: ["prenom", "lien_espace", "code6"],
+    },
+    // Presse : refus de l'accréditation (12 octobre 2026).
+    {
+      key: "accreditation_declined",
+      subjectFr: "Votre demande d'accréditation presse",
+      subjectEn: "Your press accreditation request",
+      bodyFr:
+        "Bonjour {{prenom}},\n\nNous vous remercions de votre intérêt pour le Forum international sur les données.\n\nAprès examen, nous ne sommes malheureusement pas en mesure de donner une suite favorable à votre demande d'accréditation presse.\n\nPour toute question, vous pouvez écrire au comité d'organisation depuis la rubrique « Nous écrire » du portail.\n\nCordialement,\nLe comité d'organisation",
+      bodyEn:
+        'Hello {{prenom}},\n\nThank you for your interest in the International Data Forum.\n\nAfter review, we regret that we are unable to grant your press accreditation request.\n\nIf you have any questions, you can write to the organising committee through the "Write to us" section of the portal.\n\nBest regards,\nThe organising committee',
+      variables: ["prenom"],
     },
     {
       key: "badge_ready",
@@ -1084,9 +1095,9 @@ async function main() {
       subjectFr: "Le Forum ouvre dans une semaine",
       subjectEn: "The Forum opens in one week",
       bodyFr:
-        "Bonjour {{prenom}},\n\nLe Forum international sur les données ouvre dans une semaine, du 23 au 25 novembre 2026 à l'Hôtel King Fahd Palace, à Dakar.\n\nPensez à télécharger votre badge avant de venir : il vous sera demandé à l'entrée. Retrouvez-le dans votre espace : {{lien_espace}}\n\nÀ très bientôt,\nLe comité d'organisation",
+        "Bonjour {{prenom}},\n\nLe Forum international sur les données ouvre dans une semaine, du 23 au 25 novembre 2026 à l'Hôtel King Fahd Palace, à Dakar.\n\nPensez à télécharger votre badge avant de venir : le badge est obligatoire et vous sera demandé à l'entrée. Téléchargez-le dans votre espace : {{lien_espace}}\n\nÀ très bientôt,\nLe comité d'organisation",
       bodyEn:
-        "Hello {{prenom}},\n\nThe International Data Forum opens in one week, from 23 to 25 November 2026 at the King Fahd Palace Hotel in Dakar.\n\nPlease download your badge before you come: it will be checked at the entrance. Find it in your personal space: {{lien_espace}}\n\nSee you soon,\nThe organising committee",
+        "Hello {{prenom}},\n\nThe International Data Forum opens in one week, from 23 to 25 November 2026 at the King Fahd Palace Hotel in Dakar.\n\nPlease download your badge before you come: the badge is mandatory and will be checked at the entrance. Download it from your personal space: {{lien_espace}}\n\nSee you soon,\nThe organising committee",
       variables: ["prenom", "lien_espace"],
     },
     {
