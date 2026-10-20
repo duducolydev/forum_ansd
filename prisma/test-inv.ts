@@ -1,8 +1,15 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/db";
+import { estProduction } from "../src/lib/environnement";
 import { generateInvitationToken } from "../src/modules/invitations/service";
 
+/** Test de fumée : crée une invitation fictive. Jamais en production (19 octobre 2026). */
 async function main() {
+  if (estProduction()) {
+    console.error("Test de fumée refusé en production : il crée une invitation fictive.");
+    process.exitCode = 1;
+    return;
+  }
   const edition = await prisma.edition.findFirstOrThrow({ where: { code: "FID-2026" } });
   const category = await prisma.participantCategory.findFirstOrThrow({
     where: { editionId: edition.id, code: "INS" },

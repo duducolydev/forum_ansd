@@ -1,25 +1,29 @@
 /**
- * Seed de référence (brief §11) — partie structurelle : édition, catégories, zones,
- * niveaux sponsors, rôles, 1 super admin, modèles de notifications de base.
+ * Seed (brief §11) — installation d'une base **vide**.
  *
- * Le volume de contenu de démonstration (3 jours × 10 sessions, 25 intervenants,
- * 300 participants [DEMO]) est ajouté au fil de l'implémentation des modules
- * correspondants (cf. PLAN.md §2, tâche 0.2), une fois ces modules disponibles
- * pour les faire naviguer dans un état cohérent plutôt que des lignes orphelines.
+ * Deux parties :
  *
- * Idempotent : peut être exécuté plusieurs fois (`pnpm db:seed`) sans dupliquer les données.
+ * - les **données de référence**, sans lesquelles le portail ne fonctionne pas :
+ *   édition, rôles, catégories, zones et points de contrôle, salles, niveaux de
+ *   partenaires, contacts pratiques, modèles d'e-mails, textes par défaut ;
+ * - les **données de démonstration** (`prisma/donnees-demo.ts`), seulement sur
+ *   demande — `SEED_DEMO=1` ou `pnpm db:seed --demo` — et jamais en production.
  *
- * **Création seulement** (1er octobre 2026) : le seed crée ce qui manque et ne
- * modifie ni ne supprime jamais une donnée existante. Une base en service est
- * réglée et traduite en BackOffice — textes, modèles d'e-mails, catégories,
- * rôles, zones, salles, traductions portugaises ; rejouer le seed ne doit rien
- * y défaire. Un changement de donnée sur une base existante passe par une
- * **migration**, écrite pour ne remplir que ce qui est vide.
- * `prisma/seed.test.ts` refuse toute réécriture qui reviendrait ici.
+ * **Base vide seulement** (19 octobre 2026). Dès qu'une édition existe, le seed
+ * s'arrête sans rien écrire. Une base en service est réglée en BackOffice, et
+ * même « créer ce qui manque » y recréait ce que le comité avait retiré à
+ * dessein : une zone, un modèle d'e-mail, une fiche de démonstration supprimée.
+ * Un changement de donnée sur une base existante passe par une **migration**,
+ * relue par `prisma/garde-migrations.ts` : elle ne remplit que ce qui est vide.
+ *
+ * Le code garde ses `upsert … update: {}` de l'époque « création seulement »
+ * (1er octobre 2026) : inutiles sur une base vide, ils restent sans risque si la
+ * règle venait à être assouplie, et `prisma/seed.test.ts` y veille toujours.
  */
 import "dotenv/config";
 import argon2 from "argon2";
 import { prisma } from "../src/lib/db";
+import { estProduction } from "../src/lib/environnement";
 import MODELES_PT from "./modeles-pt.json";
 import { jobQueue } from "../src/lib/queue";
 import { DEFAULT_ROLE_PERMISSIONS } from "../src/lib/permissions";
@@ -30,8 +34,56 @@ import {
   declineParticipant,
 } from "../src/modules/participants/service";
 import { generateInvitationToken } from "../src/modules/invitations/service";
+import {
+  ACTUALITES_DEMO,
+  bioIntervenantDemo,
+  DELEGATIONS_DEMO,
+  descriptionSeanceDemo,
+  emailIntervenantDemo,
+  HOTELS_DEMO,
+  INTERVENANTS_DEMO,
+  INVITATIONS_DEMO,
+  JOURS_DEMO,
+  NOTE_PARTICIPANT_DEMO,
+  PARTENAIRES_DEMO,
+  PARTICIPANTS_DEMO,
+  PROGRAMME_DEMO,
+  slugSeanceDemo,
+  SUPERADMIN_DEMO,
+} from "./donnees-demo";
+import { decisionSeed } from "./seed-decision";
 
 async function main() {
+  const decision = decisionSeed({
+    baseInitialisee: (await prisma.edition.count()) > 0,
+    demoDemandee: process.argv.includes("--demo") || process.env.SEED_DEMO === "1",
+    production: estProduction(),
+  });
+
+  if (decision.action === "refus") {
+    console.error(decision.message);
+    process.exitCode = 1;
+    return;
+  }
+  if (decision.action === "rien") {
+    console.log(decision.message);
+    return;
+  }
+
+  const reference = await seedReference();
+  console.log(`Données de référence posées pour l'édition ${reference.edition.code}.`);
+
+  if (decision.demo) {
+    await seedDemo(reference);
+  } else {
+    console.log(
+      "Sans données de démonstration : SEED_DEMO=1 (ou --demo) les ajoute, hors production.",
+    );
+  }
+}
+
+/** Données de référence : ce sans quoi le portail ne fonctionne pas. */
+async function seedReference() {
   // ---------------------------------------------------------------------
   // Édition
   // ---------------------------------------------------------------------
@@ -73,22 +125,6 @@ async function main() {
       create: { name, permissions },
     });
   }
-
-  // ---------------------------------------------------------------------
-  // Super administrateur [DEMO] — identifiants documentés dans README.md
-  // ---------------------------------------------------------------------
-  const superAdminPassword = process.env.SEED_SUPER_ADMIN_PASSWORD ?? "ChangeMe!Forum2026";
-  await prisma.user.upsert({
-    where: { email: "superadmin@ansd.sn" },
-    update: {},
-    create: {
-      email: "superadmin@ansd.sn",
-      name: "Super Administrateur [DEMO]",
-      passwordHash: await argon2.hash(superAdminPassword, { type: argon2.argon2id }),
-      roleId: roles.SUPER_ADMIN.id,
-      isActive: true,
-    },
-  });
 
   // ---------------------------------------------------------------------
   // Catégories de participants (docx §4.1, corrigées par D2 : les rôles de
@@ -338,13 +374,11 @@ async function main() {
   }
 
   // ---------------------------------------------------------------------
-  // Salles, intervenants et programme [DEMO] (brief §11, §5.8)
+  // Salles (brief §5.8)
   // ---------------------------------------------------------------------
   /*
    * Deux salles depuis le 24 septembre 2026 (décision du commanditaire) : le
-   * King Fahd Palace n'en met que deux à disposition du Forum. Le programme de
-   * démonstration ci-dessous a été redistribué sur ces deux salles, sans
-   * qu'aucune séance n'en occupe une déjà prise — vérifié séance par séance.
+   * King Fahd Palace n'en met que deux à disposition du Forum.
    *
    * Ajouter, renommer ou retirer une salle reste possible en BackOffice : cette
    * liste est un point de départ, pas une contrainte.
@@ -361,451 +395,6 @@ async function main() {
     });
     rooms[room.name] =
       existante ?? (await prisma.room.create({ data: { ...room, editionId: edition.id } }));
-  }
-
-  const speakersData = [
-    ["Oulimata", "Sarr", "Ministre", "Ministère de l'Économie et du Plan", "Sénégal"],
-    ["Abdou", "Diouf", "Directeur général", "ANSD", "Sénégal"],
-    ["Ibrahima", "Koné", "Directeur général", "INSTAT Mali", "Mali"],
-    ["Mariam", "Diallo", "Cheffe de service Recensement", "ANStat", "Côte d'Ivoire"],
-    ["Kwame", "Osei", "Deputy Government Statistician", "Ghana Statistical Service", "Ghana"],
-    ["Julie", "Lambert", "Conseillère régionale", "UNFPA", "France"],
-    ["Paul", "Tchoua", "Directeur général", "AFRISTAT", "Mali"],
-    ["Aminata", "Sow", "Directrice des statistiques démographiques", "ANSD", "Sénégal"],
-  ] as const;
-
-  const speakers: Record<string, { id: string }> = {};
-  for (const [firstName, lastName, jobTitle, organization, country] of speakersData) {
-    const cle = `${firstName} ${lastName}`;
-    const existant = await prisma.speaker.findFirst({
-      where: { editionId: edition.id, firstName, lastName },
-    });
-    const donnees = {
-      firstName,
-      lastName,
-      jobTitle,
-      organization,
-      country,
-      // Sans adresse, un intervenant ne peut pas recevoir son lien d'accès et
-      // l'espace de dépôt reste inaccessible dans le jeu de démonstration.
-      email: `demo.speaker.${firstName}.${lastName}`
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9.]/g, "")
-        .concat("@example.test"),
-      bioFr: `[DEMO] ${firstName} ${lastName} intervient au Forum au titre de ses fonctions à ${organization}.`,
-      isPublished: true,
-    };
-    speakers[cle] =
-      existant ?? (await prisma.speaker.create({ data: { ...donnees, editionId: edition.id } }));
-  }
-
-  // Trois journées, dix sessions par jour (brief §11). Les moments communs
-  // (ouverture, pauses, déjeuner) n'ont pas de salle : ils barrent la grille.
-  const JOURS = ["2026-11-23", "2026-11-24", "2026-11-25"] as const;
-
-  type SessionSeed = {
-    type:
-      | "OPENING"
-      | "PLENARY"
-      | "PANEL"
-      | "INAUGURAL"
-      | "AWARDS"
-      | "BREAK"
-      | "LUNCH"
-      | "CLOSING"
-      | "SIDE_EVENT";
-    titleFr: string;
-    titleEn: string;
-    start: string;
-    end: string;
-    room?: string;
-    theme?: string;
-    capacity?: number;
-    registrationOpen?: boolean;
-    speakers?: [string, "MODERATOR" | "PANELIST" | "KEYNOTE"][];
-  };
-
-  const programme: Record<string, SessionSeed[]> = {
-    "2026-11-23": [
-      {
-        type: "OPENING",
-        titleFr: "Cérémonie d'ouverture",
-        titleEn: "Opening ceremony",
-        start: "09:00",
-        end: "10:00",
-        speakers: [
-          ["Oulimata Sarr", "KEYNOTE"],
-          ["Abdou Diouf", "MODERATOR"],
-        ],
-      },
-      {
-        type: "INAUGURAL",
-        titleFr: "Conférence inaugurale : les données au service des politiques publiques",
-        titleEn: "Inaugural lecture: data for public policy",
-        start: "10:00",
-        end: "11:00",
-        room: "Salle de Plénière",
-        theme: "Gouvernance des données",
-        speakers: [["Paul Tchoua", "KEYNOTE"]],
-      },
-      {
-        type: "BREAK",
-        titleFr: "Pause-café",
-        titleEn: "Coffee break",
-        start: "11:00",
-        end: "11:30",
-      },
-      {
-        type: "PANEL",
-        titleFr: "Panel 1 — Recensements et registres administratifs",
-        titleEn: "Panel 1 — Censuses and administrative registers",
-        start: "11:30",
-        end: "13:00",
-        room: "Salle de Plénière",
-        theme: "Sources de données",
-        capacity: 150,
-        registrationOpen: true,
-        speakers: [
-          ["Ibrahima Koné", "MODERATOR"],
-          ["Mariam Diallo", "PANELIST"],
-          ["Kwame Osei", "PANELIST"],
-        ],
-      },
-      {
-        type: "PANEL",
-        titleFr: "Panel 2 — Données climatiques et résilience",
-        titleEn: "Panel 2 — Climate data and resilience",
-        start: "11:30",
-        end: "13:00",
-        room: "Salle d'Ouverture",
-        theme: "Données et climat",
-        capacity: 120,
-        registrationOpen: true,
-        speakers: [
-          ["Julie Lambert", "MODERATOR"],
-          ["Aminata Sow", "PANELIST"],
-        ],
-      },
-      { type: "LUNCH", titleFr: "Déjeuner", titleEn: "Lunch", start: "13:00", end: "14:30" },
-      {
-        type: "PANEL",
-        titleFr: "Panel 3 — Qualité et diffusion des statistiques",
-        titleEn: "Panel 3 — Statistical quality and dissemination",
-        start: "14:30",
-        end: "16:00",
-        room: "Salle de Plénière",
-        theme: "Qualité des données",
-        capacity: 150,
-        registrationOpen: true,
-        speakers: [
-          ["Kwame Osei", "MODERATOR"],
-          ["Abdou Diouf", "PANELIST"],
-        ],
-      },
-      {
-        type: "SIDE_EVENT",
-        titleFr: "Atelier — Anonymisation des microdonnées",
-        titleEn: "Workshop — Microdata anonymisation",
-        start: "14:30",
-        end: "16:00",
-        room: "Salle d'Ouverture",
-        theme: "Protection des données",
-        capacity: 60,
-        registrationOpen: true,
-        speakers: [["Aminata Sow", "KEYNOTE"]],
-      },
-      {
-        type: "BREAK",
-        titleFr: "Pause-café",
-        titleEn: "Coffee break",
-        start: "16:00",
-        end: "16:30",
-      },
-      {
-        type: "PLENARY",
-        titleFr: "Restitution de la première journée",
-        titleEn: "Day one wrap-up",
-        start: "16:30",
-        end: "17:30",
-        room: "Salle de Plénière",
-        speakers: [["Abdou Diouf", "MODERATOR"]],
-      },
-    ],
-    "2026-11-24": [
-      {
-        type: "PLENARY",
-        titleFr: "Plénière — Systèmes statistiques nationaux",
-        titleEn: "Plenary — National statistical systems",
-        start: "09:00",
-        end: "10:30",
-        room: "Salle de Plénière",
-        theme: "Gouvernance des données",
-        speakers: [
-          ["Paul Tchoua", "MODERATOR"],
-          ["Ibrahima Koné", "PANELIST"],
-        ],
-      },
-      {
-        type: "BREAK",
-        titleFr: "Pause-café",
-        titleEn: "Coffee break",
-        start: "10:30",
-        end: "11:00",
-      },
-      {
-        type: "PANEL",
-        titleFr: "Panel 4 — Données démographiques et projections",
-        titleEn: "Panel 4 — Demographic data and projections",
-        start: "11:00",
-        end: "12:30",
-        room: "Salle de Plénière",
-        theme: "Sources de données",
-        capacity: 150,
-        registrationOpen: true,
-        speakers: [
-          ["Aminata Sow", "MODERATOR"],
-          ["Julie Lambert", "PANELIST"],
-        ],
-      },
-      {
-        type: "PANEL",
-        titleFr: "Panel 5 — Intelligence artificielle et statistique publique",
-        titleEn: "Panel 5 — AI and official statistics",
-        start: "11:00",
-        end: "12:30",
-        room: "Salle d'Ouverture",
-        theme: "Innovation",
-        capacity: 120,
-        registrationOpen: true,
-        speakers: [
-          ["Kwame Osei", "MODERATOR"],
-          ["Mariam Diallo", "PANELIST"],
-        ],
-      },
-      { type: "LUNCH", titleFr: "Déjeuner", titleEn: "Lunch", start: "12:30", end: "14:00" },
-      {
-        type: "PANEL",
-        titleFr: "Panel 6 — Financement des systèmes statistiques",
-        titleEn: "Panel 6 — Funding statistical systems",
-        start: "14:00",
-        end: "15:30",
-        room: "Salle de Plénière",
-        theme: "Gouvernance des données",
-        capacity: 150,
-        registrationOpen: true,
-        speakers: [
-          ["Julie Lambert", "MODERATOR"],
-          ["Paul Tchoua", "PANELIST"],
-        ],
-      },
-      {
-        type: "SIDE_EVENT",
-        titleFr: "Atelier — Interopérabilité des registres",
-        titleEn: "Workshop — Register interoperability",
-        start: "14:00",
-        end: "15:30",
-        room: "Salle d'Ouverture",
-        theme: "Innovation",
-        capacity: 60,
-        registrationOpen: true,
-        speakers: [["Mariam Diallo", "KEYNOTE"]],
-      },
-      {
-        type: "BREAK",
-        titleFr: "Pause-café",
-        titleEn: "Coffee break",
-        start: "15:30",
-        end: "16:00",
-      },
-      {
-        type: "PANEL",
-        titleFr: "Panel 7 — Données ouvertes et redevabilité",
-        titleEn: "Panel 7 — Open data and accountability",
-        start: "16:00",
-        end: "17:30",
-        room: "Salle d'Ouverture",
-        theme: "Qualité des données",
-        capacity: 120,
-        registrationOpen: true,
-        speakers: [["Ibrahima Koné", "MODERATOR"]],
-      },
-      {
-        type: "PLENARY",
-        titleFr: "Restitution de la deuxième journée",
-        titleEn: "Day two wrap-up",
-        start: "17:30",
-        end: "18:00",
-        room: "Salle de Plénière",
-        speakers: [["Abdou Diouf", "MODERATOR"]],
-      },
-    ],
-    "2026-11-25": [
-      {
-        type: "PLENARY",
-        titleFr: "Plénière — Perspectives régionales",
-        titleEn: "Plenary — Regional outlook",
-        start: "09:00",
-        end: "10:30",
-        room: "Salle de Plénière",
-        theme: "Gouvernance des données",
-        speakers: [
-          ["Paul Tchoua", "MODERATOR"],
-          ["Kwame Osei", "PANELIST"],
-        ],
-      },
-      {
-        type: "BREAK",
-        titleFr: "Pause-café",
-        titleEn: "Coffee break",
-        start: "10:30",
-        end: "11:00",
-      },
-      {
-        type: "PANEL",
-        titleFr: "Panel 8 — Statistiques sectorielles : santé et éducation",
-        titleEn: "Panel 8 — Sector statistics: health and education",
-        start: "11:00",
-        end: "12:30",
-        room: "Salle de Plénière",
-        theme: "Sources de données",
-        capacity: 150,
-        registrationOpen: true,
-        speakers: [
-          ["Julie Lambert", "MODERATOR"],
-          ["Aminata Sow", "PANELIST"],
-        ],
-      },
-      {
-        type: "PANEL",
-        titleFr: "Panel 9 — Renforcement des capacités",
-        titleEn: "Panel 9 — Capacity building",
-        start: "11:00",
-        end: "12:30",
-        room: "Salle d'Ouverture",
-        theme: "Innovation",
-        capacity: 120,
-        registrationOpen: true,
-        speakers: [["Mariam Diallo", "MODERATOR"]],
-      },
-      { type: "LUNCH", titleFr: "Déjeuner", titleEn: "Lunch", start: "12:30", end: "14:00" },
-      {
-        type: "SIDE_EVENT",
-        titleFr: "Atelier — Cartographie et données géospatiales",
-        titleEn: "Workshop — Mapping and geospatial data",
-        start: "14:00",
-        end: "15:00",
-        room: "Salle d'Ouverture",
-        theme: "Innovation",
-        capacity: 60,
-        registrationOpen: true,
-        speakers: [["Kwame Osei", "KEYNOTE"]],
-      },
-      {
-        type: "PLENARY",
-        titleFr: "Synthèse des travaux et recommandations",
-        titleEn: "Synthesis and recommendations",
-        start: "15:00",
-        end: "16:00",
-        room: "Salle de Plénière",
-        speakers: [
-          ["Abdou Diouf", "MODERATOR"],
-          ["Ibrahima Koné", "PANELIST"],
-        ],
-      },
-      {
-        type: "AWARDS",
-        titleFr: "Remise des prix de la statistique",
-        titleEn: "Statistics awards",
-        start: "16:00",
-        end: "16:45",
-        room: "Salle de Plénière",
-        speakers: [["Oulimata Sarr", "KEYNOTE"]],
-      },
-      {
-        type: "CLOSING",
-        titleFr: "Cérémonie de clôture",
-        titleEn: "Closing ceremony",
-        start: "16:45",
-        end: "17:30",
-        speakers: [
-          ["Oulimata Sarr", "KEYNOTE"],
-          ["Abdou Diouf", "MODERATOR"],
-        ],
-      },
-      {
-        type: "SIDE_EVENT",
-        titleFr: "Visite du centre de données de l'ANSD",
-        titleEn: "Visit to the ANSD data centre",
-        start: "17:30",
-        end: "18:30",
-        room: "Salle d'Ouverture",
-        theme: "Innovation",
-        capacity: 40,
-        registrationOpen: true,
-      },
-    ],
-  };
-
-  function slugDemo(jour: string, titre: string): string {
-    const base = titre
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 90);
-    return `${base}-${jour.slice(5).replace("-", "")}`;
-  }
-
-  let numero = 1;
-  for (const jour of JOURS) {
-    for (const item of programme[jour]!) {
-      const slug = slugDemo(jour, item.titleFr);
-      const donnees = {
-        number: numero++,
-        type: item.type,
-        titleFr: item.titleFr,
-        titleEn: item.titleEn,
-        descriptionFr: `[DEMO] ${item.titleFr}. Description à remplacer par le comité scientifique.`,
-        objectives: item.theme
-          ? `[DEMO] Objectifs de la session, rattachés au thème « ${item.theme} ».`
-          : null,
-        theme: item.theme ?? null,
-        day: new Date(`${jour}T00:00:00.000Z`),
-        startTime: new Date(`${jour}T${item.start}:00.000Z`),
-        endTime: new Date(`${jour}T${item.end}:00.000Z`),
-        roomId: item.room ? rooms[item.room]!.id : null,
-        capacity: item.capacity ?? null,
-        registrationOpen: item.registrationOpen ?? false,
-        registrationDeadline: item.registrationOpen ? new Date("2026-11-20T23:59:59.000Z") : null,
-        waitlistEnabled: true,
-        isPublished: true,
-      };
-
-      const session = await prisma.session.upsert({
-        where: { editionId_slug: { editionId: edition.id, slug } },
-        update: {},
-        create: { ...donnees, slug, editionId: edition.id },
-      });
-
-      for (const [index, [nom, role]] of (item.speakers ?? []).entries()) {
-        await prisma.sessionSpeaker.upsert({
-          where: {
-            sessionId_speakerId: { sessionId: session.id, speakerId: speakers[nom]!.id },
-          },
-          update: {},
-          create: {
-            sessionId: session.id,
-            speakerId: speakers[nom]!.id,
-            role,
-            sortOrder: index,
-            confirmationStatus: "CONFIRME",
-          },
-        });
-      }
-    }
   }
 
   /*
@@ -837,81 +426,8 @@ async function main() {
   }
 
   // ---------------------------------------------------------------------
-  // Hébergement et contacts pratiques [DEMO] (§29)
-  //
-  // Deux hôtels et trois contacts : de quoi exercer la page de détail, ses
-  // tableaux de tarifs et le tri par distance, sans prétendre à un état réel
-  // des accords — ils portent la mention [DEMO], comme les participants.
+  // Contacts pratiques (§29)
   // ---------------------------------------------------------------------
-  const hotelsData = [
-    {
-      name: "Hôtel King Fahd Palace [DEMO]",
-      category: "5 étoiles",
-      address: "Route des Almadies, Dakar",
-      district: "Almadies",
-      distanceKm: 0,
-      phone: "+221 33 869 69 69",
-      email: "reservation@kingfahdpalace.demo",
-      website: "https://example.test/king-fahd-palace",
-      descriptionFr:
-        "Sur le lieu même du Forum : aucun trajet, et les salles de session sont au rez-de-chaussée.",
-      descriptionEn:
-        "At the Forum venue itself: no commute, and the session rooms are on the ground floor.",
-      amenities: ["Wifi", "Petit-déjeuner", "Piscine", "Salle de sport", "Parking"],
-      bookingCode: "FID2026-KFP",
-      isPublished: true,
-      sortOrder: 0,
-      rates: [
-        { roomType: "Chambre simple", price: 85000, conditions: "Petit-déjeuner inclus" },
-        { roomType: "Chambre double", price: 110000, conditions: "Petit-déjeuner inclus" },
-        { roomType: "Suite", price: null, conditions: "Sur demande, minimum deux nuits" },
-      ],
-    },
-    {
-      name: "Résidence des Almadies [DEMO]",
-      category: "Appart-hôtel",
-      address: "Rue des Ambassades, Dakar",
-      district: "Almadies",
-      distanceKm: 2.4,
-      phone: "+221 33 820 11 11",
-      website: "https://example.test/residence-almadies",
-      descriptionFr: "Studios équipés, navette matin et soir vers le King Fahd Palace.",
-      descriptionEn:
-        "Serviced studios, with a morning and evening shuttle to the King Fahd Palace.",
-      amenities: ["Wifi", "Navette", "Cuisine équipée"],
-      bookingCode: "FID2026-RDA",
-      isPublished: true,
-      sortOrder: 1,
-      rates: [
-        { roomType: "Studio", price: 45000, conditions: "Nettoyage quotidien" },
-        { roomType: "Appartement deux pièces", price: 68000, conditions: null },
-      ],
-    },
-  ] as const;
-
-  for (const { rates, ...hotel } of hotelsData) {
-    const existant = await prisma.hotel.findFirst({
-      where: { editionId: edition.id, name: hotel.name },
-    });
-    // Hôtel déjà en base : ni la fiche ni ses tarifs ne sont réécrits.
-    if (existant) continue;
-    const enregistre = await prisma.hotel.create({ data: { ...hotel, editionId: edition.id } });
-
-    // Les tarifs sont réécrits en bloc : ils n'ont pas de clé naturelle, et
-    // rejouer le seed ne doit pas les empiler.
-    await prisma.hotelRate.deleteMany({ where: { hotelId: enregistre.id } });
-    await prisma.hotelRate.createMany({
-      data: rates.map((rate, index) => ({
-        hotelId: enregistre.id,
-        roomType: rate.roomType,
-        price: rate.price,
-        currency: "XOF",
-        conditions: rate.conditions,
-        sortOrder: index,
-      })),
-    });
-  }
-
   const contactsPratiques = [
     {
       labelFr: "Inscriptions et accréditations",
@@ -1214,459 +730,6 @@ async function main() {
   });
 
   // ---------------------------------------------------------------------
-  // Participants et délégations [DEMO] (brief §11) — jeu restreint pour
-  // exercer le module 3.1 ; complété au fil des modules restants (T10).
-  // ---------------------------------------------------------------------
-  const delegationMali = await upsertDelegation(edition.id, {
-    name: "Délégation du Mali [DEMO]",
-    country: "Mali",
-    institution: "INSTAT Mali",
-  });
-  const delegationCotedIvoire = await upsertDelegation(edition.id, {
-    name: "Délégation de Côte d'Ivoire [DEMO]",
-    country: "Côte d'Ivoire",
-    institution: "ANStat",
-  });
-
-  const demoParticipants: Array<{
-    firstName: string;
-    lastName: string;
-    email: string;
-    country: string;
-    organization: string;
-    jobTitle: string;
-    categoryCode: string;
-    source: "ONLINE" | "ONSITE";
-    delegationId?: string;
-    after?: "confirm" | "decline" | "cancel";
-  }> = [
-    {
-      firstName: "Aminata",
-      lastName: "Sow",
-      email: "demo.aminata.sow@ansd.sn",
-      country: "Sénégal",
-      organization: "ANSD",
-      jobTitle: "Directrice des statistiques démographiques",
-      categoryCode: "PERSONNEL_ANSD",
-      source: "ONLINE",
-    },
-    {
-      firstName: "Abdou",
-      lastName: "Diouf",
-      email: "abdou.diouf@ansd.sn",
-      country: "Sénégal",
-      organization: "ANSD",
-      jobTitle: "Directeur général",
-      categoryCode: "PERSONNEL_ANSD",
-      source: "ONLINE",
-    },
-    {
-      firstName: "Ibrahima",
-      lastName: "Koné",
-      email: "demo.ibrahima.kone@instat.gov.ml",
-      country: "Mali",
-      organization: "INSTAT Mali",
-      jobTitle: "Directeur général",
-      categoryCode: "INS",
-      source: "ONLINE",
-      delegationId: delegationMali.id,
-      after: "confirm",
-    },
-    {
-      firstName: "Mariam",
-      lastName: "Diallo",
-      email: "demo.mariam.diallo@anstat.ci",
-      country: "Côte d'Ivoire",
-      organization: "ANStat",
-      jobTitle: "Cheffe de service Recensement",
-      categoryCode: "INS",
-      source: "ONLINE",
-      delegationId: delegationCotedIvoire.id,
-      after: "confirm",
-    },
-    {
-      firstName: "Kwame",
-      lastName: "Osei",
-      email: "demo.kwame.osei@statsghana.gov.gh",
-      country: "Ghana",
-      organization: "Ghana Statistical Service",
-      jobTitle: "Deputy Government Statistician",
-      categoryCode: "INS",
-      source: "ONLINE",
-    },
-    {
-      firstName: "Julie",
-      lastName: "Lambert",
-      email: "demo.julie.lambert@unfpa.org",
-      country: "France",
-      organization: "UNFPA",
-      jobTitle: "Conseillère régionale",
-      categoryCode: "ORG_INTERNATIONALE",
-      source: "ONLINE",
-      after: "confirm",
-    },
-    {
-      firstName: "Paul",
-      lastName: "Tchoua",
-      email: "demo.paul.tchoua@afristat.org",
-      country: "Mali",
-      organization: "AFRISTAT",
-      jobTitle: "Directeur général",
-      categoryCode: "ORG_INTERNATIONALE",
-      source: "ONLINE",
-    },
-    {
-      firstName: "Fatou",
-      lastName: "Ndiaye",
-      email: "demo.fatou.ndiaye@ansd.sn",
-      country: "Sénégal",
-      organization: "ANSD",
-      jobTitle: "Directrice des systèmes d'information",
-      categoryCode: "PERSONNEL_ANSD",
-      source: "ONLINE",
-    },
-    {
-      firstName: "Grace",
-      lastName: "Mensah",
-      email: "demo.grace.mensah@statsghana.gov.gh",
-      country: "Ghana",
-      organization: "GSS",
-      jobTitle: "Chargée de communication",
-      categoryCode: "MEDIA",
-      source: "ONLINE",
-    },
-    {
-      firstName: "Moussa",
-      lastName: "Fall",
-      email: "demo.moussa.fall@lesoleil.sn",
-      country: "Sénégal",
-      organization: "Le Soleil",
-      jobTitle: "Journaliste",
-      categoryCode: "MEDIA",
-      source: "ONLINE",
-    },
-    {
-      firstName: "Oulimata",
-      lastName: "Sarr",
-      email: "demo.oulimata.sarr@economie.gouv.sn",
-      country: "Sénégal",
-      organization: "MEPC",
-      jobTitle: "Ministre",
-      categoryCode: "AUTORITE_VIP",
-      source: "ONSITE",
-    },
-    {
-      firstName: "Cheikh",
-      lastName: "Diop",
-      email: "demo.cheikh.diop@banquemondiale.org",
-      country: "États-Unis",
-      organization: "Banque mondiale",
-      jobTitle: "Économiste senior",
-      categoryCode: "PTF",
-      source: "ONLINE",
-      after: "confirm",
-    },
-    {
-      firstName: "Awa",
-      lastName: "Traoré",
-      email: "demo.awa.traore@undp.org",
-      country: "Sénégal",
-      organization: "PNUD",
-      jobTitle: "Chargée de programme",
-      categoryCode: "PTF",
-      source: "ONLINE",
-    },
-    {
-      firstName: "Jean",
-      lastName: "Kouassi",
-      email: "demo.jean.kouassi@ensae.sn",
-      country: "Côte d'Ivoire",
-      organization: "ENSAE Dakar",
-      jobTitle: "Enseignant-chercheur",
-      categoryCode: "PARTICIPANT_INTERNATIONAL",
-      source: "ONLINE",
-      delegationId: delegationCotedIvoire.id,
-    },
-    {
-      firstName: "Bineta",
-      lastName: "Cissé",
-      email: "demo.bineta.cisse@sonatel.sn",
-      country: "Sénégal",
-      organization: "Sonatel",
-      jobTitle: "Responsable RSE",
-      categoryCode: "SPONSOR",
-      source: "ONLINE",
-    },
-    {
-      firstName: "Modibo",
-      lastName: "Coulibaly",
-      email: "demo.modibo.coulibaly@instat.gov.ml",
-      country: "Mali",
-      organization: "INSTAT Mali",
-      jobTitle: "Statisticien",
-      categoryCode: "INS",
-      source: "ONLINE",
-      delegationId: delegationMali.id,
-      after: "decline",
-    },
-    {
-      firstName: "Aïssatou",
-      lastName: "Barry",
-      email: "demo.aissatou.barry@statsguinee.org",
-      country: "Guinée",
-      organization: "INS Guinée",
-      jobTitle: "Directrice adjointe",
-      categoryCode: "INS",
-      source: "ONLINE",
-      after: "cancel",
-    },
-    {
-      firstName: "Khadija",
-      lastName: "Ndour",
-      email: "demo.khadija.ndour@ansd.sn",
-      country: "Sénégal",
-      organization: "ANSD",
-      jobTitle: "Chargée d'accueil",
-      categoryCode: "PRESTATAIRE",
-      source: "ONSITE",
-    },
-  ];
-
-  for (const demo of demoParticipants) {
-    const existing = await prisma.participant.findUnique({
-      where: { editionId_email: { editionId: edition.id, email: demo.email } },
-    });
-    if (existing) continue;
-
-    const category = categories[demo.categoryCode];
-    const participant = await createParticipant({
-      editionId: edition.id,
-      editionCode: edition.code,
-      source: demo.source,
-      actor: { type: "SYSTEM" },
-      input: {
-        firstName: demo.firstName,
-        lastName: demo.lastName,
-        email: demo.email,
-        country: demo.country,
-        organization: demo.organization,
-        jobTitle: demo.jobTitle,
-        categoryId: category.id,
-        delegationId: demo.delegationId,
-        locale: "fr",
-        attendsOpening: true,
-        attendsInaugural: true,
-        attendsClosing: true,
-        attendsAwards: false,
-        needsAccommodation: demo.source === "ONLINE" && demo.country !== "Sénégal",
-        needsTransport: false,
-        notes: "[DEMO] Participant fictif — jeu de données de démonstration.",
-      },
-    });
-
-    const actor = { type: "SYSTEM" as const };
-    if (demo.after === "confirm" && participant.status === "REGISTERED") {
-      await confirmParticipant(participant.id, actor);
-    } else if (demo.after === "decline" && participant.status === "REGISTERED") {
-      await declineParticipant(participant.id, actor);
-    } else if (demo.after === "cancel") {
-      if (participant.status === "REGISTERED") await confirmParticipant(participant.id, actor);
-      await cancelParticipant(participant.id, actor);
-    }
-  }
-
-  // ---------------------------------------------------------------------
-  // Invitations [DEMO] — sans elles, l'entonnoir du tableau de bord (3.9)
-  // n'a aucune donnée à montrer. Quelques-unes sont rattachées à des
-  // participants existants pour que la conversion soit réaliste.
-  // ---------------------------------------------------------------------
-  const invitationSeeds: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    country: string;
-    organization: string;
-    categoryCode: keyof typeof categories;
-    /** Étape atteinte : jusqu'où l'invitation est allée. */
-    stage: "PENDING" | "SENT" | "OPENED" | "CLICKED" | "REGISTERED";
-    /** E-mail d'un participant [DEMO] existant à rattacher, pour l'étape REGISTERED. */
-    linkTo?: string;
-  }[] = [
-    {
-      firstName: "Aminata",
-      lastName: "Sow",
-      email: "demo.aminata.sow@ansd.sn",
-      country: "Sénégal",
-      organization: "ANSD",
-      categoryCode: "PERSONNEL_ANSD",
-      stage: "REGISTERED",
-      linkTo: "demo.aminata.sow@ansd.sn",
-    },
-    {
-      firstName: "Ibrahima",
-      lastName: "Koné",
-      email: "demo.ibrahima.kone@instat.gov.ml",
-      country: "Mali",
-      organization: "INSTAT",
-      categoryCode: "INS",
-      stage: "REGISTERED",
-      linkTo: "demo.ibrahima.kone@instat.gov.ml",
-    },
-    {
-      firstName: "Mariam",
-      lastName: "Diallo",
-      email: "demo.mariam.diallo@anstat.ci",
-      country: "Côte d'Ivoire",
-      organization: "ANSTAT",
-      categoryCode: "INS",
-      stage: "REGISTERED",
-      linkTo: "demo.mariam.diallo@anstat.ci",
-    },
-    {
-      firstName: "Kwame",
-      lastName: "Osei",
-      email: "demo.kwame.osei@statsghana.gov.gh",
-      country: "Ghana",
-      organization: "Ghana Statistical Service",
-      categoryCode: "INS",
-      stage: "REGISTERED",
-      linkTo: "demo.kwame.osei@statsghana.gov.gh",
-    },
-    {
-      firstName: "Aïcha",
-      lastName: "Traoré",
-      email: "demo.inv.aicha.traore@insd.bf",
-      country: "Burkina Faso",
-      organization: "INSD",
-      categoryCode: "INS",
-      stage: "CLICKED",
-    },
-    {
-      firstName: "Paulo",
-      lastName: "Mendes",
-      email: "demo.inv.paulo.mendes@ine.cv",
-      country: "Cabo Verde",
-      organization: "INE",
-      categoryCode: "INS",
-      stage: "CLICKED",
-    },
-    {
-      firstName: "Fatima",
-      lastName: "El Amrani",
-      email: "demo.inv.fatima.elamrani@hcp.ma",
-      country: "Maroc",
-      organization: "HCP",
-      categoryCode: "INS",
-      stage: "OPENED",
-    },
-    {
-      firstName: "Joseph",
-      lastName: "Mwangi",
-      email: "demo.inv.joseph.mwangi@knbs.or.ke",
-      country: "Kenya",
-      organization: "KNBS",
-      categoryCode: "INS",
-      stage: "OPENED",
-    },
-    {
-      firstName: "Nadia",
-      lastName: "Bensaïd",
-      email: "demo.inv.nadia.bensaid@ons.dz",
-      country: "Algérie",
-      organization: "ONS",
-      categoryCode: "INS",
-      stage: "SENT",
-    },
-    {
-      firstName: "Samuel",
-      lastName: "Okoro",
-      email: "demo.inv.samuel.okoro@nbs.gov.ng",
-      country: "Nigeria",
-      organization: "NBS",
-      categoryCode: "INS",
-      stage: "SENT",
-    },
-    {
-      firstName: "Lucie",
-      lastName: "Rakoto",
-      email: "demo.inv.lucie.rakoto@instat.mg",
-      country: "Madagascar",
-      organization: "INSTAT",
-      categoryCode: "INS",
-      stage: "SENT",
-    },
-    {
-      firstName: "Omar",
-      lastName: "Haidara",
-      email: "demo.inv.omar.haidara@ansd.sn",
-      country: "Sénégal",
-      organization: "Ministère du Plan",
-      categoryCode: "AUTORITE_VIP",
-      stage: "PENDING",
-    },
-    {
-      firstName: "Rita",
-      lastName: "Nkosi",
-      email: "demo.inv.rita.nkosi@statssa.gov.za",
-      country: "Afrique du Sud",
-      organization: "Stats SA",
-      categoryCode: "INS",
-      stage: "PENDING",
-    },
-  ];
-
-  // Le modèle `Invitation` n'a pas d'horodatage de clic (seulement le statut) :
-  // seules les dates d'envoi et d'ouverture sont posées ici.
-  const STAGE_DATES: Record<string, { sent: boolean; opened: boolean }> = {
-    PENDING: { sent: false, opened: false },
-    SENT: { sent: true, opened: false },
-    OPENED: { sent: true, opened: true },
-    CLICKED: { sent: true, opened: true },
-    REGISTERED: { sent: true, opened: true },
-  };
-
-  for (const seed of invitationSeeds) {
-    const already = await prisma.invitation.findFirst({
-      where: { editionId: edition.id, email: seed.email },
-    });
-    if (already) continue;
-
-    const marks = STAGE_DATES[seed.stage]!;
-    const sentAt = marks.sent ? new Date(Date.now() - 12 * 24 * 3600 * 1000) : null;
-
-    const invitation = await prisma.invitation.create({
-      data: {
-        editionId: edition.id,
-        categoryId: categories[seed.categoryCode].id,
-        firstName: seed.firstName,
-        lastName: seed.lastName,
-        email: seed.email,
-        country: seed.country,
-        organization: seed.organization,
-        token: generateInvitationToken(),
-        status: seed.stage,
-        sentAt,
-        openedAt: marks.opened ? new Date(Date.now() - 11 * 24 * 3600 * 1000) : null,
-        respondedAt:
-          seed.stage === "REGISTERED" ? new Date(Date.now() - 9 * 24 * 3600 * 1000) : null,
-      },
-    });
-
-    if (seed.linkTo) {
-      const participant = await prisma.participant.findUnique({
-        where: { editionId_email: { editionId: edition.id, email: seed.linkTo } },
-        select: { id: true, invitationId: true },
-      });
-      if (participant && !participant.invitationId) {
-        await prisma.participant.update({
-          where: { id: participant.id },
-          data: { invitation: { connect: { id: invitation.id } } },
-        });
-      }
-    }
-  }
-
-  // ---------------------------------------------------------------------
   // Contenus éditoriaux (brief §5.11) — texte par défaut, éditable en BackOffice
   // ---------------------------------------------------------------------
   const contentBlocksData: Record<string, { fr: string; en: string }> = {
@@ -1733,23 +796,238 @@ async function main() {
     });
   }
 
-  // ---------------------------------------------------------------------
-  // Sponsors [DEMO]
-  // ---------------------------------------------------------------------
-  const sponsorsData = [
-    { name: "Banque mondiale", levelCode: "PRINCIPAL" },
-    { name: "BAD", levelCode: "GOLD" },
-    { name: "Union européenne", levelCode: "GOLD" },
-    { name: "UNFPA", levelCode: "SILVER" },
-    { name: "UNICEF", levelCode: "SILVER" },
-    { name: "PNUD", levelCode: "SILVER" },
-    { name: "AFRISTAT", levelCode: "INSTITUTIONNEL" },
-    { name: "UNECA", levelCode: "INSTITUTIONNEL" },
-    { name: "PARIS21", levelCode: "TECHNIQUE" },
-    { name: "RTS", levelCode: "MEDIA" },
-  ];
+  return { edition, roles, categories, rooms, sponsorLevels };
+}
 
-  for (const sponsor of sponsorsData) {
+type Reference = Awaited<ReturnType<typeof seedReference>>;
+
+/** Données de démonstration (`prisma/donnees-demo.ts`) : base de développement seulement. */
+async function seedDemo({ edition, roles, categories, rooms, sponsorLevels }: Reference) {
+  // ---------------------------------------------------------------------
+  // Super administrateur [DEMO] — identifiants documentés dans README.md
+  // ---------------------------------------------------------------------
+  const superAdminPassword = process.env.SEED_SUPER_ADMIN_PASSWORD ?? "ChangeMe!Forum2026";
+  await prisma.user.upsert({
+    where: { email: SUPERADMIN_DEMO.email },
+    update: {},
+    create: {
+      email: SUPERADMIN_DEMO.email,
+      name: SUPERADMIN_DEMO.nom,
+      passwordHash: await argon2.hash(superAdminPassword, { type: argon2.argon2id }),
+      roleId: roles.SUPER_ADMIN.id,
+      isActive: true,
+    },
+  });
+
+  // ---------------------------------------------------------------------
+  // Intervenants et programme (brief §11, §5.8)
+  // ---------------------------------------------------------------------
+  const speakers: Record<string, { id: string }> = {};
+  for (const [firstName, lastName, jobTitle, organization, country] of INTERVENANTS_DEMO) {
+    const cle = `${firstName} ${lastName}`;
+    const existant = await prisma.speaker.findFirst({
+      where: { editionId: edition.id, firstName, lastName },
+    });
+    const donnees = {
+      firstName,
+      lastName,
+      jobTitle,
+      organization,
+      country,
+      // Sans adresse, un intervenant ne peut pas recevoir son lien d'accès et
+      // l'espace de dépôt reste inaccessible dans le jeu de démonstration.
+      email: emailIntervenantDemo(firstName, lastName),
+      bioFr: bioIntervenantDemo(firstName, lastName, organization),
+      isPublished: true,
+    };
+    speakers[cle] =
+      existant ?? (await prisma.speaker.create({ data: { ...donnees, editionId: edition.id } }));
+  }
+
+  let numero = 1;
+  for (const jour of JOURS_DEMO) {
+    for (const item of PROGRAMME_DEMO[jour]!) {
+      const slug = slugSeanceDemo(jour, item.titleFr);
+      const donnees = {
+        number: numero++,
+        type: item.type,
+        titleFr: item.titleFr,
+        titleEn: item.titleEn,
+        descriptionFr: descriptionSeanceDemo(item.titleFr),
+        objectives: item.theme
+          ? `[DEMO] Objectifs de la session, rattachés au thème « ${item.theme} ».`
+          : null,
+        theme: item.theme ?? null,
+        day: new Date(`${jour}T00:00:00.000Z`),
+        startTime: new Date(`${jour}T${item.start}:00.000Z`),
+        endTime: new Date(`${jour}T${item.end}:00.000Z`),
+        roomId: item.room ? rooms[item.room]!.id : null,
+        capacity: item.capacity ?? null,
+        registrationOpen: item.registrationOpen ?? false,
+        registrationDeadline: item.registrationOpen ? new Date("2026-11-20T23:59:59.000Z") : null,
+        waitlistEnabled: true,
+        isPublished: true,
+      };
+
+      const session = await prisma.session.upsert({
+        where: { editionId_slug: { editionId: edition.id, slug } },
+        update: {},
+        create: { ...donnees, slug, editionId: edition.id },
+      });
+
+      for (const [index, [nom, role]] of (item.speakers ?? []).entries()) {
+        await prisma.sessionSpeaker.upsert({
+          where: {
+            sessionId_speakerId: { sessionId: session.id, speakerId: speakers[nom]!.id },
+          },
+          update: {},
+          create: {
+            sessionId: session.id,
+            speakerId: speakers[nom]!.id,
+            role,
+            sortOrder: index,
+            confirmationStatus: "CONFIRME",
+          },
+        });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Hébergement (§29)
+  // ---------------------------------------------------------------------
+  for (const { rates, ...hotel } of HOTELS_DEMO) {
+    const existant = await prisma.hotel.findFirst({
+      where: { editionId: edition.id, name: hotel.name },
+    });
+    // Hôtel déjà en base : ni la fiche ni ses tarifs ne sont réécrits.
+    if (existant) continue;
+    const enregistre = await prisma.hotel.create({ data: { ...hotel, editionId: edition.id } });
+
+    // Les tarifs sont réécrits en bloc : ils n'ont pas de clé naturelle, et
+    // rejouer le seed ne doit pas les empiler.
+    await prisma.hotelRate.deleteMany({ where: { hotelId: enregistre.id } });
+    await prisma.hotelRate.createMany({
+      data: rates.map((rate, index) => ({
+        hotelId: enregistre.id,
+        roomType: rate.roomType,
+        price: rate.price,
+        currency: "XOF",
+        conditions: rate.conditions,
+        sortOrder: index,
+      })),
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Participants et délégations (brief §11)
+  // ---------------------------------------------------------------------
+  const delegations = {
+    MALI: await upsertDelegation(edition.id, DELEGATIONS_DEMO.MALI),
+    COTE_IVOIRE: await upsertDelegation(edition.id, DELEGATIONS_DEMO.COTE_IVOIRE),
+  };
+
+  for (const demo of PARTICIPANTS_DEMO) {
+    const existing = await prisma.participant.findUnique({
+      where: { editionId_email: { editionId: edition.id, email: demo.email } },
+    });
+    if (existing) continue;
+
+    const category = categories[demo.categoryCode];
+    const participant = await createParticipant({
+      editionId: edition.id,
+      editionCode: edition.code,
+      source: demo.source,
+      actor: { type: "SYSTEM" },
+      input: {
+        firstName: demo.firstName,
+        lastName: demo.lastName,
+        email: demo.email,
+        country: demo.country,
+        organization: demo.organization,
+        jobTitle: demo.jobTitle,
+        categoryId: category.id,
+        delegationId: demo.delegation ? delegations[demo.delegation].id : undefined,
+        locale: "fr",
+        attendsOpening: true,
+        attendsInaugural: true,
+        attendsClosing: true,
+        attendsAwards: false,
+        needsAccommodation: demo.source === "ONLINE" && demo.country !== "Sénégal",
+        needsTransport: false,
+        notes: NOTE_PARTICIPANT_DEMO,
+      },
+    });
+
+    const actor = { type: "SYSTEM" as const };
+    if (demo.after === "confirm" && participant.status === "REGISTERED") {
+      await confirmParticipant(participant.id, actor);
+    } else if (demo.after === "decline" && participant.status === "REGISTERED") {
+      await declineParticipant(participant.id, actor);
+    } else if (demo.after === "cancel") {
+      if (participant.status === "REGISTERED") await confirmParticipant(participant.id, actor);
+      await cancelParticipant(participant.id, actor);
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Invitations
+  // ---------------------------------------------------------------------
+  // Le modèle `Invitation` n'a pas d'horodatage de clic (seulement le statut) :
+  // seules les dates d'envoi et d'ouverture sont posées ici.
+  const STAGE_DATES: Record<string, { sent: boolean; opened: boolean }> = {
+    PENDING: { sent: false, opened: false },
+    SENT: { sent: true, opened: false },
+    OPENED: { sent: true, opened: true },
+    CLICKED: { sent: true, opened: true },
+    REGISTERED: { sent: true, opened: true },
+  };
+
+  for (const seed of INVITATIONS_DEMO) {
+    const already = await prisma.invitation.findFirst({
+      where: { editionId: edition.id, email: seed.email },
+    });
+    if (already) continue;
+
+    const marks = STAGE_DATES[seed.stage]!;
+    const sentAt = marks.sent ? new Date(Date.now() - 12 * 24 * 3600 * 1000) : null;
+
+    const invitation = await prisma.invitation.create({
+      data: {
+        editionId: edition.id,
+        categoryId: categories[seed.categoryCode].id,
+        firstName: seed.firstName,
+        lastName: seed.lastName,
+        email: seed.email,
+        country: seed.country,
+        organization: seed.organization,
+        token: generateInvitationToken(),
+        status: seed.stage,
+        sentAt,
+        openedAt: marks.opened ? new Date(Date.now() - 11 * 24 * 3600 * 1000) : null,
+        respondedAt:
+          seed.stage === "REGISTERED" ? new Date(Date.now() - 9 * 24 * 3600 * 1000) : null,
+      },
+    });
+
+    if (seed.linkTo) {
+      const participant = await prisma.participant.findUnique({
+        where: { editionId_email: { editionId: edition.id, email: seed.linkTo } },
+        select: { id: true, invitationId: true },
+      });
+      if (participant && !participant.invitationId) {
+        await prisma.participant.update({
+          where: { id: participant.id },
+          data: { invitation: { connect: { id: invitation.id } } },
+        });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Partenaires
+  // ---------------------------------------------------------------------
+  for (const sponsor of PARTENAIRES_DEMO) {
     const existing = await prisma.sponsor.findFirst({
       where: { editionId: edition.id, name: sponsor.name },
     });
@@ -1765,42 +1043,9 @@ async function main() {
   }
 
   // ---------------------------------------------------------------------
-  // Actualités [DEMO]
+  // Actualités
   // ---------------------------------------------------------------------
-  const postsData = [
-    {
-      slug: "ouverture-des-inscriptions-le-5-octobre",
-      titleFr: "Ouverture des inscriptions le 5 octobre",
-      titleEn: "Registrations open on 5 October",
-      bodyFr:
-        "[DEMO] Les délégations invitées recevront un lien personnalisé d'inscription. La validation est automatique pour certaines catégories, manuelle pour les autres.",
-      bodyEn:
-        "[DEMO] Invited delegations will receive a personalised registration link. Validation is automatic for some categories, manual for others.",
-      daysAgo: 5,
-    },
-    {
-      slug: "programme-provisoire-en-ligne",
-      titleFr: "Programme provisoire en ligne",
-      titleEn: "Provisional programme online",
-      bodyFr:
-        "[DEMO] Dix-huit panels sont prévus sur trois journées thématiques. Le détail sera publié avec le module Programme.",
-      bodyEn:
-        "[DEMO] Eighteen panels are planned over three themed days. Details will be published with the Programme module.",
-      daysAgo: 12,
-    },
-    {
-      slug: "appel-a-contributions",
-      titleFr: "Appel à contributions",
-      titleEn: "Call for contributions",
-      bodyFr:
-        "[DEMO] Les panélistes pourront déposer leur présentation depuis leur espace jusqu'au 10 novembre.",
-      bodyEn:
-        "[DEMO] Panellists will be able to submit their presentation from their space until 10 November.",
-      daysAgo: 20,
-    },
-  ];
-
-  for (const post of postsData) {
+  for (const post of ACTUALITES_DEMO) {
     const existing = await prisma.post.findUnique({
       where: { editionId_slug: { editionId: edition.id, slug: post.slug } },
     });
@@ -1820,8 +1065,8 @@ async function main() {
     });
   }
 
-  console.log(`Seed terminé pour l'édition ${edition.code}.`);
-  console.log(`Compte de démonstration : superadmin@ansd.sn / ${superAdminPassword}`);
+  console.log("Données de démonstration ajoutées.");
+  console.log(`Compte de démonstration : ${SUPERADMIN_DEMO.email} / ${superAdminPassword}`);
 }
 
 async function upsertDelegation(

@@ -4,6 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import argon2 from "argon2";
 import { prisma } from "../src/lib/db";
+import { estProduction } from "../src/lib/environnement";
 import { ROLE_LABELS } from "../src/lib/permissions";
 import { exigeSecondFacteur } from "../src/modules/auth/service";
 
@@ -103,6 +104,15 @@ function ligne(colonnes: string[], largeurs: number[]): string {
 }
 
 async function main(): Promise<void> {
+  // Refus en production (19 octobre 2026) : le script réinitialise des comptes
+  // et écrit leurs mots de passe en clair dans un fichier.
+  if (estProduction()) {
+    console.error(
+      "Comptes de démonstration refusés en production. Créer des comptes nominatifs avec « pnpm create:admin ».",
+    );
+    process.exit(1);
+  }
+
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
   const crees: (CompteDemo & { mdp: string; deuxFacteurs: boolean })[] = [];
 

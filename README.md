@@ -30,7 +30,7 @@ Puis, dans un autre terminal, une fois les conteneurs démarrés :
 
 ```bash
 docker compose exec app pnpm prisma migrate deploy
-docker compose exec app pnpm db:seed
+docker compose exec -e SEED_DEMO=1 app pnpm db:seed   # SEED_DEMO=1 : avec le jeu de démonstration
 ```
 
 - App : http://localhost:3000
@@ -78,7 +78,7 @@ conteneur tourne bien sur l'image construite :
 pnpm install
 cp .env.example .env   # adapter DATABASE_URL/REDIS_URL à une base MySQL/Redis existantes
 pnpm prisma:migrate
-pnpm db:seed
+SEED_DEMO=1 pnpm db:seed
 pnpm dev
 ```
 
@@ -114,8 +114,9 @@ Deux conséquences à connaître :
 
 ## Comptes de démonstration
 
-Créé par `pnpm db:seed`, à changer immédiatement en dehors d'un environnement de
-développement local :
+Créé par `SEED_DEMO=1 pnpm db:seed`, en développement seulement — le seed refuse
+les données de démonstration en production, et `pnpm demo:purger` retire ce compte
+d'une installation plus ancienne (`docs/DEPLOIEMENT.md` §4.2) :
 
 | Rôle                          | Email                | Mot de passe                                                    |
 | ----------------------------- | -------------------- | --------------------------------------------------------------- |
@@ -126,13 +127,21 @@ Ce compte porte un rôle soumis au second facteur : sa connexion envoie un code 
 
 ## Données de seed
 
-`prisma/seed.ts` est idempotent (`pnpm db:seed` peut être relancé sans dupliquer les
-données) et couvre à ce stade la structure de référence : 1 édition (`FID-2026`), 8 rôles
-BackOffice avec leurs permissions, 1 super admin, 11 catégories de participants, 7 zones
-d'accès et leur matrice catégorie × zone, 7 niveaux de sponsors, 7 modèles de notification
-(clés du Lot 1). Le contenu de démonstration volumineux (sessions, intervenants, 300
-participants `[DEMO]`) sera ajouté au fil de l'implémentation des modules correspondants
-(cf. `PLAN.md`, TODO T10).
+`prisma/seed.ts` **ne s'exécute que sur une base vide** : dès qu'une édition existe, il
+s'arrête sans rien écrire (en local, `pnpm prisma migrate reset` repart de zéro). Il
+pose :
+
+- toujours, les **données de référence** : l'édition `FID-2026`, les rôles BackOffice et
+  leurs permissions, les catégories de participants, les zones d'accès et points de
+  contrôle, les salles, les niveaux de partenaires, les contacts pratiques, les modèles
+  d'e-mails et les textes par défaut ;
+- avec `SEED_DEMO=1` (ou `--demo`), et **jamais en production**, le **jeu de
+  démonstration** de `prisma/donnees-demo.ts` : participants, invitations, délégations,
+  intervenants, programme, hôtels, partenaires, actualités, et le super admin `[DEMO]`.
+
+Une donnée à ajouter à une base existante passe par une migration, que
+`prisma/garde-migrations.ts` relit : elle ne peut que remplir des champs vides. Les
+protections des données de production sont décrites dans `docs/DEPLOIEMENT.md` §4.1.
 
 ## Variables d'environnement
 
@@ -179,17 +188,20 @@ configuré sur le domaine `ansd.sn` — mêmes cinq variables.
 
 ## Scripts
 
-| Commande                       | Effet                                     |
-| ------------------------------ | ----------------------------------------- |
-| `pnpm dev`                     | Serveur de développement Next.js          |
-| `pnpm build`                   | Build de production                       |
-| `pnpm lint`                    | ESLint                                    |
-| `pnpm format` / `format:check` | Prettier (écrit / vérifie)                |
-| `pnpm typecheck`               | Vérification TypeScript (`tsc --noEmit`)  |
-| `pnpm test`                    | Tests Vitest (unitaires + intégration DB) |
-| `pnpm prisma:migrate`          | Nouvelle migration Prisma (dev)           |
-| `pnpm prisma:generate`         | Régénère le client Prisma                 |
-| `pnpm db:seed`                 | Rejoue le seed de référence               |
+| Commande                       | Effet                                                              |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `pnpm dev`                     | Serveur de développement Next.js                                   |
+| `pnpm build`                   | Build de production                                                |
+| `pnpm lint`                    | ESLint                                                             |
+| `pnpm format` / `format:check` | Prettier (écrit / vérifie)                                         |
+| `pnpm typecheck`               | Vérification TypeScript (`tsc --noEmit`)                           |
+| `pnpm test`                    | Tests Vitest (unitaires + intégration DB)                          |
+| `pnpm prisma:migrate`          | Nouvelle migration Prisma (dev)                                    |
+| `pnpm prisma:generate`         | Régénère le client Prisma                                          |
+| `pnpm db:seed`                 | Initialise une base vide (`SEED_DEMO=1` : + démonstration)         |
+| `pnpm demo:purger`             | Inventorie les données de démonstration ; `--appliquer` les retire |
+| `pnpm migrations:verifier`     | Refuse une migration qui supprimerait ou réécrirait des données    |
+| `./scripts/deployer.sh`        | Mise à jour en production, sans toucher aux données                |
 
 Un hook Husky `pre-commit` lance `lint-staged` (ESLint + Prettier sur les fichiers modifiés).
 

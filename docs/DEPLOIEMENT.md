@@ -10,29 +10,17 @@ avec la machine.
 
 ---
 
-```bash
-cd /opt/forum-ansd
-( set -a && . ./.env && set +a && ./scripts/backup.sh )   # d'abord la sauvegarde
-git pull
-forum build app outils
-forum up -d app
-forum run --rm outils pnpm prisma migrate deploy
-```
-
-L'ordre compte : la sauvegarde d'abord, les migrations après le démarrage de la
-nouvelle image — elles sont écrites pour elle.
-
-**`outils` se reconstruit avec l'application, pas après.** C'est lui qui porte
-les migrations : resté sur son ancienne image, il répond « No pending
-migrations to apply » alors que la nouvelle application attend des colonnes
-qui n'existent pas encore — et chaque page tombe en « Application error: a
-server-side exception ». Constaté le 29 septembre 2026 : l'image `outils`
-comptait 16 migrations, le code déployé 18. Le nombre annoncé par la commande
-(« N migrations found ») doit être celui du dossier `prisma/migrations` :
+**Mettre à jour le portail** — une seule commande, qui ne touche pas aux
+données (§4) :
 
 ```bash
-ls -d prisma/migrations/*/ | wc -l
+cd /opt/forum-ansd && ./scripts/deployer.sh
 ```
+
+Sauvegarde, code, images, relecture des migrations, redémarrage, migrations,
+puis contrôle qu'aucune table n'a perdu de lignes. **Jamais de `db:seed` sur le
+serveur en service**, ni de `forum down -v` : voir §4.1, « Ce qui protège les
+données de production ».
 
 ---
 
@@ -273,30 +261,20 @@ l'image de production ne contient que le serveur compilé, sans la ligne de
 commande Prisma. `outils` reprend l'étage de construction, qui l'a, et
 disparaît dès la commande terminée (`--rm`).
 
-Le seed pose l'édition, les rôles, les catégories, les zones d'accès et les
-modèles de messages. Il est idempotent : le rejouer ne duplique rien.
+Le seed pose l'édition, les rôles, les catégories, les zones d'accès, les
+salles, les modèles de messages et les textes par défaut — **et rien d'autre** :
+aucune donnée de démonstration en production, le seed les y refuse.
 
-Deux réserves à cette idempotence, l'une et l'autre constatées le 25 septembre 2026.
-
-**Le seed reconnaît les enregistrements à leur identité, pas à leur contenu.**
-Un participant est retrouvé par son adresse, un intervenant par son nom. Changer
-l'un ou l'autre dans `prisma/seed.ts` ne corrige donc pas la fiche existante :
-elle reste, et une seconde est créée à côté. Pour corriger une fiche déjà en
-base, passer par le BackOffice — le seed ne sert qu'aux installations neuves.
+**Il ne sert qu'une fois, sur une base vide.** Depuis le 19 octobre 2026, dès
+qu'une édition existe, il s'arrête sans rien écrire. Le relancer sur le portail
+en service est donc sans effet — mais ne sert à rien non plus : une donnée à
+ajouter à une base existante passe par une migration (§4.1).
 
 **`run` n'utilise pas le code que vous venez de tirer.** Le service `outils`
 embarque une copie du dépôt figée au moment où son image a été construite, et
-`docker compose run` réutilise cette image sans la reconstruire. Un `git pull`
-suivi d'un `forum run --rm outils pnpm db:seed` rejoue donc l'ancien seed, en
-silence et sans erreur. Reconstruire d'abord :
-
-```bash
-forum build outils
-forum run --rm outils pnpm db:seed
-```
-
-La remarque vaut autant pour `prisma migrate deploy` : une migration tirée à
-l'instant n'est pas dans l'image tant qu'elle n'a pas été reconstruite.
+`docker compose run` réutilise cette image sans la reconstruire. Une migration
+tirée à l'instant n'est pas dans l'image tant qu'elle n'a pas été reconstruite
+(`forum build outils`) — `scripts/deployer.sh` le vérifie.
 
 ### 2.5 Créer le premier administrateur
 
@@ -336,19 +314,9 @@ forum exec mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABA
   -e "DELETE FROM User WHERE email = \"prenom.nom@ansd.sn\";"'
 ```
 
-Puis **neutraliser le compte de démonstration** posé par le seed, dont les
-identifiants sont publiés dans le README. Il est désactivé plutôt que supprimé :
-un compte désactivé ne peut plus ouvrir de session, ni se servir d'une session
-déjà ouverte (PLAN.md §18), et le journal d'audit garde la trace de ce qu'il a
-fait.
-
-Depuis le BackOffice : **Utilisateurs**, décocher « Compte actif ». Ou en une
-commande :
-
-```bash
-forum exec mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" \
-  -e "UPDATE User SET isActive = 0 WHERE email = \"superadmin@ansd.sn\";"'
-```
+Une installation faite **avant le 19 octobre 2026** a reçu en plus le compte de
+démonstration `superadmin@ansd.sn`, dont le mot de passe est publié dans le
+README, et tout le jeu de démonstration : `pnpm demo:purger` les retire (§4.2).
 
 ### 2.6 Vérifier
 
@@ -398,14 +366,14 @@ disque externe) fait partie de la procédure, pas du script.
 
 ## 4. Vivre avec le portail
 
-| Besoin                       | Commande                                            |
-| ---------------------------- | --------------------------------------------------- |
-| Voir l'état                  | `forum ps`                                          |
-| Suivre les journaux          | `forum logs -f app`                                 |
-| Redémarrer l'application     | `forum restart app`                                 |
-| Arrêter tout                 | `forum down` (les données restent dans les volumes) |
-| Changer une valeur du `.env` | `forum up -d app` — voir l'avertissement plus bas   |
-| Mettre à jour                | voir ci-dessous                                     |
+| Besoin                       | Commande                                                              |
+| ---------------------------- | --------------------------------------------------------------------- |
+| Voir l'état                  | `forum ps`                                                            |
+| Suivre les journaux          | `forum logs -f app`                                                   |
+| Redémarrer l'application     | `forum restart app`                                                   |
+| Arrêter tout                 | `forum down` (les données restent dans les volumes ; **jamais `-v`**) |
+| Changer une valeur du `.env` | `forum up -d app` — voir l'avertissement plus bas                     |
+| Mettre à jour                | voir ci-dessous                                                       |
 
 Changer un secret ou une adresse dans le `.env` ne demande **aucune
 reconstruction** : les valeurs sont injectées au démarrage du conteneur, pas
@@ -421,10 +389,25 @@ forum exec app printenv SMTP_HOST SMTP_USER SMTP_FROM
 Mise à jour après une évolution du code :
 
 ```bash
+cd /opt/forum-ansd && ./scripts/deployer.sh
+```
+
+Le script enchaîne, en s'arrêtant à la première étape qui échoue : sauvegarde,
+comptage des données, `git pull`, construction des images `app` **et**
+`outils`, contrôle que `outils` embarque toutes les migrations, relecture des
+migrations (§4.1), redémarrage de l'application, `prisma migrate deploy`, puis
+second comptage. Une table qui a perdu des lignes est signalée, avec la
+sauvegarde à restaurer. Le script ne lance **jamais** le seed ni aucun script
+de contenu.
+
+En dépannage, les mêmes étapes à la main :
+
+```bash
 cd /opt/forum-ansd
 ( set -a && . ./.env && set +a && ./scripts/backup.sh )   # d'abord la sauvegarde
 git pull
 forum build app outils
+forum run --rm outils pnpm migrations:verifier            # refuse une migration destructrice
 forum up -d app
 forum run --rm outils pnpm prisma migrate deploy
 ```
@@ -458,24 +441,13 @@ Constaté le 22 septembre 2026 sur un changement de `SMTP_PASSWORD`, où Compose
 répondait « Running » au lieu de « Recreated ». Le sous-shell meurt avec la
 sauvegarde et n'en laisse rien derrière lui.
 
-**Ce que le BackOffice a réglé n'est jamais écrasé.** Depuis le 1er octobre
-2026, le seed (`pnpm db:seed`) **crée seulement** ce qui manque : il ne modifie
-ni ne supprime une donnée existante — textes, traductions portugaises, modèles
-d'e-mails, catégories, rôles, zones, salles. Le rejouer sur une base en service
-est sans risque. Les migrations de données, elles, ne remplissent que des champs
-encore vides (les traductions portugaises de départ, les réseaux sociaux du pied
-de page). Un test (`prisma/seed.test.ts`) refuse toute réécriture qui
-reviendrait dans le seed.
-
-**Sections ajoutées à l'accueil.** Une section ajoutée à la composition du code
-(`src/modules/sections/defaut.ts`) n'apparaît pas sur une installation dont
-l'accueil a déjà été modifié en BackOffice : c'est alors la base qui pilote la
-page. Chaque ajout de ce genre vient avec un script idempotent, à lancer une
-fois après la mise à jour (`--essai` montre ce qu'il ferait) :
-
-```bash
-forum run --rm outils pnpm section:intervenants-partenaires   # 28 septembre 2026
-```
+**Sections ajoutées à l'accueil.** Une mise à jour ne modifie pas l'accueil
+d'une installation dont la page a déjà été réglée en BackOffice : c'est la base
+qui la pilote. Un nouveau type de section arrive dans le catalogue du BackOffice
+(Paramètres → Sections de l'accueil, « Ajouter »), et c'est le comité qui le
+place. Les scripts `section:*` et `illustrer:accueil` restent disponibles pour
+amorcer une installation, **jamais** dans une mise à jour, et toujours précédés
+de leur `--essai`.
 
 **Nouvelle permission : se reconnecter.** Les droits d'un compte BackOffice
 sont lus à la connexion. Quand une mise à jour ajoute une permission aux rôles
@@ -483,6 +455,91 @@ sont lus à la connexion. Quand une mise à jour ajoute une permission aux rôle
 rôles Super Administrateur, Administrateur Forum et Gestionnaire
 Participants), les personnes déjà connectées ne la voient qu'après s'être
 déconnectées puis reconnectées.
+
+### 4.1 Ce qui protège les données de production
+
+La règle, depuis le 19 octobre 2026 : **participants, invitations, délégations,
+badges, programme, contenus et réglages ne changent que par le BackOffice.** Une
+mise à jour apporte du code et, au besoin, des tables ou des colonnes ; elle ne
+retire ni ne réécrit rien de ce qui existe.
+
+| Ce qui pourrait arriver                            | Ce qui l'empêche                                                                                                                                                        |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Le seed rejoué sur le portail en service           | Il ne s'exécute que sur une base vide : dès qu'une édition existe, il s'arrête sans rien écrire (`prisma/seed-decision.ts`).                                            |
+| Des données de démonstration écrites en production | Refusées par le seed et par `comptes:demo` quand `APP_ENV=production` (posé en dur dans `docker-compose.prod.yml`) ou quand l'adresse publique est sur `ansd.sn`.       |
+| Une migration qui supprime ou réécrit des données  | Relue avant d'être appliquée (`pnpm migrations:verifier`, lancé par `deployer.sh`, et par les tests) : voir ci-dessous.                                                 |
+| `prisma migrate reset`, `migrate dev`, `db push`   | Refusées en production par `prisma.config.ts` : la première vide la base, les deux autres peuvent le faire. Seule `migrate deploy` s'emploie sur le serveur.            |
+| Une perte de lignes que personne ne remarque       | `deployer.sh` compte les fiches avant et après, et désigne la sauvegarde prise juste avant.                                                                             |
+| La base supprimée avec ses volumes                 | **Aucune garde logicielle.** Ne jamais lancer `forum down -v`, `docker volume rm`, `docker volume prune` ni `docker system prune --volumes` : `mysql_data` est la base. |
+
+**Écrire une migration de données.** Une migration ne peut que remplir : un
+`UPDATE` se limite, pour chaque colonne qu'il écrit, aux lignes où elle est
+encore vide (`` `colonne` IS NULL ``) ou encore égale à son texte d'origine
+(`` `colonne` = '…' ``) — une retouche faite en BackOffice ne correspond plus à
+la condition et n'est donc jamais écrasée. `DELETE`, `TRUNCATE`, `DROP TABLE`,
+`DROP COLUMN`, `REPLACE` et `ON DUPLICATE KEY UPDATE` sont refusés. Une
+exception se justifie par écrit, juste au-dessus de l'instruction :
+
+```sql
+-- garde-donnees: colonne remplacée par le second facteur par e-mail, plus lue depuis septembre
+ALTER TABLE `User` DROP COLUMN `totpSecret`;
+```
+
+Les règles sont dans `prisma/garde-migrations.ts`. Elles s'appliquent aux
+migrations écrites à partir du 19 octobre 2026 ; les précédentes ont déjà tourné
+sur la base de production.
+
+### 4.2 Retirer les données de démonstration
+
+Une installation faite avant le 19 octobre 2026 a reçu du seed tout le jeu de
+démonstration : 18 participants fictifs — dont certains sur des domaines réels
+(`@ansd.sn`, `@unfpa.org`…), que les rappels et les newsletters atteindraient —,
+13 invitations, 2 délégations, 8 intervenants, 28 séances, 2 hôtels,
+10 partenaires, 3 actualités, et le compte `superadmin@ansd.sn` au mot de passe
+publié.
+
+`pnpm demo:purger` les retrouve à partir de leur source même
+(`prisma/donnees-demo.ts`), **inventorie d'abord**, et ne touche à rien sans
+`--appliquer` :
+
+```bash
+cd /opt/forum-ansd
+git pull && ./scripts/deployer.sh                              # la première fois : apporte le script
+forum run --rm -T outils pnpm demo:purger | tee backups/demo-inventaire.txt
+```
+
+L'inventaire a deux parties :
+
+- **À retirer** : ce qui est certainement de la démonstration — les fiches du
+  jeu, intactes depuis le seed ou déjà supprimées en BackOffice, et les adresses
+  qui ne peuvent appartenir à personne (`.test`, `@demo.ansd.sn`) ;
+- **Conservé — à vérifier** : ce qui y ressemble mais a été touché — une séance
+  de démonstration retouchée, peut-être reprise pour le vrai programme ; un
+  partenaire du jeu auquel on a ajouté un logo ; une séance où de vrais
+  participants sont inscrits ; un participant nommé « Test ». Rien n'y est fait.
+
+Après relecture, une sauvegarde, puis l'application :
+
+```bash
+( set -a && . ./.env && set +a && ./scripts/backup.sh )
+forum run --rm -T outils pnpm demo:purger --appliquer
+forum restart app                                               # vide les caches de pages
+```
+
+Pour trancher un cas, identifiant par identifiant (ceux de l'inventaire) :
+`--inclure <id,…>` retire aussi une fiche « à vérifier », `--garder <id,…>`
+épargne une fiche « à retirer ». Un participant d'essai qui n'est pas de la
+démonstration se retire ainsi par `--inclure`.
+
+Ce que fait `--appliquer` : les envois en attente vers ces fiches sont retirés
+de la file **en premier** (un rappel programmé partirait sinon), puis tout est
+supprimé dans une seule transaction avec ce qui en dépend (badges, scans,
+inscriptions aux séances), enfin les fichiers (badges, logos) sont effacés. Les
+comptes de démonstration qui ont agi sont désactivés plutôt que supprimés, pour
+que le journal d'audit garde leurs actions ; le dernier super-administrateur
+actif n'est jamais touché — créer d'abord un compte nominatif (§2.5). Une entrée
+`demo.purge` au journal récapitule l'opération. Les données de référence
+(salles, zones, catégories, rôles, modèles d'e-mails, contacts, textes) restent.
 
 ---
 
@@ -655,7 +712,10 @@ HTTP et le réveil du service `certbot` sont décrits au chapitre 9 de
 - [ ] alias `forum` ramené au seul fichier de production, sans quoi un
       `forum up -d` remet le portail en clair sans le signaler (§5.7)
 - [ ] tests de sécurité de la DSI passés, avant l'ouverture des ports
-- [ ] compte de démonstration supprimé, administrateurs réels créés
+- [ ] administrateurs réels créés, données et compte de démonstration retirés
+      (`pnpm demo:purger`, §4.2) — avant tout rappel ou newsletter, qui
+      partiraient aussi vers les adresses de démonstration
+- [ ] mises à jour faites par `./scripts/deployer.sh`, jamais par `db:seed` (§4.1)
 - [ ] mot de passe du compte super-administrateur changé depuis celui saisi au
       déploiement (§2.5)
 - [ ] `.env` en `chmod 600`, secrets générés sur le serveur, jamais versionnés

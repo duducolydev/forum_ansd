@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { decouperInstructions } from "./garde-migrations";
 
 /**
  * Garde-fous contre l'écrasement des données saisies en BackOffice (demande
@@ -37,17 +38,54 @@ describe("seed : création seulement", () => {
   });
 });
 
+describe("seed : base vide seulement, démonstration à part (19 octobre 2026)", () => {
+  const main = seed.slice(
+    seed.indexOf("async function main()"),
+    seed.indexOf("async function seedReference()"),
+  );
+  const reference = seed.slice(
+    seed.indexOf("async function seedReference()"),
+    seed.indexOf("type Reference ="),
+  );
+
+  it("décide avant toute écriture, et s'arrête sans rien écrire si la base est initialisée", () => {
+    expect(main).toContain("decisionSeed(");
+    expect(main.slice(0, main.indexOf("decisionSeed("))).not.toMatch(
+      /\.(create|upsert|update|delete)\w*\(/,
+    );
+    expect(main).toMatch(/decision\.action === "rien"\) \{[^}]*return;/);
+    expect(main.indexOf('decision.action === "rien"')).toBeLessThan(
+      main.indexOf("seedReference()"),
+    );
+  });
+
+  it("n'écrit les données de démonstration que dans seedDemo, et seulement sur décision", () => {
+    expect(reference.length).toBeGreaterThan(0);
+    expect(reference).not.toMatch(/DEMO|demo\.|example\.test/);
+    expect(main).toMatch(/if \(decision\.demo\) \{\s*await seedDemo\(/);
+  });
+});
+
 describe("migrations de données", () => {
   const dossier = join(__dirname, "migrations");
   // Migrations écrites à partir de l'ajout du portugais : les plus anciennes ont
   // déjà tourné partout et ne seront plus rejouées.
+  //
+  // Découpées par `decouperInstructions`, chaînes vidées : un découpage naïf sur
+  // « ; » coupait les modèles d'e-mails en plein texte, et le test échouait
+  // depuis la migration du 12 octobre alors qu'aucune garde n'y manquait.
   const recentes = readdirSync(dossier)
     .filter((nom) => /^\d{14}_/.test(nom) && nom >= "20260930")
-    .map((nom) => ({ nom, sql: readFileSync(join(dossier, nom, "migration.sql"), "utf-8") }));
+    .map((nom) => ({
+      nom,
+      ordres: decouperInstructions(readFileSync(join(dossier, nom, "migration.sql"), "utf-8")).map(
+        (instruction) => instruction.squelette,
+      ),
+    }));
 
   it("ne réécrivent un champ portugais que s'il est vide ou encore d'origine", () => {
-    for (const { nom, sql } of recentes) {
-      for (const ordre of sql.split(";").filter((o) => /^\s*(--.*\n\s*)*UPDATE/i.test(o))) {
+    for (const { nom, ordres } of recentes) {
+      for (const ordre of ordres.filter((o) => /^UPDATE\b/i.test(o))) {
         const [ecriture, condition = ""] = ordre.split(/\bWHERE\s+(?=`)/);
         const champsPt = [...ecriture.matchAll(/`(\w+Pt)`\s*=/g)].map((m) => m[1]);
         for (const champ of champsPt) {
@@ -62,10 +100,8 @@ describe("migrations de données", () => {
   });
 
   it("ne réécrivent un modèle d'e-mail que s'il est encore d'origine", () => {
-    for (const { nom, sql } of recentes) {
-      for (const ordre of sql
-        .split(";")
-        .filter((o) => /UPDATE\s+`NotificationTemplate`/i.test(o))) {
+    for (const { nom, ordres } of recentes) {
+      for (const ordre of ordres.filter((o) => /^UPDATE\s+`NotificationTemplate`/i.test(o))) {
         const [ecriture, condition = ""] = ordre.split(/\bWHERE\s+(?=`)/);
         for (const [, champ] of ecriture.matchAll(/`((?:body|subject)(?:Fr|En|Pt))`\s*=/g)) {
           expect(condition, `${nom} : ${champ} écrasé sans garde`).toMatch(

@@ -9,6 +9,10 @@ services:
       target: runner
     restart: unless-stopped
     environment:
+      # Écrit ici et non dans le `.env` : la protection des données de
+      # production (seed, Prisma, scripts de démonstration — src/lib/environnement.ts)
+      # ne doit pas dépendre d'une ligne qu'on oublie de recopier.
+      APP_ENV: production
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       SMTP_HOST: ${SMTP_HOST}
@@ -95,14 +99,18 @@ services:
   # `run --rm`, le temps d'une commande.
   #
   #   docker compose -f docker-compose.prod.yml run --rm outils pnpm prisma migrate deploy
-  #   docker compose -f docker-compose.prod.yml run --rm outils pnpm db:seed
   #   docker compose -f docker-compose.prod.yml run --rm outils pnpm create:admin …
+  #
+  # `APP_ENV: production` y refuse ce qui pourrait vider ou polluer la base :
+  # `prisma migrate reset|dev`, `db push`, le seed de démonstration,
+  # `comptes:demo`. Le seed lui-même n'écrit plus rien sur une base initialisée.
   outils:
     profiles: ["outils"]
     build:
       context: .
       target: builder
     environment:
+      APP_ENV: production
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       STORAGE_DRIVER: ${STORAGE_DRIVER}
