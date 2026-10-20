@@ -28,6 +28,7 @@ import {
  *     pnpm demo:purger                          # inventaire : rien n'est modifié
  *     pnpm demo:purger --appliquer              # retire ce que l'inventaire annonce
  *     pnpm demo:purger --appliquer --inclure <id,…> --garder <id,…>
+ *     pnpm demo:purger --participant "Oumar Ba" --intervenant "Prénom Nom"
  *
  * Sur le serveur, après une sauvegarde :
  *
@@ -50,8 +51,22 @@ import {
  * **conservée et signalée**, et c'est `--inclure` qui tranche, identifiant par
  * identifiant, après relecture.
  *
+ * Exception : un **intervenant** du jeu (nom et adresse du seed) est retiré même
+ * retouché, de même que tout intervenant à l'adresse fictive — ce sont des
+ * personnes inventées, qu'une photo ou une séance ne rendent pas réelles
+ * (demande du 20 octobre 2026).
+ *
  * Sont aussi signalés sans être touchés : les participants et invitations dont
  * le nom ou l'adresse évoquent un essai, et tout texte encore marqué `[DEMO]`.
+ *
+ * ## Désigner une fiche d'essai par son nom
+ *
+ * Une fiche d'essai saisie à la main ne porte aucune marque : `--participant` et
+ * `--intervenant` la désignent par son nom (répétables, accents et casse
+ * ignorés, prénom et nom dans un ordre ou l'autre). Un seul porteur du nom : il
+ * est retiré, avec l'invitation à son adresse. Plusieurs : tous passent « à
+ * vérifier », et `--inclure` choisit — un homonyme réel ne doit pas partir avec
+ * la fiche d'essai. Un nom que personne ne porte arrête le script.
  *
  * ## Ce qui est fait
  *
@@ -103,15 +118,38 @@ function liste(option: string): Set<string> {
   );
 }
 
+/** Toutes les occurrences d'une option qui nomme des personnes (`--participant "Oumar Ba"`). */
+function noms(option: string): string[] {
+  const valeurs: string[] = [];
+  process.argv.forEach((argument, rang) => {
+    if (argument !== option) return;
+    const valeur = process.argv[rang + 1];
+    if (!valeur || valeur.startsWith("--")) {
+      throw new Error(`${option} attend un nom : ${option} "Prénom Nom".`);
+    }
+    valeurs.push(
+      ...valeur
+        .split(",")
+        .map((nom) => nom.trim())
+        .filter(Boolean),
+    );
+  });
+  return valeurs;
+}
+
 const APPLIQUER = process.argv.includes("--appliquer");
 let INCLURE = new Set<string>();
 let GARDER = new Set<string>();
+let PARTICIPANTS_NOMMES: string[] = [];
+let INTERVENANTS_NOMMES: string[] = [];
 const utilises = new Set<string>();
 
 /** Lu depuis `main`, pour qu'une option mal formée s'affiche en clair, sans trace de pile. */
 function lireOptions(): void {
   INCLURE = liste("--inclure");
   GARDER = liste("--garder");
+  PARTICIPANTS_NOMMES = noms("--participant");
+  INTERVENANTS_NOMMES = noms("--intervenant");
   for (const id of INCLURE) {
     if (GARDER.has(id)) throw new Error(`${id} figure à la fois dans --inclure et dans --garder.`);
   }
@@ -161,19 +199,84 @@ function intacte(fiche: { createdAt: Date; updatedAt: Date }): boolean {
 
 const minuscules = (valeurs: Iterable<string>) => new Set([...valeurs].map((v) => v.toLowerCase()));
 
+function nomNormalise(texte: string): string {
+  return texte
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/** « Oumar Ba », « BA Oumar » et « oumar  bâ » désignent la même personne. */
+function porteLeNom(personne: { firstName: string; lastName: string }, nom: string): boolean {
+  const cherche = nomNormalise(nom);
+  return (
+    nomNormalise(`${personne.firstName} ${personne.lastName}`) === cherche ||
+    nomNormalise(`${personne.lastName} ${personne.firstName}`) === cherche
+  );
+}
+
+/**
+ * Place dans la rubrique les personnes désignées par leur nom : retirée si elle
+ * est seule à le porter, « à vérifier » s'il y a des homonymes.
+ */
+function designer(
+  rubrique: Rubrique,
+  personnes: { id: string; firstName: string; lastName: string; libelle: string }[],
+  nomsDesignes: string[],
+  option: string,
+): void {
+  for (const nom of nomsDesignes) {
+    const porteurs = personnes.filter((personne) => porteLeNom(personne, nom));
+    if (porteurs.length === 0) {
+      throw new Error(`Aucune fiche au nom de « ${nom} » (${option}) : rien n'a été fait.`);
+    }
+    for (const porteur of porteurs) {
+      if (rubrique.aRetirer.some((fiche) => fiche.id === porteur.id)) continue;
+      rubrique.aVerifier = rubrique.aVerifier.filter((fiche) => fiche.id !== porteur.id);
+      const fiche = { id: porteur.id, libelle: porteur.libelle };
+      if (porteurs.length === 1) {
+        rubrique.aRetirer.push({ ...fiche, motif: `désigné par son nom (${option} « ${nom} »)` });
+      } else {
+        rubrique.aVerifier.push({
+          ...fiche,
+          motif: `${porteurs.length} fiches au nom de « ${nom} » : choisir avec --inclure <id>`,
+        });
+      }
+    }
+  }
+}
+
 // --- Inventaire ----------------------------------------------------------------------
 
 async function inventorierParticipants(): Promise<Rubrique> {
   const adressesDemo = minuscules(PARTICIPANTS_DEMO.map((p) => p.email));
-  const participants = await prisma.participant.findMany({
-    select: { id: true, email: true, firstName: true, lastName: true, notes: true, status: true },
-    orderBy: { email: "asc" },
-  });
+  const participants = (
+    await prisma.participant.findMany({
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        notes: true,
+        status: true,
+        createdAt: true,
+      },
+      orderBy: { email: "asc" },
+    })
+  ).map((p) => ({
+    ...p,
+    // La date d'inscription départage deux homonymes.
+    libelle: `${p.firstName} ${p.lastName} <${p.email}> (${p.status}, inscrit le ${p.createdAt
+      .toISOString()
+      .slice(0, 10)})`,
+  }));
 
   const rubrique: Rubrique = { titre: "Participants", aRetirer: [], aVerifier: [] };
   for (const p of participants) {
     const email = p.email.toLowerCase();
-    const fiche = { id: p.id, libelle: `${p.firstName} ${p.lastName} <${p.email}> (${p.status})` };
+    const fiche = { id: p.id, libelle: p.libelle };
     if (adressesDemo.has(email) && p.notes === NOTE_PARTICIPANT_DEMO) {
       rubrique.aRetirer.push({ ...fiche, motif: "participant du jeu de démonstration" });
     } else if (adresseFictive(email)) {
@@ -194,10 +297,14 @@ async function inventorierParticipants(): Promise<Rubrique> {
       rubrique.aVerifier.push({ ...fiche, motif: "nom ou adresse d'essai ?" });
     }
   }
+  designer(rubrique, participants, PARTICIPANTS_NOMMES, "--participant");
   return arbitrer(rubrique);
 }
 
-async function inventorierInvitations(participantsRetires: Set<string>): Promise<Rubrique> {
+async function inventorierInvitations(
+  participantsRetires: Set<string>,
+  adressesRetirees: Set<string>,
+): Promise<Rubrique> {
   const adressesDemo = minuscules(INVITATIONS_DEMO.map((i) => i.email));
   const invitations = await prisma.invitation.findMany({
     select: {
@@ -217,8 +324,12 @@ async function inventorierInvitations(participantsRetires: Set<string>): Promise
     const fiche = { id: i.id, libelle: `${i.firstName} ${i.lastName} <${i.email}> (${i.status})` };
     const demo = adressesDemo.has(email) || adresseFictive(email);
     const participantConserve = i.participant && !participantsRetires.has(i.participant.id);
+    const duParticipantRetire =
+      (i.participant && participantsRetires.has(i.participant.id)) || adressesRetirees.has(email);
 
-    if (demo && participantConserve) {
+    if (duParticipantRetire && !participantConserve) {
+      rubrique.aRetirer.push({ ...fiche, motif: "invitation d'un participant retiré" });
+    } else if (demo && participantConserve) {
       rubrique.aVerifier.push({
         ...fiche,
         motif: "invitation de démonstration, mais rattachée à un participant conservé",
@@ -277,49 +388,47 @@ async function inventorierIntervenants(seancesRetirees: Set<string>): Promise<Ru
       lastName: true,
       bioFr: true,
       photoPath: true,
-      deletedAt: true,
-      createdAt: true,
-      updatedAt: true,
       sessions: { select: { sessionId: true } },
-      _count: { select: { contributions: true } },
+      _count: { select: { contributions: { where: { origine: "INTERVENANT" } } } },
     },
     orderBy: { lastName: "asc" },
   });
 
-  const rubrique: Rubrique = { titre: "Intervenants", aRetirer: [], aVerifier: [] };
-  for (const s of intervenants) {
-    const identite = s.email ? seed.get(s.email.toLowerCase()) : undefined;
-    const duSeed = identite?.firstName === s.firstName && identite.lastName === s.lastName;
+  const personnes = intervenants.map((s) => {
     // Séances qui restent au programme : l'intervenant en disparaîtra aussi.
     const conservees = s.sessions.filter((lien) => !seancesRetirees.has(lien.sessionId)).length;
-    const fiche = {
-      id: s.id,
+    const depots = s._count.contributions;
+    return {
+      ...s,
       libelle:
         `${s.firstName} ${s.lastName} <${s.email ?? "sans adresse"}>` +
-        (conservees > 0 ? ` — retiré aussi de ${conservees} séance(s) conservée(s)` : ""),
+        (conservees > 0 ? ` — retiré aussi de ${conservees} séance(s) conservée(s)` : "") +
+        (depots > 0 ? ` — ${depots} présentation(s) déposée(s), retirée(s) avec lui` : ""),
     };
+  });
 
-    if (duSeed && s.deletedAt) {
+  const rubrique: Rubrique = { titre: "Intervenants", aRetirer: [], aVerifier: [] };
+  for (const s of personnes) {
+    const identite = s.email ? seed.get(s.email.toLowerCase()) : undefined;
+    const duSeed = identite?.firstName === s.firstName && identite.lastName === s.lastName;
+    const fiche = { id: s.id, libelle: s.libelle };
+
+    // Une personne inventée le reste, même dotée d'une photo ou d'une séance :
+    // pas de condition « intacte » ici, contrairement aux fiches de contenu.
+    if (duSeed) {
+      rubrique.aRetirer.push({ ...fiche, motif: "intervenant du jeu de démonstration" });
+    } else if (adresseFictive(s.email)) {
       rubrique.aRetirer.push({
         ...fiche,
-        motif: "intervenant de démonstration, déjà supprimé en BackOffice",
-      });
-    } else if (duSeed && intacte(s) && !s.photoPath && s._count.contributions === 0) {
-      rubrique.aRetirer.push({
-        ...fiche,
-        motif: "intervenant de démonstration, intact depuis le seed",
-      });
-    } else if (duSeed || adresseFictive(s.email)) {
-      rubrique.aVerifier.push({
-        ...fiche,
-        motif: duSeed
-          ? "intervenant de démonstration retouché depuis le seed (photo, texte ou séances)"
-          : "adresse sur un domaine réservé",
+        motif: "adresse sur un domaine réservé : intervenant d'essai, injoignable",
       });
     } else if (s.bioFr?.includes("[DEMO]")) {
       rubrique.aVerifier.push({ ...fiche, motif: "biographie marquée [DEMO]" });
+    } else if (evoqueUnEssai(s.firstName, s.lastName, s.email?.split("@")[0])) {
+      rubrique.aVerifier.push({ ...fiche, motif: "nom ou adresse d'essai ?" });
     }
   }
+  designer(rubrique, personnes, INTERVENANTS_NOMMES, "--intervenant");
   return arbitrer(rubrique);
 }
 
@@ -644,7 +753,15 @@ async function main(): Promise<void> {
   lireOptions();
   const participants = await inventorierParticipants();
   const participantsRetires = new Set(participants.aRetirer.map((f) => f.id));
-  const invitations = await inventorierInvitations(participantsRetires);
+  const adressesRetirees = minuscules(
+    (
+      await prisma.participant.findMany({
+        where: { id: { in: [...participantsRetires] } },
+        select: { email: true },
+      })
+    ).map((p) => p.email),
+  );
+  const invitations = await inventorierInvitations(participantsRetires, adressesRetirees);
   const delegations = await inventorierDelegations(participantsRetires);
   const seances = await inventorierSeances(participantsRetires);
   const intervenants = await inventorierIntervenants(new Set(seances.aRetirer.map((f) => f.id)));
@@ -708,6 +825,12 @@ async function main(): Promise<void> {
     where: { id: { in: ids(seances) } },
     select: { tdrPath: true },
   });
+  // Présentations déposées par les intervenants retirés : copiées dans leur
+  // propre fichier à chaque séance, elles partent avec eux.
+  const presentations = await prisma.contribution.findMany({
+    where: { speakerId: { in: intervenantsRetires }, origine: "INTERVENANT" },
+    select: { id: true, filePath: true },
+  });
   const fichiers = [
     ...badges.flatMap((b) => [b.pdfPath, b.pngPath]),
     ...photosP.map((p) => p.photoPath),
@@ -721,6 +844,7 @@ async function main(): Promise<void> {
       ),
     ]),
     ...seancesFichiers.map((s) => s.tdrPath),
+    ...presentations.map((c) => c.filePath),
   ].filter((chemin): chemin is string => Boolean(chemin));
 
   const rubriques = [
@@ -767,6 +891,11 @@ async function main(): Promise<void> {
         delegations: (await tx.delegation.deleteMany({ where: { id: { in: ids(delegations) } } }))
           .count,
         seances: (await tx.session.deleteMany({ where: { id: { in: ids(seances) } } })).count,
+        presentations: (
+          await tx.contribution.deleteMany({
+            where: { id: { in: presentations.map((c) => c.id) } },
+          })
+        ).count,
         intervenants: (await tx.speaker.deleteMany({ where: { id: { in: intervenantsRetires } } }))
           .count,
         hotels: (await tx.hotel.deleteMany({ where: { id: { in: ids(hotels) } } })).count,

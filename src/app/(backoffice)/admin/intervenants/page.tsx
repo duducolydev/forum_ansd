@@ -1,4 +1,4 @@
-import { MicVocal } from "lucide-react";
+import { FileSpreadsheet, MicVocal } from "lucide-react";
 import { LienBouton } from "@/components/ui/bouton";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -36,9 +36,14 @@ export default async function IntervenantsPage() {
           </p>
         </div>
         {peutEcrire && (
-          <LienBouton href="/admin/intervenants/nouveau" ton="principal" icone={MicVocal}>
-            Nouvel intervenant
-          </LienBouton>
+          <div className="flex flex-wrap gap-2">
+            <LienBouton href="/admin/intervenants/importer" icone={FileSpreadsheet}>
+              Importer
+            </LienBouton>
+            <LienBouton href="/admin/intervenants/nouveau" ton="principal" icone={MicVocal}>
+              Nouvel intervenant
+            </LienBouton>
+          </div>
         )}
       </div>
 

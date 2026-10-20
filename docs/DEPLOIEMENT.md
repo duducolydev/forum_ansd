@@ -511,8 +511,10 @@ forum run --rm -T outils pnpm demo:purger | tee backups/demo-inventaire.txt
 L'inventaire a deux parties :
 
 - **À retirer** : ce qui est certainement de la démonstration — les fiches du
-  jeu, intactes depuis le seed ou déjà supprimées en BackOffice, et les adresses
-  qui ne peuvent appartenir à personne (`.test`, `@demo.ansd.sn`) ;
+  jeu, intactes depuis le seed ou déjà supprimées en BackOffice, les huit
+  intervenants inventés du jeu **même retouchés** (photo, séance, présentation),
+  et les adresses qui ne peuvent appartenir à personne (`.test`,
+  `@demo.ansd.sn`) ;
 - **Conservé — à vérifier** : ce qui y ressemble mais a été touché — une séance
   de démonstration retouchée, peut-être reprise pour le vrai programme ; un
   partenaire du jeu auquel on a ajouté un logo ; une séance où de vrais
@@ -528,8 +530,22 @@ forum restart app                                               # vide les cache
 
 Pour trancher un cas, identifiant par identifiant (ceux de l'inventaire) :
 `--inclure <id,…>` retire aussi une fiche « à vérifier », `--garder <id,…>`
-épargne une fiche « à retirer ». Un participant d'essai qui n'est pas de la
-démonstration se retire ainsi par `--inclure`.
+épargne une fiche « à retirer ».
+
+Une fiche d'essai saisie à la main, sans aucune marque, se désigne par son
+nom — le BackOffice ne supprime ni participant ni intervenant :
+
+```bash
+forum run --rm -T outils pnpm demo:purger --participant "Oumar Ba"
+forum run --rm -T outils pnpm demo:purger --intervenant "Prénom Nom" --participant "Autre Nom"
+```
+
+Accents, casse et ordre prénom/nom sont ignorés ; les options se répètent.
+Seul à porter ce nom, le participant est retiré avec l'invitation à son adresse.
+Plusieurs homonymes : tous passent « à vérifier », avec leur adresse et leur
+date d'inscription, et `--inclure <id>` désigne le bon. Un nom que personne ne
+porte arrête le script sans rien faire. Les mêmes options se répètent avec
+`--appliquer`.
 
 Ce que fait `--appliquer` : les envois en attente vers ces fiches sont retirés
 de la file **en premier** (un rappel programmé partirait sinon), puis tout est
