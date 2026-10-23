@@ -41,13 +41,12 @@ export default async function SponsorsPage() {
   const sponsors = await listerSponsorsPublies(edition.id);
   const total = sponsors.length;
   /*
-   * Mosaïque (brief « Constellation » §6) : les partenaires du premier niveau
-   * — le plus petit rang, en général le sponsor principal — occupent une
-   * grande tuile ; les autres, une tuile simple. L'ordre reste celui du
-   * BackOffice, et aucun nom de niveau n'est affiché (arbitrage du
-   * 28 septembre 2026).
+   * Toutes les cartes à la même taille (demande du 23 octobre 2026) : la
+   * mosaïque, où le premier niveau occupait une grande tuile et où la largeur
+   * du logo suivait le niveau, est abandonnée sur cette page. Restent l'ordre
+   * décidé en BackOffice et la couleur du niveau ; aucun nom de niveau n'est
+   * affiché (arbitrage du 28 septembre 2026).
    */
-  const premierRang = Math.min(...sponsors.map((sponsor) => sponsor.level.sortOrder));
   const pluriel = total > 1;
 
   return (
@@ -81,9 +80,10 @@ export default async function SponsorsPage() {
             {tPage("empty")}
           </p>
         ) : (
-          <div className="grid grid-flow-dense grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          // `auto-rows-fr` : toutes les rangées prennent la hauteur de la plus
+          // haute — une carte sans pied ni site garde la taille des autres.
+          <div className="grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {sponsors.map((sponsor, rang) => {
-              const grand = sponsor.level.sortOrder === premierRang;
               const description = resolveLocaleValue(
                 sponsor.descriptionFr,
                 sponsor.descriptionEn,
@@ -112,12 +112,7 @@ export default async function SponsorsPage() {
                           sponsor.logoPath ?? "",
                         )}
                         alt={sponsor.name}
-                        style={
-                          sponsor.level.logoMaxWidth
-                            ? { maxWidth: `${sponsor.level.logoMaxWidth}px` }
-                            : undefined
-                        }
-                        className={`object-contain transition-transform duration-300 group-hover:scale-105 ${grand ? "max-h-32" : "max-h-20"}`}
+                        className="max-h-20 max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
                       <span className="font-display text-heading text-center text-lg leading-snug font-bold text-balance">
@@ -169,7 +164,7 @@ export default async function SponsorsPage() {
               const classes =
                 "group tuile-projecteur border-border bg-surface relative flex h-full flex-col overflow-hidden rounded-2xl border shadow-sm";
 
-              // Entrée en cascade ; la grande tuile porte l'étendue dans la grille.
+              // Entrée en cascade.
               const tuile = sponsor.website ? (
                 <a
                   data-projecteur
@@ -194,7 +189,7 @@ export default async function SponsorsPage() {
                   key={sponsor.id}
                   variant="up"
                   delay={Math.min(rang, 12) * 0.06}
-                  className={grand ? "sm:col-span-2 sm:row-span-2" : undefined}
+                  className="h-full"
                 >
                   {tuile}
                 </RevealMotion>

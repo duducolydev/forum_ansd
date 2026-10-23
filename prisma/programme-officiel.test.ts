@@ -2,10 +2,16 @@ import { describe, expect, it } from "vitest";
 import { JOURS_DEMO, PROGRAMME_DEMO, slugSeanceDemo } from "./donnees-demo";
 import { PROGRAMME_OFFICIEL, versSessionInput } from "./programme-officiel";
 
-const SALLES = { AMPHITHEATRE: "salle-amphi", PLENIERE: "salle-pleniere" };
+const SALLES = {
+  AMPHITHEATRE: "salle-amphi",
+  PLENIERE: "salle-pleniere",
+  EXPOSITION: "espace-expo",
+};
 
 const jours = [...new Set(PROGRAMME_OFFICIEL.map((seance) => seance.jour))];
-const duJour = (jour: string) => PROGRAMME_OFFICIEL.filter((seance) => seance.jour === jour);
+// Le fil de la journée, sans l'exposition qui court en parallèle.
+const duJour = (jour: string) =>
+  PROGRAMME_OFFICIEL.filter((seance) => seance.jour === jour && !seance.enContinu);
 
 describe("programme officiel (note conceptuelle du 24 septembre 2026)", () => {
   it("tient en trois journées, du 23 au 25 novembre", () => {
@@ -41,6 +47,20 @@ describe("programme officiel (note conceptuelle du 24 septembre 2026)", () => {
     // Toute autre séance a sa salle.
     for (const seance of PROGRAMME_OFFICIEL.filter((s) => !pauses.includes(s))) {
       expect(seance.salle, seance.titre.fr).toBeDefined();
+    }
+  });
+
+  it("ouvre l'exposition des stands chaque jour, du premier au dernier créneau", () => {
+    const expositions = PROGRAMME_OFFICIEL.filter((seance) => seance.enContinu);
+    expect(expositions.map((seance) => seance.jour)).toEqual(jours);
+    for (const exposition of expositions) {
+      const fil = duJour(exposition.jour);
+      expect(exposition).toMatchObject({
+        type: "SIDE_EVENT",
+        salle: "EXPOSITION",
+        debut: fil[0]!.debut,
+        fin: fil[fil.length - 1]!.fin,
+      });
     }
   });
 

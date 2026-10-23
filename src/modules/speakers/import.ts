@@ -209,9 +209,14 @@ function lireRole(valeur: string | undefined): RoleSession {
   return role;
 }
 
+/** Séance candidate au rattachement, avec sa publication pour départager des homonymes. */
+interface SeanceConnue extends SeanceRetenue {
+  publiee: boolean;
+}
+
 interface Referentiels {
   /** Par numéro, adresse courte ou titre normalisé ; plusieurs séances pour un titre partagé. */
-  seances: Map<string, SeanceRetenue[]>;
+  seances: Map<string, SeanceConnue[]>;
   /** Intervenants déjà enregistrés, par adresse. */
   adresses: Set<string>;
   /** Noms des intervenants enregistrés **sans** adresse : un import en ferait des doublons. */
@@ -226,7 +231,7 @@ async function chargerReferentiels(editionId: string): Promise<Referentiels> {
   const [seances, intervenants] = await Promise.all([
     prisma.session.findMany({
       where: { editionId, deletedAt: null },
-      select: { id: true, number: true, slug: true, titleFr: true },
+      select: { id: true, number: true, slug: true, titleFr: true, isPublished: true },
     }),
     prisma.speaker.findMany({
       where: { editionId, deletedAt: null },
@@ -234,14 +239,14 @@ async function chargerReferentiels(editionId: string): Promise<Referentiels> {
     }),
   ]);
 
-  const parSeance = new Map<string, SeanceRetenue[]>();
-  const ajouter = (cle: string, seance: SeanceRetenue) => {
+  const parSeance = new Map<string, SeanceConnue[]>();
+  const ajouter = (cle: string, seance: SeanceConnue) => {
     if (!cle) return;
     const deja = parSeance.get(cle) ?? [];
     if (!deja.some((s) => s.id === seance.id)) parSeance.set(cle, [...deja, seance]);
   };
   for (const seance of seances) {
-    const retenue = { id: seance.id, titre: seance.titleFr };
+    const retenue = { id: seance.id, titre: seance.titleFr, publiee: seance.isPublished };
     if (seance.number !== null) ajouter(String(seance.number), retenue);
     ajouter(normaliserCle(seance.slug), retenue);
     ajouter(normaliserCle(seance.titleFr), retenue);
@@ -267,12 +272,20 @@ function lireSeances(valeur: string | undefined, referentiels: Referentiels): Se
     if (candidates.length === 0) {
       throw new Error(`Séance inconnue : « ${repere} ». Voir la feuille « Séances » du modèle.`);
     }
-    if (candidates.length > 1) {
+    // Une séance retirée du programme mais gardée pour ses inscrits (dépubliée
+    // par `programme:officiel --remplacer`) conserve son numéro : face à elle,
+    // la séance publiée l'emporte (23 octobre 2026).
+    const publiees = candidates.filter((s) => s.publiee);
+    const retenue =
+      candidates.length === 1 ? candidates[0]! : publiees.length === 1 ? publiees[0]! : null;
+    if (!retenue) {
       throw new Error(
         `Plusieurs séances s'intitulent « ${repere} » : désignez-la par son numéro ou son adresse (feuille « Séances »).`,
       );
     }
-    if (!retenues.some((s) => s.id === candidates[0]!.id)) retenues.push(candidates[0]!);
+    if (!retenues.some((s) => s.id === retenue.id)) {
+      retenues.push({ id: retenue.id, titre: retenue.titre });
+    }
   }
   return retenues;
 }

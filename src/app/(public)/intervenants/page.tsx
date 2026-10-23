@@ -10,9 +10,21 @@ import {
   type IntervenantAnnuaire,
 } from "@/components/home/AnnuaireIntervenants";
 
+/**
+ * « Intervenants confirmés » (demande du 23 octobre 2026) : la page ne liste
+ * que les fiches publiées, et le comité ne publie que les participations
+ * confirmées. Le menu garde « Intervenants », plus court.
+ */
+function titrePage(locale: Langue): string {
+  return selon(locale, {
+    fr: "Intervenants confirmés",
+    en: "Confirmed speakers",
+    pt: "Oradores confirmados",
+  });
+}
+
 export async function generateMetadata() {
-  const t = await getTranslations("nav");
-  return { title: t("speakers") };
+  return { title: titrePage((await getLocale()) as Langue) };
 }
 
 /*
@@ -44,7 +56,6 @@ interface Filtres {
  * `AnnuaireIntervenants`.
  */
 export default async function SpeakersPage({ searchParams }: { searchParams: Promise<Filtres> }) {
-  const t = await getTranslations("nav");
   const tPage = await getTranslations("speakersPage");
   const locale = (await getLocale()) as Langue;
   const edition = await getActiveEdition();
@@ -102,7 +113,7 @@ export default async function SpeakersPage({ searchParams }: { searchParams: Pro
             en: "They speak",
             pt: "Quem intervém",
           })}
-          titre={t("speakers")}
+          titre={titrePage(locale)}
           icone={Mic}
         />
       </BandeauPage>

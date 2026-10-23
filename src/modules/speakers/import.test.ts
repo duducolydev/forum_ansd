@@ -19,12 +19,13 @@ function classeur(lignes: Record<string, string>[]): Buffer {
 let editionId: string;
 const seances: Record<string, string> = {};
 
-async function creerSeance(cle: string, titre: string, numero: number | null) {
+async function creerSeance(cle: string, titre: string, numero: number | null, publiee = false) {
   const seance = await prisma.session.create({
     data: {
       editionId,
       slug: `import-${cle}-${suffixe}`,
       number: numero,
+      isPublished: publiee,
       type: "PANEL",
       titleFr: titre,
       titleEn: titre,
@@ -41,6 +42,9 @@ beforeAll(async () => {
   await creerSeance("panel", `Panel import ${suffixe}`, NUMERO);
   await creerSeance("pause1", `Pause import ${suffixe}`, null);
   await creerSeance("pause2", `Pause import ${suffixe}`, null);
+  // Même numéro : l'ancienne séance dépubliée (gardée pour ses inscrits) et l'officielle.
+  await creerSeance("ancienne", `Ancien panel ${suffixe}`, NUMERO + 1);
+  await creerSeance("officielle", `Panel officiel ${suffixe}`, NUMERO + 1, true);
   await prisma.speaker.create({
     data: {
       editionId,
@@ -166,6 +170,14 @@ describe("import d'intervenants : vérification", () => {
     ]);
     expect(parTitre.valides[0]!.seances.map((s) => s.id)).toEqual([seances.panel]);
     expect(parTitre.valides[0]!.role).toBe("PANELIST");
+  });
+
+  it("départage deux séances de même numéro par leur publication", async () => {
+    const { valides, erreurs } = await analyser([
+      { prenom: "Awa", nom: `Publiee${suffixe}`, seances: String(NUMERO + 1) },
+    ]);
+    expect(erreurs).toEqual([]);
+    expect(valides[0]!.seances.map((s) => s.id)).toEqual([seances.officielle]);
   });
 
   it("écarte, ligne par ligne, ce qui ne peut pas être créé", async () => {

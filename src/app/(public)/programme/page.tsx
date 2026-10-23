@@ -12,6 +12,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { EnteteSection } from "@/components/site/entete-section";
+import { FiltresRepliables } from "@/components/site/filtres-repliables";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
 import { LienSite } from "@/components/site/bouton-site";
 import Link from "next/link";
@@ -50,6 +51,11 @@ function lienFiltre(filtres: Filtres, cle: keyof Filtres, valeur: string): strin
   else parametres.set(cle, valeur);
   const suite = parametres.toString();
   return suite ? `/programme?${suite}` : "/programme";
+}
+
+/** Le même filtrage, sans le critère `cle` (pastille « Tous les jours »). */
+function lienSans(filtres: Filtres, cle: keyof Filtres): string {
+  return lienVue({ ...filtres, [cle]: undefined }, (filtres.vue as "salles" | undefined) ?? null);
 }
 
 /** Bascule d'affichage : on garde les filtres, on change seulement la vue. */
@@ -124,6 +130,12 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
     timeZone: "UTC",
   });
   const surtitre = selon(locale, { fr: "Trois journées", en: "Three days", pt: "Três dias" });
+  // « Lundi 23 novembre » : une seule capitale, juste en français comme en
+  // portugais (« Segunda-feira, 23 de novembro »).
+  const nomDuJour = (date: Date) => {
+    const texte = jourLong.format(date);
+    return texte.charAt(0).toUpperCase() + texte.slice(1);
+  };
 
   const [sessions, salles] = await Promise.all([
     listSessions(edition.id, { onlyPublished: true }),
@@ -179,25 +191,37 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
     .sort()
     .map((iso) => ({ iso, date: new Date(`${iso}T00:00:00.000Z`) }));
 
-  const jourActif = jours.find((jour) => jour.iso === filtres.jour) ?? jours[0]!;
+  /*
+   * Tout le programme par défaut (demande du 23 octobre 2026) : les trois
+   * journées se suivent, chacune sous son titre. Le jour est devenu un filtre
+   * comme les autres ; un lien `?jour=…` déjà partagé montre toujours ce
+   * jour-là, panneau des filtres ouvert.
+   */
+  const jourFiltre = jours.find((jour) => jour.iso === filtres.jour) ?? null;
   const vueSalles = filtres.vue === "salles";
-  const duJour: SessionAffichable[] = retenues
-    .filter((session) => session.day.toISOString().slice(0, 10) === jourActif.iso)
-    .map((session) => ({
-      id: session.id,
-      slug: session.slug,
-      type: session.type,
-      titre: traduire(locale, {
-        fr: session.titleFr,
-        en: session.titleEn,
-        pt: session.titlePt,
-      }),
-      theme: session.theme,
-      debut: session.startTime,
-      fin: session.endTime,
-      salle: session.room ? { id: session.room.id, name: session.room.name } : null,
-      places: session.places,
-    }));
+  const nbActifs = [jourFiltre, filtres.theme, filtres.type, filtres.salle].filter(Boolean).length;
+  const parJour = (jourFiltre ? [jourFiltre] : jours)
+    .map((jour) => ({
+      ...jour,
+      sessions: retenues
+        .filter((session) => session.day.toISOString().slice(0, 10) === jour.iso)
+        .map((session): SessionAffichable => ({
+          id: session.id,
+          slug: session.slug,
+          type: session.type,
+          titre: traduire(locale, {
+            fr: session.titleFr,
+            en: session.titleEn,
+            pt: session.titlePt,
+          }),
+          theme: session.theme,
+          debut: session.startTime,
+          fin: session.endTime,
+          salle: session.room ? { id: session.room.id, name: session.room.name } : null,
+          places: session.places,
+        })),
+    }))
+    .filter((jour) => jour.sessions.length > 0);
 
   return (
     <>
@@ -212,49 +236,50 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
       </BandeauPage>
 
       <CorpsPage espacement="compact">
-        {/*
-          Onglets de journée, soulignement animé (brief « Constellation » §6).
-          Ce sont des liens : chaque journée a son adresse, partageable.
-        */}
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-          <nav
-            aria-label={selon(locale, { fr: "Journées", en: "Days", pt: "Dias" })}
-            className="onglets-jour"
-          >
-            {jours.map((jour) => (
-              <Link
-                key={jour.iso}
-                href={lienFiltre({ ...filtres, jour: undefined }, "jour", jour.iso)}
-                aria-current={jour.iso === jourActif.iso ? "page" : undefined}
-                className="onglet-jour"
-              >
-                {jourLong.format(jour.date)}
-              </Link>
-            ))}
-          </nav>
-          <nav
-            aria-label={selon(locale, { fr: "Affichage", en: "Display", pt: "Apresentação" })}
-            className="flex gap-1.5"
-          >
-            <Pastille actif={!vueSalles} href={lienVue(filtres, null)}>
-              <ListTree aria-hidden size={14} />
-              {selon(locale, { fr: "Frise", en: "Timeline", pt: "Cronologia" })}
-            </Pastille>
-            <Pastille actif={vueSalles} href={lienVue(filtres, "salles")}>
-              <Columns3 aria-hidden size={14} />
-              {selon(locale, { fr: "Par salle", en: "By room", pt: "Por sala" })}
-            </Pastille>
-          </nav>
-        </div>
-
-        {(themes.length > 0 || salles.length > 0) && (
-          <div className="border-border bg-surface mb-8 flex flex-col gap-3 rounded-2xl border p-4">
+        <FiltresRepliables
+          libelle={selon(locale, { fr: "Filtres", en: "Filters", pt: "Filtros" })}
+          nbActifs={nbActifs}
+          actions={
+            <nav
+              aria-label={selon(locale, { fr: "Affichage", en: "Display", pt: "Apresentação" })}
+              className="flex gap-1.5"
+            >
+              <Pastille actif={!vueSalles} href={lienVue(filtres, null)}>
+                <ListTree aria-hidden size={14} />
+                {selon(locale, { fr: "Frise", en: "Timeline", pt: "Cronologia" })}
+              </Pastille>
+              <Pastille actif={vueSalles} href={lienVue(filtres, "salles")}>
+                <Columns3 aria-hidden size={14} />
+                {selon(locale, { fr: "Par salle", en: "By room", pt: "Por sala" })}
+              </Pastille>
+            </nav>
+          }
+        >
+          <div className="border-border bg-surface flex flex-col gap-3 rounded-2xl border p-4">
             {/*
-             * Les filtres sont désormais posés dans un panneau et chaque rangée
-             * porte son intitulé. Seize pastilles alignées sans distinction se
-             * lisaient comme un mur : rien ne disait qu'on choisissait un thème
-             * plutôt qu'une salle.
+             * Les filtres sont posés dans un panneau et chaque rangée porte son
+             * intitulé. Seize pastilles alignées sans distinction se lisaient
+             * comme un mur : rien ne disait qu'on choisissait un thème plutôt
+             * qu'une salle.
              */}
+            <RangeeFiltres
+              libelle={selon(locale, { fr: "Jours", en: "Days", pt: "Dias" })}
+              icone={CalendarDays}
+            >
+              <Pastille actif={!jourFiltre} href={lienSans(filtres, "jour")}>
+                {selon(locale, { fr: "Tous les jours", en: "All days", pt: "Todos os dias" })}
+              </Pastille>
+              {jours.map((jour) => (
+                <Pastille
+                  key={jour.iso}
+                  actif={jourFiltre?.iso === jour.iso}
+                  href={lienFiltre(filtres, "jour", jour.iso)}
+                >
+                  {nomDuJour(jour.date)}
+                </Pastille>
+              ))}
+            </RangeeFiltres>
+
             {themes.length > 0 && (
               <RangeeFiltres
                 libelle={selon(locale, { fr: "Thèmes", en: "Themes", pt: "Temas" })}
@@ -304,32 +329,54 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
               </RangeeFiltres>
             )}
           </div>
-        )}
+        </FiltresRepliables>
 
-        {vueSalles ? (
-          <ProgrammeGrid
-            sessions={duJour}
-            salles={salles.map((salle) => ({ id: salle.id, name: salle.name }))}
-            locale={locale}
-          />
+        {parJour.length === 0 ? (
+          <p className="text-text-2 text-sm">
+            {selon(locale, {
+              fr: "Aucune session ne correspond à ces filtres.",
+              en: "No session matches these filters.",
+              pt: "Nenhuma sessão corresponde a estes filtros.",
+            })}
+          </p>
         ) : (
-          <ProgrammeFrise
-            locale={locale}
-            sessions={duJour.map((session) => ({
-              id: session.id,
-              slug: session.slug,
-              type: session.type,
-              titre: session.titre,
-              theme: session.theme,
-              debut: session.debut.toISOString(),
-              fin: session.fin.toISOString(),
-              salle: session.salle?.name ?? null,
-              etat:
-                session.places.etat === "SANS_RESERVATION"
-                  ? null
-                  : libelleEtat(session.places.etat, locale),
-            }))}
-          />
+          <div className="flex flex-col gap-14">
+            {parJour.map((jour) => (
+              <section key={jour.iso} aria-labelledby={`jour-${jour.iso}`}>
+                <h2
+                  id={`jour-${jour.iso}`}
+                  className="text-heading font-display mb-6 text-xl font-bold sm:text-2xl"
+                >
+                  {nomDuJour(jour.date)}
+                </h2>
+                {vueSalles ? (
+                  <ProgrammeGrid
+                    sessions={jour.sessions}
+                    salles={salles.map((salle) => ({ id: salle.id, name: salle.name }))}
+                    locale={locale}
+                  />
+                ) : (
+                  <ProgrammeFrise
+                    locale={locale}
+                    sessions={jour.sessions.map((session) => ({
+                      id: session.id,
+                      slug: session.slug,
+                      type: session.type,
+                      titre: session.titre,
+                      theme: session.theme,
+                      debut: session.debut.toISOString(),
+                      fin: session.fin.toISOString(),
+                      salle: session.salle?.name ?? null,
+                      etat:
+                        session.places.etat === "SANS_RESERVATION"
+                          ? null
+                          : libelleEtat(session.places.etat, locale),
+                    }))}
+                  />
+                )}
+              </section>
+            ))}
+          </div>
         )}
       </CorpsPage>
     </>

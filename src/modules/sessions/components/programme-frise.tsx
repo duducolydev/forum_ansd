@@ -1,7 +1,7 @@
 "use client";
 
 import { selon, type Langue } from "@/lib/langue";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { Clock, DoorOpen } from "lucide-react";
 import { mouvementReduit } from "@/components/motion/hooks";
@@ -44,10 +44,21 @@ export function ProgrammeFrise({ sessions, locale }: { sessions: SessionFrise[];
   const [anime, setAnime] = useState(false);
   const [allumes, setAllumes] = useState<boolean[]>([]);
   const [maintenant, setMaintenant] = useState<number | null>(null);
+  // Une frise par journée sur la page (23 octobre 2026) : chaque dégradé a son
+  // propre identifiant, sans les caractères que `useId` y met et que `url(#…)`
+  // lit mal.
+  const degrade = `frise-programme-degrade-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
 
-  const creneaux = [...new Set(sessions.map((session) => session.debut))]
-    .sort()
-    .map((debut) => ({ debut, sessions: sessions.filter((session) => session.debut === debut) }));
+  // À heure égale, la plus courte d'abord : l'exposition des stands, ouverte
+  // toute la journée, se range toujours après la séance du créneau (23 octobre
+  // 2026). Le tri est stable : deux séances de même durée gardent leur ordre.
+  const duree = (session: SessionFrise) => Date.parse(session.fin) - Date.parse(session.debut);
+  const creneaux = [...new Set(sessions.map((session) => session.debut))].sort().map((debut) => ({
+    debut,
+    sessions: sessions
+      .filter((session) => session.debut === debut)
+      .sort((a, b) => duree(a) - duree(b)),
+  }));
 
   useEffect(() => {
     setMaintenant(Date.now());
@@ -102,7 +113,7 @@ export function ProgrammeFrise({ sessions, locale }: { sessions: SessionFrise[];
     <div ref={ref} className="frise frise--programme" data-animee={anime ? "" : undefined}>
       <svg aria-hidden className="frise__trait" preserveAspectRatio="none">
         <defs>
-          <linearGradient id="frise-programme-degrade" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={degrade} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#2f8a3e" />
             <stop offset=".5" stopColor="#e8b931" />
             <stop offset="1" stopColor="#d64541" />
@@ -112,7 +123,7 @@ export function ProgrammeFrise({ sessions, locale }: { sessions: SessionFrise[];
         <line
           ref={refEncre}
           className="frise__encre"
-          style={{ stroke: "url(#frise-programme-degrade)" }}
+          style={{ stroke: `url(#${degrade})` }}
           x1="3"
           y1="0"
           x2="3"

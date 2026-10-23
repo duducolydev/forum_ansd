@@ -165,6 +165,29 @@ export function ProgrammeGrid({
 
   const reperes = Array.from({ length: nbLignes }, (_, index) => debutJour + index * PAS_MINUTES);
 
+  /*
+   * Étendue d'une session sans salle. Toute la largeur, en règle générale ;
+   * mais si les dernières colonnes sont occupées au même moment — l'espace
+   * d'exposition, ouvert toute la journée (23 octobre 2026) —, la pause
+   * s'arrête avant elles au lieu de passer par-dessus. Sans chevauchement,
+   * rien ne change.
+   */
+  const total = Math.max(colonnes.length, 1);
+  function etendueCommune(session: SessionAffichable): string {
+    const occupees = colonnes.map((salle) =>
+      sessions.some(
+        (autre) =>
+          autre.salle?.id === salle.id &&
+          autre.debut.getTime() < session.fin.getTime() &&
+          session.debut.getTime() < autre.fin.getTime(),
+      ),
+    );
+    let libres = total;
+    while (libres > 0 && occupees[libres - 1]) libres -= 1;
+    const enFinDeLigne = libres > 0 && !occupees.slice(0, libres).some(Boolean);
+    return `2 / ${(enFinDeLigne ? libres : total) + 2}`;
+  }
+
   return (
     <>
       {/* Grille — écrans larges */}
@@ -206,7 +229,7 @@ export function ProgrammeGrid({
                 key={session.id}
                 style={{
                   gridRow: `${debut + 1} / ${fin + 1}`,
-                  gridColumn: session.salle ? colonne : `2 / ${Math.max(colonnes.length, 1) + 2}`,
+                  gridColumn: session.salle ? colonne : etendueCommune(session),
                 }}
               >
                 <Carte session={session} locale={locale} />

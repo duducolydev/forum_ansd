@@ -3,6 +3,7 @@
 import { selon, type Langue } from "@/lib/langue";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Building2, Check, Globe2, Mic, Plus, Search, Tag, X } from "lucide-react";
+import { FiltresRepliables } from "@/components/site/filtres-repliables";
 import { SpeakersFlipGrid, type IntervenantCarte } from "./SpeakersFlipGrid";
 
 export interface IntervenantAnnuaire extends IntervenantCarte {
@@ -150,10 +151,14 @@ export function AnnuaireIntervenants({
 
   const cle = JSON.stringify(filtres);
   const actifs = Object.values(filtres).some(Boolean);
+  // La recherche reste toujours visible : seuls les filtres se replient.
+  const nbFiltres = [filtres.theme, filtres.pays, filtres.organisation, filtres.panel].filter(
+    Boolean,
+  ).length;
 
   return (
     <>
-      <div className="mb-8 flex flex-col gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
+      <div className="mb-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
         <div role="search" className="relative">
           <label htmlFor="recherche-intervenant" className="sr-only">
             {selon(locale, {
@@ -195,88 +200,100 @@ export function AnnuaireIntervenants({
             </button>
           )}
         </div>
-
-        {options.themes.length > 0 && (
-          <div
-            role="group"
-            aria-label={selon(locale, { fr: "Thèmes", en: "Themes", pt: "Temas" })}
-            className="flex flex-wrap items-center gap-2"
-          >
-            <span className="flex w-20 shrink-0 items-center gap-1.5 text-xs font-bold tracking-wide text-[var(--muted)] uppercase">
-              <Tag aria-hidden size={13} />
-              {selon(locale, { fr: "Thèmes", en: "Themes", pt: "Temas" })}
-            </span>
-            {options.themes.map((theme) => (
-              <Pastille
-                key={theme}
-                actif={filtres.theme === theme}
-                onClick={() => changer("theme", filtres.theme === theme ? null : theme)}
-              >
-                {theme}
-              </Pastille>
-            ))}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Choix
-            id="filtre-pays"
-            libelle={selon(locale, { fr: "Pays", en: "Country", pt: "País" })}
-            icone={<Globe2 aria-hidden size={13} />}
-            valeur={filtres.pays}
-            options={options.pays}
-            tous={selon(locale, {
-              fr: "Tous les pays",
-              en: "All countries",
-              pt: "Todos os países",
-            })}
-            onChange={(valeur) => changer("pays", valeur)}
-          />
-          <Choix
-            id="filtre-organisation"
-            libelle={selon(locale, { fr: "Organisation", en: "Organisation", pt: "Organização" })}
-            icone={<Building2 aria-hidden size={13} />}
-            valeur={filtres.organisation}
-            options={options.organisations}
-            tous={selon(locale, {
-              fr: "Toutes les organisations",
-              en: "All organisations",
-              pt: "Todas as organizações",
-            })}
-            onChange={(valeur) => changer("organisation", valeur)}
-          />
-          <Choix
-            id="filtre-panel"
-            libelle={selon(locale, { fr: "Panel", en: "Panel", pt: "Painel" })}
-            icone={<Mic aria-hidden size={13} />}
-            valeur={filtres.panel}
-            options={options.panels}
-            tous={selon(locale, {
-              fr: "Toutes les sessions",
-              en: "All sessions",
-              pt: "Todas as sessões",
-            })}
-            onChange={(valeur) => changer("panel", valeur)}
-          />
-        </div>
-
-        {actifs && (
-          <button
-            type="button"
-            onClick={() => {
-              setFiltres({ q: null, theme: null, pays: null, organisation: null, panel: null });
-              setVisibles(PAR_PAGE);
-            }}
-            className="self-start text-sm font-semibold text-[var(--title)] underline underline-offset-4"
-          >
-            {selon(locale, {
-              fr: "Effacer les filtres",
-              en: "Clear filters",
-              pt: "Limpar os filtros",
-            })}
-          </button>
-        )}
       </div>
+
+      {/*
+       * Filtres repliés par défaut (23 octobre 2026) : l'annuaire s'affiche en
+       * entier, les filtres s'ouvrent à la demande — d'emblée si l'adresse en
+       * porte déjà un.
+       */}
+      <FiltresRepliables
+        libelle={selon(locale, { fr: "Filtres", en: "Filters", pt: "Filtros" })}
+        nbActifs={nbFiltres}
+      >
+        <div className="flex flex-col gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
+          {options.themes.length > 0 && (
+            <div
+              role="group"
+              aria-label={selon(locale, { fr: "Thèmes", en: "Themes", pt: "Temas" })}
+              className="flex flex-wrap items-center gap-2"
+            >
+              <span className="flex w-20 shrink-0 items-center gap-1.5 text-xs font-bold tracking-wide text-[var(--muted)] uppercase">
+                <Tag aria-hidden size={13} />
+                {selon(locale, { fr: "Thèmes", en: "Themes", pt: "Temas" })}
+              </span>
+              {options.themes.map((theme) => (
+                <Pastille
+                  key={theme}
+                  actif={filtres.theme === theme}
+                  onClick={() => changer("theme", filtres.theme === theme ? null : theme)}
+                >
+                  {theme}
+                </Pastille>
+              ))}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Choix
+              id="filtre-pays"
+              libelle={selon(locale, { fr: "Pays", en: "Country", pt: "País" })}
+              icone={<Globe2 aria-hidden size={13} />}
+              valeur={filtres.pays}
+              options={options.pays}
+              tous={selon(locale, {
+                fr: "Tous les pays",
+                en: "All countries",
+                pt: "Todos os países",
+              })}
+              onChange={(valeur) => changer("pays", valeur)}
+            />
+            <Choix
+              id="filtre-organisation"
+              libelle={selon(locale, { fr: "Organisation", en: "Organisation", pt: "Organização" })}
+              icone={<Building2 aria-hidden size={13} />}
+              valeur={filtres.organisation}
+              options={options.organisations}
+              tous={selon(locale, {
+                fr: "Toutes les organisations",
+                en: "All organisations",
+                pt: "Todas as organizações",
+              })}
+              onChange={(valeur) => changer("organisation", valeur)}
+            />
+            <Choix
+              id="filtre-panel"
+              libelle={selon(locale, { fr: "Panel", en: "Panel", pt: "Painel" })}
+              icone={<Mic aria-hidden size={13} />}
+              valeur={filtres.panel}
+              options={options.panels}
+              tous={selon(locale, {
+                fr: "Toutes les sessions",
+                en: "All sessions",
+                pt: "Todas as sessões",
+              })}
+              onChange={(valeur) => changer("panel", valeur)}
+            />
+          </div>
+
+          {actifs && (
+            <button
+              type="button"
+              onClick={() => {
+                setFiltres({ q: null, theme: null, pays: null, organisation: null, panel: null });
+                setVisibles(PAR_PAGE);
+              }}
+              className="self-start text-sm font-semibold text-[var(--title)] underline underline-offset-4"
+            >
+              {selon(locale, {
+                fr: "Effacer les filtres",
+                en: "Clear filters",
+                pt: "Limpar os filtros",
+              })}
+            </button>
+          )}
+        </div>
+      </FiltresRepliables>
 
       <p aria-live="polite" className="mb-4 text-sm text-[var(--muted)]">
         {selon(locale, {

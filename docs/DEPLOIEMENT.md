@@ -584,15 +584,29 @@ inscrits, intervenants et contributions.
 
 Les séances sont créées **publiées et sans réservation**, par le même service
 que le formulaire du BackOffice (validation, journal d'audit). Le script ne
-crée ni ne renomme aucune salle : « Amphithéâtre » et « Salle plénière » sont
-cherchées sous leur nom, puis sous ceux du seed (« Salle d'Ouverture », « Salle
-de Plénière ») ; l'inventaire dit laquelle est retenue, et un renommage se fait
-en BackOffice.
+renomme aucune salle : « Amphithéâtre » et « Salle plénière » sont cherchées
+sous leur nom, puis sous ceux du seed (« Salle d'Ouverture », « Salle de
+Plénière ») ; l'inventaire dit laquelle est retenue, et un renommage se fait en
+BackOffice. Il ne crée qu'un lieu, s'il manque : l'« Espace d'exposition », où
+se tient l'exposition des stands (une séance par jour, toute la journée,
+ajoutée le 23 octobre 2026).
 
 **Création seulement**, et rejouable : une séance déjà chargée, ou saisie à la
 main le même jour sous le même titre ou le même numéro de panel, est gardée
 telle quelle ; une séance chargée puis supprimée en BackOffice n'est pas
 recréée. Les retouches du comité après le chargement ne sont jamais écrasées.
+
+**Programme déjà chargé : ajouter ce qui manque.** Une relance **sans**
+`--remplacer` crée seulement les séances absentes — ainsi l'exposition des
+stands sur un programme chargé avant le 23 octobre — et ne retire rien :
+
+```bash
+forum run --rm -T outils pnpm programme:officiel                 # inventaire
+forum run --rm -T outils pnpm programme:officiel --appliquer
+```
+
+`--remplacer` ne sert qu'au premier chargement : relancé plus tard, il
+retirerait aussi les séances que le comité aurait ajoutées en BackOffice.
 
 Les intervenants se rattachent ensuite par l'import (Intervenants → Importer) :
 colonne `seances` = numéro du panel, par exemple `4` ou `4; 7`.

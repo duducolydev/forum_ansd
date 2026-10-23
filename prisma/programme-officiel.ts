@@ -14,42 +14,82 @@
  *   l'horaire. Pour le panel 2, la seconde ligne du tableau (« Les métiers de la
  *   statistique… ») n'est pas reprise : c'est l'intitulé du panel 8, recopié.
  *
+ * S'y ajoute, à la demande du comité (23 octobre 2026), **l'exposition des
+ * stands**, ouverte toute la journée pendant les trois jours : une séance par
+ * jour, du premier au dernier créneau, dans son propre lieu (« Espace
+ * d'exposition »). Sans lieu, la vue « par salle » l'aurait étalée sur toute la
+ * largeur — c'est ainsi qu'elle montre les moments communs — et elle aurait
+ * recouvert la journée entière.
+ *
  * Les traductions anglaise et portugaise sont proposées ici ; le comité les
  * relit et les corrige en BackOffice. Aucun texte de description n'est inventé :
  * seules les séances que la note décrit en ont un.
  */
 import { sessionInputSchema, type SessionInput } from "../src/modules/sessions/schema";
 
-export type SalleProgramme = "AMPHITHEATRE" | "PLENIERE";
+export type SalleProgramme = "AMPHITHEATRE" | "PLENIERE" | "EXPOSITION";
 
 export interface SeanceOfficielle {
   /** Adresse stable : c'est elle qui rend le chargement rejouable sans doublon. */
   slug: string;
-  type: "OPENING" | "PANEL" | "BREAK" | "LUNCH" | "PLENARY" | "AWARDS" | "CLOSING";
+  type: "OPENING" | "PANEL" | "BREAK" | "LUNCH" | "PLENARY" | "AWARDS" | "CLOSING" | "SIDE_EVENT";
   /** Numéro du panel dans la note (1 à 10). */
   numero?: number;
   jour: string;
   debut: string;
   fin: string;
   salle?: SalleProgramme;
+  /** Se tient en parallèle de toute la journée (l'exposition des stands). */
+  enContinu?: true;
   titre: { fr: string; en: string; pt: string };
   description?: { fr: string; en: string; pt: string };
 }
 
 /**
- * Salles de la note, et les noms sous lesquels elles peuvent figurer en base :
- * le seed les a créées le 24 septembre sous les noms des zones d'accès.
+ * Salles du programme, et les noms sous lesquels elles peuvent figurer en base :
+ * le seed a créé les deux salles de la note le 24 septembre sous les noms des
+ * zones d'accès. Seul l'espace d'exposition, que rien n'a créé, l'est par le
+ * chargement s'il manque (`creer`) ; les deux salles ne sont jamais créées ni
+ * renommées.
  */
-export const SALLES_PROGRAMME: Record<SalleProgramme, { libelle: string; noms: string[] }> = {
+export const SALLES_PROGRAMME: Record<
+  SalleProgramme,
+  { libelle: string; noms: string[]; creer?: boolean }
+> = {
   AMPHITHEATRE: { libelle: "Amphithéâtre", noms: ["Amphithéâtre", "Salle d'Ouverture"] },
   PLENIERE: { libelle: "Salle plénière", noms: ["Salle plénière", "Salle de Plénière"] },
+  EXPOSITION: { libelle: "Espace d'exposition", noms: ["Espace d'exposition"], creer: true },
 };
 
 const PAUSE_CAFE = { fr: "Pause-café", en: "Coffee break", pt: "Pausa para café" };
 const DEJEUNER = { fr: "Déjeuner", en: "Lunch", pt: "Almoço" };
 
+/** Exposition des stands d'une journée, du premier au dernier créneau. */
+function exposition(jour: string, debut: string, fin: string): SeanceOfficielle {
+  return {
+    slug: `exposition-des-stands-${jour.slice(8)}-novembre`,
+    type: "SIDE_EVENT",
+    jour,
+    debut,
+    fin,
+    salle: "EXPOSITION",
+    enContinu: true,
+    titre: {
+      fr: "Exposition des stands",
+      en: "Stands exhibition",
+      pt: "Exposição dos stands",
+    },
+    description: {
+      fr: "Les stands sont ouverts tout au long de la journée.",
+      en: "The stands are open throughout the day.",
+      pt: "Os stands estão abertos durante todo o dia.",
+    },
+  };
+}
+
 export const PROGRAMME_OFFICIEL: SeanceOfficielle[] = [
   // --- Jour 1 — lundi 23 novembre : ouverture officielle, panels 1 à 3 ---------
+  exposition("2026-11-23", "08:00", "17:00"),
   {
     slug: "ceremonie-officielle-d-ouverture",
     type: "OPENING",
@@ -133,6 +173,7 @@ export const PROGRAMME_OFFICIEL: SeanceOfficielle[] = [
   },
 
   // --- Jour 2 — mardi 24 novembre : panels thématiques 4 à 7 --------------------
+  exposition("2026-11-24", "09:00", "17:30"),
   {
     slug: "panel-4-les-donnees-au-service-de-l-inclusion-des-femmes",
     type: "PANEL",
@@ -207,6 +248,7 @@ export const PROGRAMME_OFFICIEL: SeanceOfficielle[] = [
   },
 
   // --- Jour 3 — mercredi 25 novembre : panels 8 à 10, synthèse et clôture ------
+  exposition("2026-11-25", "09:00", "19:00"),
   {
     slug: "panel-8-les-metiers-de-la-statistique",
     type: "PANEL",

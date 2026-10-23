@@ -1,6 +1,11 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/db";
-import { createSession, deleteSession, setPublished } from "../src/modules/sessions/service";
+import {
+  createRoom,
+  createSession,
+  deleteSession,
+  setPublished,
+} from "../src/modules/sessions/service";
 import { JOURS_DEMO, PROGRAMME_DEMO, slugSeanceDemo } from "../prisma/donnees-demo";
 import {
   PROGRAMME_OFFICIEL,
@@ -78,19 +83,24 @@ async function main(): Promise<void> {
   const edition = await prisma.edition.findFirst({ where: { isActive: true } });
   if (!edition) throw new Error("Aucune édition active.");
 
-  // --- Salles : celles du BackOffice, jamais créées ni renommées ici ---------
+  // --- Salles : celles du BackOffice, jamais renommées ici. Seul l'espace -----
+  // d'exposition est créé, s'il manque (`creer` dans programme-officiel.ts).
   const salles = await prisma.room.findMany({
     where: { editionId: edition.id },
     select: { id: true, name: true },
   });
-  const sallesRetenues: Partial<Record<SalleProgramme, { id: string; nom: string }>> = {};
-  for (const [cle, { libelle, noms }] of Object.entries(SALLES_PROGRAMME) as [
+  const sallesRetenues: Partial<Record<SalleProgramme, { id: string | null; nom: string }>> = {};
+  for (const [cle, { libelle, noms, creer }] of Object.entries(SALLES_PROGRAMME) as [
     SalleProgramme,
     (typeof SALLES_PROGRAMME)[SalleProgramme],
   ][]) {
     const trouvee = noms
       .map((nom) => salles.find((salle) => normaliser(salle.name) === normaliser(nom)))
       .find(Boolean);
+    if (!trouvee && creer) {
+      sallesRetenues[cle] = { id: null, nom: libelle };
+      continue;
+    }
     if (!trouvee) {
       throw new Error(
         `Salle « ${libelle} » introuvable (cherchée sous : ${noms.join(", ")}). Salles en base : ${
@@ -156,12 +166,17 @@ async function main(): Promise<void> {
 
   const plan = PROGRAMME_OFFICIEL.map((seance) => ({ seance, decision: decider(seance) }));
   // Validation complète avant toute écriture : une séance invalide arrête tout.
-  const sallesIds = Object.fromEntries(
-    Object.entries(sallesRetenues).map(([cle, salle]) => [cle, salle!.id]),
-  ) as Partial<Record<SalleProgramme, string>>;
-  const aCreer = plan
+  // Une salle encore à créer est représentée par un identifiant d'attente.
+  const idsDeSalles = () =>
+    Object.fromEntries(
+      Object.entries(sallesRetenues).map(([cle, salle]) => [cle, salle!.id ?? "salle-a-creer"]),
+    ) as Partial<Record<SalleProgramme, string>>;
+  let aCreer = plan
     .filter(({ decision }) => decision.action === "creer")
-    .map(({ seance }) => ({ seance, input: versSessionInput(seance, sallesIds) }));
+    .map(({ seance }) => ({ seance, input: versSessionInput(seance, idsDeSalles()) }));
+  const sallesACreer = (Object.keys(sallesRetenues) as SalleProgramme[]).filter(
+    (cle) => sallesRetenues[cle]!.id === null && aCreer.some(({ seance }) => seance.salle === cle),
+  );
 
   // --- Programme actuel hors programme officiel ------------------------------------
   const officielles = new Set(
@@ -189,6 +204,14 @@ async function main(): Promise<void> {
   );
   for (const [cle, salle] of Object.entries(sallesRetenues)) {
     const libelle = SALLES_PROGRAMME[cle as SalleProgramme].libelle;
+    if (salle!.id === null) {
+      console.log(
+        `  ${libelle} → ${
+          sallesACreer.includes(cle as SalleProgramme) ? "à créer" : "absente, rien ne l'utilise"
+        }`,
+      );
+      continue;
+    }
     console.log(
       `  ${libelle} → salle « ${salle!.nom} »${
         normaliser(salle!.nom) === normaliser(libelle) ? "" : " (renommable en BackOffice)"
@@ -252,8 +275,23 @@ async function main(): Promise<void> {
     return;
   }
 
-  // 1. Retrait de l'ancien programme, par les services du BackOffice.
   const acteur = { type: "SYSTEM" as const };
+
+  // 0. Lieux manquants (l'espace d'exposition), par le service du BackOffice ;
+  //    les séances à créer reçoivent alors leur vrai identifiant de salle.
+  for (const cle of sallesACreer) {
+    const salle = await createRoom(edition.id, { name: SALLES_PROGRAMME[cle].libelle }, acteur);
+    sallesRetenues[cle] = { id: salle.id, nom: salle.name };
+    console.log(`  salle créée : ${salle.name}`);
+  }
+  if (sallesACreer.length > 0) {
+    aCreer = aCreer.map(({ seance }) => ({
+      seance,
+      input: versSessionInput(seance, idsDeSalles()),
+    }));
+  }
+
+  // 1. Retrait de l'ancien programme, par les services du BackOffice.
   if (REMPLACER) {
     for (const s of horsProgramme) {
       if (s.action === "supprimer") await deleteSession(s.id, acteur);
