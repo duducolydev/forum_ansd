@@ -561,15 +561,26 @@ actif n'est jamais touché — créer d'abord un compte nominatif (§2.5). Une e
 
 Le programme de la note conceptuelle du 24 septembre 2026 — ouverture, dix
 panels, synthèse, distinctions, clôture, et les pauses qui comblent les trous de
-l'horaire — est décrit dans `prisma/programme-officiel.ts`. Il se charge une
-fois, **après** le retrait du programme fictif (§4.2) :
+l'horaire — est décrit dans `prisma/programme-officiel.ts`. **Une mise à jour ne
+le charge pas** (`deployer.sh` ne touche à aucune donnée) : il se charge par
+une commande à part, une fois, après le retrait du programme fictif (§4.2) :
 
 ```bash
 cd /opt/forum-ansd
-forum run --rm -T outils pnpm programme:officiel                # inventaire
+forum run --rm -T outils pnpm programme:officiel --remplacer               # inventaire
 ( set -a && . ./.env && set +a && ./scripts/backup.sh )
-forum run --rm -T outils pnpm programme:officiel --appliquer
+forum run --rm -T outils pnpm programme:officiel --remplacer --appliquer
 ```
+
+**`--remplacer` est indispensable tant que le programme fictif a été retouché
+en BackOffice.** Le nettoyage du §4.2 garde les séances fictives modifiées
+(horaires, titres, thèmes), puisqu'elles ont peut-être été reprises ; sans
+remplacement, elles s'affichent à côté du programme officiel. Constaté le
+23 octobre 2026 : deux ouvertures et deux « Panel 1 » en ligne. Avec
+`--remplacer`, toute séance hors programme officiel est retirée par les services
+du BackOffice : supprimée (suppression douce, restaurable) si personne n'y est
+inscrit, seulement dépubliée sinon. L'inventaire les liste une à une, avec leurs
+inscrits, intervenants et contributions.
 
 Les séances sont créées **publiées et sans réservation**, par le même service
 que le formulaire du BackOffice (validation, journal d'audit). Le script ne
