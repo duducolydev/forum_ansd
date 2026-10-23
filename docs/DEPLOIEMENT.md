@@ -557,6 +557,35 @@ actif n'est jamais touché — créer d'abord un compte nominatif (§2.5). Une e
 `demo.purge` au journal récapitule l'opération. Les données de référence
 (salles, zones, catégories, rôles, modèles d'e-mails, contacts, textes) restent.
 
+### 4.3 Charger le programme officiel
+
+Le programme de la note conceptuelle du 24 septembre 2026 — ouverture, dix
+panels, synthèse, distinctions, clôture, et les pauses qui comblent les trous de
+l'horaire — est décrit dans `prisma/programme-officiel.ts`. Il se charge une
+fois, **après** le retrait du programme fictif (§4.2) :
+
+```bash
+cd /opt/forum-ansd
+forum run --rm -T outils pnpm programme:officiel                # inventaire
+( set -a && . ./.env && set +a && ./scripts/backup.sh )
+forum run --rm -T outils pnpm programme:officiel --appliquer
+```
+
+Les séances sont créées **publiées et sans réservation**, par le même service
+que le formulaire du BackOffice (validation, journal d'audit). Le script ne
+crée ni ne renomme aucune salle : « Amphithéâtre » et « Salle plénière » sont
+cherchées sous leur nom, puis sous ceux du seed (« Salle d'Ouverture », « Salle
+de Plénière ») ; l'inventaire dit laquelle est retenue, et un renommage se fait
+en BackOffice.
+
+**Création seulement**, et rejouable : une séance déjà chargée, ou saisie à la
+main le même jour sous le même titre ou le même numéro de panel, est gardée
+telle quelle ; une séance chargée puis supprimée en BackOffice n'est pas
+recréée. Les retouches du comité après le chargement ne sont jamais écrasées.
+
+Les intervenants se rattachent ensuite par l'import (Intervenants → Importer) :
+colonne `seances` = numéro du panel, par exemple `4` ou `4; 7`.
+
 ---
 
 ## 5. HTTPS sur `forum2026.ansd.sn`
