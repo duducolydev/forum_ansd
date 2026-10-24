@@ -10,6 +10,7 @@ import {
   identiteSchema,
   inscriptionsSchema,
   languesSchema,
+  nouvelleCategorieSchema,
   piedDePageSchema,
   themeSchema,
   RESEAUX_LABELS,
@@ -188,13 +189,59 @@ export async function enregistrerCategorieAction(
       requiresLogistics: formData.get("requiresLogistics") === "on",
       alertOnScan: formData.get("alertOnScan") === "on",
       requiresAccreditation: formData.get("requiresAccreditation") === "on",
+      isPublic: formData.get("isPublic") === "on",
+      badgeMention: formData.get("badgeMention") ?? "",
     });
-    await service.enregistrerCategorie(editionId, categoryId, valeurs, acteur);
+    const { badgesRafraichis } = await service.enregistrerCategorie(
+      editionId,
+      categoryId,
+      valeurs,
+      acteur,
+    );
+    revalidatePath("/admin/parametres/categories");
+    revalidatePath("/inscription");
+    return {
+      avis:
+        badgesRafraichis > 0
+          ? `Catégorie enregistrée. ${badgesRafraichis} badge(s) en cours de mise à jour, même QR.`
+          : "Catégorie enregistrée.",
+    };
   } catch (erreur) {
     return { erreur: messageErreur(erreur) };
   }
+}
 
-  revalidatePath("/admin/parametres/categories");
-  revalidatePath("/inscription");
-  return { avis: "Catégorie enregistrée." };
+/** Nouvelle catégorie de participants (24 octobre 2026). */
+export async function creerCategorieAction(
+  _etat: EtatAction,
+  formData: FormData,
+): Promise<EtatAction> {
+  try {
+    const { acteur, editionId } = await exigerParametreur();
+    const valeurs = nouvelleCategorieSchema.parse({
+      code: formData.get("code") ?? "",
+      labelFr: formData.get("labelFr"),
+      labelEn: formData.get("labelEn"),
+      labelPt: formData.get("labelPt") ?? "",
+      color: formData.get("color") ?? "",
+      sortOrder: formData.get("sortOrder") || 0,
+      isActive: true,
+      isPublic: formData.get("isPublic") === "on",
+      autoConfirm: formData.get("autoConfirm") === "on",
+      requiresLogistics: formData.get("requiresLogistics") === "on",
+      alertOnScan: formData.get("alertOnScan") === "on",
+      requiresAccreditation: formData.get("requiresAccreditation") === "on",
+      badgeMention: formData.get("badgeMention") ?? "",
+      zonesDepuis: formData.get("zonesDepuis") ?? "TOUTES",
+    });
+    const { categorie, zones } = await service.creerCategorie(editionId, valeurs, acteur);
+    revalidatePath("/admin/parametres/categories");
+    revalidatePath("/admin/zones");
+    revalidatePath("/inscription");
+    return {
+      avis: `Catégorie « ${categorie.labelFr} » créée (code ${categorie.code}), ${zones} zone(s) ouverte(s).`,
+    };
+  } catch (erreur) {
+    return { erreur: messageErreur(erreur) };
+  }
 }

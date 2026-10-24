@@ -3,15 +3,18 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { getActiveEdition } from "@/lib/edition";
+import { enqueueBadgeRefresh } from "@/modules/badges/jobs";
 import {
   categorieSchema,
   identiteSchema,
   parametresSchema,
   type CategorieInput,
   type Identite,
+  type NouvelleCategorieInput,
   type Parametres,
 } from "./schema";
 import {
+  codeDeCategorie,
   CONTRASTE_MIN,
   CONTRASTE_MIN_LARGE,
   etatInscriptions,
@@ -304,8 +307,35 @@ export async function enregistrerCategorie(
       requiresLogistics: valeurs.requiresLogistics,
       alertOnScan: valeurs.alertOnScan,
       requiresAccreditation: valeurs.requiresAccreditation,
+      isPublic: valeurs.isPublic,
+      badgeMention: valeurs.badgeMention?.trim() || null,
     },
   });
+
+  /*
+   * Ce que le badge imprime de la catégorie — libellé, couleur, mention — a
+   * changé : les badges déjà générés sont refaits dans leur version (même QR),
+   * sans e-mail : une nuance de couleur ne vaut pas un message à chacun
+   * (24 octobre 2026).
+   */
+  const apparenceModifiee =
+    avant.labelFr !== apres.labelFr ||
+    avant.color !== apres.color ||
+    avant.badgeMention !== apres.badgeMention;
+  let badgesRafraichis = 0;
+  if (apparenceModifiee) {
+    const porteurs = await prisma.participant.findMany({
+      where: {
+        categoryId,
+        deletedAt: null,
+        badges: { some: { revokedAt: null, generatedAt: { not: null } } },
+      },
+      select: { id: true },
+    });
+    for (const porteur of porteurs) {
+      if (await enqueueBadgeRefresh(porteur.id, { silencieux: true })) badgesRafraichis += 1;
+    }
+  }
 
   await audit.log({
     actorType: "USER",
@@ -317,19 +347,116 @@ export async function enregistrerCategorie(
       labelFr: avant.labelFr,
       autoConfirm: avant.autoConfirm,
       isActive: avant.isActive,
+      isPublic: avant.isPublic,
       alertOnScan: avant.alertOnScan,
       requiresAccreditation: avant.requiresAccreditation,
+      badgeMention: avant.badgeMention,
     },
     after: {
       labelFr: apres.labelFr,
       autoConfirm: apres.autoConfirm,
       isActive: apres.isActive,
+      isPublic: apres.isPublic,
       alertOnScan: apres.alertOnScan,
       requiresAccreditation: apres.requiresAccreditation,
+      badgeMention: apres.badgeMention,
+      badgesRafraichis,
     },
   });
 
-  return apres;
+  return { categorie: apres, badgesRafraichis };
+}
+
+/**
+ * Crée une catégorie de participants depuis le BackOffice (24 octobre 2026) —
+ * le comité d'organisation, par exemple, distinct du personnel de l'ANSD.
+ *
+ * Le code est tiré du libellé s'il n'est pas saisi, et doit être unique dans
+ * l'édition : la matrice d'accès, les imports et les invitations le
+ * référencent, il ne changera plus.
+ *
+ * **Les zones d'accès sont posées dans le même geste** : une catégorie sans
+ * zone verrait chaque badge refusé à chaque porte (`DENIED_ZONE`), et la cause
+ * ne se verrait qu'au contrôle, le jour J. Elles se copient d'une catégorie
+ * existante, ou s'ouvrent toutes ; la matrice reste réglable ensuite, sous
+ * Zones d'accès.
+ */
+export async function creerCategorie(
+  editionId: string,
+  valeurs: NouvelleCategorieInput,
+  acteur: Acteur,
+) {
+  const code = valeurs.code || codeDeCategorie(valeurs.labelFr);
+  const doublon = await prisma.participantCategory.findFirst({
+    where: { editionId, code },
+    select: { labelFr: true },
+  });
+  if (doublon) {
+    throw new ParametreRuleError(
+      `Le code ${code} est déjà pris par la catégorie « ${doublon.labelFr} » : saisissez-en un autre.`,
+    );
+  }
+
+  let zones: string[];
+  if (valeurs.zonesDepuis === "TOUTES") {
+    zones = (await prisma.zone.findMany({ where: { editionId }, select: { id: true } })).map(
+      (zone) => zone.id,
+    );
+  } else if (valeurs.zonesDepuis === "AUCUNE") {
+    zones = [];
+  } else {
+    const modele = await prisma.participantCategory.findFirst({
+      where: { id: valeurs.zonesDepuis, editionId },
+      select: { categoryZones: { select: { zoneId: true } } },
+    });
+    if (!modele) throw new ParametreRuleError("Catégorie modèle introuvable pour les zones.");
+    zones = modele.categoryZones.map((lien) => lien.zoneId);
+  }
+
+  // Placée en fin de liste si aucun ordre n'est saisi : elle ne s'intercale pas
+  // d'elle-même entre des catégories déjà ordonnées.
+  const derniere = await prisma.participantCategory.aggregate({
+    where: { editionId },
+    _max: { sortOrder: true },
+  });
+
+  const categorie = await prisma.participantCategory.create({
+    data: {
+      editionId,
+      code,
+      labelFr: valeurs.labelFr,
+      labelEn: valeurs.labelEn,
+      labelPt: valeurs.labelPt?.trim() || null,
+      color: valeurs.color?.trim() || null,
+      sortOrder: valeurs.sortOrder > 0 ? valeurs.sortOrder : (derniere._max.sortOrder ?? 0) + 10,
+      isActive: valeurs.isActive,
+      isPublic: valeurs.isPublic,
+      autoConfirm: valeurs.autoConfirm,
+      requiresLogistics: valeurs.requiresLogistics,
+      alertOnScan: valeurs.alertOnScan,
+      requiresAccreditation: valeurs.requiresAccreditation,
+      badgeMention: valeurs.badgeMention?.trim() || null,
+      categoryZones: { create: zones.map((zoneId) => ({ zoneId })) },
+    },
+  });
+
+  await audit.log({
+    actorType: "USER",
+    actorUserId: acteur.userId,
+    action: "participant_category.created",
+    entity: "ParticipantCategory",
+    entityId: categorie.id,
+    after: {
+      code,
+      labelFr: categorie.labelFr,
+      isPublic: categorie.isPublic,
+      badgeMention: categorie.badgeMention,
+      zones: zones.length,
+      zonesDepuis: valeurs.zonesDepuis,
+    },
+  });
+
+  return { categorie, zones: zones.length };
 }
 
 export { categorieSchema, identiteSchema };

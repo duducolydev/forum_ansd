@@ -237,7 +237,36 @@ export const categorieSchema = z.object({
   requiresLogistics: z.boolean(),
   alertOnScan: z.boolean(),
   requiresAccreditation: z.boolean().default(false),
+  // 24 octobre 2026 : catégories créées en BackOffice.
+  isPublic: z.boolean().default(true),
+  badgeMention: z
+    .string()
+    .trim()
+    .max(30, "La mention du badge tient en 30 caractères au plus.")
+    .optional()
+    .or(z.literal("")),
+});
+
+/**
+ * Nouvelle catégorie : les champs d'une catégorie, plus son code — figé ensuite,
+ * il est référencé par la matrice d'accès et les imports — et les zones qu'elle
+ * ouvre au départ.
+ */
+export const nouvelleCategorieSchema = categorieSchema.extend({
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(
+      /^$|^[A-Z][A-Z0-9_]{1,39}$/,
+      "Code : lettres majuscules, chiffres et « _ », 40 caractères au plus (ex. COMITE_ORGANISATION).",
+    )
+    .optional()
+    .or(z.literal("")),
+  /** `TOUTES`, `AUCUNE`, ou l'identifiant d'une catégorie dont on copie les accès. */
+  zonesDepuis: z.string().trim().min(1).max(40),
 });
 
 export type Identite = z.infer<typeof identiteSchema>;
 export type CategorieInput = z.infer<typeof categorieSchema>;
+export type NouvelleCategorieInput = z.infer<typeof nouvelleCategorieSchema>;

@@ -122,9 +122,17 @@ export async function registerPublicParticipant(options: {
    * seul identifiant, ce qui laissait s'inscrire dans une catégorie retirée ou
    * d'une autre édition (PLAN.md §18). Celle d'une invitation a été choisie par
    * le comité : elle vaut même si la catégorie n'est plus proposée au public.
+   *
+   * Hors invitation, elle doit aussi être **publique** (24 octobre 2026) : une
+   * catégorie réservée, comme le comité d'organisation, ne se choisit pas en
+   * renvoyant son identifiant dans une requête forgée.
    */
   const category = await prisma.participantCategory.findFirst({
-    where: { id: categoryId, editionId, ...(invitation ? {} : { isActive: true }) },
+    where: {
+      id: categoryId,
+      editionId,
+      ...(invitation ? {} : { isActive: true, isPublic: true }),
+    },
   });
   if (!category) {
     return { status: "CATEGORY_INVALID" };

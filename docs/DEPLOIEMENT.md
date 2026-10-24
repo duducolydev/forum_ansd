@@ -557,59 +557,25 @@ actif n'est jamais touché — créer d'abord un compte nominatif (§2.5). Une e
 `demo.purge` au journal récapitule l'opération. Les données de référence
 (salles, zones, catégories, rôles, modèles d'e-mails, contacts, textes) restent.
 
-### 4.3 Charger le programme officiel
+### 4.3 Le programme se gère en BackOffice
 
-Le programme de la note conceptuelle du 24 septembre 2026 — ouverture, dix
-panels, synthèse, distinctions, clôture, et les pauses qui comblent les trous de
-l'horaire — est décrit dans `prisma/programme-officiel.ts`. **Une mise à jour ne
-le charge pas** (`deployer.sh` ne touche à aucune donnée) : il se charge par
-une commande à part, une fois, après le retrait du programme fictif (§4.2) :
+**Depuis le 24 octobre 2026, le programme qui fait foi est celui que le comité
+a saisi en BackOffice** (Programme), à la place de la note conceptuelle du
+24 septembre 2026. Il se modifie là, et nulle part ailleurs : aucune commande ne
+le charge ni ne le corrige sur le serveur.
 
-```bash
-cd /opt/forum-ansd
-forum run --rm -T outils pnpm programme:officiel --remplacer               # inventaire
-( set -a && . ./.env && set +a && ./scripts/backup.sh )
-forum run --rm -T outils pnpm programme:officiel --remplacer --appliquer
-```
+L'ancien chargement de la note (`scripts/programme-officiel.ts`) n'a plus de
+commande `pnpm`, et refuse de s'exécuter en production. Relancé sur le
+programme du comité, il ajoutait des doublons à côté (ou, avec `--remplacer`,
+retirait ses séances). Constaté le 24 octobre 2026 : le comité avait renommé la
+salle plénière « Salle Plénière BC12 », le script ne la trouvait plus et s'est
+arrêté sans rien écrire.
 
-**`--remplacer` est indispensable tant que le programme fictif a été retouché
-en BackOffice.** Le nettoyage du §4.2 garde les séances fictives modifiées
-(horaires, titres, thèmes), puisqu'elles ont peut-être été reprises ; sans
-remplacement, elles s'affichent à côté du programme officiel. Constaté le
-23 octobre 2026 : deux ouvertures et deux « Panel 1 » en ligne. Avec
-`--remplacer`, toute séance hors programme officiel est retirée par les services
-du BackOffice : supprimée (suppression douce, restaurable) si personne n'y est
-inscrit, seulement dépubliée sinon. L'inventaire les liste une à une, avec leurs
-inscrits, intervenants et contributions.
+L'exposition des stands n'est pas une session : la page Programme la signale
+sous le titre de chaque journée, ouverte toute la journée.
 
-Les séances sont créées **publiées et sans réservation**, par le même service
-que le formulaire du BackOffice (validation, journal d'audit). Le script ne
-renomme aucune salle : « Amphithéâtre » et « Salle plénière » sont cherchées
-sous leur nom, puis sous ceux du seed (« Salle d'Ouverture », « Salle de
-Plénière ») ; l'inventaire dit laquelle est retenue, et un renommage se fait en
-BackOffice. Il ne crée qu'un lieu, s'il manque : l'« Espace d'exposition », où
-se tient l'exposition des stands (une séance par jour, toute la journée,
-ajoutée le 23 octobre 2026).
-
-**Création seulement**, et rejouable : une séance déjà chargée, ou saisie à la
-main le même jour sous le même titre ou le même numéro de panel, est gardée
-telle quelle ; une séance chargée puis supprimée en BackOffice n'est pas
-recréée. Les retouches du comité après le chargement ne sont jamais écrasées.
-
-**Programme déjà chargé : ajouter ce qui manque.** Une relance **sans**
-`--remplacer` crée seulement les séances absentes — ainsi l'exposition des
-stands sur un programme chargé avant le 23 octobre — et ne retire rien :
-
-```bash
-forum run --rm -T outils pnpm programme:officiel                 # inventaire
-forum run --rm -T outils pnpm programme:officiel --appliquer
-```
-
-`--remplacer` ne sert qu'au premier chargement : relancé plus tard, il
-retirerait aussi les séances que le comité aurait ajoutées en BackOffice.
-
-Les intervenants se rattachent ensuite par l'import (Intervenants → Importer) :
-colonne `seances` = numéro du panel, par exemple `4` ou `4; 7`.
+Les intervenants se rattachent aux séances par l'import (Intervenants →
+Importer) : colonne `seances` = numéro de la séance, par exemple `4` ou `4; 7`.
 
 ---
 

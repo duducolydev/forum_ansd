@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/db";
+import { estProduction } from "../src/lib/environnement";
 import {
   createRoom,
   createSession,
@@ -19,13 +20,15 @@ import {
  * Charge le programme officiel du Forum (note conceptuelle du 24 septembre
  * 2026), à la place du programme fictif (demande du 23 octobre 2026).
  *
- *     pnpm programme:officiel                            # inventaire : rien n'est écrit
- *     pnpm programme:officiel --remplacer                # inventaire du remplacement
- *     pnpm programme:officiel --remplacer --appliquer    # retire l'ancien, crée l'officiel
+ * **Retiré le 24 octobre 2026** : le comité a remplacé la note par son propre
+ * programme, saisi en BackOffice, qui fait foi. Relancé, ce script ajouterait
+ * des doublons à côté (ou, avec `--remplacer`, retirerait les séances du
+ * comité) ; il refuse donc de s'exécuter en production et n'a plus de commande
+ * `pnpm`. Il reste pour mémoire, et pour une base locale :
  *
- * Sur le serveur, après `pnpm demo:purger --appliquer` :
- *
- *     forum run --rm -T outils pnpm programme:officiel --remplacer
+ *     pnpm tsx scripts/programme-officiel.ts                            # inventaire : rien n'est écrit
+ *     pnpm tsx scripts/programme-officiel.ts --remplacer                # inventaire du remplacement
+ *     pnpm tsx scripts/programme-officiel.ts --remplacer --appliquer    # retire l'ancien, crée l'officiel
  *
  * ## Création
  *
@@ -80,6 +83,15 @@ type Decision =
   | { action: "retiree"; detail: string };
 
 async function main(): Promise<void> {
+  // Refus en production (24 octobre 2026) : le programme se gère en BackOffice.
+  if (estProduction()) {
+    console.error(
+      "Programme officiel refusé en production : le programme du comité, saisi en BackOffice (Programme), fait foi.",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
   const edition = await prisma.edition.findFirst({ where: { isActive: true } });
   if (!edition) throw new Error("Aucune édition active.");
 

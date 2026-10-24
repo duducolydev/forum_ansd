@@ -82,6 +82,18 @@ export async function listCategories(editionId: string) {
   });
 }
 
+/**
+ * Catégories proposées au visiteur sur le formulaire d'inscription public :
+ * actives **et** publiques. Une catégorie comme le comité d'organisation,
+ * active mais non publique, ne s'attribue qu'en BackOffice (24 octobre 2026).
+ */
+export async function listPublicCategories(editionId: string) {
+  return prisma.participantCategory.findMany({
+    where: { editionId, isActive: true, isPublic: true },
+    orderBy: { sortOrder: "asc" },
+  });
+}
+
 export async function findParticipantById(id: string) {
   return prisma.participant.findUnique({
     where: { id },

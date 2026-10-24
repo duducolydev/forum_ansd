@@ -8,6 +8,7 @@ import { enqueueNotification } from "@/modules/notifications/jobs";
 import { markBadged, type Actor } from "@/modules/participants/service";
 import { InvalidParticipantTransitionError } from "@/modules/participants/errors";
 import { renderBadgeHtml } from "./template";
+import { mentionDuBadge } from "./mention";
 import { logoBadgeDataUrl } from "./logo";
 import { datesDuForum } from "./dates";
 import { buildBadgeToken, hashBadgeToken, parseBadgeToken, verifyBadgeSignature } from "./token";
@@ -28,7 +29,15 @@ const participantForBadge = {
   photoPath: true,
   editionId: true,
   accreditedAt: true,
-  category: { select: { labelFr: true, labelEn: true, color: true, requiresAccreditation: true } },
+  category: {
+    select: {
+      labelFr: true,
+      labelEn: true,
+      color: true,
+      requiresAccreditation: true,
+      badgeMention: true,
+    },
+  },
   edition: { select: { title: true, startDate: true, endDate: true } },
 } satisfies Prisma.ParticipantSelect;
 
@@ -75,11 +84,9 @@ async function renderAndStore(badge: Badge): Promise<{ pdfPath: string; pngPath:
     country: participant.country,
     categoryLabel: participant.category.labelFr,
     categoryColor: participant.category.color,
-    // Presse accréditée : la mention est imprimée, pour le contrôle à l'entrée.
-    mention:
-      participant.category.requiresAccreditation && participant.accreditedAt
-        ? "ACCRÉDITATION PRESSE"
-        : null,
+    // Presse accréditée, ou catégorie dotée d'une mention (comité
+    // d'organisation…) : imprimée pour le contrôle à l'entrée (`mention.ts`).
+    ...mentionDuBadge(participant.category, participant.accreditedAt),
     publicId: participant.publicId,
     // Le QR encode l'URL de vérification publique : un scanner générique
     // (appareil photo de téléphone) ouvre directement la page de contrôle.
@@ -151,6 +158,8 @@ async function ensureBadgeRow(
 export async function generateBadge(
   participantId: string,
   actor: Actor = { type: "SYSTEM" },
+  /** `notifier: false` : rafraîchissement silencieux (`enqueueBadgeRefresh`). */
+  options: { notifier?: boolean } = {},
 ): Promise<Badge> {
   const participant = await prisma.participant.findUniqueOrThrow({
     where: { id: participantId },
@@ -206,6 +215,8 @@ export async function generateBadge(
       if (!(error instanceof InvalidParticipantTransitionError)) throw error;
     }
   }
+
+  if (options.notifier === false) return updated;
 
   // Le lien du badge ouvre directement l'espace, où le badge se télécharge :
   // plus de passage par la page de connexion (29 septembre 2026).

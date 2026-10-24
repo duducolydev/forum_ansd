@@ -7,6 +7,7 @@
  *
  * Le badge reste toujours en thème clair : il est imprimé.
  */
+import { texteSur } from "@/modules/settings/regles";
 export interface BadgeTemplateData {
   editionName: string;
   /** Logo du Forum en `data:` URI (`modules/badges/logo.ts`), ou `null`. */
@@ -26,6 +27,12 @@ export interface BadgeTemplateData {
    * journaliste accrédité (29 septembre 2026). Absente pour les autres.
    */
   mention?: string | null;
+  /**
+   * Mention propre à la catégorie (24 octobre 2026) : bande pleine à la couleur
+   * de la catégorie, texte blanc ou encre selon le contraste. Sans elle, la
+   * bande bleu nuit d'origine (presse).
+   */
+  mentionEnCouleur?: boolean;
   publicId: string;
   qrDataUrl: string;
   photoDataUrl: string | null;
@@ -115,6 +122,14 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
     flex: 0 0 auto; padding: 1mm 2mm;
     background: ${ANSD_BLEU_NUIT}; color: #fff; border-left: 1.2mm solid ${accent};
     font-size: 6.2pt; font-weight: 800; letter-spacing: 0.14em; text-align: center;
+    text-transform: uppercase;
+  }
+  /* Mention de catégorie (comité d'organisation…) : la couleur de la catégorie
+     en bande pleine, repérable de loin au contrôle ; le texte prend celle des
+     deux encres qui contraste le mieux avec elle. */
+  .mention.couleur {
+    background: ${accent}; color: ${texteSur(accent)}; border-left: 0;
+    padding: 1.3mm 2mm; font-size: 6.8pt;
   }
   /* Identité : occupe la place restante et se centre dedans. */
   .body {
@@ -162,7 +177,11 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
       </div>
     </div>
     <div class="band"></div>
-    ${data.mention ? `<div class="mention">${escapeHtml(data.mention)}</div>` : ""}
+    ${
+      data.mention
+        ? `<div class="${data.mentionEnCouleur ? "mention couleur" : "mention"}">${escapeHtml(data.mention)}</div>`
+        : ""
+    }
     <div class="body">
       ${avatar}
       <div class="name">${escapeHtml(data.firstName)}<br /><span class="last">${escapeHtml(data.lastName)}</span></div>

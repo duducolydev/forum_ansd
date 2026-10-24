@@ -358,6 +358,8 @@ describe("registerPublicParticipant (brief §5.3)", () => {
 
     afterAll(async () => {
       await prisma.participant.deleteMany({ where: { categoryId: { in: categoriesCreees } } });
+      // Une invitation référence sa catégorie (suppression restreinte) : avant elle.
+      await prisma.invitation.deleteMany({ where: { categoryId: { in: categoriesCreees } } });
       await prisma.participantCategory.deleteMany({ where: { id: { in: categoriesCreees } } });
     });
 
@@ -383,6 +385,62 @@ describe("registerPublicParticipant (brief §5.3)", () => {
       });
 
       expect(result.status).toBe("CATEGORY_INVALID");
+    });
+
+    it("refuse une catégorie réservée, active mais non proposée au public (24 octobre 2026)", async () => {
+      const { editionId, editionCode } = await context("PARTICIPANT_NATIONAL");
+      const reservee = await prisma.participantCategory.create({
+        data: {
+          editionId,
+          code: `TEST-RESERVEE-${crypto.randomUUID().slice(0, 8)}`,
+          labelFr: "Comité d'organisation (test)",
+          labelEn: "Organising committee (test)",
+          isActive: true,
+          isPublic: false,
+        },
+      });
+      categoriesCreees.push(reservee.id);
+
+      const result = await registerPublicParticipant({
+        editionId,
+        editionCode,
+        ip: `ip-${crypto.randomUUID()}`,
+        input: baseInput({ categoryId: reservee.id }),
+      });
+
+      expect(result.status).toBe("CATEGORY_INVALID");
+    });
+
+    it("accepte une catégorie réservée quand elle vient d'une invitation", async () => {
+      const { editionId, editionCode } = await context("PARTICIPANT_NATIONAL");
+      const reservee = await prisma.participantCategory.create({
+        data: {
+          editionId,
+          code: `TEST-RESERVEE-INV-${crypto.randomUUID().slice(0, 8)}`,
+          labelFr: "Comité d'organisation (test, invitation)",
+          labelEn: "Organising committee (test, invitation)",
+          isActive: true,
+          isPublic: false,
+        },
+      });
+      categoriesCreees.push(reservee.id);
+      const email = `reservee-${crypto.randomUUID()}@example.test`;
+      participantEmails.push(email);
+      const invitation = await createInvitation(
+        editionId,
+        { email, firstName: "Membre", lastName: "Comité", categoryId: reservee.id },
+        { type: "SYSTEM" },
+      );
+      invitationIds.push(invitation.id);
+
+      const result = await registerPublicParticipant({
+        editionId,
+        editionCode,
+        ip: `ip-${crypto.randomUUID()}`,
+        input: baseInput({ email, invitationToken: invitation.token }),
+      });
+
+      expect(result.status).toBe("OK");
     });
 
     it("refuse un identifiant de catégorie inconnu de l'édition", async () => {

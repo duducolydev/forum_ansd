@@ -16,7 +16,6 @@
     "prisma:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "demo:purger": "tsx scripts/purger-demo.ts",
-    "programme:officiel": "tsx scripts/programme-officiel.ts",
     "migrations:verifier": "tsx scripts/verifier-migrations.ts",
     "bench:badges": "tsx scripts/bench-badges.ts",
     "create:admin": "tsx scripts/create-admin.ts",

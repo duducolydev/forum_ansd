@@ -5,7 +5,7 @@ import { getActiveEdition } from "@/lib/edition";
 import { lireParametres } from "@/modules/settings/service";
 import { etatInscriptions } from "@/modules/settings/regles";
 import { getInvitationByToken, markClicked } from "@/modules/invitations/service";
-import { listCategories } from "@/modules/participants/service";
+import { listPublicCategories } from "@/modules/participants/service";
 import { REGISTRATION_STEPS } from "@/modules/participants/registration-schema";
 import {
   RegistrationForm,
@@ -148,7 +148,7 @@ export default async function RegisterPage({
     );
   }
 
-  const categories = await listCategories(edition.id);
+  const categories = await listPublicCategories(edition.id);
 
   /*
    * Trois promesses affichées avant le formulaire. Le taux d'abandon d'un

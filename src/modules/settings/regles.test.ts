@@ -3,6 +3,7 @@ import {
   ajusterPourFonds,
   assombrirJusquAuSeuil,
   BLANC,
+  codeDeCategorie,
   CONTRASTE_MIN,
   CONTRASTE_MIN_LARGE,
   etatInscriptions,
@@ -18,6 +19,25 @@ import { cssDuTheme } from "./theme-css";
 import { THEME_PAR_DEFAUT } from "./schema";
 
 const le = (jour: string) => new Date(`${jour}T09:00:00.000Z`);
+
+describe("code d'une nouvelle catégorie (24 octobre 2026)", () => {
+  it("se tire du libellé : accents ôtés, majuscules, « _ » entre les mots", () => {
+    expect(codeDeCategorie("Comité d'organisation")).toBe("COMITE_D_ORGANISATION");
+    expect(codeDeCategorie("  Invités  spéciaux ! ")).toBe("INVITES_SPECIAUX");
+  });
+
+  it("commence toujours par une lettre et tient en 40 caractères", () => {
+    expect(codeDeCategorie("2e cercle")).toBe("C_2E_CERCLE");
+    expect(codeDeCategorie("a".repeat(60))).toHaveLength(40);
+    expect(codeDeCategorie("Délégation — très, très longue — des partenaires techniques")).toMatch(
+      /^[A-Z][A-Z0-9_]{1,39}$/,
+    );
+  });
+
+  it("ne rend jamais un code vide", () => {
+    expect(codeDeCategorie("—")).toBe("CATEGORIE");
+  });
+});
 
 describe("fenêtre d'inscription", () => {
   const fenetre = {

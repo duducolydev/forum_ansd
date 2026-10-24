@@ -1,12 +1,14 @@
-import { lireLangue, localeIntl, selon, traduire } from "@/lib/langue";
+import { lireLangue, localeIntl, selon, traduire, type Langue } from "@/lib/langue";
 import {
   CalendarDays,
   Check,
   Columns3,
   DoorOpen,
+  Handshake,
   Info,
   LayoutList,
   ListTree,
+  Store,
   Tag,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -115,6 +117,52 @@ function RangeeFiltres({
       </span>
       {children}
     </nav>
+  );
+}
+
+/**
+ * L'exposition des stands, ouverte toute la journée pendant les trois jours
+ * (demande du 24 octobre 2026). Ce n'est pas une session : le comité ne l'a pas
+ * saisie au programme, et une carte du matin au soir aurait recouvert la frise.
+ * Elle est signalée sous le titre de chaque journée, quels que soient les
+ * filtres, puisqu'elle ne dépend ni d'une salle ni d'un format.
+ */
+function BandeauExposition({ locale }: { locale: Langue }) {
+  return (
+    <aside className="border-border bg-surface mb-6 flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:gap-4">
+      <span
+        aria-hidden
+        className="bg-gold-soft text-gold-text flex size-11 shrink-0 items-center justify-center rounded-xl"
+      >
+        <Store size={20} />
+      </span>
+      <div className="flex-1">
+        <p className="text-heading flex flex-wrap items-center gap-x-2 gap-y-1 font-bold">
+          {selon(locale, {
+            fr: "Exposition des stands",
+            en: "Stands exhibition",
+            pt: "Exposição dos stands",
+          })}
+          <span className="bg-gold-soft text-gold-text rounded-full px-2.5 py-0.5 text-xs font-semibold">
+            {selon(locale, { fr: "Toute la journée", en: "All day", pt: "Todo o dia" })}
+          </span>
+        </p>
+        <p className="text-text-2 mt-1 text-sm">
+          {selon(locale, {
+            fr: "Les stands sont ouverts tout au long de la journée, en parallèle des sessions.",
+            en: "The stands are open throughout the day, alongside the sessions.",
+            pt: "Os stands estão abertos durante todo o dia, em paralelo com as sessões.",
+          })}
+        </p>
+      </div>
+      <LienSite href="/sponsors" ton="discret" taille="compact" icone={Handshake}>
+        {selon(locale, {
+          fr: "Voir les partenaires",
+          en: "See the partners",
+          pt: "Ver os parceiros",
+        })}
+      </LienSite>
+    </aside>
   );
 }
 
@@ -349,6 +397,7 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
                 >
                   {nomDuJour(jour.date)}
                 </h2>
+                <BandeauExposition locale={locale} />
                 {vueSalles ? (
                   <ProgrammeGrid
                     sessions={jour.sessions}

@@ -5,6 +5,7 @@ import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
 import { lireParametres, listerCategories } from "@/modules/settings/service";
 import { LigneCategorie } from "@/modules/settings/components/ligne-categorie";
+import { NouvelleCategorie } from "@/modules/settings/components/nouvelle-categorie";
 
 export const metadata = { title: "Catégories de participants" };
 
@@ -15,6 +16,10 @@ export const metadata = { title: "Catégories de participants" };
  * matrice d'accès, les modèles de badge et le seed. Le renommer casserait ces
  * liens sans prévenir — le libellé, lui, est ce que le public lit et se change
  * librement.
+ *
+ * Depuis le 24 octobre 2026, une catégorie se crée aussi ici (le comité
+ * d'organisation en a été le premier besoin), avec ses zones d'accès, sa
+ * visibilité sur le formulaire public et sa mention sur le badge.
  */
 export default async function CategoriesPage() {
   const session = await auth();
@@ -53,6 +58,14 @@ export default async function CategoriesPage() {
         </span>
       </div>
 
+      <NouvelleCategorie
+        categories={categories.map((categorie) => ({
+          id: categorie.id,
+          code: categorie.code,
+          labelFr: categorie.labelFr,
+        }))}
+      />
+
       <div className="flex flex-col gap-3">
         {categories.map((categorie) => (
           <LigneCategorie
@@ -70,6 +83,8 @@ export default async function CategoriesPage() {
               requiresLogistics: categorie.requiresLogistics,
               alertOnScan: categorie.alertOnScan,
               requiresAccreditation: categorie.requiresAccreditation,
+              isPublic: categorie.isPublic,
+              badgeMention: categorie.badgeMention ?? "",
               inscrits: categorie._count.participants,
             }}
           />

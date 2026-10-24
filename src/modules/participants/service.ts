@@ -5,7 +5,7 @@ import { audit } from "@/lib/audit";
 import { jobQueue } from "@/lib/queue";
 import { reconcileByEmail } from "@/modules/invitations/service";
 import { alerterNouveauMembre } from "@/modules/referents/notifications";
-import { registerBadgeJobs } from "@/modules/badges/jobs";
+import { enqueueBadgeRefresh, registerBadgeJobs } from "@/modules/badges/jobs";
 import * as repo from "./repository";
 import type { ParticipantInput, ParticipantSearchInput } from "./schema";
 import { DuplicateParticipantEmailError, InvalidParticipantTransitionError } from "./errors";
@@ -317,6 +317,16 @@ export async function updateParticipantDetails(
     after: { email: updated.email, categoryId: updated.categoryId },
   });
 
+  /*
+   * Changement de catégorie : le badge déjà généré est refait dans sa version
+   * — même QR —, aux couleur, libellé et mention de la nouvelle catégorie, et
+   * le participant en est prévenu (24 octobre 2026). Sans cela, un membre passé
+   * au comité d'organisation gardait le badge de sa catégorie d'origine.
+   */
+  if (before.categoryId !== updated.categoryId) {
+    await enqueueBadgeRefresh(participantId);
+  }
+
   return updated;
 }
 
@@ -625,6 +635,11 @@ export async function getParticipant(participantId: string) {
 
 export async function listCategories(editionId: string) {
   return repo.listCategories(editionId);
+}
+
+/** Catégories du formulaire public : actives et publiques. */
+export async function listPublicCategories(editionId: string) {
+  return repo.listPublicCategories(editionId);
 }
 
 /** Ré-exporté ici pour que les pages n'aient qu'un seul point d'entrée service. */

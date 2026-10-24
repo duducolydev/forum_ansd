@@ -21,6 +21,8 @@ export interface CategorieAffichee {
   requiresLogistics: boolean;
   alertOnScan: boolean;
   requiresAccreditation: boolean;
+  isPublic: boolean;
+  badgeMention: string;
   inscrits: number;
 }
 
@@ -113,6 +115,19 @@ export function LigneCategorie({ categorie }: { categorie: CategorieAffichee }) 
             className="border-border h-10 w-full cursor-pointer rounded-lg border"
           />
         </div>
+        <div className="flex min-w-[190px] flex-1 flex-col gap-1.5">
+          <label htmlFor={`mention-${categorie.id}`} className="text-text-3 text-xs font-semibold">
+            Mention sur le badge
+          </label>
+          <input
+            id={`mention-${categorie.id}`}
+            name="badgeMention"
+            maxLength={30}
+            defaultValue={categorie.badgeMention}
+            placeholder={categorie.requiresAccreditation ? "ACCRÉDITATION PRESSE" : "Aucune"}
+            className={CHAMP}
+          />
+        </div>
         <div className="flex w-[82px] flex-col gap-1.5">
           <label htmlFor={`ordre-${categorie.id}`} className="text-text-3 text-xs font-semibold">
             Ordre
@@ -128,8 +143,15 @@ export function LigneCategorie({ categorie }: { categorie: CategorieAffichee }) 
         </div>
 
         <div className="flex flex-wrap gap-4 py-2.5">
+          {/* Active : utilisable partout (BackOffice, imports, invitations).
+              Publique : proposée en plus sur le formulaire d'inscription — une
+              catégorie réservée, comme le comité d'organisation, ne l'est pas
+              (24 octobre 2026). */}
           <Case nom="isActive" id={`actif-${categorie.id}`} coche={categorie.isActive}>
-            Proposée à l&apos;inscription
+            Active
+          </Case>
+          <Case nom="isPublic" id={`public-${categorie.id}`} coche={categorie.isPublic}>
+            Proposée au public
           </Case>
           <Case nom="autoConfirm" id={`auto-${categorie.id}`} coche={categorie.autoConfirm}>
             Validation automatique
@@ -163,7 +185,7 @@ export function LigneCategorie({ categorie }: { categorie: CategorieAffichee }) 
           siNecessaire={siDecoche("isActive")}
           confirmation={{
             titre: `Désactiver la catégorie « ${categorie.labelFr} » ?`,
-            texte: `Elle ne sera plus proposée à l'inscription.${
+            texte: `Elle ne sera plus proposée nulle part : formulaire public, BackOffice, imports.${
               categorie.inscrits > 0
                 ? ` Les ${categorie.inscrits} inscrit(s) qui la portent la gardent.`
                 : ""

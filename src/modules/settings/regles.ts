@@ -17,6 +17,25 @@ export interface EtatInscriptions {
   ouvreLe: string | null;
 }
 
+/**
+ * Code d'une nouvelle catégorie, tiré de son libellé quand le comité n'en
+ * saisit pas : « Comité d'organisation » → `COMITE_D_ORGANISATION`. Les accents
+ * tombent, tout ce qui n'est ni lettre ni chiffre devient « _ », et un code
+ * commence toujours par une lettre (24 octobre 2026).
+ */
+export function codeDeCategorie(libelle: string): string {
+  const code = libelle
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40)
+    .replace(/_+$/, "");
+  if (!code) return "CATEGORIE";
+  return /^[A-Z]/.test(code) ? code : `C_${code}`.slice(0, 40);
+}
+
 /** Jour courant en UTC, qui est aussi le jour local à Dakar (UTC+0 toute l'année). */
 export function jourDe(instant: Date): string {
   return instant.toISOString().slice(0, 10);

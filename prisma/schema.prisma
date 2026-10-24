@@ -304,8 +304,16 @@ model ParticipantCategory {
   /// Inscription soumise à accréditation (presse) : bouton « Accréditer » au
   /// BackOffice, e-mail d'attente dédié, mention sur le badge (29/09/2026).
   requiresAccreditation Boolean  @default(false)
+  /// Mention imprimée en bande pleine, à la couleur de la catégorie, sous
+  /// l'en-tête du badge (« COMITÉ D'ORGANISATION »…) — 24 octobre 2026.
+  badgeMention          String?  @db.VarChar(40)
   sortOrder             Int      @default(0)
+  /// Utilisable partout : formulaire public, BackOffice, imports.
   isActive              Boolean  @default(true)
+  /// Proposée sur le formulaire d'inscription public. Une catégorie active mais
+  /// non publique (le comité d'organisation) s'attribue en BackOffice, par
+  /// import ou par invitation, jamais par le visiteur lui-même (24 octobre 2026).
+  isPublic              Boolean  @default(true)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
