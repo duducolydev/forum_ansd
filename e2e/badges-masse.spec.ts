@@ -155,16 +155,16 @@ test("l'archive ZIP s'extrait vraiment, rangée par délégation", async ({ page
   }
 });
 
-test("la planche d'impression affiche un badge par page, au format carte", async ({ page }) => {
+test("la planche d'impression affiche un badge par page, au format du badge", async ({ page }) => {
   await seConnecterAdmin(page);
   await page.goto(`/admin/badges/planche?delegationId=${delegationId}`);
 
   await expect(page.getByText("2 badge(s) prêt(s) à imprimer")).toBeVisible();
   await expect(page.locator(".badge img")).toHaveCount(2);
 
-  // Le format de page est réglé pour l'imprimante à badges.
+  // Le format de page est celui du badge, en portrait (25 octobre 2026).
   const styles = await page.locator("style").allTextContents();
-  expect(styles.join("")).toContain("size: 85.6mm 54mm");
+  expect(styles.join("")).toContain("size: 100mm 150mm");
 });
 
 test("l'export reste fermé aux sessions sans permission", async ({ request }) => {

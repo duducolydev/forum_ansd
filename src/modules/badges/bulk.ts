@@ -4,6 +4,8 @@ import { audit } from "@/lib/audit";
 import { fileStorage } from "@/lib/storage";
 import { creerZip, nomSur, type EntreeZip } from "@/lib/zip";
 import { enqueueBadgeGeneration } from "@/modules/participants/service";
+import { FORMAT_BADGE, auFormatCourant } from "./format";
+import { enqueueBadgeRefresh } from "./jobs";
 
 /**
  * Génération et export de badges en lot (brief §5.4).
@@ -144,6 +146,65 @@ export async function genererEnLot(
   return { misEnFile: participants.length };
 }
 
+/**
+ * Badges valides rendus à un autre format que le format courant — la carte
+ * CR80 d'avant le 25 octobre 2026 —, repérés au nom de leur fichier.
+ */
+function aRemettreAuFormat(editionId: string, filtre: FiltreBadges): Prisma.ParticipantWhereInput {
+  return {
+    ...where(editionId, { ...filtre, etat: undefined }),
+    badges: {
+      some: {
+        revokedAt: null,
+        generatedAt: { not: null },
+        NOT: { pngPath: { contains: `-${FORMAT_BADGE.code}.` } },
+      },
+    },
+  };
+}
+
+export async function compterAncienFormat(
+  editionId: string,
+  filtre: FiltreBadges,
+): Promise<number> {
+  return prisma.participant.count({ where: aRemettreAuFormat(editionId, filtre) });
+}
+
+/**
+ * Refait au format courant les badges déjà rendus à un autre format.
+ *
+ * Même version, donc **même QR** : un badge déjà téléchargé ou imprimé reste
+ * valable aux contrôles. Sans e-mail : seule l'allure change, pas le droit
+ * d'entrée. Les anciens fichiers restent sur le disque ; la base pointe sur
+ * les nouveaux une fois le rendu fait.
+ */
+export async function remettreAuFormatEnLot(
+  editionId: string,
+  filtre: FiltreBadges,
+  actorUserId: string | undefined,
+): Promise<{ misEnFile: number }> {
+  const participants = await prisma.participant.findMany({
+    where: aRemettreAuFormat(editionId, filtre),
+    select: { id: true },
+  });
+
+  let misEnFile = 0;
+  for (const participant of participants) {
+    if (await enqueueBadgeRefresh(participant.id, { silencieux: true })) misEnFile++;
+  }
+
+  await audit.log({
+    actorType: "USER",
+    actorUserId,
+    action: "badge.bulk_reformat",
+    entity: "Edition",
+    entityId: editionId,
+    after: { misEnFile, format: FORMAT_BADGE.code, filtre },
+  });
+
+  return { misEnFile };
+}
+
 export interface ArchiveBadges {
   fichier: Buffer;
   nom: string;
@@ -241,7 +302,7 @@ export async function badgesAImprimer(
   editionId: string,
   filtre: FiltreBadges,
   limite = 100,
-): Promise<{ badgeId: string; nom: string; publicId: string }[]> {
+): Promise<{ badgeId: string; nom: string; publicId: string; ancienFormat: boolean }[]> {
   const participants = await prisma.participant.findMany({
     where: {
       ...where(editionId, filtre),
@@ -257,7 +318,7 @@ export async function badgesAImprimer(
         where: { revokedAt: null, pngPath: { not: null } },
         orderBy: { version: "desc" },
         take: 1,
-        select: { id: true },
+        select: { id: true, pngPath: true },
       },
     },
   });
@@ -268,5 +329,6 @@ export async function badgesAImprimer(
       badgeId: participant.badges[0]!.id,
       nom: `${participant.lastName.toUpperCase()} ${participant.firstName}`,
       publicId: participant.publicId,
+      ancienFormat: !auFormatCourant(participant.badges[0]!.pngPath),
     }));
 }

@@ -11,6 +11,7 @@ import { renderBadgeHtml } from "./template";
 import { mentionDuBadge } from "./mention";
 import { logoBadgeDataUrl } from "./logo";
 import { datesDuForum } from "./dates";
+import { FORMAT_BADGE } from "./format";
 import { buildBadgeToken, hashBadgeToken, parseBadgeToken, verifyBadgeSignature } from "./token";
 import { variablesAccesDirect } from "@/modules/auth/acces-direct";
 
@@ -54,8 +55,12 @@ async function photoDataUrl(photoPath: string | null): Promise<string | null> {
   }
 }
 
+/**
+ * Le format figure dans le nom (`v1-100x150.pdf`) : un badge rendu à un autre
+ * format garde ses fichiers, et se repère pour être remis au format courant.
+ */
 function storageKey(publicId: string, version: number, extension: string): string {
-  return `badges/${publicId}/v${version}.${extension}`;
+  return `badges/${publicId}/v${version}-${FORMAT_BADGE.code}.${extension}`;
 }
 
 /**
@@ -94,7 +99,12 @@ async function renderAndStore(badge: Badge): Promise<{ pdfPath: string; pngPath:
     photoDataUrl: await photoDataUrl(participant.photoPath),
   });
 
-  const { pdf, png } = await renderHtmlToPdfAndPng(html, { format: "CR80" }, { width: 1200 });
+  // 1200 px pour 100 mm : environ 300 ppp, la résolution d'impression.
+  const { pdf, png } = await renderHtmlToPdfAndPng(
+    html,
+    { taille: { largeurMm: FORMAT_BADGE.largeurMm, hauteurMm: FORMAT_BADGE.hauteurMm } },
+    { width: 1200 },
+  );
 
   const pdfPath = storageKey(participant.publicId, badge.version, "pdf");
   const pngPath = storageKey(participant.publicId, badge.version, "png");

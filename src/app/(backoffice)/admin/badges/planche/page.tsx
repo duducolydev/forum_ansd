@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
 import { badgesAImprimer, type FiltreBadges } from "@/modules/badges/bulk";
+import { FORMAT_BADGE } from "@/modules/badges/format";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +23,12 @@ const LIMITE = 100;
  * alors exactement ce qui a été vérifié à la génération, sans dépendre des
  * polices installées sur le poste de l'accueil.
  *
- * La règle `@page` fixe le format carte (85,6 × 54 mm) et une marge nulle : la
- * planche s'imprime sur imprimante à badges comme sur papier, un badge par
- * page. Sur A4, l'agent choisit « plusieurs pages par feuille » dans le
- * dialogue d'impression.
+ * La règle `@page` reprend le format du badge (`modules/badges/format.ts`,
+ * 100 × 150 mm, portrait) et une marge nulle : un badge par page, à taille
+ * réelle. Jusqu'au 25 octobre 2026, elle réglait une page **paysage** pour un
+ * badge **portrait** : l'image, réduite pour tenir dans la hauteur, sortait à
+ * 34 × 54 mm au lieu de 54 × 86. Le menu du BackOffice et les marges de la page
+ * sont retirés à l'impression : sans cela, ils s'imprimaient avec la planche.
  */
 export default async function PlanchePage({
   searchParams,
@@ -46,17 +49,23 @@ export default async function PlanchePage({
 
   const edition = await getActiveEdition();
   const badges = await badgesAImprimer(edition.id, filtre, LIMITE);
+  const ancienFormat = badges.filter((badge) => badge.ancienFormat).length;
+
+  const largeur = `${FORMAT_BADGE.largeurMm}mm`;
+  const hauteur = `${FORMAT_BADGE.hauteurMm}mm`;
 
   return (
     <div className="planche">
       <style>{`
-        @page { size: 85.6mm 54mm; margin: 0; }
+        @page { size: ${largeur} ${hauteur}; margin: 0; }
         @media print {
-          .consignes { display: none; }
-          .badge { page-break-after: always; }
-          .badge:last-child { page-break-after: auto; }
+          aside, .consignes { display: none !important; }
+          html, body, main, .bg-bg-2 { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+          .bg-bg-2 { min-height: 0 !important; }
+          .badge { break-after: page; }
+          .badge:last-child { break-after: auto; }
         }
-        .badge { width: 85.6mm; height: 54mm; overflow: hidden; }
+        .badge { width: ${largeur}; height: ${hauteur}; overflow: hidden; }
         .badge img { width: 100%; height: 100%; object-fit: contain; display: block; }
       `}</style>
 
@@ -67,9 +76,17 @@ export default async function PlanchePage({
         </p>
         <p className="text-text-3 mt-1 text-xs">
           Lancez l&apos;impression du navigateur. Le format de page est déjà réglé à la taille
-          d&apos;un badge ; sur imprimante A4, choisissez « plusieurs pages par feuille ». Cette
-          consigne ne s&apos;imprime pas.
+          d&apos;un badge ({FORMAT_BADGE.largeurMm} × {FORMAT_BADGE.hauteurMm} mm) : gardez
+          l&apos;échelle à 100 %. Sur imprimante A4, choisissez « plusieurs pages par feuille ».
+          Cette consigne ne s&apos;imprime pas.
         </p>
+        {ancienFormat > 0 && (
+          <p className="text-danger-text mt-2 text-xs font-semibold">
+            {ancienFormat} badge(s) de cette planche sont encore au format carte (54 × 86 mm) et
+            sortiraient sans fente pour cordon. Passez-les au format {FORMAT_BADGE.largeurMm} ×{" "}
+            {FORMAT_BADGE.hauteurMm} mm depuis l&apos;écran Badges avant d&apos;imprimer.
+          </p>
+        )}
       </div>
 
       {badges.length === 0 ? (

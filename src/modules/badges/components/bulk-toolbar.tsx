@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { genererEnLotAction, type BulkState } from "../bulk-actions";
-import { Sparkles } from "lucide-react";
+import { genererEnLotAction, remettreAuFormatAction, type BulkState } from "../bulk-actions";
+import { Maximize2, Sparkles } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 
 const champ = "border-border bg-bg text-text rounded-lg border px-3 py-2 text-sm";
@@ -20,11 +20,14 @@ export function BulkToolbar({
   delegations,
   total,
   aGenerer,
+  ancienFormat,
 }: {
   categories: { id: string; labelFr: string }[];
   delegations: { id: string; name: string }[];
   total: number;
   aGenerer: number;
+  /** Badges encore au format carte (CR80), d'avant le grand format. */
+  ancienFormat: number;
 }) {
   const parametres = useSearchParams();
   const router = useRouter();
@@ -131,6 +134,25 @@ export function BulkToolbar({
         >
           {enCours ? "Mise en file…" : `Générer les ${aGenerer} badges manquants`}
         </Bouton>
+
+        {ancienFormat > 0 && (
+          <Bouton
+            ton="secondaire"
+            icone={Maximize2}
+            type="button"
+            disabled={enCours}
+            titre="Même QR, aucun e-mail : seul le format change."
+            onClick={() => {
+              setEtat({});
+              startTransition(async () => {
+                setEtat(await remettreAuFormatAction(filtre));
+                router.refresh();
+              });
+            }}
+          >
+            {`Passer ${ancienFormat} badge(s) au format 100 × 150 mm`}
+          </Bouton>
+        )}
 
         <a
           href={lienExport}

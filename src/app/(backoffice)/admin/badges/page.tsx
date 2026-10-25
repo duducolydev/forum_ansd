@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { prisma } from "@/lib/db";
 import { getActiveEdition } from "@/lib/edition";
-import { compter, lister, type FiltreBadges } from "@/modules/badges/bulk";
+import { compter, compterAncienFormat, lister, type FiltreBadges } from "@/modules/badges/bulk";
 import { BulkToolbar } from "@/modules/badges/components/bulk-toolbar";
 
 export const dynamic = "force-dynamic";
@@ -40,10 +40,11 @@ export default async function BadgesPage({
   const filtre = lireFiltre(parametres);
   const edition = await getActiveEdition();
 
-  const [lignes, total, aGenerer, categories, delegations] = await Promise.all([
+  const [lignes, total, aGenerer, ancienFormat, categories, delegations] = await Promise.all([
     lister(edition.id, filtre, LIMITE),
     compter(edition.id, filtre),
     compter(edition.id, { ...filtre, etat: "SANS" }),
+    compterAncienFormat(edition.id, filtre),
     prisma.participantCategory.findMany({
       where: { editionId: edition.id, isActive: true },
       orderBy: { sortOrder: "asc" },
@@ -71,6 +72,7 @@ export default async function BadgesPage({
           delegations={delegations}
           total={total}
           aGenerer={aGenerer}
+          ancienFormat={ancienFormat}
         />
       </Suspense>
 

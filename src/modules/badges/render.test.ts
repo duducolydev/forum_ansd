@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { closeBrowser, renderHtmlToPdf, renderHtmlToPng, resolveBrowserPath } from "@/lib/pdf";
 import { buildBadgeToken } from "./token";
 import { renderBadgeHtml } from "./template";
+import { FORMAT_BADGE, auFormatCourant } from "./format";
 import { generateQrDataUrl } from "@/lib/qr";
 
 async function sampleHtml(index: number): Promise<string> {
@@ -21,21 +22,43 @@ async function sampleHtml(index: number): Promise<string> {
   });
 }
 
+/** Points PDF (1/72 de pouce) d'une longueur en millimètres. */
+const enPoints = (mm: number) => (mm / 25.4) * 72;
+
+describe("format du badge (25 octobre 2026)", () => {
+  it("reconnaît un fichier rendu au format courant", () => {
+    expect(auFormatCourant("badges/FID26-AB12/v1-100x150.png")).toBe(true);
+    // Badges rendus avant le passage au grand format (carte CR80).
+    expect(auFormatCourant("badges/FID26-AB12/v1.png")).toBe(false);
+    expect(auFormatCourant(null)).toBe(false);
+  });
+});
+
 describe.skipIf(!resolveBrowserPath())("rendu du badge (Puppeteer)", () => {
   afterAll(async () => {
     await closeBrowser();
   }, 30_000);
 
-  it("produit un PDF au format CR80 et un PNG", async () => {
+  it("produit un PDF de 100 × 150 mm et un PNG au même rapport", async () => {
     const html = await sampleHtml(1);
 
-    const pdf = await renderHtmlToPdf(html, { format: "CR80" });
+    const pdf = await renderHtmlToPdf(html, {
+      taille: { largeurMm: FORMAT_BADGE.largeurMm, hauteurMm: FORMAT_BADGE.hauteurMm },
+    });
     expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
     expect(pdf.byteLength).toBeGreaterThan(1000);
+    // Une seule page, à la taille du badge : rien ne déborde sur une seconde.
+    const texte = pdf.toString("latin1");
+    expect(texte.match(/\/Type\s*\/Page[^s]/g)).toHaveLength(1);
+    const boite = texte.match(/\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)\s*\]/);
+    // Chromium arrondit la page au point entier : 1 pt d'écart au plus (0,35 mm).
+    expect(Math.abs(Number(boite?.[1]) - enPoints(100))).toBeLessThanOrEqual(1);
+    expect(Math.abs(Number(boite?.[2]) - enPoints(150))).toBeLessThanOrEqual(1);
 
     const png = await renderHtmlToPng(html, { width: 1200 });
     expect(png.subarray(1, 4).toString()).toBe("PNG");
-    // Largeur encodée dans le chunk IHDR (octets 16-19).
+    // Largeur et hauteur encodées dans le chunk IHDR (octets 16-23).
     expect(png.readUInt32BE(16)).toBe(1200);
+    expect(png.readUInt32BE(20)).toBe(1800);
   }, 60_000);
 });

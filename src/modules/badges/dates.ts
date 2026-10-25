@@ -1,9 +1,10 @@
 /**
  * Dates du Forum, telles qu'elles s'écrivent sur un badge (§33).
  *
- * Le badge est imprimé et mesure 54 mm de large : chaque caractère compte.
- * « 23 novembre 2026 – 25 novembre 2026 » y tiendrait sur trois lignes et
- * répéterait deux fois le mois et l'année. La forme retenue les factorise :
+ * La ligne des dates partage l'en-tête du badge avec le logo : chaque caractère
+ * compte. « 23 novembre 2026 – 25 novembre 2026 » y tiendrait sur plusieurs
+ * lignes et répéterait deux fois le mois et l'année. La forme retenue les
+ * factorise :
  *
  * | Cas                          | Rendu                         |
  * | ---------------------------- | ----------------------------- |

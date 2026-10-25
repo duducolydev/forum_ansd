@@ -6,6 +6,7 @@ import {
   resolveBrowserPath,
 } from "../src/lib/pdf";
 import { generateQrDataUrl } from "../src/lib/qr";
+import { FORMAT_BADGE } from "../src/modules/badges/format";
 import { renderBadgeHtml } from "../src/modules/badges/template";
 import { buildBadgeToken } from "../src/modules/badges/token";
 
@@ -48,13 +49,13 @@ async function main(): Promise<void> {
   const concurrency = process.env.PDF_RENDER_CONCURRENCY ?? "4";
   const pages = await Promise.all(Array.from({ length: count }, (_, i) => sample(i)));
 
+  const taille = { largeurMm: FORMAT_BADGE.largeurMm, hauteurMm: FORMAT_BADGE.hauteurMm };
+
   // Rendu à blanc : ne pas facturer le démarrage du navigateur à la mesure.
-  await renderHtmlToPdf(pages[0]!, { format: "CR80" });
+  await renderHtmlToPdf(pages[0]!, { taille });
 
   const start = Date.now();
-  await Promise.all(
-    pages.map((html) => renderHtmlToPdfAndPng(html, { format: "CR80" }, { width: 1200 })),
-  );
+  await Promise.all(pages.map((html) => renderHtmlToPdfAndPng(html, { taille }, { width: 1200 })));
   const perBadge = (Date.now() - start) / count;
 
   console.log(

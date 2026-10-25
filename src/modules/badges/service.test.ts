@@ -14,6 +14,7 @@ import {
   verifyBadgeToken,
 } from "./service";
 import { buildBadgeToken } from "./token";
+import { compterAncienFormat } from "./bulk";
 
 const ACTOR = { type: "SYSTEM" as const };
 const emails: string[] = [];
@@ -84,16 +85,43 @@ describe.skipIf(!resolveBrowserPath())("badges (brief §5.4)", () => {
 
     expect(badge.version).toBe(1);
     expect(badge.generatedAt).not.toBeNull();
-    expect(badge.pdfPath).toBe(`badges/${participant.publicId}/v1.pdf`);
-    expect(badge.pngPath).toBe(`badges/${participant.publicId}/v1.png`);
+    // Le format figure dans le nom des fichiers (25 octobre 2026).
+    expect(badge.pdfPath).toBe(`badges/${participant.publicId}/v1-100x150.pdf`);
+    expect(badge.pngPath).toBe(`badges/${participant.publicId}/v1-100x150.png`);
 
     const pdf = await fileStorage.get(badge.pdfPath!);
     expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
     const png = await fileStorage.get(badge.pngPath!);
+    // 1200 × 1800 px : le rapport 100 × 150 mm du badge.
     expect(png.readUInt32BE(16)).toBe(1200);
+    expect(png.readUInt32BE(20)).toBe(1800);
 
     const reloaded = await prisma.participant.findUniqueOrThrow({ where: { id: participant.id } });
     expect(reloaded.status).toBe("BADGED");
+  }, 60_000);
+
+  it("repère un badge rendu à l'ancien format et le refait au nouveau, même QR", async () => {
+    const participant = await makeConfirmedParticipant();
+    const badge = await generateBadge(participant.id, ACTOR);
+    const avant = await compterAncienFormat(editionId, {});
+
+    // Badge rendu avant le 25 octobre 2026 : fichiers sans repère de format.
+    await prisma.badge.update({
+      where: { id: badge.id },
+      data: {
+        pdfPath: `badges/${participant.publicId}/v1.pdf`,
+        pngPath: `badges/${participant.publicId}/v1.png`,
+      },
+    });
+    expect(await compterAncienFormat(editionId, {})).toBe(avant + 1);
+
+    // Ce que fait le job mis en file par « Passer au format 100 × 150 mm ».
+    const refait = await generateBadge(participant.id, ACTOR, { notifier: false });
+    expect(refait.id).toBe(badge.id);
+    expect(refait.version).toBe(1);
+    expect(refait.qrToken).toBe(badge.qrToken);
+    expect(refait.pngPath).toBe(`badges/${participant.publicId}/v1-100x150.png`);
+    expect(await compterAncienFormat(editionId, {})).toBe(avant);
   }, 60_000);
 
   it("valide le QR émis et refuse un jeton falsifié", async () => {

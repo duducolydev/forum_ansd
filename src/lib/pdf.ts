@@ -3,6 +3,8 @@ import puppeteer, { type Browser } from "puppeteer-core";
 
 export interface RenderPdfOptions {
   format?: "A4" | "A6" | "CR80";
+  /** Format sur mesure, en millimètres ; prime sur `format` (badge 100 × 150). */
+  taille?: { largeurMm: number; hauteurMm: number };
   landscape?: boolean;
 }
 
@@ -199,7 +201,9 @@ async function pdfFromPage(
   page: import("puppeteer-core").Page,
   options: RenderPdfOptions,
 ): Promise<Buffer> {
-  const size = PAGE_SIZES[options.format ?? "CR80"];
+  const size = options.taille
+    ? { width: `${options.taille.largeurMm}mm`, height: `${options.taille.hauteurMm}mm` }
+    : PAGE_SIZES[options.format ?? "CR80"];
   const pdf = await page.pdf({
     width: options.landscape ? size.height : size.width,
     height: options.landscape ? size.width : size.height,
@@ -231,7 +235,7 @@ async function pngFromPage(
 
     await page.bringToFront();
 
-    // Le gabarit est dimensionné en millimètres (53,98 mm ≈ 204 px CSS) :
+    // Le gabarit est dimensionné en millimètres (100 mm ≈ 378 px CSS) :
     // élargir le viewport ne l'agrandit pas. C'est le facteur d'échelle qui
     // donne la largeur demandée en pixels.
     const box = await element.boundingBox();

@@ -8,11 +8,12 @@ import { join } from "node:path";
  *
  * `logo_forum_transparent.png` pèse 1,48 Mo en 4 460 × 2 000. Encodé en base64
  * dans le HTML de **chaque** badge, il ferait passer chaque page de quelques
- * kilo-octets à plus de deux méga-octets — pour une image rendue à 8 mm de
+ * kilo-octets à plus de deux méga-octets — pour une image rendue à 12 mm de
  * haut, et alors que la cible est de 500 badges en moins de cinq minutes
  * (brief §5.4). `logo_forum_badge.png` est le même logo réduit à 500 px de
- * large, soit 82 Ko : à 8 mm sur une impression à 300 ppp, l'image reste deux
- * fois plus fine que nécessaire.
+ * large, soit 82 Ko : à 12 mm de haut (27 mm de large) sur le badge
+ * 100 × 150 mm, cela fait encore plus de 450 ppp, au-delà des 300 ppp
+ * d'une impression.
  *
  * ## Pourquoi un cache mémoire
  *
