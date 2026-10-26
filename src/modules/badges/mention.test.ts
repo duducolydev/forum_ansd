@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mentionDuBadge } from "./mention";
-import { renderBadgeHtml, type BadgeTemplateData } from "./template";
+import { libelleEnDeuxLignes, renderBadgeHtml, type BadgeTemplateData } from "./template";
 
 const base: BadgeTemplateData = {
   editionName: "Forum international sur les données",
@@ -8,7 +8,6 @@ const base: BadgeTemplateData = {
   lastName: "Ndiaye",
   jobTitle: "Journaliste",
   organization: "RTS",
-  country: "Sénégal",
   categoryLabel: "Média",
   categoryColor: "#C8323A",
   publicId: "FID26-TEST01",
@@ -16,55 +15,77 @@ const base: BadgeTemplateData = {
   photoDataUrl: null,
 };
 
-describe("mention d'accréditation sur le badge", () => {
-  it("imprime la mention d'un journaliste accrédité", () => {
-    expect(renderBadgeHtml({ ...base, mention: "ACCRÉDITATION PRESSE" })).toContain(
-      '<div class="mention">ACCRÉDITATION PRESSE</div>',
+/** Contenu du bandeau coloré du bas. */
+function bandeau(html: string): string {
+  return html.match(/<div class="bandeau">(.*?)<\/div>/)?.[1] ?? "";
+}
+
+describe("bandeau du badge (maquette du 26 octobre 2026)", () => {
+  it("porte le libellé de la catégorie, la dernière ligne en gras", () => {
+    expect(bandeau(renderBadgeHtml({ ...base, categoryLabel: "Personnel ANSD" }))).toBe(
+      '<span class="leger">Personnel</span><span class="fort">ANSD</span>',
     );
   });
 
-  it("n'imprime rien pour les autres badges", () => {
-    expect(renderBadgeHtml(base)).not.toContain('class="mention"');
+  it("porte la mention à la place du libellé, quand la catégorie en a une", () => {
+    const html = renderBadgeHtml({ ...base, mention: "ACCRÉDITATION PRESSE" });
+    expect(bandeau(html)).toBe(
+      '<span class="leger">ACCRÉDITATION</span><span class="fort">PRESSE</span>',
+    );
+    expect(html).not.toContain(">Média<");
+  });
+
+  it("prend la couleur de la catégorie, et l'encre qui s'y lit le mieux", () => {
+    // Texte blanc sur le violet…
+    expect(renderBadgeHtml({ ...base, categoryColor: "#6D4C9F" })).toMatch(
+      /color-mix\(in srgb, #6D4C9F 88%, #fff\)\);\s*color: #ffffff;/,
+    );
+    // … encre sombre sur une couleur claire.
+    expect(renderBadgeHtml({ ...base, categoryColor: "#E9E9A0" })).toMatch(
+      /color-mix\(in srgb, #E9E9A0 88%, #fff\)\);\s*color: #12212f;/,
+    );
   });
 });
 
-describe("mention de catégorie sur le badge (24 octobre 2026)", () => {
+describe("libellé du bandeau sur deux lignes", () => {
+  it("coupe là où les deux lignes s'équilibrent le mieux", () => {
+    // 10 et 20 caractères, plutôt que 21 et 9.
+    expect(libelleEnDeuxLignes("Délégation officielle étrangère")).toEqual([
+      "Délégation",
+      "officielle étrangère",
+    ]);
+    expect(libelleEnDeuxLignes("Comité d'organisation")).toEqual(["Comité", "d'organisation"]);
+  });
+
+  it("laisse un mot seul sur une ligne", () => {
+    expect(libelleEnDeuxLignes("  Presse ")).toEqual(["Presse"]);
+  });
+});
+
+describe("initiales sans photo", () => {
+  it("les pose sur la couleur de la catégorie, dans le cadre de la photo", () => {
+    const html = renderBadgeHtml({ ...base, categoryColor: "#6D4C9F" });
+    expect(html).toContain('<div class="photo initiales">AN</div>');
+    expect(html).toMatch(/\.photo\.initiales \{[^}]*background: #6D4C9F;/);
+  });
+});
+
+describe("mention de catégorie (24 octobre 2026)", () => {
   const comite = { requiresAccreditation: false, badgeMention: "COMITÉ D'ORGANISATION" };
   const presse = { requiresAccreditation: true, badgeMention: null };
 
-  it("imprime la mention d'une catégorie en bande pleine, à sa couleur", () => {
-    const html = renderBadgeHtml({
-      ...base,
-      categoryLabel: "Comité d'organisation",
-      categoryColor: "#6D4C9F",
-      ...mentionDuBadge(comite, null),
-    });
-    expect(html).toContain(`<div class="mention couleur">COMITÉ D'ORGANISATION</div>`);
-    // Texte blanc sur le violet : l'encre la plus lisible des deux.
-    expect(html).toMatch(/\.mention\.couleur \{\s*background: #6D4C9F; color: #ffffff;/);
+  it("imprime toujours la mention d'une catégorie qui en a une", () => {
+    expect(mentionDuBadge(comite, null)).toEqual({ mention: "COMITÉ D'ORGANISATION" });
   });
 
-  it("prend l'encre sombre sur une couleur claire", () => {
-    const html = renderBadgeHtml({
-      ...base,
-      categoryColor: "#E9E9A0",
-      ...mentionDuBadge(comite, null),
-    });
-    expect(html).toMatch(/\.mention\.couleur \{\s*background: #E9E9A0; color: #12212f;/);
-  });
-
-  it("garde à la presse sa bande d'origine, et seulement une fois accréditée", () => {
-    expect(mentionDuBadge(presse, null)).toEqual({ mention: null, mentionEnCouleur: false });
-    expect(mentionDuBadge(presse, new Date())).toEqual({
-      mention: "ACCRÉDITATION PRESSE",
-      mentionEnCouleur: false,
-    });
+  it("n'imprime la mention de la presse qu'une fois l'accréditation accordée", () => {
+    expect(mentionDuBadge(presse, null)).toEqual({ mention: null });
+    expect(mentionDuBadge(presse, new Date())).toEqual({ mention: "ACCRÉDITATION PRESSE" });
   });
 
   it("n'imprime rien pour une catégorie sans mention", () => {
     expect(mentionDuBadge({ requiresAccreditation: false, badgeMention: " " }, null)).toEqual({
       mention: null,
-      mentionEnCouleur: false,
     });
   });
 });

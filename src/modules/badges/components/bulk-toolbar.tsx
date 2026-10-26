@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { genererEnLotAction, remettreAuFormatAction, type BulkState } from "../bulk-actions";
-import { Maximize2, Sparkles } from "lucide-react";
+import { genererEnLotAction, refaireAuGabaritAction, type BulkState } from "../bulk-actions";
+import { RefreshCw, Sparkles } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 
 const champ = "border-border bg-bg text-text rounded-lg border px-3 py-2 text-sm";
@@ -20,14 +20,14 @@ export function BulkToolbar({
   delegations,
   total,
   aGenerer,
-  ancienFormat,
+  ancienGabarit,
 }: {
   categories: { id: string; labelFr: string }[];
   delegations: { id: string; name: string }[];
   total: number;
   aGenerer: number;
-  /** Badges encore au format carte (CR80), d'avant le grand format. */
-  ancienFormat: number;
+  /** Badges rendus avec un gabarit antérieur à la maquette en vigueur. */
+  ancienGabarit: number;
 }) {
   const parametres = useSearchParams();
   const router = useRouter();
@@ -135,22 +135,22 @@ export function BulkToolbar({
           {enCours ? "Mise en file…" : `Générer les ${aGenerer} badges manquants`}
         </Bouton>
 
-        {ancienFormat > 0 && (
+        {ancienGabarit > 0 && (
           <Bouton
             ton="secondaire"
-            icone={Maximize2}
+            icone={RefreshCw}
             type="button"
             disabled={enCours}
-            titre="Même QR, aucun e-mail : seul le format change."
+            titre="Même QR, aucun e-mail : seule l'allure du badge change."
             onClick={() => {
               setEtat({});
               startTransition(async () => {
-                setEtat(await remettreAuFormatAction(filtre));
+                setEtat(await refaireAuGabaritAction(filtre));
                 router.refresh();
               });
             }}
           >
-            {`Passer ${ancienFormat} badge(s) au format 100 × 150 mm`}
+            {`Refaire ${ancienGabarit} badge(s) avec la nouvelle maquette`}
           </Bouton>
         )}
 

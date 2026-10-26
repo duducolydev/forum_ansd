@@ -13,17 +13,30 @@ export const FORMAT_BADGE = {
   largeurMm: 100,
   hauteurMm: 150,
   /**
-   * Repère du format dans le nom des fichiers (`badges/<id>/v1-100x150.pdf`).
-   * Un badge rendu à un autre format se reconnaît ainsi sans migration, et se
-   * remet au format courant depuis l'écran Badges.
+   * Largeur du PNG (aperçu, téléchargement, planche d'impression) : 1 000 px
+   * pour 100 mm, soit 254 ppp. La capture PNG, faite une à une, est le goulot
+   * du rendu en lot ; à 1 200 px, les dégradés de la maquette faisaient passer
+   * 500 badges au-delà des 5 minutes du brief (§5.4). Le PDF, lui, reste
+   * vectoriel.
    */
-  code: "100x150",
+  largeurPng: 1000,
 } as const;
 
 /**
+ * Gabarit en vigueur : la maquette de l'infographe (26 octobre 2026).
+ *
+ * Il figure dans le nom des fichiers (`badges/<id>/v1-maquette-2026.pdf`) : un
+ * badge rendu avec un gabarit antérieur — la carte CR80, puis le premier
+ * 100 × 150 mm du 25 octobre — se reconnaît ainsi sans migration, et se refait
+ * depuis l'écran Badges, même QR. Changer de gabarit, c'est changer ce repère.
+ */
+export const GABARIT_BADGE = "maquette-2026";
+
+/**
  * Fente pour cordon : oblongue, 15 × 3 mm, centrée, à 5 mm du bord haut — la
- * perforation standard des pinces et des emporte-pièces de badge. Le gabarit
- * en trace le repère et n'imprime rien d'autre dans sa zone.
+ * perforation standard des pinces et des emporte-pièces de badge. La maquette
+ * la dessinait plus large et à 2,6 mm du bord, où la perforation risque de
+ * déchirer le badge : le repère garde ces cotes, dans le gris de la maquette.
  */
 export const FENTE_CORDON = {
   largeurMm: 15,
@@ -31,7 +44,7 @@ export const FENTE_CORDON = {
   depuisLeHautMm: 5,
 } as const;
 
-/** Vrai si le fichier a été rendu au format courant. */
-export function auFormatCourant(chemin: string | null): boolean {
-  return Boolean(chemin?.includes(`-${FORMAT_BADGE.code}.`));
+/** Vrai si le fichier a été rendu avec le gabarit en vigueur. */
+export function auGabaritCourant(chemin: string | null): boolean {
+  return Boolean(chemin?.includes(`-${GABARIT_BADGE}.`));
 }

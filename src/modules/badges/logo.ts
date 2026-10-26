@@ -6,14 +6,14 @@ import { join } from "node:path";
  *
  * ## Pourquoi un fichier dédié plutôt que le logo officiel
  *
- * `logo_forum_transparent.png` pèse 1,48 Mo en 4 460 × 2 000. Encodé en base64
- * dans le HTML de **chaque** badge, il ferait passer chaque page de quelques
- * kilo-octets à plus de deux méga-octets — pour une image rendue à 12 mm de
- * haut, et alors que la cible est de 500 badges en moins de cinq minutes
- * (brief §5.4). `logo_forum_badge.png` est le même logo réduit à 500 px de
- * large, soit 82 Ko : à 12 mm de haut (27 mm de large) sur le badge
- * 100 × 150 mm, cela fait encore plus de 450 ppp, au-delà des 300 ppp
- * d'une impression.
+ * Le logo « Dakar 2026 » de l'en-tête du site (`logo-forum-2026.webp`, celui de
+ * la maquette du badge) fait 1 800 px de large. Encodé en base64 dans le HTML
+ * de **chaque** badge, il alourdirait chaque page pour rien, alors que la cible
+ * est de 500 badges en moins de cinq minutes (brief §5.4).
+ * `logo_forum_badge_2026.webp` est le même logo réduit à 1 000 px, soit 94 Ko :
+ * à 75 mm de large sur le badge, cela fait encore 340 ppp, au-delà des 300 ppp
+ * d'une impression. (`logo_forum_badge.png`, l'ancien logo réduit, sert encore
+ * aux PDF des lettres d'information.)
  *
  * ## Pourquoi un cache mémoire
  *
@@ -28,11 +28,11 @@ import { join } from "node:path";
 let lecture: Promise<string> | null = null;
 
 /** Chemin du fichier, résolu depuis la racine du serveur Next (`process.cwd()`). */
-const CHEMIN = join(process.cwd(), "public", "images", "logo_forum_badge.png");
+const CHEMIN = join(process.cwd(), "public", "images", "logo_forum_badge_2026.webp");
 
 export async function logoBadgeDataUrl(): Promise<string | null> {
   lecture ??= readFile(CHEMIN).then(
-    (octets) => `data:image/png;base64,${octets.toString("base64")}`,
+    (octets) => `data:image/webp;base64,${octets.toString("base64")}`,
   );
 
   try {

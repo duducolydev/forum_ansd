@@ -1,20 +1,18 @@
 /**
- * Mention imprimée sous l'en-tête du badge.
+ * Mention imprimée dans le bandeau coloré du bas du badge, à la place du
+ * libellé de la catégorie (maquette du 26 octobre 2026).
  *
  * - **Presse** (catégorie soumise à accréditation) : « ACCRÉDITATION PRESSE »,
- *   seulement une fois l'accréditation accordée, sur la bande bleu nuit
- *   d'origine (29 septembre 2026) — inchangée ;
+ *   seulement une fois l'accréditation accordée (29 septembre 2026) ;
  * - **Toute autre catégorie** dotée d'une mention en BackOffice (« COMITÉ
- *   D'ORGANISATION »…) : imprimée en bande pleine à la couleur de la catégorie,
- *   la distinction la plus visible au contrôle d'entrée (24 octobre 2026).
+ *   D'ORGANISATION »…) : toujours (24 octobre 2026).
  *
  * Une catégorie presse qui porte sa propre mention l'imprime à la place de
- * « ACCRÉDITATION PRESSE », dans le même style et aux mêmes conditions.
+ * « ACCRÉDITATION PRESSE », aux mêmes conditions. Sans mention, le bandeau porte
+ * le libellé de la catégorie.
  */
 export interface MentionBadge {
   mention: string | null;
-  /** Bande à la couleur de la catégorie ; sinon, bande bleu nuit. */
-  mentionEnCouleur: boolean;
 }
 
 export function mentionDuBadge(
@@ -23,10 +21,7 @@ export function mentionDuBadge(
 ): MentionBadge {
   const propre = categorie.badgeMention?.trim() || null;
   if (categorie.requiresAccreditation) {
-    return {
-      mention: accreditedAt ? (propre ?? "ACCRÉDITATION PRESSE") : null,
-      mentionEnCouleur: false,
-    };
+    return { mention: accreditedAt ? (propre ?? "ACCRÉDITATION PRESSE") : null };
   }
-  return { mention: propre, mentionEnCouleur: propre !== null };
+  return { mention: propre };
 }

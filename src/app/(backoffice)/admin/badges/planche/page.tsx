@@ -49,7 +49,7 @@ export default async function PlanchePage({
 
   const edition = await getActiveEdition();
   const badges = await badgesAImprimer(edition.id, filtre, LIMITE);
-  const ancienFormat = badges.filter((badge) => badge.ancienFormat).length;
+  const ancienGabarit = badges.filter((badge) => badge.ancienGabarit).length;
 
   const largeur = `${FORMAT_BADGE.largeurMm}mm`;
   const hauteur = `${FORMAT_BADGE.hauteurMm}mm`;
@@ -80,11 +80,10 @@ export default async function PlanchePage({
           l&apos;échelle à 100 %. Sur imprimante A4, choisissez « plusieurs pages par feuille ».
           Cette consigne ne s&apos;imprime pas.
         </p>
-        {ancienFormat > 0 && (
+        {ancienGabarit > 0 && (
           <p className="text-danger-text mt-2 text-xs font-semibold">
-            {ancienFormat} badge(s) de cette planche sont encore au format carte (54 × 86 mm) et
-            sortiraient sans fente pour cordon. Passez-les au format {FORMAT_BADGE.largeurMm} ×{" "}
-            {FORMAT_BADGE.hauteurMm} mm depuis l&apos;écran Badges avant d&apos;imprimer.
+            {ancienGabarit} badge(s) de cette planche ont encore l&apos;ancienne présentation.
+            Refaites-les avec la nouvelle maquette depuis l&apos;écran Badges avant d&apos;imprimer.
           </p>
         )}
       </div>

@@ -14,7 +14,8 @@ import {
   verifyBadgeToken,
 } from "./service";
 import { buildBadgeToken } from "./token";
-import { compterAncienFormat } from "./bulk";
+import { compterAncienGabarit } from "./bulk";
+import { FORMAT_BADGE } from "./format";
 
 const ACTOR = { type: "SYSTEM" as const };
 const emails: string[] = [];
@@ -85,43 +86,43 @@ describe.skipIf(!resolveBrowserPath())("badges (brief §5.4)", () => {
 
     expect(badge.version).toBe(1);
     expect(badge.generatedAt).not.toBeNull();
-    // Le format figure dans le nom des fichiers (25 octobre 2026).
-    expect(badge.pdfPath).toBe(`badges/${participant.publicId}/v1-100x150.pdf`);
-    expect(badge.pngPath).toBe(`badges/${participant.publicId}/v1-100x150.png`);
+    // Le gabarit figure dans le nom des fichiers.
+    expect(badge.pdfPath).toBe(`badges/${participant.publicId}/v1-maquette-2026.pdf`);
+    expect(badge.pngPath).toBe(`badges/${participant.publicId}/v1-maquette-2026.png`);
 
     const pdf = await fileStorage.get(badge.pdfPath!);
     expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
     const png = await fileStorage.get(badge.pngPath!);
-    // 1200 × 1800 px : le rapport 100 × 150 mm du badge.
-    expect(png.readUInt32BE(16)).toBe(1200);
-    expect(png.readUInt32BE(20)).toBe(1800);
+    // 1000 × 1500 px : le rapport 100 × 150 mm du badge.
+    expect(png.readUInt32BE(16)).toBe(FORMAT_BADGE.largeurPng);
+    expect(png.readUInt32BE(20)).toBe(FORMAT_BADGE.largeurPng * 1.5);
 
     const reloaded = await prisma.participant.findUniqueOrThrow({ where: { id: participant.id } });
     expect(reloaded.status).toBe("BADGED");
   }, 60_000);
 
-  it("repère un badge rendu à l'ancien format et le refait au nouveau, même QR", async () => {
+  it("repère un badge rendu avec un ancien gabarit et le refait, même QR", async () => {
     const participant = await makeConfirmedParticipant();
     const badge = await generateBadge(participant.id, ACTOR);
-    const avant = await compterAncienFormat(editionId, {});
+    const avant = await compterAncienGabarit(editionId, {});
 
-    // Badge rendu avant le 25 octobre 2026 : fichiers sans repère de format.
+    // Badge rendu avec le premier 100 × 150 mm du 25 octobre 2026.
     await prisma.badge.update({
       where: { id: badge.id },
       data: {
-        pdfPath: `badges/${participant.publicId}/v1.pdf`,
-        pngPath: `badges/${participant.publicId}/v1.png`,
+        pdfPath: `badges/${participant.publicId}/v1-100x150.pdf`,
+        pngPath: `badges/${participant.publicId}/v1-100x150.png`,
       },
     });
-    expect(await compterAncienFormat(editionId, {})).toBe(avant + 1);
+    expect(await compterAncienGabarit(editionId, {})).toBe(avant + 1);
 
-    // Ce que fait le job mis en file par « Passer au format 100 × 150 mm ».
+    // Ce que fait le job mis en file par « Refaire … avec la nouvelle maquette ».
     const refait = await generateBadge(participant.id, ACTOR, { notifier: false });
     expect(refait.id).toBe(badge.id);
     expect(refait.version).toBe(1);
     expect(refait.qrToken).toBe(badge.qrToken);
-    expect(refait.pngPath).toBe(`badges/${participant.publicId}/v1-100x150.png`);
-    expect(await compterAncienFormat(editionId, {})).toBe(avant);
+    expect(refait.pngPath).toBe(`badges/${participant.publicId}/v1-maquette-2026.png`);
+    expect(await compterAncienGabarit(editionId, {})).toBe(avant);
   }, 60_000);
 
   it("valide le QR émis et refuse un jeton falsifié", async () => {

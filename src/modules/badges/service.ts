@@ -10,8 +10,9 @@ import { InvalidParticipantTransitionError } from "@/modules/participants/errors
 import { renderBadgeHtml } from "./template";
 import { mentionDuBadge } from "./mention";
 import { logoBadgeDataUrl } from "./logo";
+import { policesBadgeCss } from "./polices";
 import { datesDuForum } from "./dates";
-import { FORMAT_BADGE } from "./format";
+import { FORMAT_BADGE, GABARIT_BADGE } from "./format";
 import { buildBadgeToken, hashBadgeToken, parseBadgeToken, verifyBadgeSignature } from "./token";
 import { variablesAccesDirect } from "@/modules/auth/acces-direct";
 
@@ -23,7 +24,6 @@ const participantForBadge = {
   lastName: true,
   jobTitle: true,
   organization: true,
-  country: true,
   email: true,
   locale: true,
   status: true,
@@ -56,11 +56,11 @@ async function photoDataUrl(photoPath: string | null): Promise<string | null> {
 }
 
 /**
- * Le format figure dans le nom (`v1-100x150.pdf`) : un badge rendu à un autre
- * format garde ses fichiers, et se repère pour être remis au format courant.
+ * Le gabarit figure dans le nom (`v1-maquette-2026.pdf`) : un badge rendu avec
+ * un gabarit antérieur garde ses fichiers, et se repère pour être refait.
  */
 function storageKey(publicId: string, version: number, extension: string): string {
-  return `badges/${publicId}/v${version}-${FORMAT_BADGE.code}.${extension}`;
+  return `badges/${publicId}/v${version}-${GABARIT_BADGE}.${extension}`;
 }
 
 /**
@@ -79,18 +79,19 @@ async function renderAndStore(badge: Badge): Promise<{ pdfPath: string; pngPath:
   const html = renderBadgeHtml({
     editionName: participant.edition.title,
     // Logo lu une fois et gardé en mémoire (`logo.ts`) : 500 badges ne doivent
-    // pas coûter 500 lectures disque du même fichier.
+    // pas coûter 500 lectures disque du même fichier. De même pour les polices.
     logoDataUrl: await logoBadgeDataUrl(),
+    policesCss: await policesBadgeCss(),
     eventDates: datesDuForum(participant.edition.startDate, participant.edition.endDate),
     firstName: participant.firstName,
     lastName: participant.lastName,
     jobTitle: participant.jobTitle,
     organization: participant.organization,
-    country: participant.country,
     categoryLabel: participant.category.labelFr,
     categoryColor: participant.category.color,
     // Presse accréditée, ou catégorie dotée d'une mention (comité
-    // d'organisation…) : imprimée pour le contrôle à l'entrée (`mention.ts`).
+    // d'organisation…) : portée par le bandeau du bas, à la place du libellé
+    // de la catégorie, pour le contrôle à l'entrée (`mention.ts`).
     ...mentionDuBadge(participant.category, participant.accreditedAt),
     publicId: participant.publicId,
     // Le QR encode l'URL de vérification publique : un scanner générique
@@ -99,11 +100,10 @@ async function renderAndStore(badge: Badge): Promise<{ pdfPath: string; pngPath:
     photoDataUrl: await photoDataUrl(participant.photoPath),
   });
 
-  // 1200 px pour 100 mm : environ 300 ppp, la résolution d'impression.
   const { pdf, png } = await renderHtmlToPdfAndPng(
     html,
     { taille: { largeurMm: FORMAT_BADGE.largeurMm, hauteurMm: FORMAT_BADGE.hauteurMm } },
-    { width: 1200 },
+    { width: FORMAT_BADGE.largeurPng },
   );
 
   const pdfPath = storageKey(participant.publicId, badge.version, "pdf");

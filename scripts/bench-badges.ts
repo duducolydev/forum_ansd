@@ -7,6 +7,8 @@ import {
 } from "../src/lib/pdf";
 import { generateQrDataUrl } from "../src/lib/qr";
 import { FORMAT_BADGE } from "../src/modules/badges/format";
+import { logoBadgeDataUrl } from "../src/modules/badges/logo";
+import { policesBadgeCss } from "../src/modules/badges/polices";
 import { renderBadgeHtml } from "../src/modules/badges/template";
 import { buildBadgeToken } from "../src/modules/badges/token";
 
@@ -26,11 +28,13 @@ async function sample(index: number): Promise<string> {
   const publicId = `FID26-BN${String(index).padStart(4, "0")}`;
   return renderBadgeHtml({
     editionName: "Forum international sur les données",
+    // Logo et polices comme en production : ce sont eux qui alourdissent la page.
+    logoDataUrl: await logoBadgeDataUrl(),
+    policesCss: await policesBadgeCss(),
     firstName: "Aminata",
     lastName: "Sow",
     jobTitle: "Directrice des statistiques démographiques",
     organization: "ANSD",
-    country: "Sénégal",
     categoryLabel: "Participante nationale",
     categoryColor: "#3dbb6e",
     publicId,
@@ -55,7 +59,11 @@ async function main(): Promise<void> {
   await renderHtmlToPdf(pages[0]!, { taille });
 
   const start = Date.now();
-  await Promise.all(pages.map((html) => renderHtmlToPdfAndPng(html, { taille }, { width: 1200 })));
+  await Promise.all(
+    pages.map((html) =>
+      renderHtmlToPdfAndPng(html, { taille }, { width: FORMAT_BADGE.largeurPng }),
+    ),
+  );
   const perBadge = (Date.now() - start) / count;
 
   console.log(

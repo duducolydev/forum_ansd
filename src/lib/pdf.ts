@@ -185,6 +185,10 @@ async function withPage<T>(
     // data: URI) — attendre le réseau ferait patienter jusqu'au timeout.
     await slot.page.setContent(html, { waitUntil: "domcontentloaded" });
     await slot.page.evaluateHandle("document.fonts.ready");
+    // Une page peut finir sa mise en page une fois ses polices chargées (le
+    // badge ajuste alors ses textes longs) : elle l'annonce par `window.__pret`,
+    // une promesse que l'on attend avant le rendu.
+    await slot.page.evaluate("window.__pret");
     return await fn(slot.page);
   } catch (error) {
     // Onglet laissé dans un état incertain : on le jette pour que le rendu
@@ -246,7 +250,11 @@ async function pngFromPage(
       deviceScaleFactor: options.deviceScaleFactor ?? scale,
     });
 
-    const shot = await element.screenshot({ type: "png", omitBackground: false });
+    const shot = await element.screenshot({
+      type: "png",
+      omitBackground: false,
+      optimizeForSpeed: true,
+    });
     return Buffer.from(shot);
   });
   screenshotLock = run.catch(() => undefined);

@@ -2,18 +2,19 @@ import { afterAll, describe, expect, it } from "vitest";
 import { closeBrowser, renderHtmlToPdf, renderHtmlToPng, resolveBrowserPath } from "@/lib/pdf";
 import { buildBadgeToken } from "./token";
 import { renderBadgeHtml } from "./template";
-import { FORMAT_BADGE, auFormatCourant } from "./format";
+import { FORMAT_BADGE, auGabaritCourant } from "./format";
+import { policesBadgeCss } from "./polices";
 import { generateQrDataUrl } from "@/lib/qr";
 
 async function sampleHtml(index: number): Promise<string> {
   const publicId = `FID26-BENCH${String(index).padStart(2, "0")}`;
   return renderBadgeHtml({
     editionName: "Forum international sur les données",
+    policesCss: await policesBadgeCss(),
     firstName: "Aminata",
     lastName: "Sow",
     jobTitle: "Directrice des statistiques démographiques",
     organization: "ANSD",
-    country: "Sénégal",
     categoryLabel: "Participante nationale",
     categoryColor: "#3dbb6e",
     publicId,
@@ -25,12 +26,13 @@ async function sampleHtml(index: number): Promise<string> {
 /** Points PDF (1/72 de pouce) d'une longueur en millimètres. */
 const enPoints = (mm: number) => (mm / 25.4) * 72;
 
-describe("format du badge (25 octobre 2026)", () => {
-  it("reconnaît un fichier rendu au format courant", () => {
-    expect(auFormatCourant("badges/FID26-AB12/v1-100x150.png")).toBe(true);
-    // Badges rendus avant le passage au grand format (carte CR80).
-    expect(auFormatCourant("badges/FID26-AB12/v1.png")).toBe(false);
-    expect(auFormatCourant(null)).toBe(false);
+describe("gabarit du badge", () => {
+  it("reconnaît un fichier rendu avec la maquette en vigueur", () => {
+    expect(auGabaritCourant("badges/FID26-AB12/v1-maquette-2026.png")).toBe(true);
+    // Carte CR80, puis premier 100 × 150 mm du 25 octobre 2026.
+    expect(auGabaritCourant("badges/FID26-AB12/v1.png")).toBe(false);
+    expect(auGabaritCourant("badges/FID26-AB12/v1-100x150.png")).toBe(false);
+    expect(auGabaritCourant(null)).toBe(false);
   });
 });
 
