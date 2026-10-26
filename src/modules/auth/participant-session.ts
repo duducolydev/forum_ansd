@@ -27,6 +27,23 @@ export const participantSessionCookieOptions = {
   maxAge: PARTICIPANT_SESSION_MAX_AGE,
 } as const;
 
+/**
+ * Mémoire « un compte participant s'est déjà connecté sur ce navigateur »
+ * (26 octobre 2026). Posée à chaque ouverture de session et gardée à la
+ * déconnexion : la fenêtre des conditions d'accès de l'accueil cesse alors de
+ * s'afficher, la personne ayant manifestement créé son compte. Un simple
+ * drapeau, sans identité : il ne dit pas *qui* s'est connecté.
+ */
+export const COMPTE_CONNU_COOKIE = "forum-compte-connu";
+
+export const compteConnuCookieOptions = {
+  httpOnly: true,
+  sameSite: "lax",
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: 365 * 24 * 60 * 60,
+} as const;
+
 export async function signParticipantSession(participantId: string): Promise<string> {
   return new SignJWT({ pid: participantId })
     .setProtectedHeader({ alg: "HS256" })
@@ -37,7 +54,19 @@ export async function signParticipantSession(participantId: string): Promise<str
 
 export async function createParticipantSession(participantId: string): Promise<void> {
   const token = await signParticipantSession(participantId);
-  (await cookies()).set(PARTICIPANT_SESSION_COOKIE, token, participantSessionCookieOptions);
+  const jar = await cookies();
+  jar.set(PARTICIPANT_SESSION_COOKIE, token, participantSessionCookieOptions);
+  jar.set(COMPTE_CONNU_COOKIE, "1", compteConnuCookieOptions);
+}
+
+/**
+ * Vrai si un compte participant s'est déjà connecté sur ce navigateur, ou s'y
+ * trouve connecté : une session ouverte avant le 26 octobre 2026 ne portait
+ * pas encore la mémoire, et compte tout autant.
+ */
+export async function compteDejaConnecte(): Promise<boolean> {
+  if ((await cookies()).has(COMPTE_CONNU_COOKIE)) return true;
+  return (await getParticipantSession()) !== null;
 }
 
 export async function getParticipantSession(): Promise<{ participantId: string } | null> {
@@ -54,6 +83,7 @@ export async function getParticipantSession(): Promise<{ participantId: string }
   }
 }
 
+/** Ferme la session ; la mémoire du compte connu reste (cf. `COMPTE_CONNU_COOKIE`). */
 export async function clearParticipantSession(): Promise<void> {
   (await cookies()).delete(PARTICIPANT_SESSION_COOKIE);
 }

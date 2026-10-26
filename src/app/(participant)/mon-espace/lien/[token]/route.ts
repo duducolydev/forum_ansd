@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { consumeMagicLink } from "@/modules/auth/magic-link";
 import {
+  COMPTE_CONNU_COOKIE,
+  compteConnuCookieOptions,
   PARTICIPANT_SESSION_COOKIE,
   participantSessionCookieOptions,
   signParticipantSession,
@@ -35,5 +37,6 @@ export async function GET(
     await signParticipantSession(result.participantId),
     participantSessionCookieOptions,
   );
+  response.cookies.set(COMPTE_CONNU_COOKIE, "1", compteConnuCookieOptions);
   return response;
 }

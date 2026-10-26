@@ -5,29 +5,24 @@ import { useEffect, useRef, useState } from "react";
 import { BadgeCheck, UserPlus, X } from "lucide-react";
 import { BoutonSite, LienSite } from "@/components/site/bouton-site";
 
-/** Fermée, la fenêtre ne revient pas avant ce délai — sur ce navigateur. */
-const CLE_STOCKAGE = "forum-fenetre-acces";
-const DELAI_JOURS = 7;
+/**
+ * Fermée, la fenêtre ne revient pas avant la prochaine ouverture du navigateur
+ * (26 octobre 2026) : cookie **de session**, sans date d'expiration, que le
+ * navigateur efface en se fermant. Un cookie plutôt que `sessionStorage`, propre
+ * à chaque onglet : ouvrir l'accueil dans un second onglet ne la remontre pas.
+ */
+const COOKIE_VUE = "forum-fenetre-acces";
 
 /** Laisse la page d'accueil apparaître avant la fenêtre. */
 const ATTENTE_MS = 1200;
 
 function dejaVue(): boolean {
-  try {
-    const vue = Number(window.localStorage.getItem(CLE_STOCKAGE));
-    return vue > 0 && Date.now() - vue < DELAI_JOURS * 86_400_000;
-  } catch {
-    // Stockage refusé (navigation privée, réglages) : la fenêtre s'affiche.
-    return false;
-  }
+  return document.cookie.split("; ").some((cookie) => cookie.startsWith(`${COOKIE_VUE}=`));
 }
 
 function retenir(): void {
-  try {
-    window.localStorage.setItem(CLE_STOCKAGE, String(Date.now()));
-  } catch {
-    // Sans stockage, la fenêtre reviendra à la prochaine visite : rien de grave.
-  }
+  const securise = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${COOKIE_VUE}=vue; path=/; SameSite=Lax${securise}`;
 }
 
 /**
@@ -37,10 +32,11 @@ function retenir(): void {
  *
  * Montée par l'accueil **seulement quand les inscriptions sont ouvertes** :
  * inviter à « s'inscrire dès maintenant » quand le guichet est fermé enverrait
- * le visiteur vers un refus.
+ * le visiteur vers un refus. Et seulement tant qu'aucun compte participant ne
+ * s'est connecté sur ce navigateur (`compteDejaConnecte`).
  *
  * Une fois fermée — croix, « Plus tard », Échap, clic sur le voile ou
- * « S'inscrire » —, elle ne revient pas avant sept jours sur ce navigateur.
+ * « S'inscrire » —, elle revient à la prochaine ouverture du navigateur.
  * `<dialog>` natif, comme « Nous écrire » : piège du focus, Échap et retour du
  * focus sont assurés par le navigateur. Elle ne s'ouvre pas par-dessus une
  * autre fenêtre déjà ouverte.

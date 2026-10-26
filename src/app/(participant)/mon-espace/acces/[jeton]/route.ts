@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { consommerAccesDirect } from "@/modules/auth/acces-direct";
 import {
+  COMPTE_CONNU_COOKIE,
+  compteConnuCookieOptions,
   PARTICIPANT_SESSION_COOKIE,
   participantSessionCookieOptions,
   signParticipantSession,
@@ -31,5 +33,6 @@ export async function GET(
     await signParticipantSession(participantId),
     participantSessionCookieOptions,
   );
+  response.cookies.set(COMPTE_CONNU_COOKIE, "1", compteConnuCookieOptions);
   return response;
 }

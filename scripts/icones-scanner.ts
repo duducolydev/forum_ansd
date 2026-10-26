@@ -1,102 +1,150 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { deflateSync } from "node:zlib";
+import puppeteer from "puppeteer-core";
+import { resolveBrowserPath } from "../src/lib/pdf";
 
 /**
  * Icônes de l'application Scanner (PLAN.md §16.7).
  *
- * Dessinées d'après la marque du site — le carré bleu nuit aux trois barres de
- * l'en-tête et du menu — plutôt que versionnées sans source : relancer ce script
- * (`pnpm icones:scanner`) les régénère à l'identique.
+ * Depuis le 26 octobre 2026 : l'emblème du logo du Forum — le globe et ses
+ * barres —, entouré de l'anneau tricolore qui tourne autour de lui dans
+ * l'en-tête du site, sur le bleu clair de cet en-tête. C'est la capture qu'en a
+ * envoyée le comité, **reconstituée** en haute définition : telle quelle, elle
+ * ne pouvait pas servir, l'anneau y étant coupé au bord droit et un morceau de
+ * la bande du drapeau y dépassant.
  *
- * Sans dépendance : `sharp` n'est pas installé, et un moteur de rendu entier
- * pour trois rectangles arrondis serait disproportionné. L'anticrénelage se fait
- * par suréchantillonnage 4 × 4.
+ * Le dessin passe par le Chromium qui rend déjà les badges (`puppeteer-core`,
+ * `PUPPETEER_EXECUTABLE_PATH`) : `sharp` n'est pas installé, et un canevas sait
+ * redimensionner une image et tracer un dégradé conique. Relancer ce script
+ * (`pnpm icones:scanner`) régénère les icônes à l'identique.
  */
 
-type Rgb = readonly [number, number, number];
+/** Logo de l'en-tête (`components/site/logo-forum.tsx`). */
+const LOGO = join(process.cwd(), "public", "images", "logo-forum-2026.webp");
+const LOGO_HAUTEUR = 793;
+/** L'emblème tient dans les 600 premières colonnes : au-delà, le texte et la bande du drapeau. */
+const EMBLEME_LARGEUR = 601;
 
-/** Couleurs de la marque (`globals.css` : --ansd-bleu-nuit, --ansd-vert-vif). */
-const BLEU_NUIT: Rgb = [0x08, 0x2c, 0x4e];
-const BARRES: readonly { hauteur: number; couleur: Rgb }[] = [
-  { hauteur: 0.4, couleur: [0x7f, 0xb3, 0xe6] },
-  { hauteur: 0.7, couleur: [0x3d, 0xbb, 0x6e] },
-  { hauteur: 1, couleur: [0xff, 0xff, 0xff] },
-];
+/**
+ * L'anneau tel que l'en-tête le pose sur le logo (`site-header.tsx`, classe
+ * `.anneau-globe` de `constellation.css`) : un carré de 40,5 % de la largeur du
+ * logo, décalé de −3,6 % de cette largeur et de 15 % de la hauteur, trait de
+ * 2 px pour un logo affiché à 80 px de haut. Les mêmes valeurs, en pixels du
+ * fichier du logo (1 800 × 793).
+ */
+const ANNEAU = {
+  gauche: -0.036 * 1800,
+  haut: 0.15 * LOGO_HAUTEUR,
+  diametre: 0.405 * 1800,
+  trait: 2 * (LOGO_HAUTEUR / 80),
+  /** L'anneau tourne sur le site ; l'icône le fige dans la position de la capture. */
+  rotationDeg: 205,
+  /** `--green`, `--gold`, `--red` de `constellation.css`. */
+  couleurs: ["#2f8a3e", "#e8b931", "#d64541"],
+};
 
-/** Proportions du logo de l'en-tête : boîte de 30 px, colonnes à 3 px d'écart, coins de 2 px. */
-const ECART = 3 / 30;
-const LARGEUR_BARRE = (1 - 2 * ECART) / 3;
-const RAYON_BARRE = 2 / 30;
+/** Boîte de l'emblème anneau compris : des barres (en haut) au bas de l'anneau. */
+const BOITE = {
+  x0: ANNEAU.gauche,
+  y0: 0,
+  largeur: ANNEAU.diametre,
+  hauteur: ANNEAU.haut + ANNEAU.diametre,
+};
 
-const SURECHANTILLONNAGE = 4;
+/** Bleu clair de l'en-tête, relevé sur la capture. */
+const FOND = "#e2eef9";
 
 interface Gabarit {
   fichier: string;
   cote: number;
   /** Rayon des coins du fond, en fraction du côté ; 0 = fond plein bord, opaque. */
   rayonFond: number;
-  /** Côté du groupe de barres, en fraction du côté de l'icône. */
+  /** Hauteur de l'emblème, en fraction du côté de l'icône. */
   contenu: number;
 }
 
 const GABARITS: readonly Gabarit[] = [
-  { fichier: "scan-192.png", cote: 192, rayonFond: 0.22, contenu: 0.6 },
-  { fichier: "scan-512.png", cote: 512, rayonFond: 0.22, contenu: 0.6 },
+  { fichier: "scan-192.png", cote: 192, rayonFond: 0.22, contenu: 0.8 },
+  { fichier: "scan-512.png", cote: 512, rayonFond: 0.22, contenu: 0.8 },
   /*
    * Android découpe l'icône « maskable » en cercle, en goutte ou en carré selon
    * l'appareil : fond plein bord, et contenu dans la zone sûre, un cercle de 80 %
-   * du côté. Un carré de 50 % y tient — sa demi-diagonale vaut 35 %.
+   * du côté. À 60 % de haut, la demi-diagonale de l'emblème vaut 39,5 %.
    */
-  { fichier: "scan-maskable-512.png", cote: 512, rayonFond: 0, contenu: 0.5 },
+  { fichier: "scan-maskable-512.png", cote: 512, rayonFond: 0, contenu: 0.6 },
   /*
    * iOS arrondit lui-même les coins et remplit la transparence en noir : fond
    * opaque, plein bord.
    */
-  { fichier: "scan-apple-180.png", cote: 180, rayonFond: 0, contenu: 0.58 },
+  { fichier: "scan-apple-180.png", cote: 180, rayonFond: 0, contenu: 0.76 },
 ];
 
-function dansRectangleArrondi(
-  x: number,
-  y: number,
-  gauche: number,
-  haut: number,
-  largeur: number,
-  hauteur: number,
-  rayon: number,
-): boolean {
-  if (x < gauche || x > gauche + largeur || y < haut || y > haut + hauteur) return false;
-  const r = Math.min(rayon, largeur / 2, hauteur / 2);
-  const cx = Math.min(Math.max(x, gauche + r), gauche + largeur - r);
-  const cy = Math.min(Math.max(y, haut + r), haut + hauteur - r);
-  return (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
-}
+type ParametresRendu = Gabarit & {
+  fond: string;
+  anneau: typeof ANNEAU;
+  boite: typeof BOITE;
+  emblemeLargeur: number;
+  logoHauteur: number;
+};
 
-/** Couleur au point (x, y) du carré unité, ou `null` hors de l'icône. */
-function couleurAu(x: number, y: number, gabarit: Gabarit): Rgb | null {
-  if (!dansRectangleArrondi(x, y, 0, 0, 1, 1, gabarit.rayonFond)) return null;
+/**
+ * Dessin d'une icône, exécuté **dans la page** : rendu à quatre fois la taille
+ * puis réduit, pour l'anticrénelage. Renvoie les pixels RGBA en base64.
+ */
+function dessiner(p: ParametresRendu): string {
+  const SURECHANTILLONNAGE = 4;
+  const taille = p.cote * SURECHANTILLONNAGE;
+  const grand = document.createElement("canvas");
+  grand.width = taille;
+  grand.height = taille;
+  const c = grand.getContext("2d")!;
+  c.imageSmoothingQuality = "high";
 
-  const origine = (1 - gabarit.contenu) / 2;
-  const u = (x - origine) / gabarit.contenu;
-  const v = (y - origine) / gabarit.contenu;
+  c.fillStyle = p.fond;
+  c.beginPath();
+  c.roundRect(0, 0, taille, taille, p.rayonFond * taille);
+  c.fill();
 
-  for (const [rang, barre] of BARRES.entries()) {
-    const gauche = rang * (LARGEUR_BARRE + ECART);
-    if (
-      dansRectangleArrondi(
-        u,
-        v,
-        gauche,
-        1 - barre.hauteur,
-        LARGEUR_BARRE,
-        barre.hauteur,
-        RAYON_BARRE,
-      )
-    ) {
-      return barre.couleur;
-    }
+  // Emblème centré, à la hauteur demandée.
+  const echelle = (p.contenu * taille) / Math.max(p.boite.largeur, p.boite.hauteur);
+  c.translate(
+    (taille - p.boite.largeur * echelle) / 2 - p.boite.x0 * echelle,
+    (taille - p.boite.hauteur * echelle) / 2 - p.boite.y0 * echelle,
+  );
+  c.scale(echelle, echelle);
+  const logo = document.getElementById("logo") as HTMLImageElement;
+  c.drawImage(logo, 0, 0, p.emblemeLargeur, p.logoHauteur, 0, 0, p.emblemeLargeur, p.logoHauteur);
+
+  // Anneau : le dégradé conique CSS part du haut, celui du canevas de la droite.
+  const rayon = p.anneau.diametre / 2;
+  const cx = p.anneau.gauche + rayon;
+  const cy = p.anneau.haut + rayon;
+  const degrade = c.createConicGradient(((p.anneau.rotationDeg - 90) * Math.PI) / 180, cx, cy);
+  const [vert, or, rouge] = p.anneau.couleurs;
+  degrade.addColorStop(0, vert!);
+  degrade.addColorStop(1 / 3, or!);
+  degrade.addColorStop(2 / 3, rouge!);
+  degrade.addColorStop(1, vert!);
+  c.strokeStyle = degrade;
+  c.lineWidth = p.anneau.trait;
+  c.beginPath();
+  c.arc(cx, cy, rayon - p.anneau.trait / 2, 0, 2 * Math.PI);
+  c.stroke();
+
+  const final = document.createElement("canvas");
+  final.width = p.cote;
+  final.height = p.cote;
+  const f = final.getContext("2d")!;
+  f.imageSmoothingQuality = "high";
+  f.drawImage(grand, 0, 0, p.cote, p.cote);
+  const { data } = f.getImageData(0, 0, p.cote, p.cote);
+
+  let binaire = "";
+  for (let i = 0; i < data.length; i += 0x8000) {
+    binaire += String.fromCharCode(...data.subarray(i, i + 0x8000));
   }
-  return BLEU_NUIT;
+  return btoa(binaire);
 }
 
 const TABLE_CRC = Array.from({ length: 256 }, (_, n) => {
@@ -148,51 +196,45 @@ function encoderPng(cote: number, rgba: Buffer, avecAlpha: boolean): Buffer {
   ]);
 }
 
-function rendre(gabarit: Gabarit): Buffer {
-  const { cote } = gabarit;
-  const rgba = Buffer.alloc(cote * cote * 4);
-  const echantillons = SURECHANTILLONNAGE * SURECHANTILLONNAGE;
-
-  for (let py = 0; py < cote; py++) {
-    for (let px = 0; px < cote; px++) {
-      let rouge = 0;
-      let vert = 0;
-      let bleu = 0;
-      let couverts = 0;
-
-      for (let sy = 0; sy < SURECHANTILLONNAGE; sy++) {
-        for (let sx = 0; sx < SURECHANTILLONNAGE; sx++) {
-          const couleur = couleurAu(
-            (px + (sx + 0.5) / SURECHANTILLONNAGE) / cote,
-            (py + (sy + 0.5) / SURECHANTILLONNAGE) / cote,
-            gabarit,
-          );
-          if (!couleur) continue;
-          rouge += couleur[0];
-          vert += couleur[1];
-          bleu += couleur[2];
-          couverts++;
-        }
-      }
-
-      const i = (py * cote + px) * 4;
-      if (couverts > 0) {
-        rgba[i] = Math.round(rouge / couverts);
-        rgba[i + 1] = Math.round(vert / couverts);
-        rgba[i + 2] = Math.round(bleu / couverts);
-      }
-      rgba[i + 3] = Math.round((couverts / echantillons) * 255);
-    }
+async function main(): Promise<void> {
+  const executablePath = resolveBrowserPath();
+  if (!executablePath) {
+    console.error("Aucun navigateur trouvé — définir PUPPETEER_EXECUTABLE_PATH.");
+    process.exit(1);
   }
 
-  return encoderPng(cote, rgba, gabarit.rayonFond > 0);
+  const navigateur = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ["--no-sandbox"],
+  });
+  try {
+    const page = await navigateur.newPage();
+    const logo = `data:image/webp;base64,${readFileSync(LOGO).toString("base64")}`;
+    await page.setContent(`<img id="logo" src="${logo}" alt="" />`, { waitUntil: "load" });
+
+    const dossier = join(process.cwd(), "public", "icons");
+    mkdirSync(dossier, { recursive: true });
+
+    for (const gabarit of GABARITS) {
+      const rgba = Buffer.from(
+        await page.evaluate(dessiner, {
+          ...gabarit,
+          fond: FOND,
+          anneau: ANNEAU,
+          boite: BOITE,
+          emblemeLargeur: EMBLEME_LARGEUR,
+          logoHauteur: LOGO_HAUTEUR,
+        }),
+        "base64",
+      );
+      const png = encoderPng(gabarit.cote, rgba, gabarit.rayonFond > 0);
+      writeFileSync(join(dossier, gabarit.fichier), png);
+      console.log(`${gabarit.fichier} : ${gabarit.cote} px, ${png.length} octets`);
+    }
+  } finally {
+    await navigateur.close();
+  }
 }
 
-const dossier = join(process.cwd(), "public", "icons");
-mkdirSync(dossier, { recursive: true });
-
-for (const gabarit of GABARITS) {
-  const png = rendre(gabarit);
-  writeFileSync(join(dossier, gabarit.fichier), png);
-  console.log(`${gabarit.fichier} : ${gabarit.cote} px, ${png.length} octets`);
-}
+void main();

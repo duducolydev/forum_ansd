@@ -2837,6 +2837,12 @@ mesure qui fonctionne, qu'il n'appartient à personne.
 trois barres bleu clair, verte et blanche) par `scripts/icones-scanner.ts`
 (`pnpm icones:scanner`), sans dépendance — `sharp` n'est pas installé.
 
+**Remplacées le 26 octobre 2026** à la demande du comité : l'emblème du logo (le
+globe et ses barres) dans l'anneau tricolore de l'en-tête, sur le bleu clair de
+celui-ci — une capture de l'en-tête, reconstituée en haute définition par le même
+script, qui dessine désormais avec le Chromium des badges (l'anneau de la capture
+était coupé au bord).
+
 | Fichier                       | Usage                                                               |
 | ----------------------------- | ------------------------------------------------------------------- |
 | `icons/scan-192.png`, `-512`  | Android, coins arrondis, fond transparent autour                    |

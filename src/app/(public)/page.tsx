@@ -8,6 +8,7 @@ import { etatInscriptions } from "@/modules/settings/regles";
 import { SectionsComposees } from "@/modules/sections/components/sections-composees";
 import { SectionsParDefaut } from "@/modules/sections/components/sections-par-defaut";
 import { FenetreAccesForum } from "@/components/home/FenetreAccesForum";
+import { compteDejaConnecte } from "@/modules/auth/participant-session";
 
 export async function generateMetadata() {
   const edition = await getActiveEdition();
@@ -28,14 +29,19 @@ export async function generateMetadata() {
  *
  * S'y ajoute la fenêtre des conditions d'accès (23 octobre 2026), tant que les
  * inscriptions sont ouvertes : elle invite à s'inscrire, ce qui n'a de sens
- * que si le guichet l'accepte.
+ * que si le guichet l'accepte. Et tant qu'aucun compte participant ne s'est
+ * connecté sur ce navigateur (26 octobre 2026) : qui s'est connecté a créé
+ * son compte, la fenêtre n'a plus rien à lui apprendre.
  */
 export default async function HomePage() {
   const locale = lireLangue(await getLocale());
   const edition = await getActiveEdition();
   const sections = await sectionsVisibles(edition.id, "accueil");
   const inscriptionsOuvertes = etatInscriptions(lireParametres(edition).inscriptions).ouvertes;
-  const fenetre = inscriptionsOuvertes ? <FenetreAccesForum locale={locale} /> : null;
+  const fenetre =
+    inscriptionsOuvertes && !(await compteDejaConnecte()) ? (
+      <FenetreAccesForum locale={locale} />
+    ) : null;
 
   if (sections.length === 0) {
     return (
