@@ -5,6 +5,7 @@ import {
   signParticipantSession,
 } from "../src/modules/auth/participant-session";
 import { prisma } from "../src/lib/db";
+import { RESERVATION_PUBLIQUE } from "../src/modules/sessions/libelles";
 import { seConnecterAdmin } from "./helpers/comptes";
 import { confirmerBoite } from "./helpers/dialogue";
 
@@ -110,7 +111,11 @@ test.afterAll(async () => {
   await prisma.$disconnect();
 });
 
+/** Réservation masquée sur le site public depuis le 27 octobre 2026 (`libelles.ts`). */
+const MASQUEE = "Réservation masquée sur le site public";
+
 test("la fiche publique invite à se connecter avant de réserver", async ({ page }) => {
+  test.skip(!RESERVATION_PUBLIQUE, MASQUEE);
   await page.goto(`/programme/${sessionSlug}`);
   await expect(page.getByText(/0 \/ 1 inscrits/)).toBeVisible();
   await expect(page.getByRole("link", { name: /Connectez-vous/ })).toBeVisible();
@@ -166,6 +171,7 @@ test("un participant connecté réserve puis annule depuis la fiche publique", a
   page,
   context,
 }) => {
+  test.skip(!RESERVATION_PUBLIQUE, MASQUEE);
   const libre = await prisma.session.create({
     data: {
       editionId,

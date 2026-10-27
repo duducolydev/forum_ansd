@@ -9,6 +9,15 @@ import type { SESSION_TYPES } from "./schema";
  * `TYPE_LABELS` et `ETAT_LABELS` restent en français pour le BackOffice.
  */
 
+/**
+ * Réservation des sessions masquée sur le site public (27 octobre 2026) : le
+ * comité ne la propose plus, jusqu'à nouvel ordre. Disparaissent le cadre
+ * « Ouvert · 0 / 500 inscrits — Réserver ma place » de la fiche et la pastille
+ * d'état du programme. Rien n'est effacé : les réglages de chaque session et le
+ * placement par le BackOffice restent intacts. Repasser à `true` pour rétablir.
+ */
+export const RESERVATION_PUBLIQUE = false;
+
 type TypeSession = (typeof SESSION_TYPES)[number];
 type EtatSession = "SANS_RESERVATION" | "OUVERTE" | "LISTE_ATTENTE" | "COMPLETE" | "CLOTUREE";
 type Trois = { fr: string; en: string; pt: string };

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { prisma } from "../src/lib/db";
+import { RESERVATION_PUBLIQUE } from "../src/modules/sessions/libelles";
 import { seConnecterAdmin } from "./helpers/comptes";
 import { confirmerBoite } from "./helpers/dialogue";
 
@@ -98,8 +99,13 @@ test("une session créée en brouillon reste invisible du public, puis paraît u
 
   await page.goto(`/programme/${creee.slug}`);
   await expect(page.getByRole("heading", { name: TITRE })).toBeVisible();
-  await expect(page.getByText(/0 \/ 42 inscrits/)).toBeVisible();
-  await expect(page.getByText("Ouvert", { exact: false }).first()).toBeVisible();
+  if (RESERVATION_PUBLIQUE) {
+    await expect(page.getByText(/0 \/ 42 inscrits/)).toBeVisible();
+    await expect(page.getByText("Ouvert", { exact: false }).first()).toBeVisible();
+  } else {
+    // Réservation masquée sur le site : ni compteur, ni bouton, même ouverte.
+    await expect(page.getByText(/0 \/ 42 inscrits/)).toHaveCount(0);
+  }
 });
 
 test("la duplication repart en brouillon, réservation fermée", async ({ page }) => {

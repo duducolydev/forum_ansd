@@ -143,13 +143,14 @@ test("crée un sponsor et le publie sur le site", async ({ page }) => {
   await expect(page.getByRole("heading", { name: nom })).toBeVisible();
   await prisma.sponsor.findFirstOrThrow({ where: { name: nom } });
 
-  // Le partenaire apparaît sur la page publique, avec son lien et son stand.
-  // L'assertion est scopée à sa propre vignette : plusieurs partenaires peuvent
-  // porter le même numéro de stand d'une exécution à l'autre.
+  // Le partenaire apparaît sur la page publique, avec son lien. Plus de stand
+  // sur la tuile, qui ne porte que le logo (27 octobre 2026). L'assertion est
+  // scopée à sa propre vignette : plusieurs partenaires peuvent porter le même
+  // numéro de stand d'une exécution à l'autre.
   await page.goto("/sponsors");
   const vignette = page.getByRole("link", { name: new RegExp(nom) });
   await expect(vignette).toBeVisible();
-  await expect(vignette).toContainText("Stand A12");
+  await expect(vignette).not.toContainText("Stand A12");
   await expect(vignette).toHaveAttribute("href", "https://www.ansd.sn");
 
   // …mais le contact interne n'y figure sous aucune forme (§5.9).

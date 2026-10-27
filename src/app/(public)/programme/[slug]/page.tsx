@@ -15,7 +15,12 @@ import {
 import { getActiveEdition } from "@/lib/edition";
 import { getLocale } from "next-intl/server";
 import { getSessionBySlug } from "@/modules/sessions/service";
-import { libelleEtat, libelleRole, libelleType } from "@/modules/sessions/libelles";
+import {
+  libelleEtat,
+  libelleRole,
+  libelleType,
+  RESERVATION_PUBLIQUE,
+} from "@/modules/sessions/libelles";
 import { prisma } from "@/lib/db";
 import { getParticipantSession } from "@/modules/auth/participant-session";
 import {
@@ -209,7 +214,7 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
           </section>
         )}
 
-        {session.places.etat !== "SANS_RESERVATION" && (
+        {RESERVATION_PUBLIQUE && session.places.etat !== "SANS_RESERVATION" && (
           <Reveal>
             <div className="filet-haut border-border bg-surface relative overflow-hidden rounded-2xl border p-6">
               <p className="text-heading flex flex-wrap items-center gap-2 text-sm font-semibold">

@@ -15,8 +15,6 @@ import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
 import { EnteteSection } from "@/components/site/entete-section";
 import { LienSite } from "@/components/site/bouton-site";
 import { Reveal } from "@/components/site/reveal";
-import { MiniCountdown } from "@/components/home/MiniCountdown";
-import { heureOuverture } from "@/lib/ouverture";
 
 export async function generateMetadata() {
   const t = await getTranslations("nav");
@@ -212,13 +210,6 @@ export default async function RegisterPage({
           })}
           titre={t("register")}
           icone={UserPlus}
-          action={
-            <MiniCountdown
-              petit
-              cibleIso={(await heureOuverture(edition)).toISOString()}
-              finIso={edition.endDate.toISOString()}
-            />
-          }
         />
       </BandeauPage>
 

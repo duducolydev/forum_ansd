@@ -122,6 +122,17 @@ export function FenetreAccesForum({ locale }: { locale: Langue }) {
                 pt: "Para facilitar o acolhimento dos participantes e assegurar o bom decorrer do evento, convidamo-lo a inscrever-se desde já.",
               })}
             </p>
+            {/* Validation par le comité (demande du 27 octobre 2026). */}
+            <p>
+              <strong className="text-heading font-semibold">
+                {selon(locale, { fr: "NB :", en: "NB:", pt: "NB:" })}
+              </strong>{" "}
+              {selon(locale, {
+                fr: "La validation de votre inscription se fera ensuite par le comité d’organisation et vous serez notifié(e).",
+                en: "Your registration will then be validated by the organising committee, and you will be notified.",
+                pt: "A validação da sua inscrição será depois feita pelo comité organizador e será notificado(a).",
+              })}
+            </p>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">

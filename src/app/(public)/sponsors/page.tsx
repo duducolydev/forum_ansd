@@ -1,11 +1,12 @@
 import { lireLangue, selon } from "@/lib/langue";
 import { getLocale, getTranslations } from "next-intl/server";
-import { ExternalLink, Handshake, Store } from "lucide-react";
+import { Handshake } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
 import { resolveLocaleValue } from "@/modules/content/service";
 import { urlVersionnee } from "@/lib/url-fichier";
 import { listerSponsorsPublies } from "@/modules/sponsors/service";
 import { tonDuNiveau } from "@/modules/sponsors/palette";
+import { LogoCalibre } from "@/modules/sponsors/components/logo-calibre";
 import { EnteteSection } from "@/components/site/entete-section";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
 import { classesBoutonSite } from "@/components/site/bouton-site";
@@ -81,7 +82,7 @@ export default async function SponsorsPage() {
           </p>
         ) : (
           // `auto-rows-fr` : toutes les rangées prennent la hauteur de la plus
-          // haute — une carte sans pied ni site garde la taille des autres.
+          // haute — une rangée de logos en longueur garde la taille des autres.
           <div className="grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {sponsors.map((sponsor, rang) => {
               const description = resolveLocaleValue(
@@ -101,18 +102,20 @@ export default async function SponsorsPage() {
                     className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${ton.filet}`}
                   />
 
+                  {/*
+                    Le logo seul, sans pied de carte (demande du 27 octobre
+                    2026) : ni nom, ni stand, ni mention du site. Le nom reste
+                    le texte de remplacement du logo, et prend sa place quand
+                    il n'y en a pas.
+                  */}
                   <span
                     className={`grid flex-1 place-items-center bg-gradient-to-b to-transparent px-5 py-9 ${ton.fond}`}
                   >
                     {sponsor.logoPath ? (
-                      /* eslint-disable-next-line @next/next/no-img-element -- servi par une route contrôlée, dimensions variables */
-                      <img
-                        src={urlVersionnee(
-                          `/api/v1/sponsors/${sponsor.id}/logo`,
-                          sponsor.logoPath ?? "",
-                        )}
+                      <LogoCalibre
+                        src={urlVersionnee(`/api/v1/sponsors/${sponsor.id}/logo`, sponsor.logoPath)}
                         alt={sponsor.name}
-                        className="max-h-20 max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                        className="transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
                       <span className="font-display text-heading text-center text-lg leading-snug font-bold text-balance">
@@ -120,39 +123,6 @@ export default async function SponsorsPage() {
                       </span>
                     )}
                   </span>
-
-                  {/*
-                    Pied de carte : le nom, le stand et le site. Le nom n'est
-                    écrit qu'une fois — sans logo, il tient déjà la place de
-                    celui-ci au-dessus. Sans rien à y mettre, pas de pied.
-                  */}
-                  {(sponsor.logoPath || sponsor.standNumber || sponsor.website) && (
-                    <span className="border-border block border-t px-4 py-3">
-                      {sponsor.logoPath && (
-                        <span className="text-heading block truncate text-sm font-semibold">
-                          {sponsor.name}
-                        </span>
-                      )}
-                      {sponsor.standNumber && (
-                        <span className="text-text-3 mt-0.5 flex items-center gap-1 text-xs">
-                          {/*
-                           * Le mot « Stand » reste écrit. L'avoir remplacé par
-                           * la seule icône laissait une pastille marquée
-                           * « A12 », que rien ne rattachait à un emplacement
-                           * d'exposition.
-                           */}
-                          <Store aria-hidden size={11} />
-                          Stand {sponsor.standNumber}
-                        </span>
-                      )}
-                      {sponsor.website && (
-                        <span className="text-link mt-0.5 flex items-center gap-1 text-xs">
-                          <ExternalLink aria-hidden size={11} />
-                          {selon(locale, { fr: "Site web", en: "Website", pt: "Sítio web" })}
-                        </span>
-                      )}
-                    </span>
-                  )}
                 </>
               );
 

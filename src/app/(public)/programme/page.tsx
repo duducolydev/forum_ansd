@@ -26,7 +26,7 @@ import {
   type SessionAffichable,
 } from "@/modules/sessions/components/programme-grid";
 import { ProgrammeFrise } from "@/modules/sessions/components/programme-frise";
-import { libelleEtat, libelleType } from "@/modules/sessions/libelles";
+import { libelleEtat, libelleType, RESERVATION_PUBLIQUE } from "@/modules/sessions/libelles";
 
 export const dynamic = "force-dynamic";
 
@@ -409,7 +409,7 @@ export default async function ProgramPage({ searchParams }: { searchParams: Prom
                 fin: session.fin.toISOString(),
                 salle: session.salle?.name ?? null,
                 etat:
-                  session.places.etat === "SANS_RESERVATION"
+                  !RESERVATION_PUBLIQUE || session.places.etat === "SANS_RESERVATION"
                     ? null
                     : libelleEtat(session.places.etat, locale),
               }))}

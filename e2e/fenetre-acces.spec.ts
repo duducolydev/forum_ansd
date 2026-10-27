@@ -70,6 +70,7 @@ test("revient à chaque ouverture du navigateur, jusqu'à la première connexion
   const page = await contexte.newPage();
   await page.goto("/");
   await expect(page.getByRole("heading", { name: TITRE })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/validation de votre inscription se fera ensuite/)).toBeVisible();
   await page.getByRole("button", { name: "Plus tard" }).click();
 
   // Même session du navigateur : ni au rechargement, ni dans un autre onglet.

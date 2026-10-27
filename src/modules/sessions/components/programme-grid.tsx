@@ -12,7 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { EtatSession, PlacesSession } from "../service";
-import { libelleEtat, libelleType } from "../libelles";
+import { libelleEtat, libelleType, RESERVATION_PUBLIQUE } from "../libelles";
 import type { TYPE_LABELS } from "../schema";
 
 export interface SessionAffichable {
@@ -75,7 +75,7 @@ function heure(date: Date): string {
 }
 
 function EtatBadge({ places, locale }: { places: PlacesSession; locale: Langue }) {
-  if (places.etat === "SANS_RESERVATION") return null;
+  if (!RESERVATION_PUBLIQUE || places.etat === "SANS_RESERVATION") return null;
   return (
     <span
       className={`rounded-md px-1.5 py-0.5 text-[0.68rem] font-semibold ${COULEUR_ETAT[places.etat]}`}
