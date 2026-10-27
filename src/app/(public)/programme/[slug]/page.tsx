@@ -118,23 +118,23 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
 
   return (
     <article>
-      <BandeauPage largeur="moyen" filCourant={titreSeance}>
+      <BandeauPage
+        largeur="moyen"
+        filCourant={titreSeance}
+        // Retour au programme sur la ligne du fil d'Ariane (27 octobre 2026).
+        actionFil={
+          <LienSite href="/programme" ton="discret" taille="compact" icone={ArrowLeft}>
+            {selon(locale, { fr: "Programme", en: "Programme", pt: "Programa" })}
+          </LienSite>
+        }
+      >
         <SplitTitle texte={titreSeance} delaiInitial={0.1} className="titre-page" />
       </BandeauPage>
 
       <CorpsPage largeur="moyen" className="flex flex-col gap-10">
-        {/* Retour, format et repères : en tête du contenu, le bandeau ne
-            porte plus que le titre (29 septembre 2026). */}
+        {/* Format et repères : en tête du contenu, le bandeau ne porte plus
+            que le titre (29 septembre 2026). */}
         <div className="flex flex-col gap-3">
-          <LienSite
-            href="/programme"
-            ton="discret"
-            taille="compact"
-            icone={ArrowLeft}
-            className="self-start"
-          >
-            {selon(locale, { fr: "Programme", en: "Programme", pt: "Programa" })}
-          </LienSite>
           <p className="surtitre">
             {libelleType(session.type, locale)}
             {session.theme ? ` · ${session.theme}` : ""}
@@ -147,6 +147,68 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
             {session.room && <Repere icone={MapPin}>{session.room.name}</Repere>}
           </div>
         </div>
+
+        {/*
+         * Intervenants en vedette, juste sous les repères (27 octobre 2026) : ils
+         * étaient en bas de page, après la présentation, et c'est souvent eux
+         * qu'on vient chercher. En grille, deux ou trois par ligne.
+         */}
+        {intervenants.length > 0 && (
+          <section>
+            <h2 className="mb-5 flex items-center gap-4 text-base">
+              <span className="surtitre">
+                {selon(locale, { fr: "Intervenants", en: "Speakers", pt: "Oradores" })}
+              </span>
+              <span className="from-border h-px flex-1 bg-gradient-to-r to-transparent" />
+              <span className="text-text-3 text-sm font-normal">{intervenants.length}</span>
+            </h2>
+            <ul className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+              {intervenants.map((lien, rang) => (
+                <li key={lien.speaker.id}>
+                  <Reveal delai={rang * 60} className="h-full">
+                    <div className="border-border bg-surface carte-relief flex h-full flex-col rounded-xl border p-5">
+                      <div className="flex items-center gap-3.5">
+                        {/* Initiales plutôt qu'une photo : la fiche de session ne
+                            charge pas les portraits, qui vivent sur /intervenants. */}
+                        <span
+                          aria-hidden
+                          className="bg-blue-soft text-blue-text font-display grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold"
+                        >
+                          {lien.speaker.firstName.charAt(0)}
+                          {lien.speaker.lastName.charAt(0)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-accent-text text-xs font-semibold tracking-wide uppercase">
+                            {libelleRole(lien.role, locale)}
+                          </p>
+                          <p className="text-heading leading-snug font-semibold">
+                            {lien.speaker.firstName} {lien.speaker.lastName}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-text-3 mt-3 text-sm leading-relaxed">
+                        {[lien.speaker.jobTitle, lien.speaker.organization, lien.speaker.country]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                      {bioDe(lien.speaker) && (
+                        <details className="mt-auto pt-3">
+                          <summary className="text-link hover:text-secondary-hover cursor-pointer text-sm font-semibold">
+                            {selon(locale, { fr: "Biographie", en: "Biography", pt: "Biografia" })}
+                          </summary>
+                          <p className="text-text-2 mt-2 text-sm leading-relaxed whitespace-pre-line">
+                            {bioDe(lien.speaker)}
+                          </p>
+                        </details>
+                      )}
+                    </div>
+                  </Reveal>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {session.places.etat !== "SANS_RESERVATION" && (
           <Reveal>
             <div className="filet-haut border-border bg-surface relative overflow-hidden rounded-2xl border p-6">
@@ -242,58 +304,6 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
               </LienSiteExterne>
             )}
           </div>
-        )}
-
-        {intervenants.length > 0 && (
-          <section>
-            <h2 className="mb-5 flex items-center gap-4 text-base">
-              <span className="surtitre">
-                {selon(locale, { fr: "Intervenants", en: "Speakers", pt: "Oradores" })}
-              </span>
-              <span className="from-border h-px flex-1 bg-gradient-to-r to-transparent" />
-              <span className="text-text-3 text-sm font-normal">{intervenants.length}</span>
-            </h2>
-            <ul className="flex flex-col gap-3.5">
-              {intervenants.map((lien, rang) => (
-                <Reveal key={lien.speaker.id} delai={rang * 60}>
-                  <li className="border-border bg-surface carte-relief flex gap-4 rounded-xl border p-5">
-                    {/* Initiales plutôt qu'une photo : la fiche de session ne
-                        charge pas les portraits, qui vivent sur /intervenants. */}
-                    <span
-                      aria-hidden
-                      className="bg-blue-soft text-blue-text font-display grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold"
-                    >
-                      {lien.speaker.firstName.charAt(0)}
-                      {lien.speaker.lastName.charAt(0)}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-accent-text text-xs font-semibold tracking-wide uppercase">
-                        {libelleRole(lien.role, locale)}
-                      </p>
-                      <p className="text-heading font-semibold">
-                        {lien.speaker.firstName} {lien.speaker.lastName}
-                      </p>
-                      <p className="text-text-3 text-sm">
-                        {[lien.speaker.jobTitle, lien.speaker.organization, lien.speaker.country]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                      {bioDe(lien.speaker) && (
-                        <details className="mt-2.5">
-                          <summary className="text-link hover:text-secondary-hover cursor-pointer text-sm font-semibold">
-                            {selon(locale, { fr: "Biographie", en: "Biography", pt: "Biografia" })}
-                          </summary>
-                          <p className="text-text-2 mt-2 text-sm leading-relaxed whitespace-pre-line">
-                            {bioDe(lien.speaker)}
-                          </p>
-                        </details>
-                      )}
-                    </div>
-                  </li>
-                </Reveal>
-              ))}
-            </ul>
-          </section>
         )}
 
         {contributions.length > 0 && (

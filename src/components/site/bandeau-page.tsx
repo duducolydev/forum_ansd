@@ -34,7 +34,8 @@ import { FilAriane } from "./fil-ariane";
  * **Fil d'Ariane** (demande du 30 septembre 2026) : posé **sous** le bandeau,
  * en tête du contenu, pour que le bandeau reste réduit au titre. Il est
  * calculé depuis l'adresse ; une page de détail lui donne son titre par
- * `filCourant`.
+ * `filCourant`, et peut aligner un lien de retour à sa droite par `actionFil`
+ * (27 octobre 2026) plutôt que de l'empiler en tête du contenu.
  */
 export const LARGEURS = {
   large: "max-w-[1200px]",
@@ -48,6 +49,7 @@ export function BandeauPage({
   largeur = "large",
   reseau = true,
   filCourant,
+  actionFil,
   children,
 }: {
   largeur?: LargeurPage;
@@ -55,6 +57,8 @@ export function BandeauPage({
   reseau?: boolean;
   /** Dernier maillon du fil d'Ariane, pour une page de détail (titre de l'article…). */
   filCourant?: string;
+  /** Lien posé sur la ligne du fil d'Ariane, à droite (retour à la liste…). */
+  actionFil?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -67,7 +71,16 @@ export function BandeauPage({
       {/* Marge négative : le contenu qui suit garde son propre espacement, et
           le fil s'y loge sans creuser un second vide. */}
       <div className={`relative mx-auto -mb-6 px-6 pt-4 ${LARGEURS[largeur]}`}>
-        <FilAriane courant={filCourant} />
+        {actionFil ? (
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+            <div className="min-w-0 flex-1">
+              <FilAriane courant={filCourant} />
+            </div>
+            {actionFil}
+          </div>
+        ) : (
+          <FilAriane courant={filCourant} />
+        )}
       </div>
     </>
   );
