@@ -4,6 +4,7 @@ import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
 import { badgesAImprimer, type FiltreBadges } from "@/modules/badges/bulk";
 import { FORMAT_BADGE } from "@/modules/badges/format";
+import { PlancheImages } from "@/modules/badges/components/planche-images";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,9 @@ const LIMITE = 100;
  * badge **portrait** : l'image, réduite pour tenir dans la hauteur, sortait à
  * 34 × 54 mm au lieu de 54 × 86. Le menu du BackOffice et les marges de la page
  * sont retirés à l'impression : sans cela, ils s'imprimaient avec la planche.
+ *
+ * Les images se chargent quatre à la fois, avec nouvel essai et compteur
+ * (`PlancheImages`) : demandées toutes d'un coup, certaines restaient blanches.
  */
 export default async function PlanchePage({
   searchParams,
@@ -67,6 +71,7 @@ export default async function PlanchePage({
         }
         .badge { width: ${largeur}; height: ${hauteur}; overflow: hidden; }
         .badge img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        .badge .attente { padding: 4mm; font-size: 12px; color: #5b6b7d; }
       `}</style>
 
       <div className="consignes border-border bg-surface mb-6 rounded-xl border p-4 text-sm">
@@ -93,12 +98,7 @@ export default async function PlanchePage({
           Aucun badge rendu dans ce périmètre. Générez-les d&apos;abord depuis l&apos;écran Badges.
         </p>
       ) : (
-        badges.map((badge) => (
-          <div key={badge.badgeId} className="badge">
-            {/* eslint-disable-next-line @next/next/no-img-element -- image privée servie par une route authentifiée, hors optimiseur */}
-            <img src={`/api/v1/badges/${badge.badgeId}/png`} alt={`Badge de ${badge.nom}`} />
-          </div>
-        ))
+        <PlancheImages badges={badges.map(({ badgeId, nom }) => ({ badgeId, nom }))} />
       )}
     </div>
   );
