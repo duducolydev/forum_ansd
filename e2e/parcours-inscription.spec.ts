@@ -86,7 +86,7 @@ async function allerJusquAuBout(page: Page): Promise<void> {
  */
 async function accepterConsentements(page: Page): Promise<void> {
   const conditions = page.getByLabel(/J'accepte les conditions/);
-  const donnees = page.getByLabel(/Je consens au traitement/);
+  const donnees = page.getByLabel(/Je consens à la collecte/);
 
   // `click()` et non `check()` : `check()` relit l'état aussitôt après avoir
   // cliqué et reclique s'il ne le voit pas encore coché. Sur une case pilotée
@@ -105,11 +105,12 @@ test("1. un visiteur s'inscrit depuis le formulaire public", async ({ page }) =>
   await page.getByLabel("Prénom", { exact: true }).fill(PRENOM);
   await page.getByLabel("Nom", { exact: true }).fill(NOM);
   await page.getByLabel("Adresse e-mail", { exact: true }).fill(EMAIL);
+  // Organisation à l'étape Identité, avant le pays (28 octobre 2026).
+  await page.getByLabel("Organisation", { exact: true }).fill("INSTAT");
   await page.getByLabel("Pays", { exact: true }).fill("Mali");
   await page.getByLabel("Catégorie de participation").selectOption({ label: CATEGORIE });
 
   await page.getByRole("button", { name: "Continuer" }).click();
-  await page.getByLabel("Organisation", { exact: true }).fill("INSTAT");
   await page.getByLabel("Fonction", { exact: true }).fill("Directeur des statistiques");
 
   // Photo de badge : image volontairement rectangulaire, pour que le recadrage

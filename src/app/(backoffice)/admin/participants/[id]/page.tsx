@@ -6,6 +6,7 @@ import { can } from "@/lib/rbac";
 import * as service from "@/modules/participants/service";
 import { StatusBadge } from "@/modules/participants/components/status-badge";
 import { TransitionActions } from "@/modules/participants/components/transition-actions";
+import { SuppressionParticipant } from "@/modules/participants/components/suppression-participant";
 import { BadgePanel } from "@/modules/badges/components/badge-panel";
 import { prisma } from "@/lib/db";
 import { LogStatusBadge } from "@/modules/notifications/components/log-status-badge";
@@ -152,6 +153,14 @@ export default async function ParticipantDetailPage({
           <h3 className="text-heading mb-2 text-sm font-semibold">Notes internes</h3>
           <p className="text-text-2 text-sm">{participant.notes}</p>
         </div>
+      )}
+
+      {can(session, "participants.delete") && (
+        <SuppressionParticipant
+          participantId={participant.id}
+          nom={`${participant.firstName} ${participant.lastName}`}
+          email={participant.email}
+        />
       )}
     </div>
   );

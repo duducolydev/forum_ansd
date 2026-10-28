@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { Pause, Play } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { LogoCalibre } from "@/modules/sponsors/components/logo-calibre";
 
 export interface PartenaireBandeau {
   id: string;
@@ -104,8 +105,8 @@ function CartePartenaire({ partenaire }: { partenaire: PartenaireBandeau }) {
       />
       <span className="carte-partenaire__logo">
         {partenaire.logo ? (
-          /* eslint-disable-next-line @next/next/no-img-element -- logo servi par une route contrôlée, proportions variables : contenu, jamais déformé */
-          <img src={partenaire.logo} alt="" className="max-h-16 max-w-full object-contain" />
+          // Même calibrage que les tuiles de la page Partenaires (28 octobre 2026).
+          <LogoCalibre src={partenaire.logo} alt="" gabarit="bandeau" />
         ) : (
           partenaire.nom
         )}

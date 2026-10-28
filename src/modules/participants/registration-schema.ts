@@ -18,6 +18,8 @@ export const registrationIdentitySchema = z.object({
     .min(1, "L'adresse e-mail est requise")
     .email("Adresse e-mail invalide"),
   phone: optionalText(30),
+  // À l'étape Identité, juste avant le pays (28 octobre 2026).
+  organization: optionalText(200),
   country: z.string().trim().min(1, "Le pays est requis").max(100),
   city: optionalText(100),
   locale: z.enum(["fr", "en", "pt"]).default("fr"),
@@ -25,7 +27,6 @@ export const registrationIdentitySchema = z.object({
 });
 
 export const registrationProfessionSchema = z.object({
-  organization: optionalText(200),
   organizationType: optionalText(100),
   jobTitle: optionalText(150),
   activityDomain: optionalText(150),

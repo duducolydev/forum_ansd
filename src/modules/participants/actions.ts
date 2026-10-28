@@ -8,6 +8,7 @@ import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
 import * as service from "./service";
 import * as delegationService from "./delegation-service";
+import { supprimerDefinitivement } from "./suppression";
 import {
   delegationInputSchema,
   participantInputSchema,
@@ -176,11 +177,12 @@ export async function reactivateParticipantAction(participantId: string): Promis
   return runTransition(participantId, "participants.write", service.reactivateParticipant);
 }
 
+/** Suppression définitive, données et fichiers compris (`suppression.ts`). */
 export async function deleteParticipantAction(participantId: string): Promise<ActionState> {
   try {
     const session = await requireSession();
     if (!can(session, "participants.delete")) return { error: "Permission refusée." };
-    await service.softDeleteParticipant(participantId, actorFromSession(session));
+    await supprimerDefinitivement(participantId, actorFromSession(session));
   } catch (error) {
     return { error: firstFieldError(error) };
   }

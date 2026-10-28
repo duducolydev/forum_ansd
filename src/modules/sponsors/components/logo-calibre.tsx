@@ -3,14 +3,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * Surface visée pour chaque logo, en px² : celle du logo d'UNFPA tel qu'il
- * s'affichait (≈ 165 × 77 px), la référence choisie par le comité le
- * 27 octobre 2026.
+ * Deux emplois, deux tailles :
+ *
+ * - `surface` : surface visée pour chaque logo, en px². Pour la tuile, celle
+ *   du logo d'UNFPA tel qu'il s'affichait (≈ 165 × 77 px), la référence
+ *   choisie par le comité le 27 octobre 2026 ; pour le bandeau défilant, la
+ *   même proportion à sa hauteur d'origine (≈ 132 × 61 px, 28 octobre 2026).
+ * - `hauteurMax` : un logo carré ou en hauteur s'arrête là, sans quoi il
+ *   dominerait la rangée.
+ * - `repli` : l'affichage d'avant, tant que la mesure n'est pas faite.
  */
-const SURFACE_CIBLE = 12_800;
-
-/** Un logo carré ou en hauteur s'arrête là, sans quoi il dominerait la rangée. */
-const HAUTEUR_MAX = 112;
+const GABARITS = {
+  tuile: { surface: 12_800, hauteurMax: 112, repli: "max-h-20" },
+  bandeau: { surface: 8_100, hauteurMax: 80, repli: "max-h-16" },
+} as const;
 
 /** Côté du canevas d'analyse : assez pour situer les bords, assez petit pour rester instantané. */
 const COTE_ANALYSE = 320;
@@ -32,6 +38,13 @@ interface Cadre {
 }
 
 type Fond = "TRANSPARENT" | "BLANC" | "AUCUN";
+
+/**
+ * Mesures déjà faites, par adresse d'image : le bandeau défilant répète
+ * chaque logo deux à quatre fois pour boucler. Un échec n'est pas retenu, la
+ * mesure sera retentée.
+ */
+const mesures = new Map<string, Cadre>();
 
 function estBlanc(pixels: Uint8ClampedArray, i: number): boolean {
   return Math.min(pixels[i]!, pixels[i + 1]!, pixels[i + 2]!) >= BLANC;
@@ -126,25 +139,31 @@ function mesurer(image: HTMLImageElement): Cadre | null {
 export function LogoCalibre({
   src,
   alt,
+  gabarit = "tuile",
   className = "",
 }: {
   src: string;
   alt: string;
+  gabarit?: keyof typeof GABARITS;
   className?: string;
 }) {
   const refImage = useRef<HTMLImageElement>(null);
   const [cadre, setCadre] = useState<Cadre | null>(null);
+  const { surface, hauteurMax, repli } = GABARITS[gabarit];
 
   const calibrer = useCallback(() => {
-    if (refImage.current) setCadre(mesurer(refImage.current));
-  }, []);
+    if (!refImage.current) return;
+    const mesure = mesures.get(src) ?? mesurer(refImage.current);
+    if (mesure) mesures.set(src, mesure);
+    setCadre(mesure);
+  }, [src]);
 
   // Image déjà chargée avant l'hydratation : `onLoad` ne viendra plus.
   useEffect(() => {
     if (refImage.current?.complete) calibrer();
   }, [calibrer]);
 
-  const hauteur = cadre ? Math.min(HAUTEUR_MAX, Math.sqrt(SURFACE_CIBLE / cadre.ratio)) : 0;
+  const hauteur = cadre ? Math.min(hauteurMax, Math.sqrt(surface / cadre.ratio)) : 0;
 
   return (
     <span
@@ -160,7 +179,7 @@ export function LogoCalibre({
         // L'image entière, décalée pour que seule sa zone dessinée tombe dans
         // le cadre : les pourcentages se rapportent au cadre, qui a les
         // proportions de cette zone.
-        className={cadre ? "absolute max-w-none" : "block max-h-20 max-w-full object-contain"}
+        className={cadre ? "absolute max-w-none" : `block max-w-full object-contain ${repli}`}
         style={
           cadre
             ? {

@@ -120,10 +120,6 @@ export async function updateParticipant(id: string, data: Prisma.ParticipantUpda
   return prisma.participant.update({ where: { id }, data });
 }
 
-export async function softDeleteParticipant(id: string) {
-  return prisma.participant.update({ where: { id }, data: { deletedAt: new Date() } });
-}
-
 // ---------------------------------------------------------------------------
 // Délégations
 // ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { mkdir, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import { dirname, join, resolve, sep } from "node:path";
 import type { FileStorage } from "./types";
 
 /** Implémentation par défaut (brief §3.1) : disque local sous `STORAGE_LOCAL_PATH`. */
@@ -22,6 +22,19 @@ export class LocalFileStorage implements FileStorage {
 
   async delete(key: string): Promise<void> {
     await unlink(this.resolve(key)).catch(() => undefined);
+  }
+
+  /**
+   * Refuse une clé vide ou qui sortirait du stockage : une suppression
+   * récursive mal adressée n'a pas de retour arrière.
+   */
+  async deleteDirectory(prefix: string): Promise<void> {
+    const racine = resolve(this.rootPath);
+    const cible = resolve(racine, prefix);
+    if (!prefix.trim() || !cible.startsWith(racine + sep)) {
+      throw new Error(`Dossier de stockage refusé : « ${prefix} ».`);
+    }
+    await rm(cible, { recursive: true, force: true });
   }
 
   url(key: string): string {

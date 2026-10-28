@@ -330,18 +330,6 @@ export async function updateParticipantDetails(
   return updated;
 }
 
-export async function softDeleteParticipant(participantId: string, actor: Actor): Promise<void> {
-  await repo.softDeleteParticipant(participantId);
-  await audit.log({
-    actorType: actor.type,
-    actorUserId: actor.userId,
-    actorParticipantId: actor.participantId,
-    action: "participant.delete",
-    entity: "Participant",
-    entityId: participantId,
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Machine à états unifiée (brief §2.3)
 //

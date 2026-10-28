@@ -124,6 +124,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
           lastName: value("lastName"),
           email: value("email"),
           phone: value("phone"),
+          organization: value("organization"),
           country: value("country"),
           city: value("city"),
           locale: value("locale") || "fr",
@@ -133,7 +134,6 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
       }
       case "profession": {
         const result = registrationProfessionSchema.safeParse({
-          organization: value("organization"),
           organizationType: value("organizationType"),
           jobTitle: value("jobTitle"),
           activityDomain: value("activityDomain"),
@@ -292,6 +292,11 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
               classeChamp="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
             />
           </div>
+          {/* Organisation avant le pays (28 octobre 2026), sur toute la
+              largeur : pays et ville restent côte à côte. */}
+          <div className="md:col-span-2">
+            <Field label="Organisation" name="organization" />
+          </div>
           <Field label="Pays" name="country" required />
           <Field label="Ville" name="city" />
           <div className="flex flex-col gap-1.5 md:col-span-2">
@@ -323,7 +328,6 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
 
       <div hidden={currentStep.key !== "profession"} className="etape-panneau">
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
-          <Field label="Organisation" name="organization" />
           <Select
             label="Type d'organisation"
             name="organizationType"
