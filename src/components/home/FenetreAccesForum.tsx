@@ -128,9 +128,9 @@ export function FenetreAccesForum({ locale }: { locale: Langue }) {
                 {selon(locale, { fr: "NB :", en: "NB:", pt: "NB:" })}
               </strong>{" "}
               {selon(locale, {
-                fr: "La validation de votre inscription se fera ensuite par le comité d’organisation et vous serez notifié(e).",
-                en: "Your registration will then be validated by the organising committee, and you will be notified.",
-                pt: "A validação da sua inscrição será depois feita pelo comité organizador e será notificado(a).",
+                fr: "Le nombre de places étant limité, la validation de votre inscription se fera par le Comité d’organisation et vous serez notifié(e).",
+                en: "As the number of places is limited, your registration will be subject to approval by the Organizing Committee, and you will be notified accordingly.",
+                pt: "Como o número de vagas é limitado, a validação da sua inscrição será feita pelo Comitê Organizador, e você será notificado(a).",
               })}
             </p>
           </div>
