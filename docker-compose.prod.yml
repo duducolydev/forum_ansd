@@ -76,6 +76,10 @@ services:
       - "443:443"
     volumes:
       - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # SISEP, servi par ce même nginx sur `sisephasaoc.ansd.sn` (DEPLOIEMENT.md
+      # §5.10). Le nom monté doit trier après `default.conf` : voir l'en-tête
+      # du fichier.
+      - ./docker/nginx-sisephasaoc.conf:/etc/nginx/conf.d/sisephasaoc.conf:ro
       # Certificat en service : le joker `*.ansd.sn` de la DSI, déposé à la main
       # sur le serveur. Le dossier est exclu du dépôt (.gitignore) parce qu'il
       # porte la clé privée du domaine. En lecture seule : nginx lit, n'écrit

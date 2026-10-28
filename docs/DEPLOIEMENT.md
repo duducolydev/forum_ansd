@@ -733,6 +733,31 @@ délivre un certificat propre au portail, reconnu de tous. Le défi DNS, le déf
 HTTP et le réveil du service `certbot` sont décrits au chapitre 9 de
 `docs/CERTIFICAT.md`.
 
+### 5.10 Ce nginx sert aussi SISEP
+
+Depuis le 28 octobre 2026, le nginx du portail relaie aussi
+`sisephasaoc.ansd.sn` : SISEP, le suivi-évaluation du PHASAOC, installé sur le
+même serveur dans `/opt/sisep`. Les ports 80 et 443 de ce nginx sont les seuls
+du serveur, et SISEP n'en publie aucun sur le réseau. Son bloc est dans
+`docker/nginx-sisephasaoc.conf`, monté à côté de `nginx.conf`. Le mode
+opératoire complet est dans le dépôt de SISEP (`docs/deploiement-production.md`,
+§4).
+
+Ce que cela change pour le portail :
+
+- **Le certificat.** Le joker couvre les deux noms. Le remplacement décrit dans
+  `docs/CERTIFICAT.md` sert les deux sites d'un coup ; l'expiration aussi les
+  arrête ensemble.
+- **Un SISEP arrêté ne gêne pas le portail.** nginx résout `sisep-web` à chaque
+  requête, et non au démarrage : seul `sisephasaoc.ansd.sn` répond alors 502.
+- **Le réseau.** Le conteneur `web` de SISEP est raccordé à
+  `forum-ansd_default`. Tant qu'il y est, `forum down` ne peut pas supprimer ce
+  réseau : Compose le signale et le laisse en place, ce qui est sans
+  conséquence pour le `forum up -d` suivant.
+- **La surcouche `docker-compose.interne.yml`** (§5.7) ne remplace que
+  `default.conf`. Passée, elle laisserait donc le port 443 ouvert, sur SISEP
+  seul : un visiteur du portail en HTTPS tomberait sur SISEP.
+
 ---
 
 ## 6. Avant l'ouverture au public — liste de contrôle
