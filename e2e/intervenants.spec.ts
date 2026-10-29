@@ -168,6 +168,11 @@ test("le BackOffice signale un intervenant injoignable et crée son participant"
 
   await seConnecterAdmin(page);
   await page.goto("/admin/intervenants");
+  // La liste est paginée : on retrouve les deux fiches par la recherche, qui
+  // trouve le suffixe dans les deux noms.
+  await page.getByRole("searchbox", { name: "Rechercher un intervenant" }).fill(SUFFIXE);
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(new RegExp(`q=${SUFFIXE}`));
 
   const ligneOrpheline = page.getByRole("row", { name: new RegExp(`Adresse${SUFFIXE}`) });
   await expect(ligneOrpheline).toContainText("Aucune adresse : injoignable");

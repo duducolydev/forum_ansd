@@ -5,13 +5,24 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
-import { listSpeakers } from "@/modules/speakers/service";
+import {
+  compterSpeakers,
+  listSpeakers,
+  rechercheIntervenantsSchema,
+  sessionsAvecIntervenants,
+} from "@/modules/speakers/service";
 import { adresseIntervenant } from "@/modules/auth/magic-link";
 import { CreateParticipantButton } from "@/modules/speakers/components/create-participant-button";
+import { IntervenantsToolbar } from "@/modules/speakers/components/intervenants-toolbar";
+import { Pagination } from "@/modules/participants/components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function IntervenantsPage() {
+export default async function IntervenantsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/connexion");
   if (!can(session, "speakers.read")) {
@@ -22,8 +33,14 @@ export default async function IntervenantsPage() {
     );
   }
 
+  const sp = await searchParams;
+  const recherche = rechercheIntervenantsSchema.parse(sp);
   const edition = await getActiveEdition();
-  const speakers = await listSpeakers(edition.id);
+  const [{ items: speakers, total }, totaux, sessions] = await Promise.all([
+    listSpeakers(edition.id, recherche),
+    compterSpeakers(edition.id),
+    sessionsAvecIntervenants(edition.id),
+  ]);
   const peutEcrire = can(session, "speakers.write");
 
   return (
@@ -32,7 +49,7 @@ export default async function IntervenantsPage() {
         <div>
           <h2 className="text-2xl">Intervenants</h2>
           <p className="text-text-3 text-sm">
-            {speakers.length} fiche(s) · {speakers.filter((s) => s.isPublished).length} publiée(s)
+            {totaux.fiches} fiche(s) · {totaux.publiees} publiée(s)
           </p>
         </div>
         {peutEcrire && (
@@ -47,8 +64,23 @@ export default async function IntervenantsPage() {
         )}
       </div>
 
+      {totaux.fiches > 0 && (
+        // Remontée à chaque recherche : le champ et les listes reprennent
+        // l'adresse, y compris après « Effacer les filtres ».
+        <IntervenantsToolbar
+          key={[recherche.q, recherche.sessionId, recherche.publication].join("|")}
+          sessions={sessions}
+        />
+      )}
+
       {speakers.length === 0 ? (
-        <p className="text-text-2 text-sm">Aucun intervenant enregistré.</p>
+        <p className="text-text-2 text-sm">
+          {totaux.fiches === 0
+            ? "Aucun intervenant enregistré."
+            : total > 0
+              ? "Cette page est vide."
+              : "Aucun intervenant ne correspond à cette recherche."}
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
@@ -135,6 +167,14 @@ export default async function IntervenantsPage() {
           </table>
         </div>
       )}
+
+      <Pagination
+        page={recherche.page}
+        pageSize={recherche.pageSize}
+        total={total}
+        basePath="/admin/intervenants"
+        searchParams={sp}
+      />
     </div>
   );
 }

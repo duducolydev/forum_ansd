@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
@@ -100,11 +101,91 @@ const SELECTION = {
   },
 } as const;
 
-export async function listSpeakers(editionId: string) {
-  return prisma.speaker.findMany({
-    where: { editionId, deletedAt: null },
-    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-    select: SELECTION,
+/** Recherche et pagination de la liste du BackOffice (29 octobre 2026). */
+export const rechercheIntervenantsSchema = z.object({
+  q: z.string().trim().max(200).optional().or(z.literal("")),
+  sessionId: z.string().optional().or(z.literal("")),
+  publication: z.enum(["publies", "brouillons"]).optional().or(z.literal("")),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(200).default(20),
+});
+
+export type RechercheIntervenants = z.infer<typeof rechercheIntervenantsSchema>;
+
+/**
+ * Le texte cherché est trouvé dans le nom, les adresses (celle de la fiche et
+ * celle du participant lié), l'organisation, la fonction, le pays ou le titre
+ * d'une session. Un nom complet se tape dans les deux sens : « Samuel Annim »
+ * comme « Annim Samuel », chaque mot devant figurer dans le prénom ou le nom.
+ * La casse et les accents sont ignorés par la collation de la base.
+ */
+function filtreIntervenants(
+  editionId: string,
+  recherche: Omit<RechercheIntervenants, "page" | "pageSize">,
+): Prisma.SpeakerWhereInput {
+  const q = recherche.q?.trim() ?? "";
+  const mots = q.split(/\s+/).filter(Boolean);
+  return {
+    editionId,
+    deletedAt: null,
+    ...(recherche.publication ? { isPublished: recherche.publication === "publies" } : {}),
+    ...(recherche.sessionId ? { sessions: { some: { sessionId: recherche.sessionId } } } : {}),
+    ...(q
+      ? {
+          OR: [
+            { firstName: { contains: q } },
+            { lastName: { contains: q } },
+            { email: { contains: q } },
+            { participant: { email: { contains: q } } },
+            { organization: { contains: q } },
+            { jobTitle: { contains: q } },
+            { country: { contains: q } },
+            { sessions: { some: { session: { deletedAt: null, titleFr: { contains: q } } } } },
+            ...(mots.length > 1
+              ? [
+                  {
+                    AND: mots.map((mot) => ({
+                      OR: [{ firstName: { contains: mot } }, { lastName: { contains: mot } }],
+                    })),
+                  },
+                ]
+              : []),
+          ],
+        }
+      : {}),
+  };
+}
+
+export async function listSpeakers(editionId: string, recherche: RechercheIntervenants) {
+  const where = filtreIntervenants(editionId, recherche);
+  const [items, total] = await Promise.all([
+    prisma.speaker.findMany({
+      where,
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      select: SELECTION,
+      skip: (recherche.page - 1) * recherche.pageSize,
+      take: recherche.pageSize,
+    }),
+    prisma.speaker.count({ where }),
+  ]);
+  return { items, total };
+}
+
+/** Totaux de l'édition, filtres ignorés : l'en-tête de la liste les affiche. */
+export async function compterSpeakers(editionId: string) {
+  const [fiches, publiees] = await Promise.all([
+    prisma.speaker.count({ where: { editionId, deletedAt: null } }),
+    prisma.speaker.count({ where: { editionId, deletedAt: null, isPublished: true } }),
+  ]);
+  return { fiches, publiees };
+}
+
+/** Sessions qui ont au moins un intervenant, pour le filtre de la liste. */
+export async function sessionsAvecIntervenants(editionId: string) {
+  return prisma.session.findMany({
+    where: { editionId, deletedAt: null, speakers: { some: {} } },
+    orderBy: [{ startTime: "asc" }, { titleFr: "asc" }],
+    select: { id: true, titleFr: true },
   });
 }
 
