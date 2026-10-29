@@ -25,12 +25,16 @@ export const FORMAT_BADGE = {
 /**
  * Gabarit en vigueur : la maquette de l'infographe (26 octobre 2026).
  *
- * Il figure dans le nom des fichiers (`badges/<id>/v1-maquette-2026.pdf`) : un
- * badge rendu avec un gabarit antérieur — la carte CR80, puis le premier
+ * Il figure dans le nom des fichiers (`badges/<id>/v1-maquette-2026-b.pdf`) :
+ * un badge rendu avec un gabarit antérieur — la carte CR80, puis le premier
  * 100 × 150 mm du 25 octobre — se reconnaît ainsi sans migration, et se refait
  * depuis l'écran Badges, même QR. Changer de gabarit, c'est changer ce repère.
+ *
+ * Révision « b » (29 octobre 2026) : même maquette, mais un intervenant sans
+ * photo de participant prend celle de sa fiche d'intervenant. Les badges
+ * rendus avant ne l'ont pas ; le repère changé les fait proposer à refaire.
  */
-export const GABARIT_BADGE = "maquette-2026";
+export const GABARIT_BADGE = "maquette-2026-b";
 
 /**
  * Fente pour cordon : oblongue, 15 × 3 mm, centrée, à 5 mm du bord haut — la

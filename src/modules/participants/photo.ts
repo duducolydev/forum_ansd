@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { fileStorage } from "@/lib/storage";
+import { enqueueBadgeRefresh } from "@/modules/badges/jobs";
 
 /**
  * Photo de profil du participant (brief §5.3), reprise sur le badge (§5.4).
@@ -93,6 +94,12 @@ export async function saveParticipantPhoto(
     after: { type: detected.type, bytes: data.length },
   });
 
+  // Badge déjà généré : refait avec la photo, même QR, sans e-mail
+  // (29 octobre 2026). Il restait sans photo jusque-là, contrairement à ce
+  // qu'annonçait « Mon espace ». Sans badge, rien à faire : le premier rendu
+  // la prendra.
+  await enqueueBadgeRefresh(participantId, { silencieux: true });
+
   return { status: "OK", path };
 }
 
@@ -114,4 +121,6 @@ export async function removeParticipantPhoto(participantId: string): Promise<voi
     entity: "Participant",
     entityId: participantId,
   });
+
+  await enqueueBadgeRefresh(participantId, { silencieux: true });
 }

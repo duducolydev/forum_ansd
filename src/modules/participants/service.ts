@@ -5,7 +5,11 @@ import { audit } from "@/lib/audit";
 import { jobQueue } from "@/lib/queue";
 import { reconcileByEmail } from "@/modules/invitations/service";
 import { alerterNouveauMembre } from "@/modules/referents/notifications";
-import { enqueueBadgeRefresh, registerBadgeJobs } from "@/modules/badges/jobs";
+import {
+  enqueueBadgeRefresh,
+  registerBadgeJobs,
+  textesDuBadgeModifies,
+} from "@/modules/badges/jobs";
 import * as repo from "./repository";
 import type { ParticipantInput, ParticipantSearchInput } from "./schema";
 import { DuplicateParticipantEmailError, InvalidParticipantTransitionError } from "./errors";
@@ -325,6 +329,9 @@ export async function updateParticipantDetails(
    */
   if (before.categoryId !== updated.categoryId) {
     await enqueueBadgeRefresh(participantId);
+  } else if (textesDuBadgeModifies(before, updated)) {
+    // Nom, fonction ou organisation corrigés : badge refait, sans e-mail.
+    await enqueueBadgeRefresh(participantId, { silencieux: true });
   }
 
   return updated;

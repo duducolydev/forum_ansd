@@ -465,6 +465,19 @@
     outline: 3px solid var(--ansd-or);
     outline-offset: 2px;
   }
+
+  /*
+   * Nom de famille en capitales dès la saisie (29 octobre 2026), dans tous les
+   * formulaires qui en demandent un. Ce n'est que l'affichage : la mise en
+   * majuscules qui compte est faite par les schémas, à l'enregistrement
+   * (`lib/nom-de-famille.ts`).
+   */
+  input[name="lastName"] {
+    text-transform: uppercase;
+  }
+  input[name="lastName"]::placeholder {
+    text-transform: none;
+  }
 }
 
 /* ---------------------------------------------------------------------------

@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { nomDeFamille } from "@/lib/nom-de-famille";
 
 /** Schéma partagé client/serveur (brief §3.3) — formulaire BackOffice de création/édition. */
 export const participantInputSchema = z.object({
   civility: z.string().trim().max(20).optional(),
   firstName: z.string().trim().min(1, "Le prénom est requis").max(100),
-  lastName: z.string().trim().min(1, "Le nom est requis").max(100),
+  lastName: z.string().trim().min(1, "Le nom est requis").max(100).transform(nomDeFamille),
   email: z
     .string()
     .trim()

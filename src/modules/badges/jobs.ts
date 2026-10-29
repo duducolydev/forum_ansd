@@ -29,6 +29,28 @@ export function registerBadgeJobs(): void {
   );
 }
 
+/** Les textes imprimés sur le badge, en plus de la catégorie et de la photo. */
+type TextesDuBadge = {
+  firstName: string;
+  lastName: string;
+  jobTitle: string | null;
+  organization: string | null;
+};
+
+/**
+ * Vrai si une modification change ce qui s'imprime sur le badge (29 octobre
+ * 2026) : une correction de nom ou d'organisation faite après la génération
+ * restait sinon invisible sur le badge déjà rendu.
+ */
+export function textesDuBadgeModifies(avant: TextesDuBadge, apres: TextesDuBadge): boolean {
+  return (
+    avant.firstName !== apres.firstName ||
+    avant.lastName !== apres.lastName ||
+    (avant.jobTitle ?? "") !== (apres.jobTitle ?? "") ||
+    (avant.organization ?? "") !== (apres.organization ?? "")
+  );
+}
+
 /**
  * Refait le badge courant d'un participant **dans sa version** : même QR, rien
  * d'invalidé — seuls la couleur, le libellé et la mention de la catégorie

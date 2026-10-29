@@ -7,6 +7,7 @@ import { renderHtmlToPdfAndPng } from "@/lib/pdf";
 import { enqueueNotification } from "@/modules/notifications/jobs";
 import { markBadged, type Actor } from "@/modules/participants/service";
 import { InvalidParticipantTransitionError } from "@/modules/participants/errors";
+import { detectImageType } from "@/modules/participants/photo";
 import { renderBadgeHtml } from "./template";
 import { mentionDuBadge } from "./mention";
 import { logoBadgeDataUrl } from "./logo";
@@ -28,6 +29,9 @@ const participantForBadge = {
   locale: true,
   status: true,
   photoPath: true,
+  // Repli quand le participant n'a pas déposé de photo : celle de sa fiche
+  // d'intervenant, publiée sur le site (29 octobre 2026).
+  speaker: { select: { photoPath: true } },
   editionId: true,
   accreditedAt: true,
   category: {
@@ -46,7 +50,9 @@ async function photoDataUrl(photoPath: string | null): Promise<string | null> {
   if (!photoPath) return null;
   try {
     const buffer = await fileStorage.get(photoPath);
-    const type = photoPath.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+    // Type lu dans les octets : une photo d'intervenant peut être un WebP, que
+    // l'extension seule faisait annoncer comme JPEG.
+    const type = detectImageType(buffer)?.type ?? "image/jpeg";
     return `data:${type};base64,${buffer.toString("base64")}`;
   } catch {
     // Photo introuvable : on retombe sur les initiales plutôt que d'échouer
@@ -56,7 +62,7 @@ async function photoDataUrl(photoPath: string | null): Promise<string | null> {
 }
 
 /**
- * Le gabarit figure dans le nom (`v1-maquette-2026.pdf`) : un badge rendu avec
+ * Le gabarit figure dans le nom (`v1-maquette-2026-b.pdf`) : un badge rendu avec
  * un gabarit antérieur garde ses fichiers, et se repère pour être refait.
  */
 function storageKey(publicId: string, version: number, extension: string): string {
@@ -97,7 +103,9 @@ async function renderAndStore(badge: Badge): Promise<{ pdfPath: string; pngPath:
     // Le QR encode l'URL de vérification publique : un scanner générique
     // (appareil photo de téléphone) ouvre directement la page de contrôle.
     qrDataUrl: await generateQrDataUrl(`${baseUrl}/v/${token}`),
-    photoDataUrl: await photoDataUrl(participant.photoPath),
+    photoDataUrl: await photoDataUrl(
+      participant.photoPath ?? participant.speaker?.photoPath ?? null,
+    ),
   });
 
   const { pdf, png } = await renderHtmlToPdfAndPng(

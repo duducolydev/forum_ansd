@@ -55,7 +55,9 @@ describe("suppression définitive d'un participant", () => {
         ...fiche,
         publicId,
         email,
-        status: "BADGED",
+        // Inscrit et non badgé : hors du décompte des badges à refaire, que
+        // `badges/service.test.ts` vérifie en parallèle sur toute l'édition.
+        status: "REGISTERED",
         photoPath: `photos/${publicId}-test.jpg`,
         invitationId: invitation.id,
       },

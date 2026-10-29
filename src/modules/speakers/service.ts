@@ -19,6 +19,9 @@ import {
   type RoleSession,
   type StatutConfirmation,
 } from "./constantes";
+import { nomDeFamille } from "@/lib/nom-de-famille";
+import { generateUniquePublicId } from "@/modules/participants/service";
+import { enqueueBadgeRefresh } from "@/modules/badges/jobs";
 
 /**
  * Intervenants (brief §5.8).
@@ -41,7 +44,7 @@ export { PHOTO_MAX_BYTES, PRESENTATION_MAX_BYTES };
 
 export const speakerInputSchema = z.object({
   firstName: z.string().trim().min(2, "Le prénom est requis").max(80),
-  lastName: z.string().trim().min(2, "Le nom est requis").max(80),
+  lastName: z.string().trim().min(2, "Le nom est requis").max(80).transform(nomDeFamille),
   email: z.email("Adresse e-mail invalide").optional().or(z.literal("")),
   jobTitle: z.string().trim().max(150).optional().or(z.literal("")),
   organization: z.string().trim().max(150).optional().or(z.literal("")),
@@ -294,7 +297,7 @@ export async function saveSpeakerPhoto(speakerId: string, file: File): Promise<v
 
   const ancien = await prisma.speaker.findUniqueOrThrow({
     where: { id: speakerId },
-    select: { photoPath: true },
+    select: { photoPath: true, participantId: true },
   });
 
   const chemin = `speakers/${speakerId}-${randomBytes(6).toString("hex")}.${detecte.extension}`;
@@ -303,6 +306,12 @@ export async function saveSpeakerPhoto(speakerId: string, file: File): Promise<v
 
   if (ancien.photoPath && ancien.photoPath !== chemin) {
     await fileStorage.delete(ancien.photoPath).catch(() => undefined);
+  }
+
+  // Le badge du participant lié prend cette photo quand il n'a pas la sienne
+  // (`badges/service.ts`) : il est refait, même QR, sans e-mail.
+  if (ancien.participantId) {
+    await enqueueBadgeRefresh(ancien.participantId, { silencieux: true });
   }
 
   await audit.log({
@@ -588,12 +597,12 @@ export async function createParticipantFromSpeaker(
     (await prisma.participant.create({
       data: {
         editionId,
-        publicId: `${editionCode
-          .replace(/[^A-Z0-9]/gi, "")
-          .slice(0, 5)
-          .toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}`,
+        // Même identifiant que toute inscription (FID26-7K3M2P) : il était
+        // fabriqué ici à part, d'où les FID20-2D5411 des intervenants
+        // (29 octobre 2026). Ceux-là restent : leur QR en dépend.
+        publicId: await generateUniquePublicId(editionCode),
         firstName: speaker.firstName,
-        lastName: speaker.lastName,
+        lastName: nomDeFamille(speaker.lastName),
         email: speaker.email,
         country: speaker.country ?? "Sénégal",
         jobTitle: speaker.jobTitle,

@@ -1,6 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/db";
 import { fileStorage } from "@/lib/storage";
+import { jobQueue } from "@/lib/queue";
 import { createParticipant } from "./service";
 import { detectImageType, saveParticipantPhoto, removeParticipantPhoto } from "./photo";
 
@@ -178,5 +179,30 @@ describe("enregistrement de la photo (brief §5.3)", () => {
     const apres = await prisma.participant.findUniqueOrThrow({ where: { id: participant.id } });
     expect(apres.photoPath).toBeNull();
     await expect(fileStorage.get(enregistre.path)).rejects.toBeTruthy();
+  });
+
+  it("refait le badge déjà généré quand la photo change, sans e-mail", async () => {
+    const participant = await participantDeTest();
+    await prisma.badge.create({
+      data: {
+        participantId: participant.id,
+        qrToken: `photo-${participant.publicId}`,
+        generatedAt: new Date(),
+      },
+    });
+    const enqueue = vi.spyOn(jobQueue, "enqueue").mockResolvedValue(undefined);
+    try {
+      await saveParticipantPhoto(
+        participant.id,
+        new File([new Uint8Array(JPEG)], "photo.jpg", { type: "image/jpeg" }),
+      );
+      await removeParticipantPhoto(participant.id);
+
+      const refaits = enqueue.mock.calls.filter(([type]) => type === "badge.generate");
+      expect(refaits).toHaveLength(2);
+      expect(refaits[0]?.[1]).toEqual({ participantId: participant.id, silencieux: true });
+    } finally {
+      enqueue.mockRestore();
+    }
   });
 });

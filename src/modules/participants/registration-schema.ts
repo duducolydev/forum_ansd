@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { nomDeFamille } from "@/lib/nom-de-famille";
 
 /**
  * Formulaire public d'inscription (brief §5.3) — schémas partagés client/serveur,
@@ -10,7 +11,7 @@ const optionalText = (max: number) => z.string().trim().max(max).optional().or(z
 export const registrationIdentitySchema = z.object({
   civility: optionalText(20),
   firstName: z.string().trim().min(1, "Le prénom est requis").max(100),
-  lastName: z.string().trim().min(1, "Le nom est requis").max(100),
+  lastName: z.string().trim().min(1, "Le nom est requis").max(100).transform(nomDeFamille),
   email: z
     .string()
     .trim()

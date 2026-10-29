@@ -2,12 +2,14 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { jobQueue } from "@/lib/queue";
+import { nomDeFamille } from "@/lib/nom-de-famille";
+import { enqueueBadgeRefresh, textesDuBadgeModifies } from "@/modules/badges/jobs";
 
 /** Modifications autorisées au participant lui-même (ni catégorie, ni statut, ni consentements). */
 export const mySpaceInputSchema = z.object({
   civility: z.string().trim().max(20).optional().or(z.literal("")),
   firstName: z.string().trim().min(1, "Le prénom est requis").max(100),
-  lastName: z.string().trim().min(1, "Le nom est requis").max(100),
+  lastName: z.string().trim().min(1, "Le nom est requis").max(100).transform(nomDeFamille),
   phone: z.string().trim().max(30).optional().or(z.literal("")),
   city: z.string().trim().max(100).optional().or(z.literal("")),
   organization: z.string().trim().max(200).optional().or(z.literal("")),
@@ -89,6 +91,12 @@ export async function updateMyInfo(participantId: string, input: MySpaceInput): 
     before: { firstName: participant.firstName, lastName: participant.lastName },
     after: { firstName: updated.firstName, lastName: updated.lastName },
   });
+
+  // Nom, fonction ou organisation corrigés par la personne : son badge déjà
+  // généré est refait, même QR, sans e-mail (29 octobre 2026).
+  if (textesDuBadgeModifies(participant, updated)) {
+    await enqueueBadgeRefresh(participantId, { silencieux: true });
+  }
 }
 
 /**

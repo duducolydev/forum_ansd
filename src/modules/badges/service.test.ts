@@ -87,8 +87,8 @@ describe.skipIf(!resolveBrowserPath())("badges (brief §5.4)", () => {
     expect(badge.version).toBe(1);
     expect(badge.generatedAt).not.toBeNull();
     // Le gabarit figure dans le nom des fichiers.
-    expect(badge.pdfPath).toBe(`badges/${participant.publicId}/v1-maquette-2026.pdf`);
-    expect(badge.pngPath).toBe(`badges/${participant.publicId}/v1-maquette-2026.png`);
+    expect(badge.pdfPath).toBe(`badges/${participant.publicId}/v1-maquette-2026-b.pdf`);
+    expect(badge.pngPath).toBe(`badges/${participant.publicId}/v1-maquette-2026-b.png`);
 
     const pdf = await fileStorage.get(badge.pdfPath!);
     expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
@@ -121,7 +121,7 @@ describe.skipIf(!resolveBrowserPath())("badges (brief §5.4)", () => {
     expect(refait.id).toBe(badge.id);
     expect(refait.version).toBe(1);
     expect(refait.qrToken).toBe(badge.qrToken);
-    expect(refait.pngPath).toBe(`badges/${participant.publicId}/v1-maquette-2026.png`);
+    expect(refait.pngPath).toBe(`badges/${participant.publicId}/v1-maquette-2026-b.png`);
     expect(await compterAncienGabarit(editionId, {})).toBe(avant);
   }, 60_000);
 

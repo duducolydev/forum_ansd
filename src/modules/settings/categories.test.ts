@@ -170,6 +170,15 @@ describe("badge tenu à jour de la catégorie", () => {
     expect(rafraichis).toHaveLength(1);
   });
 
+  it("refait le badge, sans e-mail, quand un texte imprimé est corrigé", async () => {
+    const comite = categoriesCreees[0]!;
+    rafraichis.length = 0;
+
+    const corrigee = { ...(await saisie(comite)), organization: "ANSD" };
+    await updateParticipantDetails(participantId, corrigee, { type: "SYSTEM" });
+    expect(rafraichis).toEqual([{ participantId, silencieux: true }]);
+  });
+
   it("refait sans e-mail les badges d'une catégorie dont la couleur change", async () => {
     const comite = await prisma.participantCategory.findUniqueOrThrow({
       where: { id: categoriesCreees[0]! },

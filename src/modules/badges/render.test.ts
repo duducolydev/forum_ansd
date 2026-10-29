@@ -28,8 +28,10 @@ const enPoints = (mm: number) => (mm / 25.4) * 72;
 
 describe("gabarit du badge", () => {
   it("reconnaît un fichier rendu avec la maquette en vigueur", () => {
-    expect(auGabaritCourant("badges/FID26-AB12/v1-maquette-2026.png")).toBe(true);
-    // Carte CR80, puis premier 100 × 150 mm du 25 octobre 2026.
+    expect(auGabaritCourant("badges/FID26-AB12/v1-maquette-2026-b.png")).toBe(true);
+    // Carte CR80, premier 100 × 150 mm du 25 octobre 2026, maquette avant la
+    // photo d'intervenant (29 octobre 2026).
+    expect(auGabaritCourant("badges/FID26-AB12/v1-maquette-2026.png")).toBe(false);
     expect(auGabaritCourant("badges/FID26-AB12/v1.png")).toBe(false);
     expect(auGabaritCourant("badges/FID26-AB12/v1-100x150.png")).toBe(false);
     expect(auGabaritCourant(null)).toBe(false);
