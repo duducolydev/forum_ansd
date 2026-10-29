@@ -29,7 +29,7 @@
     "section:intervenants-partenaires": "tsx scripts/sections-intervenants-partenaires.ts",
     "section:constellation": "tsx scripts/constellation-accueil.ts",
     "illustrer:accueil": "tsx scripts/illustrer-accueil.ts",
-    "icones:scanner": "tsx scripts/icones-scanner.ts"
+    "icones": "tsx scripts/icones.ts"
   },
   "//browserslist": "Cibles modernes : sans cela, le build transpile pour des navigateurs qu'aucun visiteur du Forum n'utilisera et embarque des polyfills inutiles (11 Kio signalés par Lighthouse).",
   "browserslist": [

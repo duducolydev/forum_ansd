@@ -2843,6 +2843,11 @@ celui-ci — une capture de l'en-tête, reconstituée en haute définition par l
 script, qui dessine désormais avec le Chromium des badges (l'anneau de la capture
 était coupé au bord).
 
+**Étendu au site le 29 octobre 2026** : le même emblème remplace dans l'onglet du
+navigateur le triangle de Next.js (`src/app/favicon.ico` en 16, 32 et 48 px,
+`src/app/icon.png`, `src/app/apple-icon.png`). Le script s'appelle depuis
+`scripts/icones.ts` (`pnpm icones`).
+
 | Fichier                       | Usage                                                               |
 | ----------------------------- | ------------------------------------------------------------------- |
 | `icons/scan-192.png`, `-512`  | Android, coins arrondis, fond transparent autour                    |

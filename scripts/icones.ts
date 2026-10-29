@@ -1,11 +1,14 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { deflateSync } from "node:zlib";
 import puppeteer from "puppeteer-core";
 import { resolveBrowserPath } from "../src/lib/pdf";
 
 /**
- * Icônes de l'application Scanner (PLAN.md §16.7).
+ * Icônes de l'application Scanner (PLAN.md §16.7) et, depuis le 29 octobre
+ * 2026, du site lui-même : onglet du navigateur (`favicon.ico`, `icon.png`) et
+ * écran d'accueil iOS (`apple-icon.png`). L'onglet montrait le triangle de
+ * Next.js, l'icône livrée avec le gabarit de départ.
  *
  * Depuis le 26 octobre 2026 : l'emblème du logo du Forum — le globe et ses
  * barres —, entouré de l'anneau tricolore qui tourne autour de lui dans
@@ -17,7 +20,7 @@ import { resolveBrowserPath } from "../src/lib/pdf";
  * Le dessin passe par le Chromium qui rend déjà les badges (`puppeteer-core`,
  * `PUPPETEER_EXECUTABLE_PATH`) : `sharp` n'est pas installé, et un canevas sait
  * redimensionner une image et tracer un dégradé conique. Relancer ce script
- * (`pnpm icones:scanner`) régénère les icônes à l'identique.
+ * (`pnpm icones`) régénère les icônes à l'identique.
  */
 
 /** Logo de l'en-tête (`components/site/logo-forum.tsx`). */
@@ -56,6 +59,7 @@ const BOITE = {
 const FOND = "#e2eef9";
 
 interface Gabarit {
+  /** Chemin depuis la racine du projet. */
   fichier: string;
   cote: number;
   /** Rayon des coins du fond, en fraction du côté ; 0 = fond plein bord, opaque. */
@@ -65,20 +69,38 @@ interface Gabarit {
 }
 
 const GABARITS: readonly Gabarit[] = [
-  { fichier: "scan-192.png", cote: 192, rayonFond: 0.22, contenu: 0.8 },
-  { fichier: "scan-512.png", cote: 512, rayonFond: 0.22, contenu: 0.8 },
+  { fichier: "public/icons/scan-192.png", cote: 192, rayonFond: 0.22, contenu: 0.8 },
+  { fichier: "public/icons/scan-512.png", cote: 512, rayonFond: 0.22, contenu: 0.8 },
   /*
    * Android découpe l'icône « maskable » en cercle, en goutte ou en carré selon
    * l'appareil : fond plein bord, et contenu dans la zone sûre, un cercle de 80 %
    * du côté. À 60 % de haut, la demi-diagonale de l'emblème vaut 39,5 %.
    */
-  { fichier: "scan-maskable-512.png", cote: 512, rayonFond: 0, contenu: 0.6 },
+  { fichier: "public/icons/scan-maskable-512.png", cote: 512, rayonFond: 0, contenu: 0.6 },
   /*
    * iOS arrondit lui-même les coins et remplit la transparence en noir : fond
    * opaque, plein bord.
    */
-  { fichier: "scan-apple-180.png", cote: 180, rayonFond: 0, contenu: 0.76 },
+  { fichier: "public/icons/scan-apple-180.png", cote: 180, rayonFond: 0, contenu: 0.76 },
+  /*
+   * Site : Next sert d'office `src/app/icon.png` et `src/app/apple-icon.png`
+   * et les déclare dans l'en-tête de chaque page.
+   */
+  { fichier: "src/app/icon.png", cote: 192, rayonFond: 0.22, contenu: 0.8 },
+  { fichier: "src/app/apple-icon.png", cote: 180, rayonFond: 0, contenu: 0.76 },
 ];
+
+/**
+ * `favicon.ico`, que les navigateurs demandent d'office à la racine : trois
+ * tailles d'onglet dans un seul fichier. L'emblème y est un peu plus grand —
+ * à 16 px, chaque pixel de marge compte.
+ */
+const FAVICON = {
+  fichier: "src/app/favicon.ico",
+  cotes: [16, 32, 48],
+  rayonFond: 0.22,
+  contenu: 0.9,
+};
 
 type ParametresRendu = Gabarit & {
   fond: string;
@@ -168,6 +190,32 @@ function bloc(type: string, donnees: Buffer): Buffer {
   return Buffer.concat([longueur, corps, controle]);
 }
 
+/**
+ * Fichier ICO fait d'images PNG, ce que lisent tous les navigateurs actuels :
+ * un en-tête, une entrée de 16 octets par taille, puis les PNG à la suite.
+ */
+function encoderIco(images: { cote: number; png: Buffer }[]): Buffer {
+  const entete = Buffer.alloc(6);
+  entete.writeUInt16LE(0, 0);
+  entete.writeUInt16LE(1, 2); // icône
+  entete.writeUInt16LE(images.length, 4);
+
+  let decalage = 6 + 16 * images.length;
+  const entrees = images.map(({ cote, png }) => {
+    const entree = Buffer.alloc(16);
+    entree[0] = cote >= 256 ? 0 : cote;
+    entree[1] = cote >= 256 ? 0 : cote;
+    entree.writeUInt16LE(1, 4); // plans
+    entree.writeUInt16LE(32, 6); // bits par pixel
+    entree.writeUInt32LE(png.length, 8);
+    entree.writeUInt32LE(decalage, 12);
+    decalage += png.length;
+    return entree;
+  });
+
+  return Buffer.concat([entete, ...entrees, ...images.map(({ png }) => png)]);
+}
+
 /** PNG en couleurs vraies, avec canal alpha seulement si l'icône en a besoin. */
 function encoderPng(cote: number, rgba: Buffer, avecAlpha: boolean): Buffer {
   const canaux = avecAlpha ? 4 : 3;
@@ -213,10 +261,7 @@ async function main(): Promise<void> {
     const logo = `data:image/webp;base64,${readFileSync(LOGO).toString("base64")}`;
     await page.setContent(`<img id="logo" src="${logo}" alt="" />`, { waitUntil: "load" });
 
-    const dossier = join(process.cwd(), "public", "icons");
-    mkdirSync(dossier, { recursive: true });
-
-    for (const gabarit of GABARITS) {
+    const rendre = async (gabarit: Gabarit): Promise<Buffer> => {
       const rgba = Buffer.from(
         await page.evaluate(dessiner, {
           ...gabarit,
@@ -228,10 +273,24 @@ async function main(): Promise<void> {
         }),
         "base64",
       );
-      const png = encoderPng(gabarit.cote, rgba, gabarit.rayonFond > 0);
-      writeFileSync(join(dossier, gabarit.fichier), png);
+      return encoderPng(gabarit.cote, rgba, gabarit.rayonFond > 0);
+    };
+
+    for (const gabarit of GABARITS) {
+      const png = await rendre(gabarit);
+      const chemin = join(process.cwd(), gabarit.fichier);
+      mkdirSync(dirname(chemin), { recursive: true });
+      writeFileSync(chemin, png);
       console.log(`${gabarit.fichier} : ${gabarit.cote} px, ${png.length} octets`);
     }
+
+    const images = [];
+    for (const cote of FAVICON.cotes) {
+      images.push({ cote, png: await rendre({ ...FAVICON, cote }) });
+    }
+    const ico = encoderIco(images);
+    writeFileSync(join(process.cwd(), FAVICON.fichier), ico);
+    console.log(`${FAVICON.fichier} : ${FAVICON.cotes.join(", ")} px, ${ico.length} octets`);
   } finally {
     await navigateur.close();
   }
