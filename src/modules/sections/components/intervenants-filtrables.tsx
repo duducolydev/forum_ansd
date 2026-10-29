@@ -13,9 +13,11 @@ type Intervenant = NonNullable<DonneesSections["intervenants"]>[number];
  * Intervenants de l'accueil : cartes retournables (brief « Constellation »
  * §4.3), filtrables par thème (demande du 28 septembre 2026).
  *
- * Sans filtre, la section montre les intervenants **mis en avant** en
- * BackOffice, dans leur ordre ; s'il n'y en a aucun, les premiers par ordre
- * alphabétique. Avec un filtre, elle cherche dans la liste entière.
+ * Sur « Tous », la section montre tous les intervenants publiés, dans la
+ * limite du nombre réglé : les **mis en avant** en BackOffice d'abord, dans
+ * leur ordre, puis les autres par ordre alphabétique. Elle ne montrait que les
+ * mis en avant dès qu'il y en avait un — deux cartes sous un filtre « Tous »
+ * (29 octobre 2026). Un thème cherche dans la même liste, même ordre.
  *
  * Le filtre agit sur place : l'accueil ne se recharge pas et ne remonte pas en
  * haut de page. Le nombre de résultats est annoncé aux lecteurs d'écran.
@@ -39,16 +41,9 @@ export function IntervenantsFiltrables({
     [intervenants],
   );
 
-  const miseEnAvant = useMemo(() => {
-    const choisis = intervenants
-      .filter((intervenant) => intervenant.isFeatured)
-      .sort((a, b) => a.featuredOrder - b.featuredOrder);
-    return choisis.length > 0 ? choisis : intervenants;
-  }, [intervenants]);
+  const tous = useMemo(() => misEnAvantDabord(intervenants), [intervenants]);
 
-  const retenus = theme
-    ? intervenants.filter((intervenant) => intervenant.themes.includes(theme))
-    : miseEnAvant;
+  const retenus = theme ? tous.filter((intervenant) => intervenant.themes.includes(theme)) : tous;
   const affiches = retenus.slice(0, nombre);
 
   return (
@@ -122,8 +117,37 @@ export function IntervenantsFiltrables({
           </Link>
         </p>
       )}
+      {/* Plus d'intervenants que de cartes : la suite est sur leur page. */}
+      {!theme && retenus.length > affiches.length && (
+        <p className="mt-8 text-center">
+          <Link
+            href="/intervenants"
+            className="text-link inline-flex items-center gap-1.5 text-sm font-semibold"
+          >
+            {selon(locale, {
+              fr: `Voir les ${retenus.length} intervenants`,
+              en: `See all ${retenus.length} speakers`,
+              pt: `Ver os ${retenus.length} oradores`,
+            })}
+            <ArrowRight aria-hidden size={14} />
+          </Link>
+        </p>
+      )}
     </>
   );
+}
+
+/**
+ * Les intervenants mis en avant d'abord, dans leur ordre ; les autres ensuite,
+ * dans l'ordre reçu — alphabétique (`donnees.ts`). Personne n'est écarté.
+ */
+export function misEnAvantDabord<T extends { isFeatured: boolean; featuredOrder: number }>(
+  intervenants: T[],
+): T[] {
+  const enAvant = intervenants
+    .filter((intervenant) => intervenant.isFeatured)
+    .sort((a, b) => a.featuredOrder - b.featuredOrder);
+  return [...enAvant, ...intervenants.filter((intervenant) => !intervenant.isFeatured)];
 }
 
 function Pastille({
