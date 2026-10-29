@@ -65,7 +65,14 @@ export default async function RegisterPage({
           firstName: invitation.firstName,
           lastName: invitation.lastName,
           email: invitation.email,
-          categoryId: invitation.categoryId,
+          // La catégorie entière, et pas seulement son identifiant : celle
+          // choisie par le comité n'est pas forcément proposée au public, et le
+          // formulaire doit pouvoir l'afficher.
+          category: {
+            id: invitation.category.id,
+            labelFr: invitation.category.labelFr,
+            requiresLogistics: invitation.category.requiresLogistics,
+          },
         }
       : null;
 

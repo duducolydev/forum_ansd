@@ -2,6 +2,7 @@
 
 import { lireLangue } from "@/lib/langue";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { Session } from "next-auth";
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
@@ -11,6 +12,7 @@ import * as delegationService from "./delegation-service";
 import { supprimerDefinitivement } from "./suppression";
 import {
   delegationInputSchema,
+  participantEditSchema,
   participantInputSchema,
   type DelegationInput,
   type ParticipantInput,
@@ -78,7 +80,21 @@ export async function updateParticipantAction(
     const session = await requireSession();
     if (!can(session, "participants.write")) return { error: "Permission refusée." };
 
-    const input = parseParticipantForm(formData);
+    const input = participantEditSchema.parse({
+      civility: formData.get("civility") ?? undefined,
+      firstName: formData.get("firstName"),
+      lastName: formData.get("lastName"),
+      email: formData.get("email"),
+      phone: formData.get("phone") ?? undefined,
+      jobTitle: formData.get("jobTitle") ?? undefined,
+      organization: formData.get("organization") ?? undefined,
+      organizationType: formData.get("organizationType") ?? undefined,
+      country: formData.get("country"),
+      city: formData.get("city") ?? undefined,
+      categoryId: formData.get("categoryId"),
+      delegationId: formData.get("delegationId") ?? undefined,
+      notes: formData.get("notes") ?? undefined,
+    });
     await service.updateParticipantDetails(participantId, input, actorFromSession(session));
   } catch (error) {
     return { error: firstFieldError(error) };
@@ -86,7 +102,13 @@ export async function updateParticipantAction(
 
   revalidatePath("/admin/participants");
   revalidatePath(`/admin/participants/${participantId}`);
-  return {};
+  /*
+   * Retour à la fiche (29 octobre 2026). Rester sur le formulaire le laissait
+   * se réinitialiser sur les valeurs d'avant l'enregistrement : la catégorie
+   * changée y réapparaissait inchangée, et un second clic sur « Enregistrer »
+   * la remettait réellement en base.
+   */
+  redirect(`/admin/participants/${participantId}`);
 }
 
 function parseParticipantForm(formData: FormData): ParticipantInput {

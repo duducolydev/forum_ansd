@@ -11,7 +11,7 @@ import {
   textesDuBadgeModifies,
 } from "@/modules/badges/jobs";
 import * as repo from "./repository";
-import type { ParticipantInput, ParticipantSearchInput } from "./schema";
+import type { ParticipantEditInput, ParticipantInput, ParticipantSearchInput } from "./schema";
 import { DuplicateParticipantEmailError, InvalidParticipantTransitionError } from "./errors";
 import { enqueueNotification } from "@/modules/notifications/jobs";
 import { variablesAccesDirect } from "@/modules/auth/acces-direct";
@@ -90,9 +90,30 @@ function mapInputToData(input: ParticipantInput) {
   } satisfies Prisma.ParticipantUpdateInput;
 }
 
+/**
+ * Champs de la fiche « Modifier » du BackOffice, et eux seuls
+ * (`participantEditSchema`) : une édition ne touche pas à ce que le formulaire
+ * ne montre pas.
+ */
+function mapEditToData(input: ParticipantEditInput) {
+  return {
+    civility: input.civility || null,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    email: input.email.toLowerCase(),
+    phone: input.phone || null,
+    jobTitle: input.jobTitle || null,
+    organization: input.organization || null,
+    organizationType: input.organizationType || null,
+    country: input.country,
+    city: input.city || null,
+    notes: input.notes || null,
+  } satisfies Prisma.ParticipantUpdateInput;
+}
+
 /** Pour `update` uniquement — `create` connecte/omet directement (pas de `disconnect` à la création). */
 function delegationUpdateRelation(
-  input: ParticipantInput,
+  input: Pick<ParticipantInput, "delegationId">,
 ): Prisma.ParticipantUpdateInput["delegation"] {
   return input.delegationId ? { connect: { id: input.delegationId } } : { disconnect: true };
 }
@@ -300,12 +321,12 @@ export async function createParticipant(options: CreateParticipantOptions): Prom
 /** Édition des informations d'un participant sans changer son statut. */
 export async function updateParticipantDetails(
   participantId: string,
-  input: ParticipantInput,
+  input: ParticipantEditInput,
   actor: Actor,
 ): Promise<Participant> {
   const before = await prisma.participant.findUniqueOrThrow({ where: { id: participantId } });
   const updated = await repo.updateParticipant(participantId, {
-    ...mapInputToData(input),
+    ...mapEditToData(input),
     category: { connect: { id: input.categoryId } },
     delegation: delegationUpdateRelation(input),
   });

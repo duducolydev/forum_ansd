@@ -12,6 +12,7 @@ import {
   reactivateParticipant,
   publicIdPrefix,
   statutInitial,
+  updateParticipantDetails,
   type Actor,
 } from "./service";
 import { DuplicateParticipantEmailError, InvalidParticipantTransitionError } from "./errors";
@@ -383,6 +384,67 @@ describe("machine à états des participants (brief §2.3)", () => {
       await expect(reactivateParticipant(participant.id, actor)).rejects.toThrow(
         InvalidParticipantTransitionError,
       );
+    });
+  });
+});
+
+describe("fiche « Modifier » du BackOffice", () => {
+  const emails: string[] = [];
+
+  afterAll(async () => {
+    await prisma.participant.deleteMany({ where: { email: { in: emails } } });
+  });
+
+  it("ne touche qu'aux champs qu'elle montre", async () => {
+    const edition = await prisma.edition.findFirstOrThrow({ where: { code: "FID-2026" } });
+    const [national, invite] = await Promise.all(
+      ["PARTICIPANT_NATIONAL", "INVITE_SPECIAL"].map((code) =>
+        prisma.participantCategory.findFirstOrThrow({ where: { editionId: edition.id, code } }),
+      ),
+    );
+    const email = `fiche-${crypto.randomUUID()}@example.test`;
+    emails.push(email);
+    const participant = await prisma.participant.create({
+      data: {
+        editionId: edition.id,
+        publicId: `FICHE-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+        firstName: "Awa",
+        lastName: "NDIAYE",
+        email,
+        country: "Sénégal",
+        categoryId: national!.id,
+        locale: "pt",
+        attendsOpening: true,
+        attendsClosing: true,
+        needsAccommodation: true,
+        dietaryRequirements: "Végétarien",
+        bio: "Statisticienne",
+      },
+    });
+
+    await updateParticipantDetails(
+      participant.id,
+      {
+        firstName: "Awa",
+        lastName: "NDIAYE",
+        email,
+        country: "Sénégal",
+        categoryId: invite!.id,
+        organization: "ANSD",
+      },
+      actor,
+    );
+
+    const apres = await prisma.participant.findUniqueOrThrow({ where: { id: participant.id } });
+    expect(apres.categoryId).toBe(invite!.id);
+    expect(apres.organization).toBe("ANSD");
+    expect(apres).toMatchObject({
+      locale: "pt",
+      attendsOpening: true,
+      attendsClosing: true,
+      needsAccommodation: true,
+      dietaryRequirements: "Végétarien",
+      bio: "Statisticienne",
     });
   });
 });

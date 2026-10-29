@@ -37,6 +37,31 @@ export const participantInputSchema = z.object({
 
 export type ParticipantInput = z.infer<typeof participantInputSchema>;
 
+/**
+ * Ce que la fiche « Modifier » du BackOffice modifie (29 octobre 2026), et rien
+ * d'autre. Le reste — langue, journées et cérémonies, logistique, régime,
+ * biographie… — vient de l'inscription et ne figure pas dans ce formulaire :
+ * le relire quand même le remettait à zéro à chaque enregistrement (langue
+ * repassée en français, cases décochées, régime effacé).
+ */
+export const participantEditSchema = participantInputSchema.pick({
+  civility: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  phone: true,
+  jobTitle: true,
+  organization: true,
+  organizationType: true,
+  country: true,
+  city: true,
+  categoryId: true,
+  delegationId: true,
+  notes: true,
+});
+
+export type ParticipantEditInput = z.infer<typeof participantEditSchema>;
+
 export const participantStatusValues = [
   "INVITED",
   "INVITATION_SENT",

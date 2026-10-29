@@ -37,7 +37,8 @@ interface Props {
     firstName: string;
     lastName: string;
     email: string;
-    categoryId: string;
+    /** Choisie par le comité ; pas forcément parmi les catégories publiques. */
+    category: RegistrationCategory;
   } | null;
 }
 
@@ -46,7 +47,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
   const formRef = useRef<HTMLFormElement>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [stepError, setStepError] = useState<string | null>(null);
-  const [categoryId, setCategoryId] = useState(invitation?.categoryId ?? "");
+  const [categoryId, setCategoryId] = useState(invitation?.category.id ?? "");
 
   /*
    * Consentements **contrôlés**, contrairement aux autres champs : ce sont des
@@ -65,19 +66,24 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
 
   const [state, formAction, pending] = useActionState(submitRegistrationAction, initialState);
 
-  const selectedCategory = categories.find((category) => category.id === categoryId);
+  const selectedCategory =
+    invitation?.category ?? categories.find((category) => category.id === categoryId);
   const needsLogistics = selectedCategory?.requiresLogistics ?? false;
 
   const steps = REGISTRATION_STEPS.filter((step) => step.key !== "logistics" || needsLogistics);
   const currentStep = steps[stepIndex];
 
   // Brouillon local : restauration au montage, sauvegarde à chaque changement d'étape.
+  const invite = useRef(Boolean(invitation));
   useEffect(() => {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (!raw || !formRef.current) return;
       const draft = JSON.parse(raw) as Record<string, string | string[] | boolean>;
       for (const [name, value] of Object.entries(draft)) {
+        // Adresse et catégorie d'une invitation sont fixées par le comité : un
+        // brouillon laissé sur l'appareil ne doit pas les remplacer.
+        if (invite.current && (name === "email" || name === "categoryId")) continue;
         const field = formRef.current.elements.namedItem(name);
         if (!field) continue;
         if (field instanceof HTMLInputElement && field.type === "checkbox") {
@@ -303,24 +309,43 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
             <label htmlFor="categoryId" className="text-heading text-sm font-semibold">
               Catégorie de participation
             </label>
-            <select
-              id="categoryId"
-              name="categoryId"
-              required
-              value={categoryId}
-              disabled={Boolean(invitation)}
-              onChange={(event) => setCategoryId(event.target.value)}
-              className="border-border bg-surface text-text rounded-lg border px-3 py-2.5 disabled:opacity-70"
-            >
-              <option value="">Choisir…</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.labelFr}
-                </option>
-              ))}
-            </select>
-            {invitation && (
-              <p className="text-text-3 text-xs">Catégorie définie par votre invitation.</p>
+            {invitation ? (
+              /*
+               * Invité (29 octobre 2026) : la catégorie est préremplie et
+               * affichée en lecture seule ; c'est le champ caché qui l'envoie.
+               * Elle passait par une liste désactivée, qu'un formulaire
+               * n'envoie jamais : l'étape la croyait vide, « requise », et
+               * l'invité ne pouvait plus avancer.
+               */
+              <>
+                <input type="hidden" name="categoryId" value={invitation.category.id} />
+                <input
+                  id="categoryId"
+                  value={invitation.category.labelFr}
+                  readOnly
+                  aria-describedby="categorie-invitation"
+                  className="border-border bg-surface text-text rounded-lg border px-3 py-2.5 read-only:opacity-70"
+                />
+                <p id="categorie-invitation" className="text-text-3 text-xs">
+                  Cette catégorie a été définie par le comité d&apos;organisation.
+                </p>
+              </>
+            ) : (
+              <select
+                id="categoryId"
+                name="categoryId"
+                required
+                value={categoryId}
+                onChange={(event) => setCategoryId(event.target.value)}
+                className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
+              >
+                <option value="">Choisir…</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.labelFr}
+                  </option>
+                ))}
+              </select>
             )}
           </div>
         </div>
