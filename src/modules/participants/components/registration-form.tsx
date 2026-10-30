@@ -515,22 +515,6 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
             réponse inattendue. Vos réponses sont conservées sur cette page ; réessayez dans un
             instant.
           </p>
-          {photo && (
-            <>
-              <p>
-                Si l&apos;échec se répète, envoyez votre inscription sans la photo : vous pourrez
-                l&apos;ajouter ensuite depuis « Mon espace ».
-              </p>
-              <button
-                type="button"
-                onClick={() => envoyer(false)}
-                disabled={pending}
-                className="border-danger-text hover:bg-surface transition-tout rounded-lg border px-3.5 py-2 font-semibold disabled:opacity-60"
-              >
-                Envoyer sans la photo
-              </button>
-            </>
-          )}
         </div>
       )}
       {state.duplicateEmail && (
