@@ -16,7 +16,29 @@ import { PhotoField } from "./photo-field";
 import { ChampTelephone } from "@/components/ui/champ-telephone";
 
 const DRAFT_KEY = "forum-ansd:registration-draft";
-const initialState: RegistrationState = {};
+
+/** L'état renvoyé par le serveur, plus un envoi qui n'a pas abouti. */
+type EtatEnvoi = RegistrationState & { envoiInterrompu?: boolean };
+const initialState: EtatEnvoi = {};
+
+/**
+ * Envoi qui ne fait jamais tomber la page (30 octobre 2026).
+ *
+ * L'action ne lève rien : ses refus reviennent comme des états. Mais la requête
+ * peut échouer avant d'atteindre l'application, ou sa réponse être remplacée en
+ * chemin (coupure réseau, page d'erreur d'un équipement intermédiaire). Next
+ * lève alors « An unexpected response was received from the server », et
+ * l'erreur remontait jusqu'à la page : « Application error », formulaire perdu,
+ * photo et consentements compris. Constaté le 29 octobre 2026 au clic sur
+ * « Envoyer », sur téléphone comme sur ordinateur.
+ */
+async function envoyerInscription(precedent: EtatEnvoi, donnees: FormData): Promise<EtatEnvoi> {
+  try {
+    return await submitRegistrationAction(precedent, donnees);
+  } catch {
+    return { envoiInterrompu: true };
+  }
+}
 
 export interface RegistrationCategory {
   id: string;
@@ -64,7 +86,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
   /** Photo de badge, déjà recadrée en carré par `PhotoField`. */
   const [photo, setPhoto] = useState<File | null>(null);
 
-  const [state, formAction, pending] = useActionState(submitRegistrationAction, initialState);
+  const [state, formAction, pending] = useActionState(envoyerInscription, initialState);
 
   const selectedCategory =
     invitation?.category ?? categories.find((category) => category.id === categoryId);
@@ -185,18 +207,26 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
    *
    * Les consentements sont en outre réécrits depuis l'état React, qui fait
    * autorité pour ces trois valeurs.
+   *
+   * Sans la photo, après un envoi interrompu : c'est le seul contenu binaire de
+   * la requête, et elle est facultative — elle s'ajoute ensuite depuis
+   * « Mon espace ».
    */
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function envoyer(avecPhoto: boolean) {
     if (!formRef.current) return;
 
     const data = new FormData(formRef.current);
     data.set("consentTerms", consents.consentTerms ? "on" : "off");
     data.set("consentData", consents.consentData ? "on" : "off");
     data.set("consentImage", consents.consentImage ? "on" : "off");
-    if (photo) data.set("photo", photo);
+    if (photo && avecPhoto) data.set("photo", photo);
 
     startTransition(() => formAction(data));
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    envoyer(true);
   }
 
   function goNext() {
@@ -475,6 +505,34 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
       {state.error && currentStep.key === "consent" && (
         <p className="text-danger-text text-sm">{state.error}</p>
       )}
+      {state.envoiInterrompu && currentStep.key === "consent" && (
+        <div
+          role="alert"
+          className="border-danger-text bg-danger-soft text-danger-text flex flex-col items-start gap-2.5 rounded-lg border p-3.5 text-sm"
+        >
+          <p>
+            L&apos;envoi n&apos;a pas abouti : la connexion a été coupée ou le serveur a renvoyé une
+            réponse inattendue. Vos réponses sont conservées sur cette page ; réessayez dans un
+            instant.
+          </p>
+          {photo && (
+            <>
+              <p>
+                Si l&apos;échec se répète, envoyez votre inscription sans la photo : vous pourrez
+                l&apos;ajouter ensuite depuis « Mon espace ».
+              </p>
+              <button
+                type="button"
+                onClick={() => envoyer(false)}
+                disabled={pending}
+                className="border-danger-text hover:bg-surface transition-tout rounded-lg border px-3.5 py-2 font-semibold disabled:opacity-60"
+              >
+                Envoyer sans la photo
+              </button>
+            </>
+          )}
+        </div>
+      )}
       {state.duplicateEmail && (
         <p className="border-warn-text bg-warn-soft text-warn-text rounded-lg border p-3.5 text-sm">
           Cette adresse e-mail est déjà inscrite. Utilisez{" "}
@@ -495,8 +553,17 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
           <ArrowLeft aria-hidden size={16} strokeWidth={2.2} />
           Précédent
         </button>
+        {/*
+          Une clé par bouton (30 octobre 2026) : sans elle, React gardait le
+          même élément et passait son `type` de « button » à « submit » pendant
+          le clic sur « Continuer ». Le navigateur achevait alors ce clic comme
+          celui d'un bouton d'envoi : le formulaire partait dès l'arrivée sur
+          la dernière étape, consentements décochés et photo comprise — une
+          erreur s'affichait avant même le clic sur « Envoyer ».
+        */}
         {stepIndex < steps.length - 1 ? (
           <button
+            key="continuer"
             type="button"
             onClick={goNext}
             className="bg-primary text-primary-text hover:bg-primary-hover transition-tout inline-flex items-center gap-2 rounded-lg px-4.5 py-2.5 font-semibold shadow-sm hover:shadow-lg"
@@ -506,6 +573,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
           </button>
         ) : (
           <button
+            key="envoyer"
             type="submit"
             disabled={pending}
             className="bg-primary text-primary-text hover:bg-primary-hover transition-tout inline-flex items-center gap-2 rounded-lg px-4.5 py-2.5 font-semibold shadow-sm hover:shadow-lg disabled:opacity-60"
