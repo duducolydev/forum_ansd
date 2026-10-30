@@ -14,6 +14,8 @@
 #   6. relecture des migrations (pnpm migrations:verifier) : une migration qui
 #      supprimerait ou réécrirait des données arrête tout, avant la base ;
 #   7. redémarrage de l'application, puis `prisma migrate deploy` ;
+#      nginx est recréé si sa configuration en service diffère de celle du
+#      dépôt, après un `nginx -t` réussi ;
 #   8. second comptage : une table qui a perdu des lignes est signalée, avec la
 #      sauvegarde à restaurer.
 #
@@ -134,6 +136,41 @@ for _ in $(seq 1 60); do
 done
 forum exec -T app wget --spider -q http://127.0.0.1:3000/api/health 2>/dev/null ||
   alerte "L'application ne répond pas encore : forum logs -f app"
+
+# nginx reçoit ses fichiers de configuration montés un par un. `git pull` les
+# remplace par de nouveaux fichiers, le conteneur garde donc l'ancien contenu,
+# même après un `nginx -s reload`, et `forum up -d app` ne le touche pas. C'est
+# ainsi que la correction `real_ip` du 30 octobre 2026 est restée sans effet.
+#
+# On compare ce que nginx sert à ce que porte le dépôt, et non le diff du pull :
+# un écart laissé par un déploiement antérieur est rattrapé aussi. Les paires
+# reprennent les volumes du service nginx dans docker-compose.prod.yml.
+NGINX_CONFS=(
+  "docker/nginx.conf:/etc/nginx/conf.d/default.conf"
+  "docker/nginx-sisephasaoc.conf:/etc/nginx/conf.d/sisephasaoc.conf"
+)
+nginx_a_jour=1
+for paire in "${NGINX_CONFS[@]}"; do
+  if ! forum exec -T nginx cat "${paire#*:}" 2>/dev/null | cmp -s - "${paire%%:*}"; then
+    nginx_a_jour=0
+  fi
+done
+
+if [ "$nginx_a_jour" -eq 1 ]; then
+  ok "nginx : configuration du dépôt déjà en service"
+else
+  info "Configuration nginx modifiée : vérification…"
+  # Conteneur jetable, sans ports publiés : le nginx en service n'est pas
+  # touché si la nouvelle configuration est refusée.
+  if verification="$(forum run --rm --no-deps -T nginx nginx -t 2>&1)"; then
+    # Le portail et SISEP sont coupés une seconde.
+    forum up -d --force-recreate --no-deps nginx
+    ok "nginx recréé : nouvelle configuration en service"
+  else
+    printf '%s\n' "$verification" >&2
+    alerte "nginx -t refuse la nouvelle configuration : l'ancienne reste en service. Corriger docker/nginx*.conf puis relancer."
+  fi
+fi
 
 # --- 8. Comptage après ------------------------------------------------------------------------------
 declare -A APRES
