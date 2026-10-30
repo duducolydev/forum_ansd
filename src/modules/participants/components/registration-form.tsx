@@ -306,7 +306,11 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
 
       <div hidden={currentStep.key !== "identity"} className="etape-panneau">
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
-          <Select label="Civilité" name="civility" options={["", "Madame", "Monsieur"]} />
+          <Select
+            label="Civilité"
+            name="civility"
+            options={["", "Madame", "Monsieur", "Dr", "Pr", "SE"]}
+          />
           <div />
           <Field label="Prénom" name="firstName" defaultValue={invitation?.firstName} required />
           <Field label="Nom" name="lastName" defaultValue={invitation?.lastName} required />

@@ -295,6 +295,7 @@ export function OnsiteDesk({
                 <option value="Mme">Mme</option>
                 <option value="Dr">Dr</option>
                 <option value="Pr">Pr</option>
+                <option value="SE">SE</option>
               </select>
             </div>
             <div>
