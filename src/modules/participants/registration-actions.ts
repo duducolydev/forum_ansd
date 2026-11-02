@@ -6,6 +6,7 @@ import { getActiveEdition } from "@/lib/edition";
 import { registrationSchema } from "./registration-schema";
 import { registerPublicParticipant } from "./registration-service";
 import { adresseClient } from "@/lib/adresse-client";
+import { messageAttente, traduireErreur } from "./registration-i18n";
 
 export interface RegistrationState {
   error?: string;
@@ -19,18 +20,23 @@ async function clientIp(): Promise<string> {
   return adresseClient(await headers());
 }
 
-function firstFieldError(error: unknown): string {
+function firstFieldError(error: unknown, langue: string): string {
   if (error && typeof error === "object" && "issues" in error) {
     const issues = (error as { issues: { message: string }[] }).issues;
-    if (issues?.[0]) return issues[0].message;
+    if (issues?.[0]) return traduireErreur(langue, issues[0].message);
   }
-  return error instanceof Error ? error.message : "Une erreur est survenue.";
+  return traduireErreur(
+    langue,
+    error instanceof Error ? error.message : "Une erreur est survenue.",
+  );
 }
 
 export async function submitRegistrationAction(
   _prevState: RegistrationState,
   formData: FormData,
 ): Promise<RegistrationState> {
+  // Lue avant la validation : une saisie refusée doit l'être dans la langue du visiteur.
+  const langue = lireLangue(formData.get("locale"));
   try {
     const input = registrationSchema.parse({
       civility: formData.get("civility") ?? undefined,
@@ -40,7 +46,7 @@ export async function submitRegistrationAction(
       phone: formData.get("phone") ?? undefined,
       country: formData.get("country"),
       city: formData.get("city") ?? undefined,
-      locale: lireLangue(formData.get("locale")),
+      locale: langue,
       categoryId: formData.get("categoryId"),
       organization: formData.get("organization") ?? undefined,
       organizationType: formData.get("organizationType") ?? undefined,
@@ -88,11 +94,15 @@ export async function submitRegistrationAction(
       case "DUPLICATE_EMAIL":
         return { duplicateEmail: true };
       case "RATE_LIMITED":
-        return {
-          error: `Trop de tentatives. Réessayez dans ${result.retryAfterSeconds} seconde(s).`,
-        };
+        return { error: messageAttente(langue, result.retryAfterSeconds) };
       case "CAPTCHA_FAILED":
-        return { error: "Vérification anti-robot échouée. Réessayez." };
+        return {
+          error: selon(langue, {
+            fr: "Vérification anti-robot échouée. Réessayez.",
+            en: "Anti-robot check failed. Please try again.",
+            pt: "A verificação anti-robô falhou. Tente novamente.",
+          }),
+        };
       case "CLOSED":
         // Le message vient des paramètres de l'édition, dans la langue du visiteur.
         return { error: result.message };
@@ -105,9 +115,9 @@ export async function submitRegistrationAction(
           }),
         };
       case "REJECTED":
-        return { error: "Requête rejetée." };
+        return { error: `${traduireErreur(langue, "Requête rejetée")}.` };
     }
   } catch (error) {
-    return { error: firstFieldError(error) };
+    return { error: firstFieldError(error, langue) };
   }
 }

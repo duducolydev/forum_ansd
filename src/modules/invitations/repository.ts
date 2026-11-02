@@ -25,23 +25,34 @@ export interface InvitationListFilters {
   q?: string;
   status?: InvitationStatus;
   categoryId?: string;
+  country?: string;
   page: number;
   pageSize: number;
 }
 
+/**
+ * Chaque mot cherché doit se retrouver dans l'un des champs : « Alioune SENE »
+ * trouve la personne alors que ni le prénom ni le nom ne contiennent la
+ * chaîne entière.
+ */
 function buildWhere(filters: InvitationListFilters): Prisma.InvitationWhereInput {
+  const mots = filters.q?.split(/\s+/).filter(Boolean) ?? [];
   return {
     editionId: filters.editionId,
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
-    ...(filters.q
+    ...(filters.country ? { country: filters.country } : {}),
+    ...(mots.length > 0
       ? {
-          OR: [
-            { firstName: { contains: filters.q } },
-            { lastName: { contains: filters.q } },
-            { email: { contains: filters.q } },
-            { organization: { contains: filters.q } },
-          ],
+          AND: mots.map((mot) => ({
+            OR: [
+              { firstName: { contains: mot } },
+              { lastName: { contains: mot } },
+              { email: { contains: mot } },
+              { organization: { contains: mot } },
+              { country: { contains: mot } },
+            ],
+          })),
         }
       : {}),
   };
@@ -116,8 +127,28 @@ export async function listPendingInvitations(
   });
 }
 
-export async function countPendingInvitations(editionId: string): Promise<number> {
-  return prisma.invitation.count({ where: { editionId, status: "PENDING" } });
+export async function countPendingInvitations(
+  editionId: string,
+  filters: { categoryId?: string; country?: string },
+): Promise<number> {
+  return prisma.invitation.count({
+    where: {
+      editionId,
+      status: "PENDING",
+      ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+      ...(filters.country ? { country: filters.country } : {}),
+    },
+  });
+}
+
+/** Pays présents dans les invitations de l'édition, pour le filtre de la liste. */
+export async function listInvitationCountries(editionId: string): Promise<string[]> {
+  const groupes = await prisma.invitation.groupBy({
+    by: ["country"],
+    where: { editionId, country: { not: null } },
+    orderBy: { country: "asc" },
+  });
+  return groupes.flatMap((groupe) => (groupe.country?.trim() ? [groupe.country] : []));
 }
 
 export async function listRemindableInvitations(

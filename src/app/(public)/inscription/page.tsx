@@ -22,8 +22,8 @@ export async function generateMetadata() {
 }
 
 /** Journées du Forum, dérivées des dates de l'édition (pas de dates en dur). */
-function buildDays(start: Date, end: Date): RegistrationDay[] {
-  const formatter = new Intl.DateTimeFormat("fr-FR", {
+function buildDays(start: Date, end: Date, locale: string): RegistrationDay[] {
+  const formatter = new Intl.DateTimeFormat(localeIntl(locale), {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -71,6 +71,8 @@ export default async function RegisterPage({
           category: {
             id: invitation.category.id,
             labelFr: invitation.category.labelFr,
+            labelEn: invitation.category.labelEn,
+            labelPt: invitation.category.labelPt,
             requiresLogistics: invitation.category.requiresLogistics,
           },
         }
@@ -248,9 +250,11 @@ export default async function RegisterPage({
           categories={categories.map((category) => ({
             id: category.id,
             labelFr: category.labelFr,
+            labelEn: category.labelEn,
+            labelPt: category.labelPt,
             requiresLogistics: category.requiresLogistics,
           }))}
-          days={buildDays(edition.startDate, edition.endDate)}
+          days={buildDays(edition.startDate, edition.endDate, locale)}
           invitation={usableInvitation}
         />
       </CorpsPage>

@@ -11,20 +11,27 @@ const etatInitial: ActionState = {};
 /**
  * Envois de la page Invitations (PLAN.md §22) : la campagne et les relances.
  *
- * Un seul jeu de filtres pour les deux : une campagne se lance catégorie par
- * catégorie ou pays par pays, ce qui est le seul moyen de rester sous le quota
- * quotidien de la boîte d'envoi.
+ * Un seul jeu de filtres pour les deux, celui de la liste (`InvitationsToolbar`) :
+ * une campagne se lance catégorie par catégorie ou pays par pays, ce qui est le
+ * seul moyen de rester sous le quota quotidien de la boîte d'envoi. Seuls la
+ * catégorie et le pays la ciblent ; la recherche et le statut ne filtrent que
+ * l'affichage.
  *
  * La campagne demande **confirmation** : un millier de courriels partis ne se
  * rappellent pas. La relance, elle, est bornée par le code (trois par personne).
  */
 export function FormulaireEnvois({
-  categories,
+  categoryId,
+  categorie,
+  country,
   enAttente,
   envoisParMinute,
 }: {
-  categories: { id: string; labelFr: string }[];
-  /** Invitations jamais envoyées, toutes catégories confondues. */
+  categoryId: string;
+  /** Libellé de la catégorie filtrée, pour annoncer la cible. */
+  categorie?: string;
+  country: string;
+  /** Invitations jamais envoyées dans la catégorie et le pays filtrés. */
   enAttente: number;
   envoisParMinute: number;
 }) {
@@ -35,15 +42,13 @@ export function FormulaireEnvois({
   const formulaire = useRef<HTMLFormElement>(null);
   const [etatCampagne, setEtatCampagne] = useState<ActionState>(etatInitial);
   const [campagneEnCours, lancerCampagne] = useTransition();
+  const cible = [categorie, country].filter(Boolean).join(" · ");
 
   // Gestionnaire volontairement synchrone : un `onClick` déclaré `async` renvoie
   // une promesse que React ignore.
   function envoyerLesEnAttente() {
     if (!formulaire.current) return;
     const donnees = new FormData(formulaire.current);
-    const categorie = categories.find((c) => c.id === donnees.get("categoryId"))?.labelFr;
-    const pays = String(donnees.get("country") ?? "").trim();
-    const cible = [categorie, pays].filter(Boolean).join(" · ");
 
     void confirmer({
       titre: "Envoyer les invitations en attente ?",
@@ -59,34 +64,8 @@ export function FormulaireEnvois({
 
   return (
     <form ref={formulaire} action={actionRelance} className="flex flex-wrap items-end gap-2">
-      <div className="flex flex-col gap-1">
-        <label htmlFor="envois-category" className="text-text-3 text-xs font-semibold">
-          Catégorie
-        </label>
-        <select
-          id="envois-category"
-          name="categoryId"
-          className="border-border bg-surface text-text rounded-lg border px-3 py-2 text-sm"
-        >
-          <option value="">Toutes</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.labelFr}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="envois-country" className="text-text-3 text-xs font-semibold">
-          Pays
-        </label>
-        <input
-          id="envois-country"
-          name="country"
-          placeholder="Tous"
-          className="border-border bg-surface text-text rounded-lg border px-3 py-2 text-sm"
-        />
-      </div>
+      <input type="hidden" name="categoryId" value={categoryId} />
+      <input type="hidden" name="country" value={country} />
 
       <Bouton
         ton="principal"
@@ -105,6 +84,8 @@ export function FormulaireEnvois({
       </Bouton>
 
       <p className="text-text-3 w-full text-xs">
+        Cible des envois : <b className="text-text-2">{cible || "toutes les invitations"}</b>{" "}
+        (catégorie et pays filtrés ci-dessus ; la recherche et le statut ne s&apos;appliquent pas).
         Les envois sont étalés à {envoisParMinute} par minute pour ménager la boîte d&apos;envoi.
         Une boîte ordinaire plafonne souvent à quelques centaines de messages par jour : lancer la
         campagne par catégorie permet de rester sous cette limite.

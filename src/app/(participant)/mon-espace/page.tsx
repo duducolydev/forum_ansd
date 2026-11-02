@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import { lireLangue, localeIntl, selon, traduire } from "@/lib/langue";
 import type { LucideIcon } from "lucide-react";
 import {
   BadgeCheck,
@@ -35,18 +36,22 @@ export async function generateMetadata() {
 /** Toujours dynamique : le contenu dépend du cookie de session participant. */
 export const dynamic = "force-dynamic";
 
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "Africa/Dakar",
-});
-
-const timeFormatter = new Intl.DateTimeFormat("fr-FR", {
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "Africa/Dakar",
-});
+/** Dates et heures dans la langue du visiteur, à l'heure de Dakar. */
+function formateurs(langue: string) {
+  return {
+    date: new Intl.DateTimeFormat(localeIntl(langue), {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "Africa/Dakar",
+    }),
+    heure: new Intl.DateTimeFormat(localeIntl(langue), {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Africa/Dakar",
+    }),
+  };
+}
 
 /**
  * Panneau de l'espace participant.
@@ -87,6 +92,8 @@ export default async function MySpacePage({
   const { erreur } = await searchParams;
   const session = await getParticipantSession();
   const participant = session ? await getMySpaceData(session.participantId) : null;
+  const langue = lireLangue(await getLocale());
+  const t = (textes: { fr: string; en: string; pt: string }) => selon(langue, textes);
 
   if (!participant) {
     return (
@@ -100,7 +107,7 @@ export default async function MySpacePage({
               >
                 <BadgeCheck size={20} strokeWidth={2.1} />
               </span>
-              Mon espace
+              {t({ fr: "Mon espace", en: "My space", pt: "O meu espaço" })}
             </h1>
           </div>
         </BandeauPage>
@@ -108,16 +115,27 @@ export default async function MySpacePage({
         <CorpsPage largeur="etroit">
           {/* Consigne sous le bandeau, qui ne porte plus que le titre (29 septembre 2026). */}
           <p className="text-text-2 mx-auto mb-6 max-w-[68ch] text-center">
-            Pas de mot de passe : indiquez votre adresse e-mail, nous vous envoyons un lien
-            d&apos;accès valable 30 minutes.
+            {t({
+              fr: "Pas de mot de passe : indiquez votre adresse e-mail, nous vous envoyons un lien d'accès valable 30 minutes.",
+              en: "No password: enter your email address and we will send you an access link valid for 30 minutes.",
+              pt: "Sem palavra-passe: indique o seu endereço de e-mail e enviamos-lhe uma ligação de acesso válida durante 30 minutos.",
+            })}
           </p>
           <div className="border-border bg-surface rounded-2xl border p-7 shadow-sm">
             <MagicLinkForm linkError={erreur === "lien"} />
           </div>
           <p className="text-text-3 mt-8 text-center text-sm">
-            Pas encore inscrit&nbsp;?{" "}
+            {t({
+              fr: "Pas encore inscrit\u00a0?",
+              en: "Not registered yet?",
+              pt: "Ainda não está inscrito?",
+            })}{" "}
             <LienSite href="/inscription" ton="discret" taille="compact">
-              Remplir le formulaire
+              {t({
+                fr: "Remplir le formulaire",
+                en: "Fill in the form",
+                pt: "Preencher o formulário",
+              })}
             </LienSite>
           </p>
         </CorpsPage>
@@ -135,7 +153,8 @@ export default async function MySpacePage({
       <>
         <BandeauPage largeur="moyen" reseau={false}>
           <h1>
-            Bonjour {participant.firstName} {participant.lastName}
+            {t({ fr: "Bonjour", en: "Hello", pt: "Olá" })} {participant.firstName}{" "}
+            {participant.lastName}
           </h1>
         </BandeauPage>
         <span data-sans-curseur hidden />
@@ -143,19 +162,27 @@ export default async function MySpacePage({
           <Panneau
             icone={Newspaper}
             ton="bg-gold-soft text-gold-text"
-            titre="Accréditation presse en cours"
+            titre={t({
+              fr: "Accréditation presse en cours",
+              en: "Press accreditation in progress",
+              pt: "Acreditação de imprensa em curso",
+            })}
           >
             <p className="text-text-2 leading-relaxed">
-              Votre demande d&apos;accréditation presse est bien enregistrée. Votre compte sera
-              activé dès que l&apos;administration du Forum aura accordé votre accréditation : vous
-              recevrez alors un e-mail avec un accès direct à cet espace, où vous retrouverez votre
-              badge presse.
+              {t({
+                fr: "Votre demande d'accréditation presse est bien enregistrée. Votre compte sera activé dès que l'administration du Forum aura accordé votre accréditation : vous recevrez alors un e-mail avec un accès direct à cet espace, où vous retrouverez votre badge presse.",
+                en: "Your press accreditation request has been recorded. Your account will be activated as soon as the Forum administration grants your accreditation: you will then receive an email with direct access to this space, where you will find your press badge.",
+                pt: "O seu pedido de acreditação de imprensa foi registado. A sua conta será ativada assim que a administração do Fórum conceder a sua acreditação: receberá então um e-mail com acesso direto a este espaço, onde encontrará o seu crachá de imprensa.",
+              })}
             </p>
-            <p className="text-text-3 mt-3 text-sm">N° de dossier : {participant.publicId}</p>
+            <p className="text-text-3 mt-3 text-sm">
+              {t({ fr: "N° de dossier", en: "File number", pt: "N.º de processo" })} :{" "}
+              {participant.publicId}
+            </p>
           </Panneau>
           <form action={logoutAction}>
             <BoutonSite type="submit" taille="compact" icone={LogOut}>
-              Se déconnecter
+              {t({ fr: "Se déconnecter", en: "Sign out", pt: "Terminar sessão" })}
             </BoutonSite>
           </form>
         </CorpsPage>
@@ -164,6 +191,7 @@ export default async function MySpacePage({
   }
 
   const editable = canEditNow(participant.edition.startDate);
+  const { date: dateFormatter, heure: timeFormatter } = formateurs(langue);
   const deadlineLabel = dateFormatter.format(editDeadline(participant.edition.startDate));
   const badge = participant.badges.find((item) => !item.revokedAt) ?? null;
   const isDelegationHead = participant.delegation?.headParticipantId === participant.id;
@@ -172,7 +200,8 @@ export default async function MySpacePage({
     <>
       <BandeauPage largeur="moyen" reseau={false}>
         <h1>
-          Bonjour {participant.firstName} {participant.lastName}
+          {t({ fr: "Bonjour", en: "Hello", pt: "Olá" })} {participant.firstName}{" "}
+          {participant.lastName}
         </h1>
       </BandeauPage>
 
@@ -182,19 +211,31 @@ export default async function MySpacePage({
         {/* Statut et déconnexion sous le bandeau, qui ne porte plus que le titre. */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="text-text-2 flex flex-wrap items-center gap-2">
-            <StatusBadge status={participant.status} />
-            <span>{participant.category.labelFr}</span>
+            <StatusBadge status={participant.status} langue={langue} />
+            <span>
+              {traduire(langue, {
+                fr: participant.category.labelFr,
+                en: participant.category.labelEn,
+                pt: participant.category.labelPt,
+              })}
+            </span>
             <span className="text-text-3">·</span>
-            <span className="text-text-3">N° {participant.publicId}</span>
+            <span className="text-text-3">
+              {t({ fr: "N°", en: "No.", pt: "N.º" })} {participant.publicId}
+            </span>
           </p>
           <form action={logoutAction}>
             <BoutonSite type="submit" taille="compact" icone={LogOut}>
-              Se déconnecter
+              {t({ fr: "Se déconnecter", en: "Sign out", pt: "Terminar sessão" })}
             </BoutonSite>
           </form>
         </div>
         <Reveal>
-          <Panneau icone={BadgeCheck} ton="bg-accent-soft text-accent-text" titre="Mon badge">
+          <Panneau
+            icone={BadgeCheck}
+            ton="bg-accent-soft text-accent-text"
+            titre={t({ fr: "Mon badge", en: "My badge", pt: "O meu crachá" })}
+          >
             {badge?.pdfPath ? (
               <div className="flex flex-wrap items-center gap-5">
                 {badge.pngPath && (
@@ -202,7 +243,11 @@ export default async function MySpacePage({
                   /* eslint-disable-next-line @next/next/no-img-element -- servie par une route contrôlée et authentifiée */
                   <img
                     src={`/api/v1/badges/${badge.id}/png`}
-                    alt="Aperçu de mon badge"
+                    alt={t({
+                      fr: "Aperçu de mon badge",
+                      en: "Preview of my badge",
+                      pt: "Pré-visualização do meu crachá",
+                    })}
                     className="zoom-entree border-border h-44 w-auto rounded-xl border bg-white shadow-sm"
                   />
                 )}
@@ -212,11 +257,15 @@ export default async function MySpacePage({
                     ton="principal"
                     icone={Download}
                   >
-                    Télécharger le badge (PDF)
+                    {t({
+                      fr: "Télécharger le badge (PDF)",
+                      en: "Download the badge (PDF)",
+                      pt: "Descarregar o crachá (PDF)",
+                    })}
                   </LienSiteExterne>
                   {badge.pngPath && (
                     <LienSiteExterne href={`/api/v1/badges/${badge.id}/png`} icone={FileImage}>
-                      Version PNG
+                      {t({ fr: "Version PNG", en: "PNG version", pt: "Versão PNG" })}
                     </LienSiteExterne>
                   )}
                 </div>
@@ -224,21 +273,31 @@ export default async function MySpacePage({
             ) : badge ? (
               <p className="text-text-2 flex items-start gap-2">
                 <Clock aria-hidden size={16} className="text-text-3 mt-1 shrink-0" />
-                Votre badge est en cours de génération. Vous recevrez un e-mail dès qu&apos;il sera
-                disponible.
+                {t({
+                  fr: "Votre badge est en cours de génération. Vous recevrez un e-mail dès qu'il sera disponible.",
+                  en: "Your badge is being generated. You will receive an email as soon as it is available.",
+                  pt: "O seu crachá está a ser gerado. Receberá um e-mail assim que estiver disponível.",
+                })}
               </p>
             ) : (
               <p className="text-text-2 flex items-start gap-2">
                 <Clock aria-hidden size={16} className="text-text-3 mt-1 shrink-0" />
-                Votre badge sera généré dès la confirmation de votre inscription par le comité
-                d&apos;organisation.
+                {t({
+                  fr: "Votre badge sera généré dès la confirmation de votre inscription par le comité d'organisation.",
+                  en: "Your badge will be generated as soon as the organising committee confirms your registration.",
+                  pt: "O seu crachá será gerado assim que a comissão organizadora confirmar a sua inscrição.",
+                })}
               </p>
             )}
           </Panneau>
         </Reveal>
 
         <Reveal delai={60}>
-          <Panneau icone={Camera} ton="bg-blue-soft text-blue-text" titre="Ma photo">
+          <Panneau
+            icone={Camera}
+            ton="bg-blue-soft text-blue-text"
+            titre={t({ fr: "Ma photo", en: "My photo", pt: "A minha fotografia" })}
+          >
             <PhotoForm
               participantId={participant.id}
               photoEnregistree={Boolean(participant.photoPath)}
@@ -247,7 +306,11 @@ export default async function MySpacePage({
         </Reveal>
 
         <Reveal delai={120}>
-          <Panneau icone={UserPen} ton="bg-gold-soft text-gold-text" titre="Mes informations">
+          <Panneau
+            icone={UserPen}
+            ton="bg-gold-soft text-gold-text"
+            titre={t({ fr: "Mes informations", en: "My details", pt: "Os meus dados" })}
+          >
             <MyInfoForm
               email={participant.email}
               editable={editable}
@@ -268,16 +331,27 @@ export default async function MySpacePage({
         </Reveal>
 
         <Reveal delai={180}>
-          <Panneau icone={CalendarDays} ton="bg-blue-soft text-blue-text" titre="Mes sessions">
+          <Panneau
+            icone={CalendarDays}
+            ton="bg-blue-soft text-blue-text"
+            titre={t({ fr: "Mes sessions", en: "My sessions", pt: "As minhas sessões" })}
+          >
             {participant.sessionRegistrations.length === 0 ? (
               <>
                 <p className="text-text-2">
-                  Aucune session réservée. Le programme détaillé et la réservation de sessions
-                  seront ouverts prochainement.
+                  {t({
+                    fr: "Aucune session réservée. Le programme détaillé et la réservation de sessions seront ouverts prochainement.",
+                    en: "No sessions booked. The detailed programme and session booking will open soon.",
+                    pt: "Nenhuma sessão reservada. O programa detalhado e a reserva de sessões abrirão em breve.",
+                  })}
                 </p>
                 <div className="mt-4">
                   <LienSite href="/programme" taille="compact" icone={CalendarDays}>
-                    Parcourir le programme
+                    {t({
+                      fr: "Parcourir le programme",
+                      en: "Browse the programme",
+                      pt: "Consultar o programa",
+                    })}
                   </LienSite>
                 </div>
               </>
@@ -288,13 +362,20 @@ export default async function MySpacePage({
                     key={registration.id}
                     className="border-border flex flex-col gap-1 border-b pb-3 last:border-0 last:pb-0"
                   >
-                    <b className="text-heading">{registration.session.titleFr}</b>
+                    <b className="text-heading">
+                      {traduire(langue, {
+                        fr: registration.session.titleFr,
+                        en: registration.session.titleEn,
+                        pt: registration.session.titlePt,
+                      })}
+                    </b>
                     <span className="text-text-3 flex items-center gap-1.5 text-sm">
                       <Clock aria-hidden size={13} />
                       {dateFormatter.format(registration.session.day)} ·{" "}
                       {timeFormatter.format(registration.session.startTime)}–
                       {timeFormatter.format(registration.session.endTime)}
-                      {registration.status === "WAITLISTED" && " · liste d'attente"}
+                      {registration.status === "WAITLISTED" &&
+                        ` · ${t({ fr: "liste d'attente", en: "waiting list", pt: "lista de espera" })}`}
                     </span>
                   </li>
                 ))}
@@ -310,9 +391,17 @@ export default async function MySpacePage({
         */}
         {participant.delegation?.referent && (
           <Reveal delai={210}>
-            <Panneau icone={UserRoundCheck} ton="bg-blue-soft text-blue-text" titre="Mon référent">
+            <Panneau
+              icone={UserRoundCheck}
+              ton="bg-blue-soft text-blue-text"
+              titre={t({ fr: "Mon référent", en: "My contact person", pt: "O meu referente" })}
+            >
               <p className="text-text-3 mb-3 text-sm">
-                Votre interlocuteur au sein du comité d&apos;organisation pour la délégation{" "}
+                {t({
+                  fr: "Votre interlocuteur au sein du comité d'organisation pour la délégation",
+                  en: "Your contact on the organising committee for the delegation",
+                  pt: "O seu interlocutor na comissão organizadora para a delegação",
+                })}{" "}
                 {participant.delegation.name}.
               </p>
               <p className="text-heading font-semibold">
@@ -353,10 +442,14 @@ export default async function MySpacePage({
             <Panneau
               icone={Users}
               ton="bg-accent-soft text-accent-text"
-              titre={`Ma délégation — ${participant.delegation.name}`}
+              titre={`${t({ fr: "Ma délégation", en: "My delegation", pt: "A minha delegação" })} — ${participant.delegation.name}`}
             >
               <p className="text-text-3 mb-4 text-sm">
-                Vous êtes chef de délégation. {participant.delegation.members.length} membre(s).
+                {t({
+                  fr: `Vous êtes chef de délégation. ${participant.delegation.members.length} membre(s).`,
+                  en: `You are the head of delegation. ${participant.delegation.members.length} member(s).`,
+                  pt: `É o chefe da delegação. ${participant.delegation.members.length} membro(s).`,
+                })}
               </p>
               <ul className="flex flex-col gap-2">
                 {participant.delegation.members.map((member) => (
@@ -364,8 +457,10 @@ export default async function MySpacePage({
                     <span className="text-heading">
                       {member.firstName} {member.lastName}
                     </span>
-                    <StatusBadge status={member.status} />
-                    <span className="text-text-3 text-sm">N° {member.publicId}</span>
+                    <StatusBadge status={member.status} langue={langue} />
+                    <span className="text-text-3 text-sm">
+                      {t({ fr: "N°", en: "No.", pt: "N.º" })} {member.publicId}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -377,7 +472,11 @@ export default async function MySpacePage({
           <Panneau
             icone={ShieldAlert}
             ton="bg-danger-soft text-danger-text"
-            titre="Mes données personnelles"
+            titre={t({
+              fr: "Mes données personnelles",
+              en: "My personal data",
+              pt: "Os meus dados pessoais",
+            })}
           >
             <DeletionRequest />
           </Panneau>

@@ -19,6 +19,8 @@ interface Props {
   labelVide?: string;
   placeholderRecherche?: string;
   className?: string;
+  /** Appelé à chaque choix, pour un filtre qui s'applique sans bouton d'envoi. */
+  onChange?: (value: string) => void;
 }
 
 const CHAMP = "border-border bg-surface text-text w-full rounded-lg border px-3 py-2.5";
@@ -45,6 +47,7 @@ export function SelectRecherche({
   labelVide,
   placeholderRecherche = "Rechercher…",
   className = "",
+  onChange,
 }: Props) {
   const idGenere = useId();
   const idChamp = id ?? idGenere;
@@ -94,6 +97,7 @@ export function SelectRecherche({
     setValeur(nouvelle);
     setOuvert(false);
     setFiltre("");
+    if (nouvelle !== valeur) onChange?.(nouvelle);
   }
 
   function auClavier(event: React.KeyboardEvent) {
@@ -129,7 +133,10 @@ export function SelectRecherche({
         id={enrichi ? undefined : idChamp}
         name={name}
         value={valeur}
-        onChange={(event) => setValeur(event.target.value)}
+        onChange={(event) => {
+          setValeur(event.target.value);
+          onChange?.(event.target.value);
+        }}
         className={enrichi ? "sr-only" : `${CHAMP} ${className}`}
         tabIndex={enrichi ? -1 : undefined}
         aria-hidden={enrichi || undefined}

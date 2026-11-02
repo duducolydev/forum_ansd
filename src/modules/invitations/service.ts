@@ -377,8 +377,18 @@ export async function sendPendingInvitations(
   return resultat;
 }
 
-export async function countPendingInvitations(editionId: string): Promise<number> {
-  return repo.countPendingInvitations(editionId);
+export async function countPendingInvitations(
+  editionId: string,
+  filters: ReminderFilters = {},
+): Promise<number> {
+  return repo.countPendingInvitations(editionId, {
+    categoryId: filters.categoryId || undefined,
+    country: filters.country || undefined,
+  });
+}
+
+export async function listInvitationCountries(editionId: string): Promise<string[]> {
+  return repo.listInvitationCountries(editionId);
 }
 
 export async function sendReminders(
@@ -470,6 +480,7 @@ export async function listInvitations(
     q?: string;
     status?: string;
     categoryId?: string;
+    country?: string;
     page: number;
     pageSize: number;
   },
@@ -479,6 +490,7 @@ export async function listInvitations(
     q: search.q || undefined,
     status: (search.status as Invitation["status"]) || undefined,
     categoryId: search.categoryId || undefined,
+    country: search.country || undefined,
     page: search.page,
     pageSize: search.pageSize,
   });

@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Send } from "lucide-react";
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale } from "next-intl";
+import { lireLangue, selon, traduire } from "@/lib/langue";
 import {
   REGISTRATION_STEPS,
   registrationConsentSchema,
@@ -12,6 +13,12 @@ import {
   registrationProfessionSchema,
 } from "../registration-schema";
 import { submitRegistrationAction, type RegistrationState } from "../registration-actions";
+import {
+  CIVILITES,
+  LIBELLES_ETAPES,
+  TYPES_ORGANISATION,
+  traduireErreur,
+} from "../registration-i18n";
 import { PhotoField } from "./photo-field";
 import { ChampTelephone } from "@/components/ui/champ-telephone";
 
@@ -43,6 +50,8 @@ async function envoyerInscription(precedent: EtatEnvoi, donnees: FormData): Prom
 export interface RegistrationCategory {
   id: string;
   labelFr: string;
+  labelEn?: string | null;
+  labelPt?: string | null;
   requiresLogistics: boolean;
 }
 
@@ -65,7 +74,10 @@ interface Props {
 }
 
 export function RegistrationForm({ categories, days, invitation }: Props) {
-  const langue = useLocale();
+  const langue = lireLangue(useLocale());
+  const t = (textes: { fr: string; en: string; pt: string }) => selon(langue, textes);
+  const libelleCategorie = (category: RegistrationCategory) =>
+    traduire(langue, { fr: category.labelFr, en: category.labelEn, pt: category.labelPt });
   const formRef = useRef<HTMLFormElement>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [stepError, setStepError] = useState<string | null>(null);
@@ -158,7 +170,9 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
           locale: value("locale") || "fr",
           categoryId: value("categoryId"),
         });
-        return result.success ? null : (result.error.issues[0]?.message ?? "Étape incomplète");
+        return result.success
+          ? null
+          : traduireErreur(langue, result.error.issues[0]?.message ?? "Étape incomplète");
       }
       case "profession": {
         const result = registrationProfessionSchema.safeParse({
@@ -168,7 +182,9 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
           bio: value("bio"),
           website: value("website"),
         });
-        return result.success ? null : (result.error.issues[0]?.message ?? "Étape incomplète");
+        return result.success
+          ? null
+          : traduireErreur(langue, result.error.issues[0]?.message ?? "Étape incomplète");
       }
       case "participation": {
         const result = registrationParticipationSchema.safeParse({
@@ -178,7 +194,9 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
           attendsClosing: data.get("attendsClosing") === "on",
           attendsAwards: data.get("attendsAwards") === "on",
         });
-        return result.success ? null : (result.error.issues[0]?.message ?? "Étape incomplète");
+        return result.success
+          ? null
+          : traduireErreur(langue, result.error.issues[0]?.message ?? "Étape incomplète");
       }
       case "consent": {
         const result = registrationConsentSchema.safeParse({
@@ -186,7 +204,9 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
           consentData: data.get("consentData") === "on",
           consentImage: data.get("consentImage") === "on",
         });
-        return result.success ? null : (result.error.issues[0]?.message ?? "Étape incomplète");
+        return result.success
+          ? null
+          : traduireErreur(langue, result.error.issues[0]?.message ?? "Étape incomplète");
       }
       default:
         return null;
@@ -250,13 +270,31 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
     }
     return (
       <div className="border-accent-text bg-accent-soft text-accent-text rounded-xl border p-6">
-        <h2 className="mb-2 text-xl">Inscription enregistrée</h2>
+        <h2 className="mb-2 text-xl">
+          {t({
+            fr: "Inscription enregistrée",
+            en: "Registration recorded",
+            pt: "Inscrição registada",
+          })}
+        </h2>
         <p>
           {state.success.autoConfirmed
-            ? "Votre participation est confirmée. Vous allez recevoir un e-mail avec un accès direct à votre espace."
+            ? t({
+                fr: "Votre participation est confirmée. Vous allez recevoir un e-mail avec un accès direct à votre espace.",
+                en: "Your participation is confirmed. You will receive an email with direct access to your space.",
+                pt: "A sua participação está confirmada. Vai receber um e-mail com acesso direto ao seu espaço.",
+              })
             : state.success.accreditation
-              ? "Votre demande d'accréditation presse est enregistrée. Votre compte sera activé dès que l'administration du Forum aura accordé votre accréditation ; vous recevrez alors un e-mail avec un accès direct à votre espace."
-              : "Votre inscription est enregistrée et en attente de validation par le comité d'organisation. Votre badge sera disponible dans votre espace une fois l'inscription validée : vous recevrez un e-mail de confirmation avec un accès direct à votre espace, puis un second quand le badge sera prêt."}
+              ? t({
+                  fr: "Votre demande d'accréditation presse est enregistrée. Votre compte sera activé dès que l'administration du Forum aura accordé votre accréditation ; vous recevrez alors un e-mail avec un accès direct à votre espace.",
+                  en: "Your press accreditation request has been recorded. Your account will be activated as soon as the Forum administration grants your accreditation; you will then receive an email with direct access to your space.",
+                  pt: "O seu pedido de acreditação de imprensa foi registado. A sua conta será ativada assim que a administração do Fórum conceder a sua acreditação; receberá então um e-mail com acesso direto ao seu espaço.",
+                })
+              : t({
+                  fr: "Votre inscription est enregistrée et en attente de validation par le comité d'organisation. Votre badge sera disponible dans votre espace une fois l'inscription validée : vous recevrez un e-mail de confirmation avec un accès direct à votre espace, puis un second quand le badge sera prêt.",
+                  en: "Your registration has been recorded and is awaiting validation by the organising committee. Your badge will be available in your space once your registration is validated: you will receive a confirmation email with direct access to your space, then a second one when your badge is ready.",
+                  pt: "A sua inscrição foi registada e aguarda validação pela comissão organizadora. O seu crachá estará disponível no seu espaço assim que a inscrição for validada: receberá um e-mail de confirmação com acesso direto ao seu espaço e, depois, um segundo quando o crachá estiver pronto.",
+                })}
         </p>
       </div>
     );
@@ -296,10 +334,12 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
         </div>
         <div className="text-text-3 flex justify-between text-sm">
           <span>
-            Étape <b className="text-heading">{stepIndex + 1}</b> sur {steps.length}
+            {t({ fr: "Étape", en: "Step", pt: "Etapa" })}{" "}
+            <b className="text-heading">{stepIndex + 1}</b> {t({ fr: "sur", en: "of", pt: "de" })}{" "}
+            {steps.length}
           </span>
           <b key={currentStep.key} className="text-heading etape-libelle">
-            {currentStep.label}
+            {selon(langue, LIBELLES_ETAPES[currentStep.key])}
           </b>
         </div>
       </div>
@@ -307,15 +347,25 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
       <div hidden={currentStep.key !== "identity"} className="etape-panneau">
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
           <Select
-            label="Civilité"
+            label={t({ fr: "Civilité", en: "Title", pt: "Tratamento" })}
             name="civility"
-            options={["", "Madame", "Monsieur", "Dr", "Pr", "SE"]}
+            options={CIVILITES.map((option) => ({ value: option.value, label: t(option) }))}
           />
           <div />
-          <Field label="Prénom" name="firstName" defaultValue={invitation?.firstName} required />
-          <Field label="Nom" name="lastName" defaultValue={invitation?.lastName} required />
           <Field
-            label="Adresse e-mail"
+            label={t({ fr: "Prénom", en: "First name", pt: "Nome próprio" })}
+            name="firstName"
+            defaultValue={invitation?.firstName}
+            required
+          />
+          <Field
+            label={t({ fr: "Nom", en: "Last name", pt: "Apelido" })}
+            name="lastName"
+            defaultValue={invitation?.lastName}
+            required
+          />
+          <Field
+            label={t({ fr: "Adresse e-mail", en: "Email address", pt: "Endereço de e-mail" })}
             name="email"
             type="email"
             defaultValue={invitation?.email}
@@ -324,24 +374,32 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
           />
           <div className="flex flex-col gap-1.5">
             <label htmlFor="phone" className="text-heading text-sm font-semibold">
-              Téléphone
+              {t({ fr: "Téléphone", en: "Phone", pt: "Telefone" })}
             </label>
             <ChampTelephone
               id="phone"
               name="phone"
+              langue={langue}
               classeChamp="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
             />
           </div>
           {/* Organisation avant le pays (28 octobre 2026), sur toute la
               largeur : pays et ville restent côte à côte. */}
           <div className="md:col-span-2">
-            <Field label="Organisation" name="organization" />
+            <Field
+              label={t({ fr: "Organisation", en: "Organisation", pt: "Organização" })}
+              name="organization"
+            />
           </div>
-          <Field label="Pays" name="country" required />
-          <Field label="Ville" name="city" />
+          <Field label={t({ fr: "Pays", en: "Country", pt: "País" })} name="country" required />
+          <Field label={t({ fr: "Ville", en: "City", pt: "Cidade" })} name="city" />
           <div className="flex flex-col gap-1.5 md:col-span-2">
             <label htmlFor="categoryId" className="text-heading text-sm font-semibold">
-              Catégorie de participation
+              {t({
+                fr: "Catégorie de participation",
+                en: "Participation category",
+                pt: "Categoria de participação",
+              })}
             </label>
             {invitation ? (
               /*
@@ -355,13 +413,17 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
                 <input type="hidden" name="categoryId" value={invitation.category.id} />
                 <input
                   id="categoryId"
-                  value={invitation.category.labelFr}
+                  value={libelleCategorie(invitation.category)}
                   readOnly
                   aria-describedby="categorie-invitation"
                   className="border-border bg-surface text-text rounded-lg border px-3 py-2.5 read-only:opacity-70"
                 />
                 <p id="categorie-invitation" className="text-text-3 text-xs">
-                  Cette catégorie a été définie par le comité d&apos;organisation.
+                  {t({
+                    fr: "Cette catégorie a été définie par le comité d'organisation.",
+                    en: "This category was set by the organising committee.",
+                    pt: "Esta categoria foi definida pela comissão organizadora.",
+                  })}
                 </p>
               </>
             ) : (
@@ -373,10 +435,10 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
                 onChange={(event) => setCategoryId(event.target.value)}
                 className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
               >
-                <option value="">Choisir…</option>
+                <option value="">{t({ fr: "Choisir…", en: "Choose…", pt: "Escolher…" })}</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
-                    {category.labelFr}
+                    {libelleCategorie(category)}
                   </option>
                 ))}
               </select>
@@ -388,31 +450,40 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
       <div hidden={currentStep.key !== "profession"} className="etape-panneau">
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
           <Select
-            label="Type d'organisation"
+            label={t({
+              fr: "Type d'organisation",
+              en: "Type of organisation",
+              pt: "Tipo de organização",
+            })}
             name="organizationType"
-            options={[
-              "",
-              "Institut national de statistique",
-              "Organisation internationale",
-              "Administration publique",
-              "Université / recherche",
-              "Secteur privé",
-              "Média",
-            ]}
+            options={TYPES_ORGANISATION.map((option) => ({
+              value: option.value,
+              label: t(option),
+            }))}
           />
-          <Field label="Fonction" name="jobTitle" />
-          <Field label="Domaine d'activité" name="activityDomain" />
-          <Field label="Site Internet" name="website" />
+          <Field label={t({ fr: "Fonction", en: "Position", pt: "Cargo" })} name="jobTitle" />
+          <Field
+            label={t({
+              fr: "Domaine d'activité",
+              en: "Field of activity",
+              pt: "Área de atividade",
+            })}
+            name="activityDomain"
+          />
+          <Field
+            label={t({ fr: "Site Internet", en: "Website", pt: "Sítio Web" })}
+            name="website"
+          />
           <div className="flex flex-col gap-1.5 md:col-span-2">
             <label htmlFor="bio" className="text-heading text-sm font-semibold">
-              Biographie courte
+              {t({ fr: "Biographie courte", en: "Short biography", pt: "Biografia curta" })}
             </label>
             <textarea
               id="bio"
               name="bio"
               rows={3}
               maxLength={300}
-              placeholder="300 caractères maximum"
+              placeholder={traduireErreur(langue, "300 caractères maximum")}
               className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
             />
           </div>
@@ -422,8 +493,17 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
       <div hidden={currentStep.key !== "profession"} className="mt-6">
         <PhotoField
           onChange={setPhoto}
-          label="Photo (facultative)"
-          hint="Elle figurera sur votre badge et facilitera le contrôle à l'entrée. Vous pourrez l'ajouter plus tard depuis « Mon espace »."
+          langue={langue}
+          label={t({
+            fr: "Photo (facultative)",
+            en: "Photo (optional)",
+            pt: "Fotografia (facultativa)",
+          })}
+          hint={t({
+            fr: "Elle figurera sur votre badge et facilitera le contrôle à l'entrée. Vous pourrez l'ajouter plus tard depuis « Mon espace ».",
+            en: "It will appear on your badge and make the entrance check easier. You can add it later from “My space”.",
+            pt: "Figurará no seu crachá e facilitará o controlo à entrada. Pode adicioná-la mais tarde a partir de «O meu espaço».",
+          })}
         />
       </div>
 
@@ -431,7 +511,11 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
         <div className="flex flex-col gap-4">
           <fieldset className="flex flex-col gap-2">
             <legend className="text-heading mb-1.5 text-sm font-semibold">
-              Jours de participation
+              {t({
+                fr: "Jours de participation",
+                en: "Days of attendance",
+                pt: "Dias de participação",
+              })}
             </legend>
             <div className="flex flex-wrap gap-2.5">
               {days.map((day) => (
@@ -452,12 +536,37 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
             </div>
           </fieldset>
           <fieldset className="flex flex-col gap-2">
-            <legend className="text-heading mb-1.5 text-sm font-semibold">Moments officiels</legend>
+            <legend className="text-heading mb-1.5 text-sm font-semibold">
+              {t({ fr: "Moments officiels", en: "Official events", pt: "Momentos oficiais" })}
+            </legend>
             <div className="flex flex-wrap gap-2.5">
-              <Checkbox label="Cérémonie d'ouverture" name="attendsOpening" defaultChecked />
-              <Checkbox label="Cérémonie de distinction" name="attendsAwards" />
+              <Checkbox
+                label={t({
+                  fr: "Cérémonie d'ouverture",
+                  en: "Opening ceremony",
+                  pt: "Cerimónia de abertura",
+                })}
+                name="attendsOpening"
+                defaultChecked
+              />
+              <Checkbox
+                label={t({
+                  fr: "Cérémonie de distinction",
+                  en: "Awards ceremony",
+                  pt: "Cerimónia de distinção",
+                })}
+                name="attendsAwards"
+              />
               {/* Remplace la conférence inaugurale (29 septembre 2026). */}
-              <Checkbox label="Cérémonie de clôture" name="attendsClosing" defaultChecked />
+              <Checkbox
+                label={t({
+                  fr: "Cérémonie de clôture",
+                  en: "Closing ceremony",
+                  pt: "Cerimónia de encerramento",
+                })}
+                name="attendsClosing"
+                defaultChecked
+              />
             </div>
           </fieldset>
         </div>
@@ -465,13 +574,49 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
 
       <div hidden={currentStep.key !== "logistics"} className="etape-panneau">
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
-          <Field label="Date d'arrivée" name="arrivalDate" type="date" />
-          <Field label="Date de départ" name="departureDate" type="date" />
-          <Field label="Régime alimentaire" name="dietaryRequirements" />
-          <Field label="Besoins particuliers" name="specialNeeds" />
+          <Field
+            label={t({ fr: "Date d'arrivée", en: "Arrival date", pt: "Data de chegada" })}
+            name="arrivalDate"
+            type="date"
+          />
+          <Field
+            label={t({ fr: "Date de départ", en: "Departure date", pt: "Data de partida" })}
+            name="departureDate"
+            type="date"
+          />
+          <Field
+            label={t({
+              fr: "Régime alimentaire",
+              en: "Dietary requirements",
+              pt: "Regime alimentar",
+            })}
+            name="dietaryRequirements"
+          />
+          <Field
+            label={t({
+              fr: "Besoins particuliers",
+              en: "Special needs",
+              pt: "Necessidades especiais",
+            })}
+            name="specialNeeds"
+          />
           <div className="flex flex-wrap gap-2.5 md:col-span-2">
-            <Checkbox label="J'ai besoin d'un hébergement" name="needsAccommodation" />
-            <Checkbox label="J'ai besoin d'un transport" name="needsTransport" />
+            <Checkbox
+              label={t({
+                fr: "J'ai besoin d'un hébergement",
+                en: "I need accommodation",
+                pt: "Preciso de alojamento",
+              })}
+              name="needsAccommodation"
+            />
+            <Checkbox
+              label={t({
+                fr: "J'ai besoin d'un transport",
+                en: "I need transport",
+                pt: "Preciso de transporte",
+              })}
+              name="needsTransport"
+            />
           </div>
         </div>
       </div>
@@ -479,19 +624,31 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
       <div hidden={currentStep.key !== "consent"} className="etape-panneau">
         <div className="flex flex-col gap-2.5">
           <ConsentCheckbox
-            label="J'accepte les conditions de participation au Forum."
+            label={t({
+              fr: "J'accepte les conditions de participation au Forum.",
+              en: "I accept the terms of participation in the Forum.",
+              pt: "Aceito as condições de participação no Fórum.",
+            })}
             name="consentTerms"
             checked={consents.consentTerms}
             onChange={(value) => setConsents((c) => ({ ...c, consentTerms: value }))}
           />
           <ConsentCheckbox
-            label="Je consens à la collecte et à l'utilisation de mon adresse e-mail (loi n° 2008-12)."
+            label={t({
+              fr: "Je consens à la collecte et à l'utilisation de mon adresse e-mail (loi n° 2008-12).",
+              en: "I consent to the collection and use of my email address (Law No. 2008-12).",
+              pt: "Consinto a recolha e a utilização do meu endereço de e-mail (Lei n.º 2008-12).",
+            })}
             name="consentData"
             checked={consents.consentData}
             onChange={(value) => setConsents((c) => ({ ...c, consentData: value }))}
           />
           <ConsentCheckbox
-            label="J'autorise la prise et l'utilisation de mon image dans les supports du Forum."
+            label={t({
+              fr: "J'autorise la prise et l'utilisation de mon image dans les supports du Forum.",
+              en: "I authorise the taking and use of my image in Forum materials.",
+              pt: "Autorizo a captação e a utilização da minha imagem nos suportes do Fórum.",
+            })}
             name="consentImage"
             checked={consents.consentImage}
             onChange={(value) => setConsents((c) => ({ ...c, consentImage: value }))}
@@ -515,19 +672,29 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
           className="border-danger-text bg-danger-soft text-danger-text flex flex-col items-start gap-2.5 rounded-lg border p-3.5 text-sm"
         >
           <p>
-            L&apos;envoi n&apos;a pas abouti : la connexion a été coupée ou le serveur a renvoyé une
-            réponse inattendue. Vos réponses sont conservées sur cette page ; réessayez dans un
-            instant.
+            {t({
+              fr: "L'envoi n'a pas abouti : la connexion a été coupée ou le serveur a renvoyé une réponse inattendue. Vos réponses sont conservées sur cette page ; réessayez dans un instant.",
+              en: "Your submission did not go through: the connection was interrupted or the server sent an unexpected response. Your answers are kept on this page; try again in a moment.",
+              pt: "O envio não foi concluído: a ligação foi interrompida ou o servidor devolveu uma resposta inesperada. As suas respostas estão guardadas nesta página; tente novamente dentro de instantes.",
+            })}
           </p>
         </div>
       )}
       {state.duplicateEmail && (
         <p className="border-warn-text bg-warn-soft text-warn-text rounded-lg border p-3.5 text-sm">
-          Cette adresse e-mail est déjà inscrite. Utilisez{" "}
+          {t({
+            fr: "Cette adresse e-mail est déjà inscrite. Utilisez ",
+            en: "This email address is already registered. Use ",
+            pt: "Este endereço de e-mail já está inscrito. Utilize ",
+          })}
           <Link href="/mon-espace" className="font-semibold underline">
-            « Mon espace »
-          </Link>{" "}
-          pour recevoir un lien d&apos;accès plutôt que de vous inscrire une seconde fois.
+            {t({ fr: "« Mon espace »", en: "“My space”", pt: "«O meu espaço»" })}
+          </Link>
+          {t({
+            fr: " pour recevoir un lien d'accès plutôt que de vous inscrire une seconde fois.",
+            en: " to receive an access link rather than registering a second time.",
+            pt: " para receber uma ligação de acesso em vez de se inscrever uma segunda vez.",
+          })}
         </p>
       )}
 
@@ -539,7 +706,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
           className="border-border bg-surface text-heading hover:border-link transition-tout inline-flex items-center gap-2 rounded-lg border px-4.5 py-2.5 font-semibold disabled:opacity-50"
         >
           <ArrowLeft aria-hidden size={16} strokeWidth={2.2} />
-          Précédent
+          {t({ fr: "Précédent", en: "Previous", pt: "Anterior" })}
         </button>
         {/*
           Une clé par bouton (30 octobre 2026) : sans elle, React gardait le
@@ -556,7 +723,7 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
             onClick={goNext}
             className="bg-primary text-primary-text hover:bg-primary-hover transition-tout inline-flex items-center gap-2 rounded-lg px-4.5 py-2.5 font-semibold shadow-sm hover:shadow-lg"
           >
-            Continuer
+            {t({ fr: "Continuer", en: "Continue", pt: "Continuar" })}
             <ArrowRight aria-hidden size={16} strokeWidth={2.2} />
           </button>
         ) : (
@@ -567,7 +734,13 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
             className="bg-primary text-primary-text hover:bg-primary-hover transition-tout inline-flex items-center gap-2 rounded-lg px-4.5 py-2.5 font-semibold shadow-sm hover:shadow-lg disabled:opacity-60"
           >
             <Send aria-hidden size={16} strokeWidth={2.2} />
-            {pending ? "Envoi…" : "Envoyer mon inscription"}
+            {pending
+              ? t({ fr: "Envoi…", en: "Sending…", pt: "A enviar…" })
+              : t({
+                  fr: "Envoyer mon inscription",
+                  en: "Submit my registration",
+                  pt: "Enviar a minha inscrição",
+                })}
           </button>
         )}
       </div>
@@ -608,7 +781,15 @@ function Field({
   );
 }
 
-function Select({ label, name, options }: { label: string; name: string; options: string[] }) {
+function Select({
+  label,
+  name,
+  options,
+}: {
+  label: string;
+  name: string;
+  options: { value: string; label: string }[];
+}) {
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={name} className="text-heading text-sm font-semibold">
@@ -619,9 +800,10 @@ function Select({ label, name, options }: { label: string; name: string; options
         name={name}
         className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
       >
+        <option value="">—</option>
         {options.map((option) => (
-          <option key={option} value={option}>
-            {option || "—"}
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>

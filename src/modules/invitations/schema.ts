@@ -43,6 +43,7 @@ export const invitationSearchSchema = z.object({
   q: z.string().trim().optional().or(z.literal("")),
   status: z.enum(invitationStatusValues).optional().or(z.literal("")),
   categoryId: z.string().optional().or(z.literal("")),
+  country: z.string().trim().optional().or(z.literal("")),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(20),
 });

@@ -1,6 +1,6 @@
 import type { InvitationStatus } from "@prisma/client";
 
-const LABELS: Record<InvitationStatus, string> = {
+export const STATUS_LABELS: Record<InvitationStatus, string> = {
   PENDING: "À envoyer",
   SENT: "Envoyée",
   OPENED: "Ouverte",
@@ -25,7 +25,7 @@ export function InvitationStatusBadge({ status }: { status: InvitationStatus }) 
     <span
       className={`inline-block rounded-md px-2.5 py-1 text-xs font-semibold ${CLASSES[status]}`}
     >
-      {LABELS[status]}
+      {STATUS_LABELS[status]}
     </span>
   );
 }

@@ -9,6 +9,7 @@ import * as participantsService from "@/modules/participants/service";
 import { InvitationStatusBadge } from "@/modules/invitations/components/status-badge";
 import { SendButton } from "@/modules/invitations/components/send-button";
 import { FormulaireEnvois } from "@/modules/invitations/components/formulaire-envois";
+import { InvitationsToolbar } from "@/modules/invitations/components/invitations-toolbar";
 import { Pagination } from "@/modules/participants/components/pagination";
 import { invitationSearchSchema } from "@/modules/invitations/schema";
 
@@ -26,11 +27,14 @@ export default async function InvitationsPage({
   const search = invitationSearchSchema.parse(sp);
   const edition = await getActiveEdition();
 
-  const [{ items, total }, categories, enAttente] = await Promise.all([
+  const cible = { categoryId: search.categoryId ?? "", country: search.country ?? "" };
+  const [{ items, total }, categories, countries, enAttente] = await Promise.all([
     service.listInvitations(edition.id, search),
     participantsService.listCategories(edition.id),
-    service.countPendingInvitations(edition.id),
+    service.listInvitationCountries(edition.id),
+    service.countPendingInvitations(edition.id, cible),
   ]);
+  const filtre = Boolean(search.q || search.status || cible.categoryId || cible.country);
 
   const canSend = can(session, "invitations.send");
   const canWrite = can(session, "invitations.write");
@@ -54,15 +58,20 @@ export default async function InvitationsPage({
         )}
       </div>
 
-      {canSend && (
-        <div className="border-border bg-surface mb-4 rounded-xl border p-4">
-          <FormulaireEnvois
-            categories={categories}
-            enAttente={enAttente}
-            envoisParMinute={service.ENVOIS_PAR_MINUTE}
-          />
-        </div>
-      )}
+      <div className="border-border bg-surface mb-4 flex flex-col gap-4 rounded-xl border p-4">
+        <InvitationsToolbar categories={categories} countries={countries} />
+        {canSend && (
+          <div className="border-border border-t pt-4">
+            <FormulaireEnvois
+              categoryId={cible.categoryId}
+              categorie={categories.find((c) => c.id === cible.categoryId)?.labelFr}
+              country={cible.country}
+              enAttente={enAttente}
+              envoisParMinute={service.ENVOIS_PAR_MINUTE}
+            />
+          </div>
+        )}
+      </div>
 
       <div className="border-border bg-surface overflow-x-auto rounded-xl border">
         <table className="w-full text-sm">
@@ -70,6 +79,9 @@ export default async function InvitationsPage({
             <tr>
               <th className="border-border bg-surface-2 text-text-3 border-b px-3.5 py-3 text-left text-xs font-semibold">
                 Invité(e)
+              </th>
+              <th className="border-border bg-surface-2 text-text-3 border-b px-3.5 py-3 text-left text-xs font-semibold">
+                Structure
               </th>
               <th className="border-border bg-surface-2 text-text-3 border-b px-3.5 py-3 text-left text-xs font-semibold">
                 Catégorie
@@ -93,6 +105,12 @@ export default async function InvitationsPage({
                   <div className="text-text-3 text-sm">{invitation.email}</div>
                 </td>
                 <td className="border-border border-b px-3.5 py-3">
+                  {invitation.organization || <span className="text-text-3">—</span>}
+                  {invitation.country && (
+                    <div className="text-text-3 text-sm">{invitation.country}</div>
+                  )}
+                </td>
+                <td className="border-border border-b px-3.5 py-3">
                   {invitation.category.labelFr}
                 </td>
                 <td className="border-border border-b px-3.5 py-3">
@@ -111,8 +129,8 @@ export default async function InvitationsPage({
             ))}
             {items.length === 0 && (
               <tr>
-                <td colSpan={5} className="text-text-3 px-3.5 py-8 text-center">
-                  Aucune invitation.
+                <td colSpan={6} className="text-text-3 px-3.5 py-8 text-center">
+                  {filtre ? "Aucune invitation ne correspond aux filtres." : "Aucune invitation."}
                 </td>
               </tr>
             )}
