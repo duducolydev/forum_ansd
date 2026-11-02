@@ -86,6 +86,41 @@ export async function setDelegationHead(delegationId: string, participantId: str
   return updated;
 }
 
+/**
+ * Supprime une délégation. Ses membres **restent inscrits** : ils sont
+ * seulement détachés, dans la même transaction, puisqu'un participant n'a
+ * qu'une délégation et que la clé étrangère refuserait sinon la suppression.
+ * Le chef perd son rôle avec la délégation, qui le portait.
+ *
+ * Rend le nombre de membres détachés, que l'écran annonce.
+ */
+export async function deleteDelegation(id: string, actor: Actor): Promise<number> {
+  const avant = await prisma.delegation.findUniqueOrThrow({
+    where: { id },
+    select: { name: true, country: true, headParticipantId: true, referentId: true },
+  });
+
+  const detaches = await prisma.$transaction(async (tx) => {
+    const { count } = await tx.participant.updateMany({
+      where: { delegationId: id },
+      data: { delegationId: null },
+    });
+    await tx.delegation.delete({ where: { id } });
+    return count;
+  });
+
+  await audit.log({
+    actorType: actor.type,
+    actorUserId: actor.userId,
+    action: "delegation.delete",
+    entity: "Delegation",
+    entityId: id,
+    before: { ...avant, membresDetaches: detaches },
+  });
+
+  return detaches;
+}
+
 export async function listDelegations(editionId: string) {
   return repo.listDelegations(editionId);
 }

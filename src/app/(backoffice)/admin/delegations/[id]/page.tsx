@@ -8,6 +8,7 @@ import { can } from "@/lib/rbac";
 import { getDelegation } from "@/modules/participants/delegation-service";
 import { StatusBadge } from "@/modules/participants/components/status-badge";
 import { SetHeadButton } from "@/modules/participants/components/set-head-button";
+import { SupprimerDelegation } from "@/modules/participants/components/supprimer-delegation";
 
 export default async function DelegationDetailPage({
   params,
@@ -33,9 +34,17 @@ export default async function DelegationDetailPage({
           </span>
         </div>
         {can(session, "delegations.write") && (
-          <LienBouton href={`/admin/delegations/${delegation.id}/modifier`} icone={Pencil}>
-            Modifier
-          </LienBouton>
+          <div className="flex items-start gap-2">
+            <LienBouton href={`/admin/delegations/${delegation.id}/modifier`} icone={Pencil}>
+              Modifier
+            </LienBouton>
+            <SupprimerDelegation
+              delegationId={delegation.id}
+              nom={delegation.name}
+              membres={delegation.members.length}
+              depuisFiche
+            />
+          </div>
         )}
       </div>
 

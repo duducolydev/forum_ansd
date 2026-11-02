@@ -274,6 +274,19 @@ export async function setDelegationHeadAction(
   return {};
 }
 
+export async function deleteDelegationAction(delegationId: string): Promise<ActionState> {
+  try {
+    const session = await requireSession();
+    if (!can(session, "delegations.write")) return { error: "Permission refusée." };
+    await delegationService.deleteDelegation(delegationId, actorFromSession(session));
+  } catch (error) {
+    return { error: firstFieldError(error) };
+  }
+  revalidatePath("/admin/delegations");
+  revalidatePath("/admin/participants");
+  return {};
+}
+
 function parseDelegationForm(formData: FormData): DelegationInput {
   return delegationInputSchema.parse({
     name: formData.get("name"),
