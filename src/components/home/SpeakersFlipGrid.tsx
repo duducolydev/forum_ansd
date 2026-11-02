@@ -4,11 +4,14 @@ import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { avecCivilite } from "@/lib/civilite";
 import { useFinePointer, useReveal } from "@/components/motion/hooks";
 
 export interface IntervenantCarte {
   id: string;
+  /** Civilité telle que saisie (fiche, sinon participant lié) ; abrégée à l'affichage. */
+  civility?: string | null;
   firstName: string;
   lastName: string;
   jobTitle: string | null;
@@ -90,7 +93,12 @@ function CarteRetournable({
   const [retournee, setRetournee] = useState(false);
   useReveal(ref);
 
-  const nom = `${intervenant.firstName} ${intervenant.lastName}`;
+  const langue = useLocale();
+  const nom = avecCivilite(
+    intervenant.civility,
+    `${intervenant.firstName} ${intervenant.lastName}`,
+    langue,
+  );
   // Rôles : une information propre au verso, donc lue par les lecteurs d'écran.
   const roles = (intervenant.roles ?? []).map((role) => t(`roles.${role}`));
   const blocRoles =

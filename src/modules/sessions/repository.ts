@@ -70,6 +70,8 @@ const SELECTION = {
       speaker: {
         select: {
           id: true,
+          civility: true,
+          participant: { select: { civility: true } },
           firstName: true,
           lastName: true,
           jobTitle: true,

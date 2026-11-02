@@ -1,3 +1,4 @@
+import { avecCivilite, civiliteIntervenant } from "@/lib/civilite";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -39,7 +40,7 @@ export default async function ModifierIntervenantPage({
           Intervenants
         </Link>
         <h2 className="mt-2 text-2xl">
-          {speaker.firstName} {speaker.lastName}
+          {avecCivilite(civiliteIntervenant(speaker), `${speaker.firstName} ${speaker.lastName}`)}
         </h2>
         <p className="text-text-3 text-sm">
           {speaker.isPublished ? "Publié" : "Brouillon"}
@@ -68,6 +69,7 @@ export default async function ModifierIntervenantPage({
       <SpeakerForm
         valeurs={{
           id: speaker.id,
+          civility: speaker.civility ?? "",
           firstName: speaker.firstName,
           lastName: speaker.lastName,
           email: speaker.email ?? "",

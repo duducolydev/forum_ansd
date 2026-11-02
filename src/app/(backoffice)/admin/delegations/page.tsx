@@ -1,3 +1,4 @@
+import { avecCivilite } from "@/lib/civilite";
 import { ArrowUpRight, Plus } from "lucide-react";
 import { LienBouton } from "@/components/ui/bouton";
 import { redirect } from "next/navigation";
@@ -60,7 +61,10 @@ export default async function DelegationsPage() {
                 <td className="border-border border-b px-3.5 py-3">{delegation.country ?? "—"}</td>
                 <td className="border-border border-b px-3.5 py-3">
                   {delegation.headParticipant
-                    ? `${delegation.headParticipant.firstName} ${delegation.headParticipant.lastName}`
+                    ? avecCivilite(
+                        delegation.headParticipant.civility,
+                        `${delegation.headParticipant.firstName} ${delegation.headParticipant.lastName}`,
+                      )
                     : "—"}
                 </td>
                 <td className="border-border border-b px-3.5 py-3">

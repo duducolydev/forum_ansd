@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { enregistrerIntervenantAction, type ActionState } from "../actions";
 import { Save } from "lucide-react";
 import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
+import { CIVILITES } from "@/modules/participants/registration-i18n";
 
 const initialState: ActionState = {};
 const champ = "border-border bg-bg text-text w-full rounded-lg border px-3 py-2 text-sm";
@@ -11,6 +12,7 @@ const etiquette = "text-text-3 text-xs font-semibold";
 
 export interface SpeakerFormValues {
   id?: string;
+  civility: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -34,6 +36,25 @@ export function SpeakerForm({ valeurs }: { valeurs: SpeakerFormValues }) {
 
       <section className="border-border bg-surface rounded-xl border p-5">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="civility" className={etiquette}>
+              Civilité — affichée en abrégé devant le nom (Mr, Mme, Dr, Pr, SE)
+            </label>
+            <select id="civility" name="civility" defaultValue={valeurs.civility} className={champ}>
+              <option value="">— (celle du participant rattaché, s&apos;il y en a une)</option>
+              {CIVILITES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.fr}
+                </option>
+              ))}
+              {/* Valeur saisie autrement (import) : gardée plutôt qu'effacée. */}
+              {valeurs.civility &&
+                !CIVILITES.some((option) => option.value === valeurs.civility) && (
+                  <option value={valeurs.civility}>{valeurs.civility}</option>
+                )}
+            </select>
+          </div>
+          <div aria-hidden className="hidden md:block" />
           <div className="flex flex-col gap-1.5">
             <label htmlFor="firstName" className={etiquette}>
               Prénom *

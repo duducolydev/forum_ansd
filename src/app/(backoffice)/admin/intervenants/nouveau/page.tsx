@@ -19,6 +19,7 @@ export default async function NouvelIntervenantPage() {
       <h2 className="mt-2 mb-5 text-2xl">Nouvel intervenant</h2>
       <SpeakerForm
         valeurs={{
+          civility: "",
           firstName: "",
           lastName: "",
           email: "",

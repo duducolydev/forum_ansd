@@ -33,8 +33,11 @@ export const FORMAT_BADGE = {
  * Révision « b » (29 octobre 2026) : même maquette, mais un intervenant sans
  * photo de participant prend celle de sa fiche d'intervenant. Les badges
  * rendus avant ne l'ont pas ; le repère changé les fait proposer à refaire.
+ *
+ * Révision « c » (2 novembre 2026) : la civilité abrégée (« Dr », « SE »…)
+ * précède le prénom. Mêmes conséquences pour les badges rendus avant.
  */
-export const GABARIT_BADGE = "maquette-2026-b";
+export const GABARIT_BADGE = "maquette-2026-c";
 
 /**
  * Fente pour cordon : oblongue, 15 × 3 mm, centrée, à 5 mm du bord haut — la

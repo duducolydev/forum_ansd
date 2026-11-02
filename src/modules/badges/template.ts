@@ -21,6 +21,8 @@ export interface BadgeTemplateData {
   policesCss?: string | null;
   /** Dates du Forum, déjà mises en forme : « 23–25 novembre 2026 ». */
   eventDates?: string | null;
+  /** Civilité abrégée (« Dr », « SE »…), imprimée devant le prénom. */
+  civility?: string | null;
   firstName: string;
   lastName: string;
   jobTitle: string | null;
@@ -309,6 +311,7 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
   .nom { font-size: 18.5pt; font-weight: 900; line-height: 1.1; }
   /* Nom de famille d'un seul tenant : « NDIAYE-MBENGUE » ne se coupe pas. */
   .nom .last { text-transform: uppercase; white-space: nowrap; }
+  .nom .civilite { font-weight: 700; }
   .fonction { font-size: 13pt; font-weight: 600; line-height: 1.15; }
   .organisation { font-size: 10pt; font-weight: 400; line-height: 1.2; color: #33414f; }
   .qr {
@@ -342,7 +345,7 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
     ${data.eventDates ? `<div class="dates">${escapeHtml(data.eventDates)}</div>` : ""}
     ${photo}
     <div class="identite">
-      <div class="nom" data-deux-lignes>${escapeHtml(data.firstName)} <span class="last">${escapeHtml(data.lastName)}</span></div>
+      <div class="nom" data-deux-lignes>${data.civility ? `<span class="civilite">${escapeHtml(data.civility)}</span> ` : ""}${escapeHtml(data.firstName)} <span class="last">${escapeHtml(data.lastName)}</span></div>
       ${data.jobTitle ? `<div class="fonction" data-deux-lignes>${escapeHtml(data.jobTitle)}</div>` : ""}
       ${data.organization ? `<div class="organisation" data-deux-lignes>${escapeHtml(data.organization)}</div>` : ""}
     </div>

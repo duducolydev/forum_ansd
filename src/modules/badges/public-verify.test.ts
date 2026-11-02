@@ -136,6 +136,7 @@ describe("vérification publique du badge (brief §5.4, §2.11)", () => {
     if (result.status === "VALID") {
       expect(Object.keys(result.participant).sort()).toEqual([
         "categoryLabel",
+        "civility",
         "country",
         "firstName",
         "lastName",

@@ -1,3 +1,4 @@
+import { avecCivilite } from "@/lib/civilite";
 import type { PublicVerification } from "../public-verify";
 
 interface Props {
@@ -77,7 +78,10 @@ export function VerificationResult({ result, eventLabel }: Props) {
       <dl className="grid grid-cols-[110px_1fr] gap-y-2 text-sm sm:grid-cols-[130px_1fr]">
         <dt className="text-text-3">Participant</dt>
         <dd className="text-heading font-semibold">
-          {participant.firstName} {participant.lastName.toUpperCase()}
+          {avecCivilite(
+            participant.civility,
+            `${participant.firstName} ${participant.lastName.toUpperCase()}`,
+          )}
         </dd>
 
         <dt className="text-text-3">Organisation</dt>

@@ -1,5 +1,7 @@
 "use client";
 
+import { avecCivilite } from "@/lib/civilite";
+
 import { ArrowUpRight } from "lucide-react";
 import { LienBouton } from "@/components/ui/bouton";
 
@@ -26,7 +28,10 @@ const columns: ColumnDef<ParticipantListItem>[] = [
     cell: ({ row }) => (
       <div>
         <b className="text-heading">
-          {row.original.firstName} {row.original.lastName}
+          {avecCivilite(
+            row.original.civility,
+            `${row.original.firstName} ${row.original.lastName}`,
+          )}
         </b>
         <div className="text-text-3 text-sm">{row.original.email}</div>
       </div>

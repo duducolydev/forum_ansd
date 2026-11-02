@@ -1,3 +1,4 @@
+import { civiliteIntervenant } from "@/lib/civilite";
 import { selon, traduire, type Langue } from "@/lib/langue";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Mic } from "lucide-react";
@@ -64,6 +65,7 @@ export default async function SpeakersPage({ searchParams }: { searchParams: Pro
   const speakers = await prisma.speaker.findMany({
     where: { editionId: edition.id, isPublished: true, deletedAt: null },
     include: {
+      participant: { select: { civility: true } },
       sessions: {
         where: { session: { isPublished: true, deletedAt: null } },
         select: {
@@ -82,6 +84,7 @@ export default async function SpeakersPage({ searchParams }: { searchParams: Pro
 
   const intervenants: IntervenantAnnuaire[] = speakers.map((speaker) => ({
     id: speaker.id,
+    civility: civiliteIntervenant(speaker),
     firstName: speaker.firstName,
     lastName: speaker.lastName,
     jobTitle: speaker.jobTitle,

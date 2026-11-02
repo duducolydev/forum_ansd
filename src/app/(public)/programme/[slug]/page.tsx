@@ -1,3 +1,4 @@
+import { avecCivilite, civiliteIntervenant } from "@/lib/civilite";
 import { lireLangue, localeIntl, selon, traduire } from "@/lib/langue";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
@@ -187,7 +188,11 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
                             {libelleRole(lien.role, locale)}
                           </p>
                           <p className="text-heading leading-snug font-semibold">
-                            {lien.speaker.firstName} {lien.speaker.lastName}
+                            {avecCivilite(
+                              civiliteIntervenant(lien.speaker),
+                              `${lien.speaker.firstName} ${lien.speaker.lastName}`,
+                              locale,
+                            )}
                           </p>
                         </div>
                       </div>

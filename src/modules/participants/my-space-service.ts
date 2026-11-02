@@ -45,7 +45,14 @@ export async function getMySpaceData(participantId: string) {
           // appelle quand on cherche une navette à six heures du matin.
           referent: { select: { name: true, email: true, phone: true, role: true } },
           members: {
-            select: { id: true, firstName: true, lastName: true, status: true, publicId: true },
+            select: {
+              id: true,
+              civility: true,
+              firstName: true,
+              lastName: true,
+              status: true,
+              publicId: true,
+            },
             orderBy: { lastName: "asc" },
           },
         },

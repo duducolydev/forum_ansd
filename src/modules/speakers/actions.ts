@@ -160,6 +160,7 @@ export async function enregistrerIntervenantAction(
     const session = await requireEditor();
     const actor = { type: "USER" as const, userId: session.user.id };
     const input = speakerInputSchema.parse({
+      civility: formData.get("civility") ?? undefined,
       firstName: formData.get("firstName"),
       lastName: formData.get("lastName"),
       email: formData.get("email") ?? undefined,

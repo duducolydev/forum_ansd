@@ -1,3 +1,4 @@
+import { avecCivilite } from "@/lib/civilite";
 import { Pencil } from "lucide-react";
 import { LienBouton } from "@/components/ui/bouton";
 import { notFound, redirect } from "next/navigation";
@@ -39,7 +40,7 @@ export default async function ParticipantDetailPage({
         <div>
           <span className="text-text-3 text-sm">{participant.publicId}</span>
           <h2 className="text-2xl">
-            {participant.firstName} {participant.lastName}
+            {avecCivilite(participant.civility, `${participant.firstName} ${participant.lastName}`)}
           </h2>
           <div className="mt-2 flex items-center gap-2">
             <StatusBadge status={participant.status} />

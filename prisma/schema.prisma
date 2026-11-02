@@ -661,6 +661,9 @@ model Speaker {
   /// adresse ici il serait injoignable — c'est le manque réel derriere C12.
   /// L'adresse retenue pour l'envoi est celle-ci, sinon celle du participant lié.
   email                    String?
+  /// Civilité abrégée devant le nom (`src/lib/civilite.ts`) ; à défaut, celle
+  /// du participant lié.
+  civility                 String?   @db.VarChar(20)
   firstName                String
   lastName                 String
   jobTitle                 String?

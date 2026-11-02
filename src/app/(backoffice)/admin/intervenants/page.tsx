@@ -1,3 +1,4 @@
+import { avecCivilite, civiliteIntervenant } from "@/lib/civilite";
 import { FileSpreadsheet, MicVocal } from "lucide-react";
 import { LienBouton } from "@/components/ui/bouton";
 import Link from "next/link";
@@ -113,7 +114,10 @@ export default async function IntervenantsPage({
                         href={`/admin/intervenants/${speaker.id}/modifier`}
                         className="text-heading font-medium"
                       >
-                        {speaker.firstName} {speaker.lastName}
+                        {avecCivilite(
+                          civiliteIntervenant(speaker),
+                          `${speaker.firstName} ${speaker.lastName}`,
+                        )}
                       </Link>
                       <span className="text-text-3 block text-xs">
                         {[speaker.jobTitle, speaker.organization, speaker.country]

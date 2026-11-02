@@ -1,3 +1,4 @@
+import { civiliteIntervenant } from "@/lib/civilite";
 import type { Edition, PageSection } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getHomeStats } from "@/lib/stats";
@@ -113,6 +114,8 @@ export async function chargerDonnees(
           orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
           select: {
             id: true,
+            civility: true,
+            participant: { select: { civility: true } },
             firstName: true,
             lastName: true,
             jobTitle: true,
@@ -127,8 +130,9 @@ export async function chargerDonnees(
           },
         })
         .then((speakers) => {
-          donnees.intervenants = speakers.map(({ sessions, ...speaker }) => ({
+          donnees.intervenants = speakers.map(({ sessions, participant, ...speaker }) => ({
             ...speaker,
+            civility: civiliteIntervenant({ civility: speaker.civility, participant }),
             themes: [
               ...new Set(
                 sessions

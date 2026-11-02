@@ -43,6 +43,7 @@ export class SpeakerRuleError extends Error {}
 export { PHOTO_MAX_BYTES, PRESENTATION_MAX_BYTES };
 
 export const speakerInputSchema = z.object({
+  civility: z.string().trim().max(20).optional().or(z.literal("")),
   firstName: z.string().trim().min(2, "Le prénom est requis").max(80),
   lastName: z.string().trim().min(2, "Le nom est requis").max(80).transform(nomDeFamille),
   email: z.email("Adresse e-mail invalide").optional().or(z.literal("")),
@@ -75,6 +76,7 @@ const SELECTION = {
   id: true,
   editionId: true,
   email: true,
+  civility: true,
   firstName: true,
   lastName: true,
   jobTitle: true,
@@ -89,7 +91,9 @@ const SELECTION = {
   isPublished: true,
   isFeatured: true,
   featuredOrder: true,
-  participant: { select: { id: true, publicId: true, email: true, status: true } },
+  participant: {
+    select: { id: true, publicId: true, email: true, status: true, civility: true },
+  },
   sessions: {
     // Une session supprimée (suppression douce) ne compte plus au programme.
     where: { session: { deletedAt: null } },
@@ -200,6 +204,7 @@ export async function createSpeaker(editionId: string, input: SpeakerInput, acto
   const speaker = await prisma.speaker.create({
     data: {
       editionId,
+      civility: input.civility || null,
       firstName: input.firstName,
       lastName: input.lastName,
       email: input.email ? input.email.toLowerCase() : null,
@@ -232,6 +237,7 @@ export async function updateSpeaker(id: string, input: SpeakerInput, actor: Acto
   const speaker = await prisma.speaker.update({
     where: { id },
     data: {
+      civility: input.civility || null,
       firstName: input.firstName,
       lastName: input.lastName,
       email: input.email ? input.email.toLowerCase() : null,
@@ -569,6 +575,7 @@ export async function createParticipantFromSpeaker(
     select: {
       id: true,
       email: true,
+      civility: true,
       firstName: true,
       lastName: true,
       jobTitle: true,
@@ -601,6 +608,7 @@ export async function createParticipantFromSpeaker(
         // fabriqué ici à part, d'où les FID20-2D5411 des intervenants
         // (29 octobre 2026). Ceux-là restent : leur QR en dépend.
         publicId: await generateUniquePublicId(editionCode),
+        civility: speaker.civility,
         firstName: speaker.firstName,
         lastName: nomDeFamille(speaker.lastName),
         email: speaker.email,

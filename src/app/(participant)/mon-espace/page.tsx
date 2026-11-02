@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { lireLangue, localeIntl, selon, traduire } from "@/lib/langue";
+import { avecCivilite } from "@/lib/civilite";
 import type { LucideIcon } from "lucide-react";
 import {
   BadgeCheck,
@@ -153,8 +154,12 @@ export default async function MySpacePage({
       <>
         <BandeauPage largeur="moyen" reseau={false}>
           <h1>
-            {t({ fr: "Bonjour", en: "Hello", pt: "Olá" })} {participant.firstName}{" "}
-            {participant.lastName}
+            {t({ fr: "Bonjour", en: "Hello", pt: "Olá" })}{" "}
+            {avecCivilite(
+              participant.civility,
+              `${participant.firstName} ${participant.lastName}`,
+              langue,
+            )}
           </h1>
         </BandeauPage>
         <span data-sans-curseur hidden />
@@ -200,8 +205,12 @@ export default async function MySpacePage({
     <>
       <BandeauPage largeur="moyen" reseau={false}>
         <h1>
-          {t({ fr: "Bonjour", en: "Hello", pt: "Olá" })} {participant.firstName}{" "}
-          {participant.lastName}
+          {t({ fr: "Bonjour", en: "Hello", pt: "Olá" })}{" "}
+          {avecCivilite(
+            participant.civility,
+            `${participant.firstName} ${participant.lastName}`,
+            langue,
+          )}
         </h1>
       </BandeauPage>
 
@@ -455,7 +464,11 @@ export default async function MySpacePage({
                 {participant.delegation.members.map((member) => (
                   <li key={member.id} className="flex flex-wrap items-center gap-2">
                     <span className="text-heading">
-                      {member.firstName} {member.lastName}
+                      {avecCivilite(
+                        member.civility,
+                        `${member.firstName} ${member.lastName}`,
+                        langue,
+                      )}
                     </span>
                     <StatusBadge status={member.status} langue={langue} />
                     <span className="text-text-3 text-sm">

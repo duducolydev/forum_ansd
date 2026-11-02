@@ -19,6 +19,7 @@ const VERIFY_WINDOW_SECONDS = 60;
 export type VerificationAssurance = "SIGNED" | "IDENTIFIER";
 
 export interface VerifiedParticipant {
+  civility: string | null;
   firstName: string;
   lastName: string;
   organization: string | null;
@@ -44,6 +45,7 @@ export type PublicVerification =
 const badgeInclude = {
   participant: {
     select: {
+      civility: true,
       firstName: true,
       lastName: true,
       organization: true,
@@ -84,6 +86,7 @@ function present(
     participant: {
       // Jamais d'e-mail, de téléphone ni de photo (brief §2.11) : la sélection
       // Prisma ci-dessus ne les charge même pas.
+      civility: badge.participant.civility,
       firstName: badge.participant.firstName,
       lastName: badge.participant.lastName,
       organization: badge.participant.organization,

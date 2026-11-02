@@ -31,6 +31,7 @@ export function registerBadgeJobs(): void {
 
 /** Les textes imprimés sur le badge, en plus de la catégorie et de la photo. */
 type TextesDuBadge = {
+  civility?: string | null;
   firstName: string;
   lastName: string;
   jobTitle: string | null;
@@ -44,6 +45,7 @@ type TextesDuBadge = {
  */
 export function textesDuBadgeModifies(avant: TextesDuBadge, apres: TextesDuBadge): boolean {
   return (
+    (avant.civility ?? "") !== (apres.civility ?? "") ||
     avant.firstName !== apres.firstName ||
     avant.lastName !== apres.lastName ||
     (avant.jobTitle ?? "") !== (apres.jobTitle ?? "") ||

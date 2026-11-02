@@ -16,11 +16,13 @@ import { datesDuForum } from "./dates";
 import { FORMAT_BADGE, GABARIT_BADGE } from "./format";
 import { buildBadgeToken, hashBadgeToken, parseBadgeToken, verifyBadgeSignature } from "./token";
 import { variablesAccesDirect } from "@/modules/auth/acces-direct";
+import { abregerCivilite } from "@/lib/civilite";
 
 /** Sélection minimale nécessaire au rendu — évite de charger tout le participant. */
 const participantForBadge = {
   id: true,
   publicId: true,
+  civility: true,
   firstName: true,
   lastName: true,
   jobTitle: true,
@@ -31,7 +33,7 @@ const participantForBadge = {
   photoPath: true,
   // Repli quand le participant n'a pas déposé de photo : celle de sa fiche
   // d'intervenant, publiée sur le site (29 octobre 2026).
-  speaker: { select: { photoPath: true } },
+  speaker: { select: { photoPath: true, civility: true } },
   editionId: true,
   accreditedAt: true,
   category: {
@@ -62,7 +64,7 @@ async function photoDataUrl(photoPath: string | null): Promise<string | null> {
 }
 
 /**
- * Le gabarit figure dans le nom (`v1-maquette-2026-b.pdf`) : un badge rendu avec
+ * Le gabarit figure dans le nom (`v1-maquette-2026-c.pdf`) : un badge rendu avec
  * un gabarit antérieur garde ses fichiers, et se repère pour être refait.
  */
 function storageKey(publicId: string, version: number, extension: string): string {
@@ -89,6 +91,8 @@ async function renderAndStore(badge: Badge): Promise<{ pdfPath: string; pngPath:
     logoDataUrl: await logoBadgeDataUrl(),
     policesCss: await policesBadgeCss(),
     eventDates: datesDuForum(participant.edition.startDate, participant.edition.endDate),
+    // Badge en français, comme le libellé de la catégorie : « Mr », « Mme »…
+    civility: abregerCivilite(participant.civility || participant.speaker?.civility) || null,
     firstName: participant.firstName,
     lastName: participant.lastName,
     jobTitle: participant.jobTitle,

@@ -1,3 +1,4 @@
+import { avecCivilite } from "@/lib/civilite";
 import { Pencil } from "lucide-react";
 import { LienBouton } from "@/components/ui/bouton";
 import Link from "next/link";
@@ -79,7 +80,7 @@ export default async function DelegationDetailPage({
                   href={`/admin/participants/${member.id}`}
                   className="text-heading font-semibold"
                 >
-                  {member.firstName} {member.lastName}
+                  {avecCivilite(member.civility, `${member.firstName} ${member.lastName}`)}
                 </Link>
                 <span className="text-text-3 ml-2">{member.publicId}</span>
               </div>

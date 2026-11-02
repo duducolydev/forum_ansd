@@ -128,7 +128,7 @@ export async function listDelegations(editionId: string) {
   return prisma.delegation.findMany({
     where: { editionId },
     include: {
-      headParticipant: { select: { id: true, firstName: true, lastName: true } },
+      headParticipant: { select: { id: true, civility: true, firstName: true, lastName: true } },
       referent: { select: { id: true, name: true, email: true, phone: true, role: true } },
       _count: { select: { members: true } },
     },
@@ -140,10 +140,17 @@ export async function findDelegationById(id: string) {
   return prisma.delegation.findUnique({
     where: { id },
     include: {
-      headParticipant: { select: { id: true, firstName: true, lastName: true } },
+      headParticipant: { select: { id: true, civility: true, firstName: true, lastName: true } },
       referent: { select: { id: true, name: true, email: true, phone: true, role: true } },
       members: {
-        select: { id: true, publicId: true, firstName: true, lastName: true, status: true },
+        select: {
+          id: true,
+          publicId: true,
+          civility: true,
+          firstName: true,
+          lastName: true,
+          status: true,
+        },
         orderBy: { lastName: "asc" },
       },
     },
