@@ -1,7 +1,16 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
-import { AlertCircle, KeyRound, LogIn, Mail, MailCheck, ShieldCheck } from "lucide-react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import {
+  AlertCircle,
+  Eye,
+  EyeOff,
+  KeyRound,
+  LogIn,
+  Mail,
+  MailCheck,
+  ShieldCheck,
+} from "lucide-react";
 import { BoutonSite } from "@/components/site/bouton-site";
 import { useSoumissionSansRemiseAZero } from "@/lib/soumission";
 import { loginAction, type LoginState } from "./actions";
@@ -34,6 +43,7 @@ export function LoginForm({ callbackUrl = "" }: { callbackUrl?: string }) {
   const message = loginErrorMessage(state.error);
   const information = loginInfoMessage(state.error);
   const champCode = useRef<HTMLInputElement>(null);
+  const [motDePasseVisible, setMotDePasseVisible] = useState(false);
 
   // Le code vient d'être envoyé : le curseur va là où il faut le saisir.
   useEffect(() => {
@@ -88,11 +98,24 @@ export function LoginForm({ callbackUrl = "" }: { callbackUrl?: string }) {
           <input
             id="password"
             name="password"
-            type="password"
+            type={motDePasseVisible ? "text" : "password"}
             required
             autoComplete="current-password"
-            className={CHAMP}
+            className={`${CHAMP} pr-11`}
           />
+          {/* Nom accessible sans « mot de passe » : `getByLabel("Mot de passe")`
+              de la suite E2E le confondrait avec le champ. */}
+          <button
+            type="button"
+            onClick={() => setMotDePasseVisible((visible) => !visible)}
+            aria-controls="password"
+            aria-pressed={motDePasseVisible}
+            aria-label={motDePasseVisible ? "Masquer les caractères" : "Afficher les caractères"}
+            title={motDePasseVisible ? "Masquer" : "Afficher"}
+            className="text-text-3 hover:text-text hover:bg-blue-soft absolute top-1/2 right-1.5 -translate-y-1/2 rounded-md p-2 transition-colors"
+          >
+            {motDePasseVisible ? <EyeOff aria-hidden size={16} /> : <Eye aria-hidden size={16} />}
+          </button>
         </span>
       </div>
 
