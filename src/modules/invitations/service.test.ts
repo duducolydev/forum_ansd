@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { createParticipant } from "@/modules/participants/service";
 import {
   createInvitation,
+  deleteInvitation,
   dureeCampagneMinutes,
   ENVOIS_PAR_MINUTE,
   generateInvitationToken,
@@ -10,6 +11,7 @@ import {
   momentEnvoi,
   previewImport,
   sendPendingInvitations,
+  updateInvitation,
   type ParsedImportRow,
 } from "./service";
 
@@ -273,4 +275,156 @@ describe("envoi groupé des invitations en attente", () => {
     // Et la durée annoncée à l'agent correspond à la cadence.
     expect(resultat.dureeMinutes).toBe(dureeCampagneMinutes(resultat.queued));
   }, 30_000);
+});
+
+describe("correction et suppression d'une invitation", () => {
+  let categorieId = "";
+  let autreCategorieId = "";
+  let editionId = "";
+  const participantIds: string[] = [];
+
+  beforeAll(async () => {
+    const edition = await prisma.edition.findFirstOrThrow({ where: { code: "FID-2026" } });
+    editionId = edition.id;
+    const [categorie, autre] = await Promise.all(
+      ["A", "B"].map((suffixe) =>
+        prisma.participantCategory.create({
+          data: {
+            editionId,
+            code: `TEST-CORRECTION-${suffixe}-${crypto.randomUUID().slice(0, 8)}`,
+            labelFr: "Correction (test)",
+            labelEn: "Correction (test)",
+            isActive: false,
+          },
+        }),
+      ),
+    );
+    categorieId = categorie.id;
+    autreCategorieId = autre.id;
+  });
+
+  afterAll(async () => {
+    await prisma.participant.deleteMany({ where: { id: { in: participantIds } } });
+    await prisma.invitation.deleteMany({
+      where: { categoryId: { in: [categorieId, autreCategorieId] } },
+    });
+    await prisma.participantCategory.deleteMany({
+      where: { id: { in: [categorieId, autreCategorieId] } },
+    });
+    await prisma.$disconnect();
+  });
+
+  async function invitationEnvoyee() {
+    const invitation = await createInvitation(
+      editionId,
+      {
+        email: `correction-${crypto.randomUUID()}@example.test`,
+        firstName: "Moussa",
+        lastName: "Diop",
+        categoryId: categorieId,
+      },
+      actor,
+    );
+    return prisma.invitation.update({
+      where: { id: invitation.id },
+      data: { status: "OPENED", sentAt: new Date(), openedAt: new Date(), remindersCount: 1 },
+    });
+  }
+
+  it("corrige le nom et la catégorie sans toucher au lien ni au suivi", async () => {
+    const avant = await invitationEnvoyee();
+
+    const apres = await updateInvitation(
+      avant.id,
+      {
+        email: avant.email,
+        firstName: "Moustapha",
+        lastName: "Diop",
+        organization: "ANSD",
+        categoryId: autreCategorieId,
+      },
+      actor,
+    );
+
+    expect(apres.firstName).toBe("Moustapha");
+    expect(apres.organization).toBe("ANSD");
+    expect(apres.categoryId).toBe(autreCategorieId);
+    expect(apres.token).toBe(avant.token);
+    expect(apres.status).toBe("OPENED");
+    expect(apres.remindersCount).toBe(1);
+  });
+
+  it("remet l'invitation à zéro quand l'adresse change : l'ancien lien ne sert plus", async () => {
+    const avant = await invitationEnvoyee();
+    const nouvelle = `correction-${crypto.randomUUID()}@example.test`;
+
+    const apres = await updateInvitation(
+      avant.id,
+      { email: nouvelle, firstName: "Moussa", lastName: "Diop", categoryId: categorieId },
+      actor,
+    );
+
+    expect(apres.email).toBe(nouvelle);
+    expect(apres.token).not.toBe(avant.token);
+    expect(apres.status).toBe("PENDING");
+    expect(apres.sentAt).toBeNull();
+    expect(apres.openedAt).toBeNull();
+    expect(apres.remindersCount).toBe(0);
+    expect(await prisma.invitation.findUnique({ where: { token: avant.token } })).toBeNull();
+  });
+
+  it("refuse une adresse déjà invitée", async () => {
+    const premiere = await invitationEnvoyee();
+    const seconde = await invitationEnvoyee();
+
+    await expect(
+      updateInvitation(
+        seconde.id,
+        { email: premiere.email, firstName: "Moussa", lastName: "Diop", categoryId: categorieId },
+        actor,
+      ),
+    ).rejects.toThrow(/existe déjà/);
+  });
+
+  it("supprime une invitation créée par erreur", async () => {
+    const invitation = await invitationEnvoyee();
+
+    await deleteInvitation(invitation.id, actor);
+
+    expect(await prisma.invitation.findUnique({ where: { id: invitation.id } })).toBeNull();
+  });
+
+  it("ne corrige ni ne supprime une invitation acceptée", async () => {
+    const invitation = await invitationEnvoyee();
+    const participant = await createParticipant({
+      editionId,
+      editionCode: "FID-2026",
+      source: "ONLINE",
+      actor,
+      input: {
+        firstName: "Moussa",
+        lastName: "Diop",
+        email: invitation.email,
+        country: "Sénégal",
+        categoryId: categorieId,
+        locale: "fr",
+        attendsOpening: false,
+        attendsInaugural: false,
+        attendsClosing: false,
+        attendsAwards: false,
+        needsAccommodation: false,
+        needsTransport: false,
+      },
+    });
+    participantIds.push(participant.id);
+
+    await expect(deleteInvitation(invitation.id, actor)).rejects.toThrow(/acceptée/);
+    await expect(
+      updateInvitation(
+        invitation.id,
+        { email: invitation.email, firstName: "X", lastName: "Diop", categoryId: categorieId },
+        actor,
+      ),
+    ).rejects.toThrow(/acceptée/);
+  });
 });

@@ -52,7 +52,7 @@ export default async function ParticipantsPage({
         </div>
       </div>
       <ParticipantsToolbar categories={categories} />
-      <ParticipantsTable data={items} />
+      <ParticipantsTable data={items} traitementEnLot={can(session, "participants.write")} />
       <Pagination
         page={search.page}
         pageSize={search.pageSize}

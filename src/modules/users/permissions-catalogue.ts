@@ -32,7 +32,7 @@ export const CATALOGUE: GroupePermissions[] = [
     titre: "Invitations et badges",
     permissions: [
       { cle: "invitations.read", label: "Consulter les invitations" },
-      { cle: "invitations.write", label: "Créer et importer des invitations" },
+      { cle: "invitations.write", label: "Créer, importer, corriger et supprimer des invitations" },
       { cle: "invitations.send", label: "Envoyer les invitations et les relances" },
       { cle: "badges.generate", label: "Générer des badges" },
       { cle: "badges.print", label: "Imprimer et exporter des badges" },

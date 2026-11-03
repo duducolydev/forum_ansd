@@ -10,6 +10,7 @@ import { getActiveEdition } from "@/lib/edition";
 import * as service from "./service";
 import * as delegationService from "./delegation-service";
 import { supprimerDefinitivement } from "./suppression";
+import { lotSchema, traiterEnLot, type OperationLot, type ResultatLot } from "./lot";
 import {
   delegationInputSchema,
   participantEditSchema,
@@ -189,6 +190,29 @@ export async function declineParticipantAction(participantId: string): Promise<A
   revalidatePath("/admin/participants");
   revalidatePath(`/admin/participants/${participantId}`);
   return {};
+}
+
+/**
+ * Confirmer ou décliner plusieurs inscriptions d'un coup, depuis la liste.
+ * Mêmes droits que les boutons de la fiche ; la presse reste réservée à qui
+ * peut accréditer, et ses fiches sont sinon laissées de côté (`lot.ts`).
+ */
+export async function traiterEnLotAction(
+  ids: string[],
+  operation: OperationLot,
+): Promise<ActionState & { resultat?: ResultatLot }> {
+  try {
+    const session = await requireSession();
+    if (!can(session, "participants.write")) return { error: "Permission refusée." };
+    const lot = lotSchema.parse({ ids, operation });
+    const resultat = await traiterEnLot(lot.ids, lot.operation, actorFromSession(session), {
+      peutAccrediter: can(session, "participants.accredit"),
+    });
+    revalidatePath("/admin/participants");
+    return { resultat };
+  } catch (error) {
+    return { error: firstFieldError(error) };
+  }
 }
 
 export async function cancelParticipantAction(participantId: string): Promise<ActionState> {

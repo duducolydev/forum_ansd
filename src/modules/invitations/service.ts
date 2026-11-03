@@ -91,6 +91,132 @@ export async function createInvitation(
 }
 
 // ---------------------------------------------------------------------------
+// Correction et suppression (demande du 3 novembre 2026 : « des fois il y a
+// des erreurs sur les invitations »)
+// ---------------------------------------------------------------------------
+
+/** Champs d'invitation lus pour la correction et la suppression. */
+async function invitationModifiable(invitationId: string) {
+  const invitation = await prisma.invitation.findUnique({
+    where: { id: invitationId },
+    include: { participant: { select: { id: true } } },
+  });
+  if (!invitation) throw new Error("Invitation introuvable.");
+  /*
+   * Une invitation acceptée est liée à une fiche de participant : c'est
+   * elle qui fait foi, et c'est elle qu'on corrige. Retoucher l'invitation
+   * créerait deux versions de la même personne.
+   */
+  if (invitation.participant) {
+    throw new Error("Cette invitation a été acceptée : corrigez plutôt la fiche du participant.");
+  }
+  return invitation;
+}
+
+/**
+ * Correction d'une invitation.
+ *
+ * **Changer l'adresse remet l'invitation à zéro** : nouveau jeton, statut « À
+ * envoyer », compteurs vidés. Le lien d'invitation ouvre l'inscription hors
+ * fenêtre et impose la catégorie de l'invitation, sans vérifier l'adresse de
+ * qui s'inscrit : si l'invitation est partie à une mauvaise adresse, l'ancien
+ * lien ne doit plus servir. Et ce qui avait été envoyé ou ouvert concernait
+ * l'autre adresse, pas celle de l'invité.
+ *
+ * Une simple faute dans le nom ou la catégorie, elle, ne touche ni au lien ni
+ * au suivi : l'invité garde le message déjà reçu.
+ */
+export async function updateInvitation(
+  invitationId: string,
+  input: InvitationInput,
+  actor: Actor,
+): Promise<Invitation> {
+  const avant = await invitationModifiable(invitationId);
+
+  const adresseChangee = input.email !== avant.email;
+  if (adresseChangee) {
+    const existing = await repo.findInvitationByEmail(avant.editionId, input.email);
+    if (existing) throw new Error(`Une invitation existe déjà pour ${input.email}.`);
+  }
+
+  const invitation = await repo.updateInvitation(invitationId, {
+    email: input.email,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    organization: input.organization || null,
+    country: input.country || null,
+    category: { connect: { id: input.categoryId } },
+    ...(adresseChangee
+      ? {
+          token: generateInvitationToken(),
+          status: "PENDING",
+          sentAt: null,
+          openedAt: null,
+          respondedAt: null,
+          remindersCount: 0,
+          lastReminderAt: null,
+        }
+      : {}),
+  });
+
+  await audit.log({
+    actorType: actor.type,
+    actorUserId: actor.userId,
+    action: "invitation.update",
+    entity: "Invitation",
+    entityId: invitation.id,
+    before: {
+      email: avant.email,
+      firstName: avant.firstName,
+      lastName: avant.lastName,
+      organization: avant.organization,
+      country: avant.country,
+      categoryId: avant.categoryId,
+      status: avant.status,
+    },
+    after: {
+      email: invitation.email,
+      firstName: invitation.firstName,
+      lastName: invitation.lastName,
+      organization: invitation.organization,
+      country: invitation.country,
+      categoryId: invitation.categoryId,
+      status: invitation.status,
+    },
+  });
+
+  return invitation;
+}
+
+/**
+ * Suppression définitive d'une invitation créée par erreur.
+ *
+ * Un lien déjà envoyé cesse de fonctionner : l'inscription par ce lien ne
+ * trouve plus d'invitation et suit le parcours ordinaire. Un envoi encore en
+ * file est abandonné par le job, qui ne trouve plus rien à envoyer.
+ */
+export async function deleteInvitation(invitationId: string, actor: Actor): Promise<void> {
+  const invitation = await invitationModifiable(invitationId);
+
+  await prisma.invitation.delete({ where: { id: invitationId } });
+
+  await audit.log({
+    actorType: actor.type,
+    actorUserId: actor.userId,
+    action: "invitation.delete",
+    entity: "Invitation",
+    entityId: invitationId,
+    before: {
+      email: invitation.email,
+      firstName: invitation.firstName,
+      lastName: invitation.lastName,
+      categoryId: invitation.categoryId,
+      status: invitation.status,
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Import Excel/CSV (brief §5.5)
 //
 // SÉCURITÉ : `xlsx` est installé depuis le registre officiel SheetJS
@@ -270,7 +396,10 @@ export function registerInvitationJobs(): void {
   jobsRegistered = true;
 
   jobQueue.process<{ invitationId: string }>("invitation.send", async ({ invitationId }) => {
-    const invitation = await prisma.invitation.findUniqueOrThrow({ where: { id: invitationId } });
+    const invitation = await prisma.invitation.findUnique({ where: { id: invitationId } });
+    // Supprimée entre la mise en file et l'envoi : rien à envoyer, et rien à
+    // retenter.
+    if (!invitation) return;
     const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
 
     await sendTemplatedEmail({
@@ -468,6 +597,10 @@ export async function reconcileByEmail(
     entityId: invitation.id,
     after: { participantId },
   });
+}
+
+export async function getInvitationById(id: string) {
+  return repo.findInvitationById(id);
 }
 
 export async function getInvitationByToken(token: string) {

@@ -63,6 +63,22 @@ export function ParticipantsToolbar({
           </option>
         ))}
       </select>
+      {/*
+        Taille de page : la case d'en-tête coche la page entière, et c'est en
+        affichant 200 inscriptions en attente qu'on les confirme d'un coup.
+      */}
+      <select
+        aria-label="Participants par page"
+        onChange={(event) => updateParam("pageSize", event.target.value)}
+        defaultValue={searchParams.get("pageSize") ?? ""}
+        className="border-border bg-surface text-text rounded-lg border px-3 py-2 text-sm"
+      >
+        {["20", "50", "100", "200"].map((taille) => (
+          <option key={taille} value={taille === "20" ? "" : taille}>
+            {taille} par page
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

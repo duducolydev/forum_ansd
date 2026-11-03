@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
@@ -50,6 +51,48 @@ export async function createInvitationAction(
     return { error: firstFieldError(error) };
   }
 
+  revalidatePath("/admin/invitations");
+  return {};
+}
+
+export async function updateInvitationAction(
+  invitationId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const session = await requireSession();
+    if (!can(session, "invitations.write")) return { error: "Permission refusée." };
+
+    const input = invitationInputSchema.parse({
+      email: formData.get("email"),
+      firstName: formData.get("firstName"),
+      lastName: formData.get("lastName"),
+      organization: formData.get("organization") ?? undefined,
+      country: formData.get("country") ?? undefined,
+      categoryId: formData.get("categoryId"),
+    });
+
+    await service.updateInvitation(invitationId, input, {
+      type: "USER",
+      userId: session.user.id,
+    });
+  } catch (error) {
+    return { error: firstFieldError(error) };
+  }
+
+  revalidatePath("/admin/invitations");
+  redirect("/admin/invitations");
+}
+
+export async function deleteInvitationAction(invitationId: string): Promise<ActionState> {
+  try {
+    const session = await requireSession();
+    if (!can(session, "invitations.write")) return { error: "Permission refusée." };
+    await service.deleteInvitation(invitationId, { type: "USER", userId: session.user.id });
+  } catch (error) {
+    return { error: firstFieldError(error) };
+  }
   revalidatePath("/admin/invitations");
   return {};
 }

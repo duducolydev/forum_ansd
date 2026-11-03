@@ -76,7 +76,10 @@ export async function listInvitations(
 }
 
 export async function findInvitationById(id: string) {
-  return prisma.invitation.findUnique({ where: { id }, include: { category: true } });
+  return prisma.invitation.findUnique({
+    where: { id },
+    include: { category: true, participant: { select: { id: true } } },
+  });
 }
 
 export async function findInvitationByToken(token: string) {

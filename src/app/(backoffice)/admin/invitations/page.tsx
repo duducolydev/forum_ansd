@@ -1,4 +1,4 @@
-import { Plus, Upload } from "lucide-react";
+import { Pencil, Plus, Upload } from "lucide-react";
 import { LienBouton } from "@/components/ui/bouton";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -118,11 +118,25 @@ export default async function InvitationsPage({
                 </td>
                 <td className="border-border border-b px-3.5 py-3">{invitation.remindersCount}</td>
                 <td className="border-border border-b px-3.5 py-3">
-                  {canSend && invitation.status !== "REGISTERED" && (
-                    <SendButton
-                      invitationId={invitation.id}
-                      label={invitation.status === "PENDING" ? "Envoyer" : "Renvoyer"}
-                    />
+                  {invitation.status !== "REGISTERED" && (
+                    <div className="flex items-start justify-end gap-2">
+                      {canSend && (
+                        <SendButton
+                          invitationId={invitation.id}
+                          label={invitation.status === "PENDING" ? "Envoyer" : "Renvoyer"}
+                        />
+                      )}
+                      {canWrite && (
+                        <LienBouton
+                          href={`/admin/invitations/${invitation.id}/modifier`}
+                          ton="discret"
+                          taille="petit"
+                          icone={Pencil}
+                        >
+                          Modifier
+                        </LienBouton>
+                      )}
+                    </div>
                   )}
                 </td>
               </tr>
