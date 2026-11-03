@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { lireLangue, selon } from "@/lib/langue";
 import { requestMagicLinkAction, verifyCodeAction, type MagicLinkState } from "../my-space-actions";
@@ -16,10 +16,15 @@ export function MagicLinkForm({ linkError }: { linkError?: boolean }) {
   );
   const [codeState, codeAction, codePending] = useActionState(verifyCodeAction, initialState);
   const [email, setEmail] = useState("");
+  // « J'ai déjà un code » : le code de l'e-mail de confirmation se saisit sans
+  // redemander de lien (3 novembre 2026).
+  const [saisieDirecte, setSaisieDirecte] = useState(false);
+  const champEmail = useRef<HTMLInputElement>(null);
   const langue = lireLangue(useLocale());
   const t = (textes: { fr: string; en: string; pt: string }) => selon(langue, textes);
 
   const sentTo = codeState.sentTo ?? requestState.sentTo;
+  const emailCode = sentTo ?? (saisieDirecte ? email.trim().toLowerCase() : null);
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,6 +48,7 @@ export function MagicLinkForm({ linkError }: { linkError?: boolean }) {
           })}
         </label>
         <input
+          ref={champEmail}
           id="email"
           name="email"
           type="email"
@@ -67,25 +73,51 @@ export function MagicLinkForm({ linkError }: { linkError?: boolean }) {
               })}
         </BoutonSite>
         {requestState.error && <p className="text-sm text-red-600">{requestState.error}</p>}
+        {!emailCode && (
+          <button
+            type="button"
+            onClick={() => {
+              if (champEmail.current?.reportValidity()) setSaisieDirecte(true);
+            }}
+            className="text-link w-fit text-sm underline-offset-2 hover:underline"
+          >
+            {t({
+              fr: "J'ai déjà un code à 6 chiffres (e-mail de confirmation ou de badge)",
+              en: "I already have a 6-digit code (confirmation or badge email)",
+              pt: "Já tenho um código de 6 dígitos (e-mail de confirmação ou do crachá)",
+            })}
+          </button>
+        )}
       </form>
 
-      {sentTo && (
+      {emailCode && (
         <div className="border-border flex flex-col gap-3 rounded-xl border p-5">
-          <p className="text-text-2 text-sm">
-            {t({
-              fr: "Si un compte existe pour ",
-              en: "If an account exists for ",
-              pt: "Se existir uma conta para ",
-            })}
-            <b className="text-heading">{sentTo}</b>
-            {t({
-              fr: ", un e-mail contenant un lien d'accès et un code à 6 chiffres vient d'être envoyé. Le lien est valable 30 minutes.",
-              en: ", an email containing an access link and a 6-digit code has just been sent. The link is valid for 30 minutes.",
-              pt: ", acaba de ser enviado um e-mail com uma ligação de acesso e um código de 6 dígitos. A ligação é válida durante 30 minutos.",
-            })}
-          </p>
+          {sentTo ? (
+            <p className="text-text-2 text-sm">
+              {t({
+                fr: "Si un compte existe pour ",
+                en: "If an account exists for ",
+                pt: "Se existir uma conta para ",
+              })}
+              <b className="text-heading">{sentTo}</b>
+              {t({
+                fr: ", un e-mail contenant un lien d'accès et un code à 6 chiffres vient d'être envoyé. Le lien est valable 30 minutes. Le code de votre e-mail de confirmation reste aussi valable.",
+                en: ", an email containing an access link and a 6-digit code has just been sent. The link is valid for 30 minutes. The code in your confirmation email also remains valid.",
+                pt: ", acaba de ser enviado um e-mail com uma ligação de acesso e um código de 6 dígitos. A ligação é válida durante 30 minutos. O código do seu e-mail de confirmação também continua válido.",
+              })}
+            </p>
+          ) : (
+            <p className="text-text-2 text-sm">
+              {t({
+                fr: "Saisissez le code à 6 chiffres reçu pour ",
+                en: "Enter the 6-digit code received for ",
+                pt: "Introduza o código de 6 dígitos recebido para ",
+              })}
+              <b className="text-heading">{emailCode}</b>.
+            </p>
+          )}
           <form action={codeAction} className="flex flex-wrap items-end gap-3">
-            <input type="hidden" name="email" value={sentTo} />
+            <input type="hidden" name="email" value={emailCode} />
             <div className="flex flex-col gap-1.5">
               <label htmlFor="code6" className="text-heading text-sm font-semibold">
                 {t({ fr: "Code à 6 chiffres", en: "6-digit code", pt: "Código de 6 dígitos" })}

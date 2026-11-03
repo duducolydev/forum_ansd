@@ -30,10 +30,26 @@ const VERIFY_WINDOW_SECONDS = 60;
  *
  * Soit au plus 50 essais par jour, chacun contre un seul code : environ
  * 0,005 % de réussite par jour.
+ *
+ * Exception (3 novembre 2026) : le **code de secours** de l'e-mail de
+ * confirmation (`creerCodeSecours`) survit à une nouvelle demande. Le champ du
+ * code n'apparaissait qu'après une demande, qui l'annulait : le code de
+ * l'e-mail de confirmation était refusé à coup sûr. Deux codes au plus sont
+ * donc comparés — le dernier demandé et le dernier de secours — et le second
+ * ne se régénère pas depuis le formulaire : cinq erreurs l'annulent pour de
+ * bon. Le risque reste du même ordre (environ 0,01 % par jour).
  */
 const MAX_ECHECS_CODE = 5;
 const DEMANDES_PAR_JOUR = 10;
 const UN_JOUR_EN_SECONDES = 24 * 60 * 60;
+
+/**
+ * Un code de secours vit des jours, un lien demandé 30 minutes : la durée de
+ * vie suffit à les distinguer, sans colonne de plus.
+ */
+function estCodeSecours(lien: { createdAt: Date; expiresAt: Date }): boolean {
+  return lien.expiresAt.getTime() - lien.createdAt.getTime() > UN_JOUR_EN_SECONDES * 1000;
+}
 
 /** Limites de demande de lien : par minute, puis par jour. */
 async function limiterDemandes(
@@ -107,9 +123,11 @@ export async function requestMagicLink(
   const code6 = String(randomInt(0, 1_000_000)).padStart(6, "0");
   const expiresAt = new Date(Date.now() + LINK_TTL_MINUTES * 60 * 1000);
 
-  // Un seul code valide à la fois : le dernier envoyé.
+  // Un seul lien demandé valide à la fois : le dernier envoyé. Les liens
+  // demandés avant expirent tous avant celui-ci ; le code de secours, valable
+  // des jours, n'est pas touché.
   await prisma.magicLink.updateMany({
-    where: { participantId: participant.id, usedAt: null },
+    where: { participantId: participant.id, usedAt: null, expiresAt: { lte: expiresAt } },
     data: { usedAt: new Date() },
   });
   await prisma.magicLink.create({
@@ -148,7 +166,8 @@ export async function requestMagicLink(
  * seul le dernier code valide est comparé, cinq erreurs l'annulent. Il ne
  * s'accompagne pas d'un lien — c'est le lien signé de l'e-mail qui en tient
  * lieu — et n'annule pas les codes précédents : ceux-ci ne sont de toute
- * façon plus comparés.
+ * façon plus comparés. Une demande de lien depuis « Mon espace » ne l'annule
+ * pas non plus.
  */
 export async function creerCodeSecours(participantId: string, jours: number): Promise<string> {
   const code6 = String(randomInt(0, 1_000_000)).padStart(6, "0");
@@ -224,25 +243,35 @@ export async function consumeCode(
   if (!participant || participant.deletedAt) return { status: "INVALID" };
 
   /*
-   * Seul le **dernier** lien encore valide est comparé. La recherche portait
-   * auparavant sur le code parmi tous les liens valides, ce qui multipliait les
-   * chances d'un essai au hasard ; les liens d'avant cette règle restent en base
-   * mais ne sont plus jamais comparés.
+   * Seuls le **dernier** lien demandé et le **dernier** code de secours encore
+   * valides sont comparés. La recherche portait auparavant sur le code parmi
+   * tous les liens valides, ce qui multipliait les chances d'un essai au
+   * hasard ; les liens d'avant cette règle restent en base mais ne sont plus
+   * jamais comparés.
    */
-  const magicLink = await prisma.magicLink.findFirst({
+  const valides = await prisma.magicLink.findMany({
     where: { participantId: participant.id, usedAt: null, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: "desc" },
+    take: 20,
   });
-  if (!magicLink) return { status: "INVALID" };
+  const candidats = [
+    valides.find((lien) => !estCodeSecours(lien)),
+    valides.find(estCodeSecours),
+  ].filter((lien) => lien !== undefined);
+  if (candidats.length === 0) return { status: "INVALID" };
 
-  if (!codesEgaux(magicLink.code6, code6)) {
-    const apres = await prisma.magicLink.update({
-      where: { id: magicLink.id },
-      data: { failedAttempts: { increment: 1 } },
-    });
-    if (apres.failedAttempts >= MAX_ECHECS_CODE) {
-      // Lien annulé : le prochain essai demande un nouvel envoi.
-      await marquerUtilise(magicLink.id);
+  const magicLink = candidats.find((lien) => codesEgaux(lien.code6, code6));
+  if (!magicLink) {
+    // L'erreur compte contre chacun des codes comparés.
+    for (const lien of candidats) {
+      const apres = await prisma.magicLink.update({
+        where: { id: lien.id },
+        data: { failedAttempts: { increment: 1 } },
+      });
+      if (apres.failedAttempts >= MAX_ECHECS_CODE) {
+        // Lien annulé : le prochain essai demande un nouvel envoi.
+        await marquerUtilise(lien.id);
+      }
     }
     return { status: "INVALID" };
   }

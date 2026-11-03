@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { createParticipant } from "@/modules/participants/service";
-import { consumeCode, consumeMagicLink, requestMagicLink } from "./magic-link";
+import { consumeCode, consumeMagicLink, creerCodeSecours, requestMagicLink } from "./magic-link";
 
 const emails: string[] = [];
 let editionId = "";
@@ -192,6 +192,26 @@ describe("lien magique (brief §5.3)", () => {
         status: "OK",
         participantId: participant.id,
       });
+    });
+
+    it("une nouvelle demande laisse valable le code de secours de l'e-mail de confirmation", async () => {
+      const participant = await makeParticipant();
+      const secours = await creerCodeSecours(participant.id, 7);
+
+      await requestMagicLink(editionId, participant.email, "127.0.0.1");
+
+      expect(await consumeCode(editionId, participant.email, secours)).toEqual({
+        status: "OK",
+        participantId: participant.id,
+      });
+    });
+
+    it("accepte aussi le code du lien demandé quand un code de secours existe", async () => {
+      const participant = await makeParticipant();
+      await creerCodeSecours(participant.id, 7);
+      await creerLien(participant.id, "222222");
+
+      expect((await consumeCode(editionId, participant.email, "222222")).status).toBe("OK");
     });
 
     it("cinq codes erronés annulent le lien", async () => {
