@@ -9,6 +9,7 @@ import { BarList } from "@/modules/dashboard/components/bar-list";
 import { getFluxRecent, getPresenceDuJour, listerJours } from "@/modules/attendance/service";
 import { LiveFeed } from "@/modules/attendance/components/live-feed";
 import { ExportPanel } from "@/modules/attendance/components/export-panel";
+import { SelecteurJour } from "@/modules/attendance/components/selecteur-jour";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,25 @@ const dateLongue = new Intl.DateTimeFormat("fr-FR", {
 
 function enIso(jour: Date): string {
   return jour.toISOString().slice(0, 10);
+}
+
+/** Date `AAAA-MM-JJ` demandée en paramètre, ou `null` si absente ou mal formée. */
+function jourValide(valeur: string | undefined): Date | null {
+  if (!valeur || !/^\d{4}-\d{2}-\d{2}$/.test(valeur)) return null;
+  const jour = new Date(`${valeur}T00:00:00.000Z`);
+  return Number.isNaN(jour.getTime()) || enIso(jour) !== valeur ? null : jour;
+}
+
+/** Journées du Forum, bornes comprises — plafonnées pour une édition mal saisie. */
+function joursDuForum(debut: Date, fin: Date): Date[] {
+  const jours: Date[] = [];
+  const courant = new Date(enIso(debut) + "T00:00:00.000Z");
+  const dernier = new Date(enIso(fin) + "T00:00:00.000Z");
+  while (courant <= dernier && jours.length < 10) {
+    jours.push(new Date(courant));
+    courant.setUTCDate(courant.getUTCDate() + 1);
+  }
+  return jours;
 }
 
 export default async function PresencesPage({
@@ -42,10 +62,20 @@ export default async function PresencesPage({
   const { jour: jourDemande } = await searchParams;
 
   const jours = await listerJours(edition.id);
-  // Aucun scan encore enregistré : on retombe sur aujourd'hui plutôt que sur un
-  // écran vide sans date, pour que l'export reste utilisable en préparation.
-  const disponibles = jours.length > 0 ? jours : [new Date(enIso(new Date()) + "T00:00:00.000Z")];
-  const choisi = disponibles.find((jour) => enIso(jour) === jourDemande) ?? disponibles[0]!;
+  const aujourdhui = new Date(enIso(new Date()) + "T00:00:00.000Z");
+  // Sans date demandée : le dernier jour scanné, sinon aujourd'hui plutôt qu'un
+  // écran vide, pour que l'export reste utilisable en préparation. Une date
+  // demandée est respectée même sans scan : c'est le cas de l'émargement
+  // préparé à l'avance.
+  const choisi = jourValide(jourDemande) ?? jours[0] ?? aujourdhui;
+
+  // Raccourcis : les journées du Forum, les jours scannés hors Forum, et le
+  // jour choisi s'il n'en fait pas partie, pour qu'il reste visible.
+  const raccourcis = new Map<string, Date>();
+  for (const jour of [...joursDuForum(edition.startDate, edition.endDate), ...jours, choisi]) {
+    raccourcis.set(enIso(jour), jour);
+  }
+  const disponibles = [...raccourcis.values()].sort((a, b) => a.getTime() - b.getTime());
 
   const [presence, flux, categories, zones] = await Promise.all([
     getPresenceDuJour(edition.id, choisi),
@@ -71,7 +101,7 @@ export default async function PresencesPage({
             Ce que les points de contrôle ont enregistré, jour par jour.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-end gap-2">
           {disponibles.map((jour) => {
             const iso = enIso(jour);
             const actif = iso === enIso(choisi);
@@ -89,6 +119,7 @@ export default async function PresencesPage({
               </Link>
             );
           })}
+          <SelecteurJour jour={enIso(choisi)} />
         </div>
       </div>
 
@@ -113,7 +144,12 @@ export default async function PresencesPage({
         />
       </div>
 
-      <ExportPanel jour={enIso(choisi)} categories={categories} zones={zones} />
+      <ExportPanel
+        jour={enIso(choisi)}
+        jourLibelle={dateLongue.format(choisi)}
+        categories={categories}
+        zones={zones}
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="border-border bg-surface rounded-xl border p-5">

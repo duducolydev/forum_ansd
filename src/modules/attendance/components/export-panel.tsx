@@ -18,10 +18,13 @@ const champ = "border-border bg-bg text-text rounded-lg border px-3 py-2 text-sm
  */
 export function ExportPanel({
   jour,
+  jourLibelle,
   categories,
   zones,
 }: {
+  /** Jour choisi en haut de page (`AAAA-MM-JJ`), transmis tel quel à l'export. */
   jour: string;
+  jourLibelle: string;
   categories: { id: string; labelFr: string }[];
   zones: { id: string; name: string }[];
 }) {
@@ -40,7 +43,7 @@ export function ExportPanel({
 
   return (
     <div className="border-border bg-surface rounded-xl border p-5">
-      <h3 className="text-heading mb-1 text-sm font-semibold">Exporter en PDF</h3>
+      <h3 className="text-heading mb-1 text-sm font-semibold">Exporter en PDF — {jourLibelle}</h3>
       <p className="text-text-3 mb-4 text-xs">
         La feuille d&apos;émargement se prépare avant la séance, avec une colonne signature. La
         liste de présence rend compte après coup, absents compris.
