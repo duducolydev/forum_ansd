@@ -22,6 +22,7 @@ import { logoutAction } from "@/modules/participants/my-space-actions";
 import { editDeadline, canEditNow, getMySpaceData } from "@/modules/participants/my-space-service";
 import { MagicLinkForm } from "@/modules/participants/components/magic-link-form";
 import { MyInfoForm } from "@/modules/participants/components/my-info-form";
+import { joursDuForum } from "@/modules/participants/jours-forum";
 import { DeletionRequest } from "@/modules/participants/components/deletion-request";
 import { PhotoForm } from "@/modules/participants/components/photo-form";
 import { StatusBadge } from "@/modules/participants/components/status-badge";
@@ -324,14 +325,37 @@ export default async function MySpacePage({
               email={participant.email}
               editable={editable}
               deadlineLabel={deadlineLabel}
+              days={joursDuForum(
+                participant.edition.startDate,
+                participant.edition.endDate,
+                langue,
+              )}
               values={{
                 civility: participant.civility ?? "",
                 firstName: participant.firstName,
                 lastName: participant.lastName,
                 phone: participant.phone ?? "",
+                country: participant.country,
                 city: participant.city ?? "",
                 organization: participant.organization ?? "",
+                organizationType: participant.organizationType ?? "",
                 jobTitle: participant.jobTitle ?? "",
+                activityDomain: participant.activityDomain ?? "",
+                website: participant.website ?? "",
+                bio: participant.bio ?? "",
+                // Colonne JSON : seules les chaînes sont retenues.
+                participationDays: Array.isArray(participant.participationDays)
+                  ? participant.participationDays.filter(
+                      (jour): jour is string => typeof jour === "string",
+                    )
+                  : [],
+                attendsOpening: participant.attendsOpening,
+                attendsClosing: participant.attendsClosing,
+                attendsAwards: participant.attendsAwards,
+                arrivalDate: participant.arrivalDate?.toISOString().slice(0, 10) ?? "",
+                departureDate: participant.departureDate?.toISOString().slice(0, 10) ?? "",
+                needsAccommodation: participant.needsAccommodation,
+                needsTransport: participant.needsTransport,
                 dietaryRequirements: participant.dietaryRequirements ?? "",
                 specialNeeds: participant.specialNeeds ?? "",
               }}

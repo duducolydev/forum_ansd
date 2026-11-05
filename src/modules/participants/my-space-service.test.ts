@@ -16,22 +16,83 @@ describe("fenêtre de modification J-3 (brief §5.3)", () => {
 });
 
 describe("mySpaceInputSchema", () => {
+  /** Le minimum qu'exige l'inscription : nom, pays, une journée. */
+  const MINIMUM = {
+    firstName: "Awa",
+    lastName: "Diagne",
+    country: "Sénégal",
+    participationDays: ["2026-11-23"],
+  };
+
   it("n'expose ni la catégorie ni le statut ni les consentements", () => {
     const parsed = mySpaceInputSchema.parse({
+      ...MINIMUM,
       firstName: "  Awa  ",
-      lastName: "Diagne",
       categoryId: "cat_autre",
       status: "CONFIRMED",
       consentImage: true,
+      email: "autre@example.test",
     } as Record<string, unknown>);
 
     expect(parsed.firstName).toBe("Awa");
     expect(parsed).not.toHaveProperty("categoryId");
     expect(parsed).not.toHaveProperty("status");
     expect(parsed).not.toHaveProperty("consentImage");
+    expect(parsed).not.toHaveProperty("email");
   });
 
   it("exige un prénom et un nom", () => {
-    expect(mySpaceInputSchema.safeParse({ firstName: "", lastName: "Diagne" }).success).toBe(false);
+    expect(mySpaceInputSchema.safeParse({ ...MINIMUM, firstName: "" }).success).toBe(false);
+  });
+
+  it("accepte tout ce que l'inscription a saisi", () => {
+    const parsed = mySpaceInputSchema.parse({
+      ...MINIMUM,
+      phone: "+221 77 123 45 67",
+      organizationType: "Institut national de statistique",
+      activityDomain: "Statistiques démographiques",
+      website: "https://www.ansd.sn",
+      bio: "Statisticienne, spécialiste des recensements.",
+      participationDays: ["2026-11-23", "2026-11-24"],
+      attendsOpening: true,
+      arrivalDate: "2026-11-22",
+      departureDate: "2026-11-26",
+      needsAccommodation: true,
+    });
+
+    expect(parsed).toMatchObject({
+      bio: "Statisticienne, spécialiste des recensements.",
+      participationDays: ["2026-11-23", "2026-11-24"],
+      attendsOpening: true,
+      attendsClosing: false,
+      needsAccommodation: true,
+      needsTransport: false,
+    });
+  });
+
+  it("garde les règles de l'inscription : pays, une journée", () => {
+    expect(mySpaceInputSchema.safeParse({ ...MINIMUM, country: " " }).success).toBe(false);
+    expect(mySpaceInputSchema.safeParse({ ...MINIMUM, participationDays: [] }).success).toBe(false);
+  });
+
+  it("accepte la biographie longue de la fiche intervenant, dont c'est la même", () => {
+    expect(mySpaceInputSchema.safeParse({ ...MINIMUM, bio: "x".repeat(3000) }).success).toBe(true);
+    expect(mySpaceInputSchema.safeParse({ ...MINIMUM, bio: "x".repeat(3001) }).success).toBe(false);
+  });
+
+  it("refuse une date mal formée ou un départ avant l'arrivée", () => {
+    expect(mySpaceInputSchema.safeParse({ ...MINIMUM, arrivalDate: "22/11/2026" }).success).toBe(
+      false,
+    );
+    const inverse = mySpaceInputSchema.safeParse({
+      ...MINIMUM,
+      arrivalDate: "2026-11-25",
+      departureDate: "2026-11-22",
+    });
+    expect(inverse.success).toBe(false);
+    expect(inverse.error?.issues[0]?.message).toBe("La date de départ précède la date d'arrivée");
+    expect(mySpaceInputSchema.safeParse({ ...MINIMUM, arrivalDate: "2026-11-22" }).success).toBe(
+      true,
+    );
   });
 });

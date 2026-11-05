@@ -36,13 +36,25 @@ const ERREURS: Record<string, { en: string; pt: string }> = {
     en: "Participation category is required",
     pt: "A categoria de participação é obrigatória",
   },
-  "300 caractères maximum": {
-    en: "300 characters maximum",
-    pt: "300 caracteres no máximo",
+  "600 caractères maximum": {
+    en: "600 characters maximum",
+    pt: "600 caracteres no máximo",
+  },
+  "3000 caractères maximum": {
+    en: "3,000 characters maximum",
+    pt: "3000 caracteres no máximo",
   },
   "Sélectionnez au moins une journée": {
     en: "Select at least one day",
     pt: "Selecione pelo menos um dia",
+  },
+  "Date invalide": {
+    en: "Invalid date",
+    pt: "Data inválida",
+  },
+  "La date de départ précède la date d'arrivée": {
+    en: "The departure date is before the arrival date",
+    pt: "A data de partida é anterior à data de chegada",
   },
   "Vous devez accepter les conditions de participation": {
     en: "You must accept the terms of participation",

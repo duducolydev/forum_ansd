@@ -22,6 +22,7 @@ import {
 import { nomDeFamille } from "@/lib/nom-de-famille";
 import { generateUniquePublicId } from "@/modules/participants/service";
 import { enqueueBadgeRefresh } from "@/modules/badges/jobs";
+import { alignerBiographies, BIOGRAPHIE_MAX, propagerBioDeLIntervenant } from "./biographie";
 
 /**
  * Intervenants (brief §5.8).
@@ -50,7 +51,7 @@ export const speakerInputSchema = z.object({
   jobTitle: z.string().trim().max(150).optional().or(z.literal("")),
   organization: z.string().trim().max(150).optional().or(z.literal("")),
   country: z.string().trim().max(80).optional().or(z.literal("")),
-  bioFr: z.string().trim().max(3000).optional().or(z.literal("")),
+  bioFr: z.string().trim().max(BIOGRAPHIE_MAX).optional().or(z.literal("")),
   bioEn: z.string().trim().max(3000).optional().or(z.literal("")),
   bioPt: z.string().trim().max(3000).optional().or(z.literal("")),
   isPublished: z.boolean().default(false),
@@ -65,7 +66,7 @@ export const selfEditSchema = z.object({
   jobTitle: z.string().trim().max(150).optional().or(z.literal("")),
   organization: z.string().trim().max(150).optional().or(z.literal("")),
   country: z.string().trim().max(80).optional().or(z.literal("")),
-  bioFr: z.string().trim().max(3000).optional().or(z.literal("")),
+  bioFr: z.string().trim().max(BIOGRAPHIE_MAX).optional().or(z.literal("")),
   bioEn: z.string().trim().max(3000).optional().or(z.literal("")),
   bioPt: z.string().trim().max(3000).optional().or(z.literal("")),
 });
@@ -249,6 +250,10 @@ export async function createSpeaker(editionId: string, input: SpeakerInput, acto
 }
 
 export async function updateSpeaker(id: string, input: SpeakerInput, actor: Actor) {
+  const avant = await prisma.speaker.findUniqueOrThrow({
+    where: { id },
+    select: { bioFr: true },
+  });
   const speaker = await prisma.speaker.update({
     where: { id },
     data: {
@@ -269,6 +274,11 @@ export async function updateSpeaker(id: string, input: SpeakerInput, actor: Acto
     select: SELECTION,
   });
 
+  // Biographie commune avec le participant lié (`biographie.ts`).
+  if ((avant.bioFr ?? "") !== (speaker.bioFr ?? "")) {
+    await propagerBioDeLIntervenant(id, speaker.bioFr);
+  }
+
   await audit.log({
     actorType: actor.type,
     actorUserId: actor.userId,
@@ -283,7 +293,11 @@ export async function updateSpeaker(id: string, input: SpeakerInput, actor: Acto
 
 /** Mise à jour par l'intervenant lui-même : bio et coordonnées, rien d'autre. */
 export async function updateSelf(speakerId: string, input: SelfEditInput) {
-  await prisma.speaker.update({
+  const avant = await prisma.speaker.findUniqueOrThrow({
+    where: { id: speakerId },
+    select: { bioFr: true },
+  });
+  const apres = await prisma.speaker.update({
     where: { id: speakerId },
     data: {
       jobTitle: input.jobTitle || null,
@@ -293,7 +307,13 @@ export async function updateSelf(speakerId: string, input: SelfEditInput) {
       bioEn: input.bioEn || null,
       bioPt: input.bioPt || null,
     },
+    select: { bioFr: true },
   });
+
+  // Sa biographie est aussi celle de sa fiche participant (`biographie.ts`).
+  if ((avant.bioFr ?? "") !== (apres.bioFr ?? "")) {
+    await propagerBioDeLIntervenant(speakerId, apres.bioFr);
+  }
 
   await audit.log({
     actorType: "SYSTEM",
@@ -596,6 +616,7 @@ export async function createParticipantFromSpeaker(
       jobTitle: true,
       organization: true,
       country: true,
+      bioFr: true,
       participantId: true,
     },
   });
@@ -630,6 +651,7 @@ export async function createParticipantFromSpeaker(
         country: speaker.country ?? "Sénégal",
         jobTitle: speaker.jobTitle,
         organization: speaker.organization,
+        bio: speaker.bioFr,
         categoryId,
         status: "CONFIRMED",
         source: "IMPORT",
@@ -643,6 +665,8 @@ export async function createParticipantFromSpeaker(
     where: { id: speakerId },
     data: { participantId: participant.id },
   });
+  // Participant déjà inscrit et repris : biographie complétée du côté vide.
+  if (existant) await alignerBiographies(speakerId);
 
   await audit.log({
     actorType: actor.type,
@@ -719,6 +743,7 @@ export async function designerIntervenant(
     await prisma.speaker.update({ where: { id: homonyme.id }, data: { participantId } });
     speakerId = homonyme.id;
     origine = "rapprochee";
+    await alignerBiographies(speakerId);
   } else {
     const speaker = await prisma.speaker.create({
       data: {

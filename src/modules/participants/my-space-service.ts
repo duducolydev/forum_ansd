@@ -4,19 +4,67 @@ import { audit } from "@/lib/audit";
 import { jobQueue } from "@/lib/queue";
 import { nomDeFamille } from "@/lib/nom-de-famille";
 import { enqueueBadgeRefresh, textesDuBadgeModifies } from "@/modules/badges/jobs";
+import { BIOGRAPHIE_MAX, propagerBioDuParticipant } from "@/modules/speakers/biographie";
 
-/** Modifications autorisées au participant lui-même (ni catégorie, ni statut, ni consentements). */
-export const mySpaceInputSchema = z.object({
-  civility: z.string().trim().max(20).optional().or(z.literal("")),
-  firstName: z.string().trim().min(1, "Le prénom est requis").max(100),
-  lastName: z.string().trim().min(1, "Le nom est requis").max(100).transform(nomDeFamille),
-  phone: z.string().trim().max(30).optional().or(z.literal("")),
-  city: z.string().trim().max(100).optional().or(z.literal("")),
-  organization: z.string().trim().max(200).optional().or(z.literal("")),
-  jobTitle: z.string().trim().max(150).optional().or(z.literal("")),
-  dietaryRequirements: z.string().trim().max(300).optional().or(z.literal("")),
-  specialNeeds: z.string().trim().max(300).optional().or(z.literal("")),
-});
+const texte = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
+
+/** Date d'un champ `<input type="date">`, ou vide. */
+const dateSaisie = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date invalide")
+  .optional()
+  .or(z.literal(""));
+
+/**
+ * Modifications autorisées au participant lui-même : tout ce qu'il a saisi à
+ * l'inscription, sauf la catégorie, le statut, l'adresse e-mail (sa clé de
+ * connexion) et les consentements.
+ *
+ * Le formulaire ne proposait que l'identité et deux champs de logistique (5
+ * novembre 2026) : pays, profil professionnel, biographie, journées et
+ * logistique ne se corrigeaient qu'en écrivant au comité. Les règles sont
+ * celles de l'inscription (`registration-schema.ts`), pour qu'une valeur
+ * acceptée là-bas le soit ici.
+ */
+export const mySpaceInputSchema = z
+  .object({
+    civility: texte(20),
+    firstName: z.string().trim().min(1, "Le prénom est requis").max(100),
+    lastName: z.string().trim().min(1, "Le nom est requis").max(100).transform(nomDeFamille),
+    phone: texte(30),
+    country: z.string().trim().min(1, "Le pays est requis").max(100),
+    city: texte(100),
+    organization: texte(200),
+    organizationType: texte(100),
+    jobTitle: texte(150),
+    activityDomain: texte(150),
+    website: texte(300),
+    // Même plafond que la fiche intervenant, dont c'est aussi la biographie
+    // (`speakers/biographie.ts`). L'inscription garde sa biographie courte.
+    bio: z
+      .string()
+      .trim()
+      .max(BIOGRAPHIE_MAX, `${BIOGRAPHIE_MAX} caractères maximum`)
+      .optional()
+      .or(z.literal("")),
+    participationDays: z.array(z.string()).min(1, "Sélectionnez au moins une journée"),
+    attendsOpening: z.boolean().default(false),
+    attendsClosing: z.boolean().default(false),
+    attendsAwards: z.boolean().default(false),
+    arrivalDate: dateSaisie,
+    departureDate: dateSaisie,
+    needsAccommodation: z.boolean().default(false),
+    needsTransport: z.boolean().default(false),
+    dietaryRequirements: texte(300),
+    specialNeeds: texte(300),
+  })
+  .refine(
+    // Dates ISO : l'ordre alphabétique est l'ordre chronologique.
+    (input) =>
+      !input.arrivalDate || !input.departureDate || input.departureDate >= input.arrivalDate,
+    { message: "La date de départ précède la date d'arrivée", path: ["departureDate"] },
+  );
 
 export type MySpaceInput = z.infer<typeof mySpaceInputSchema>;
 
@@ -81,9 +129,23 @@ export async function updateMyInfo(participantId: string, input: MySpaceInput): 
       firstName: input.firstName,
       lastName: input.lastName,
       phone: input.phone || null,
+      country: input.country,
       city: input.city || null,
       organization: input.organization || null,
+      organizationType: input.organizationType || null,
       jobTitle: input.jobTitle || null,
+      activityDomain: input.activityDomain || null,
+      website: input.website || null,
+      bio: input.bio || null,
+      participationDays: input.participationDays,
+      attendsOpening: input.attendsOpening,
+      attendsClosing: input.attendsClosing,
+      attendsAwards: input.attendsAwards,
+      // Même conversion qu'à l'inscription : minuit UTC du jour saisi.
+      arrivalDate: input.arrivalDate ? new Date(input.arrivalDate) : null,
+      departureDate: input.departureDate ? new Date(input.departureDate) : null,
+      needsAccommodation: input.needsAccommodation,
+      needsTransport: input.needsTransport,
       dietaryRequirements: input.dietaryRequirements || null,
       specialNeeds: input.specialNeeds || null,
     },
@@ -98,6 +160,12 @@ export async function updateMyInfo(participantId: string, input: MySpaceInput): 
     before: { firstName: participant.firstName, lastName: participant.lastName },
     after: { firstName: updated.firstName, lastName: updated.lastName },
   });
+
+  // Biographie corrigée : c'est aussi celle de sa fiche intervenant, s'il en a
+  // une. Recopiée seulement si elle a changé (`speakers/biographie.ts`).
+  if ((participant.bio ?? "") !== (updated.bio ?? "")) {
+    await propagerBioDuParticipant(participantId, updated.bio);
+  }
 
   // Nom, fonction ou organisation corrigés par la personne : son badge déjà
   // généré est refait, même QR, sans e-mail (29 octobre 2026).

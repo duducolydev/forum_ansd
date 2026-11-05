@@ -7,10 +7,8 @@ import { etatInscriptions } from "@/modules/settings/regles";
 import { getInvitationByToken, markClicked } from "@/modules/invitations/service";
 import { listPublicCategories } from "@/modules/participants/service";
 import { REGISTRATION_STEPS } from "@/modules/participants/registration-schema";
-import {
-  RegistrationForm,
-  type RegistrationDay,
-} from "@/modules/participants/components/registration-form";
+import { RegistrationForm } from "@/modules/participants/components/registration-form";
+import { joursDuForum } from "@/modules/participants/jours-forum";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
 import { EnteteSection } from "@/components/site/entete-section";
 import { LienSite } from "@/components/site/bouton-site";
@@ -19,27 +17,6 @@ import { Reveal } from "@/components/site/reveal";
 export async function generateMetadata() {
   const t = await getTranslations("nav");
   return { title: t("register") };
-}
-
-/** Journées du Forum, dérivées des dates de l'édition (pas de dates en dur). */
-function buildDays(start: Date, end: Date, locale: string): RegistrationDay[] {
-  const formatter = new Intl.DateTimeFormat(localeIntl(locale), {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    timeZone: "Africa/Dakar",
-  });
-  const days: RegistrationDay[] = [];
-  const cursor = new Date(
-    Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()),
-  );
-  const last = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
-
-  while (cursor <= last && days.length < 10) {
-    days.push({ value: cursor.toISOString().slice(0, 10), label: formatter.format(cursor) });
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-  }
-  return days;
 }
 
 export default async function RegisterPage({
@@ -254,7 +231,7 @@ export default async function RegisterPage({
             labelPt: category.labelPt,
             requiresLogistics: category.requiresLogistics,
           }))}
-          days={buildDays(edition.startDate, edition.endDate, locale)}
+          days={joursDuForum(edition.startDate, edition.endDate, locale)}
           invitation={usableInvitation}
         />
       </CorpsPage>

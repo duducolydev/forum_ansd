@@ -53,6 +53,16 @@ export function PhotoField({
   /** Une image survole le bloc : la bordure s'allume, comme sur les zones de dépôt. */
   const [depot, setDepot] = useState(false);
   const glisse = useRef<{ x: number; y: number } | null>(null);
+  /*
+   * `onChange` passe par une ref : le fichier est régénéré dès que l'export
+   * change, et un parent qui fournit une fonction recréée à chaque rendu
+   * (`(f) => { … }` en ligne) relançait l'export à chaque rendu — donc un
+   * nouveau fichier, un nouveau rendu, sans fin (5 novembre 2026).
+   */
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   /** Échelle minimale pour que l'image couvre toujours le carré. */
   const echelleMin = useCallback(() => {
@@ -112,12 +122,12 @@ export function PhotoField({
     ctx.drawImage(image, x * facteur, y * facteur, largeur * facteur, hauteur * facteur);
     rendu.toBlob(
       (blob) => {
-        if (blob) onChange(new File([blob], "photo.jpg", { type: "image/jpeg" }));
+        if (blob) onChangeRef.current(new File([blob], "photo.jpg", { type: "image/jpeg" }));
       },
       "image/jpeg",
       QUALITE,
     );
-  }, [zoom, decalage, echelleMin, onChange]);
+  }, [zoom, decalage, echelleMin]);
 
   // Le fichier est régénéré à chaque ajustement : l'utilisateur n'a pas à
   // « valider » son cadrage, ce que personne ne pense à faire.
@@ -176,13 +186,20 @@ export function PhotoField({
     setSource(url);
   }
 
+  /*
+   * Avec une image tout juste choisie, le bouton annule ce choix et rien de
+   * plus : il appelait aussi `onRemove`, qui supprime la photo **enregistrée**
+   * — on voulait revenir à sa photo, on proposait de l'effacer. Sans choix en
+   * cours, il retire bien la photo enregistrée.
+   */
   function retirer() {
+    const annulation = source !== null;
     imageRef.current = null;
     if (source) URL.revokeObjectURL(source);
     setSource(null);
     setErreur(null);
-    onChange(null);
-    onRemove?.();
+    onChangeRef.current(null);
+    if (!annulation) onRemove?.();
   }
 
   function deplacer(dx: number, dy: number) {
@@ -299,7 +316,13 @@ export function PhotoField({
               className="text-text-3 hover:text-danger-text transition-tout inline-flex w-fit items-center gap-1.5 px-1 text-sm underline"
             >
               <Trash2 aria-hidden size={14} />
-              {t({ fr: "Retirer la photo", en: "Remove photo", pt: "Remover a fotografia" })}
+              {source
+                ? t({
+                    fr: "Annuler ce choix",
+                    en: "Cancel this choice",
+                    pt: "Cancelar esta escolha",
+                  })
+                : t({ fr: "Retirer la photo", en: "Remove photo", pt: "Remover a fotografia" })}
             </button>
           )}
 

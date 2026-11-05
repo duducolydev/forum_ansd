@@ -481,9 +481,9 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
             <textarea
               id="bio"
               name="bio"
-              rows={3}
-              maxLength={300}
-              placeholder={traduireErreur(langue, "300 caractères maximum")}
+              rows={5}
+              maxLength={600}
+              placeholder={traduireErreur(langue, "600 caractères maximum")}
               className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
             />
           </div>

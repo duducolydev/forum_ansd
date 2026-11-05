@@ -31,7 +31,7 @@ export const registrationProfessionSchema = z.object({
   organizationType: optionalText(100),
   jobTitle: optionalText(150),
   activityDomain: optionalText(150),
-  bio: z.string().trim().max(300, "300 caractères maximum").optional().or(z.literal("")),
+  bio: z.string().trim().max(600, "600 caractères maximum").optional().or(z.literal("")),
   website: optionalText(300),
 });
 

@@ -28,7 +28,11 @@ describe("nom de famille en capitales", () => {
         country: "Sénégal",
         categoryId: "c",
       }),
-      mySpaceInputSchema.safeParse(nom),
+      mySpaceInputSchema.safeParse({
+        ...nom,
+        country: "Sénégal",
+        participationDays: ["2026-11-23"],
+      }),
       invitationInputSchema.safeParse({ ...nom, email: "a@x.test", categoryId: "c" }),
       invitationImportRowSchema.safeParse({ ...nom, email: "a@x.test", categoryCode: "C" }),
       speakerInputSchema.safeParse(nom),
