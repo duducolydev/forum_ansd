@@ -1,4 +1,6 @@
 import { avecCivilite, civiliteIntervenant } from "@/lib/civilite";
+import Image from "next/image";
+import { photoIntervenant } from "@/modules/speakers/photo";
 import { lireLangue, localeIntl, selon, traduire } from "@/lib/langue";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
@@ -173,30 +175,45 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
                 <li key={lien.speaker.id}>
                   <Reveal delai={rang * 60} className="h-full">
                     <div className="border-border bg-surface carte-relief flex h-full flex-col rounded-xl border p-5">
-                      <div className="flex items-center gap-3.5">
-                        {/* Initiales plutôt qu'une photo : la fiche de session ne
-                            charge pas les portraits, qui vivent sur /intervenants. */}
-                        <span
-                          aria-hidden
-                          className="bg-blue-soft text-blue-text font-display grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold"
-                        >
-                          {lien.speaker.firstName.charAt(0)}
-                          {lien.speaker.lastName.charAt(0)}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-accent-text text-xs font-semibold tracking-wide uppercase">
-                            {libelleRole(lien.role, locale)}
-                          </p>
-                          <p className="text-heading leading-snug font-semibold">
-                            {avecCivilite(
-                              civiliteIntervenant(lien.speaker),
-                              `${lien.speaker.firstName} ${lien.speaker.lastName}`,
-                              locale,
+                      {/*
+                       * Portrait en grand, avec l'anneau des cartes de
+                       * /intervenants (5 novembre 2026) : la pastille de 44 px
+                       * n'affichait que des initiales, et c'est le visage qu'on
+                       * vient chercher sur la fiche d'un panel. Repli sur la
+                       * photo du participant lié, comme sur l'annuaire.
+                       */}
+                      <div className="text-center">
+                        <div className="avatar-anneau">
+                          <span className="avatar-anneau__contenu">
+                            {photoIntervenant(lien.speaker) ? (
+                              <Image
+                                src={`/api/v1/speakers/${lien.speaker.id}/photo`}
+                                alt=""
+                                fill
+                                sizes="118px"
+                                unoptimized
+                                className="object-cover"
+                              />
+                            ) : (
+                              <span aria-hidden>
+                                {lien.speaker.firstName.charAt(0)}
+                                {lien.speaker.lastName.charAt(0)}
+                              </span>
                             )}
-                          </p>
+                          </span>
                         </div>
+                        <p className="text-accent-text text-xs font-semibold tracking-wide uppercase">
+                          {libelleRole(lien.role, locale)}
+                        </p>
+                        <p className="text-heading mt-0.5 text-lg leading-snug font-semibold">
+                          {avecCivilite(
+                            civiliteIntervenant(lien.speaker),
+                            `${lien.speaker.firstName} ${lien.speaker.lastName}`,
+                            locale,
+                          )}
+                        </p>
                       </div>
-                      <p className="text-text-3 mt-3 text-sm leading-relaxed">
+                      <p className="text-text-3 mt-2 text-center text-sm leading-relaxed">
                         {[lien.speaker.jobTitle, lien.speaker.organization, lien.speaker.country]
                           .filter(Boolean)
                           .join(" · ")}

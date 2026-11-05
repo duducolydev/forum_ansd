@@ -71,7 +71,9 @@ const SELECTION = {
         select: {
           id: true,
           civility: true,
-          participant: { select: { civility: true } },
+          // Photo du participant : repli de la carte quand la fiche n'en a pas
+          // (`photoIntervenant`).
+          participant: { select: { civility: true, photoPath: true } },
           firstName: true,
           lastName: true,
           jobTitle: true,
