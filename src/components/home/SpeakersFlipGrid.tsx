@@ -1,13 +1,15 @@
 "use client";
 
-import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, UserRound } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { avecCivilite } from "@/lib/civilite";
 import { useFinePointer, useReveal } from "@/components/motion/hooks";
-import { BiographieIntervenant } from "@/components/site/biographie-intervenant";
+import { FenetreIntervenant } from "@/components/site/fenetre-intervenant";
+import { extraitBiographie } from "@/lib/biographie";
+import { lireLangue, selon } from "@/lib/langue";
 
 export interface IntervenantCarte {
   id: string;
@@ -26,6 +28,9 @@ export interface IntervenantCarte {
    */
   roles?: string[];
   themes?: string[];
+  /** Pays et sessions : montrés dans la fiche détaillée (page Intervenants). */
+  country?: string | null;
+  panels?: string[];
 }
 
 /**
@@ -92,9 +97,13 @@ function CarteRetournable({
   const ref = useRef<HTMLElement>(null);
   const refRecto = useRef<HTMLDivElement>(null);
   const [retournee, setRetournee] = useState(false);
+  // Page Intervenants : la carte est la fiche, et s'ouvre en détail.
+  const fiche = href === null;
+  const [ouverte, setOuverte] = useState(false);
   useReveal(ref);
 
   const langue = useLocale();
+  const langueSite = lireLangue(langue);
   const nom = avecCivilite(
     intervenant.civility,
     `${intervenant.firstName} ${intervenant.lastName}`,
@@ -111,6 +120,22 @@ function CarteRetournable({
       </ul>
     ) : null;
 
+  /*
+   * Lien « Voir le profil » de l'accueil (`/intervenants#intervenant-…`) :
+   * la fiche visée s'ouvre d'elle-même. `AnnuaireIntervenants` a déjà affiché
+   * la carte et l'a fait venir à l'écran.
+   */
+  useEffect(() => {
+    if (fiche && window.location.hash === `#intervenant-${intervenant.id}`) setOuverte(true);
+  }, [fiche, intervenant.id]);
+
+  const photoUrl = intervenant.photoPath ? `/api/v1/speakers/${intervenant.id}/photo` : null;
+  const libelleOuvrir = selon(langueSite, {
+    fr: `Voir le profil de ${nom}`,
+    en: `View ${nom}'s profile`,
+    pt: `Ver o perfil de ${nom}`,
+  });
+
   function projecteur(evenement: PointerEvent<HTMLElement>) {
     const recto = refRecto.current;
     if (!recto || evenement.pointerType !== "mouse") return;
@@ -126,16 +151,29 @@ function CarteRetournable({
       id={`intervenant-${intervenant.id}`}
       // Sans lien au verso, c'est la carte elle-même qui prend le focus clavier.
       tabIndex={href ? undefined : 0}
-      aria-label={href ? undefined : nom}
+      aria-label={href ? undefined : libelleOuvrir}
       className="retournable"
       data-retournee={retournee ? "" : undefined}
       style={{ "--d": `${delai}s` } as CSSProperties}
       onPointerMove={projecteur}
-      // Au toucher, la carte bascule ; un toucher sur le lien du verso, lui,
-      // suit le lien.
+      // Page Intervenants : un clic, ou un toucher, ouvre la fiche détaillée
+      // (5 novembre 2026) — la carte ne faisait que basculer, et rien ne
+      // menait au détail. Ailleurs, au toucher, la carte bascule ; un toucher
+      // sur le lien du verso, lui, suit le lien.
       onClick={(evenement) => {
+        if (fiche) {
+          setOuverte(true);
+          return;
+        }
         if (precis || (evenement.target as Element).closest("a")) return;
         setRetournee((valeur) => !valeur);
+      }}
+      onKeyDown={(evenement) => {
+        if (!fiche || evenement.target !== evenement.currentTarget) return;
+        if (evenement.key === "Enter" || evenement.key === " ") {
+          evenement.preventDefault();
+          setOuverte(true);
+        }
       }}
     >
       <div className="retournable__interieur">
@@ -162,7 +200,15 @@ function CarteRetournable({
             <small className="face__organisation">{intervenant.organization}</small>
           )}
           <span aria-hidden className="face__indice police-grotesk">
-            {precis ? t("hover") : t("touch")}
+            {fiche
+              ? selon(langueSite, {
+                  fr: precis ? "Cliquer pour le profil" : "Toucher pour le profil",
+                  en: precis ? "Click for profile" : "Tap for profile",
+                  pt: precis ? "Clicar para o perfil" : "Tocar para o perfil",
+                })
+              : precis
+                ? t("hover")
+                : t("touch")}
           </span>
         </div>
 
@@ -198,26 +244,29 @@ function CarteRetournable({
               </div>
               {blocRoles}
               {intervenant.bio ? (
-                // Extrait, et la biographie entière à la demande : jusqu'à
-                // 600 mots, elle ne tient pas au verso d'une carte.
-                <BiographieIntervenant
-                  bio={intervenant.bio}
-                  limite={220}
-                  nom={nom}
-                  sousTitre={[intervenant.jobTitle, intervenant.organization]
-                    .filter(Boolean)
-                    .join(" · ")}
-                  photoUrl={
-                    intervenant.photoPath ? `/api/v1/speakers/${intervenant.id}/photo` : null
-                  }
-                  initiales={initiales(intervenant)}
-                  langue={langue}
-                  classeExtrait="verso__bio"
-                  classeBouton="verso__lire"
-                />
+                // Extrait : jusqu'à 600 mots, la biographie ne tient pas au
+                // verso. Elle est entière dans la fiche détaillée.
+                <p className="verso__bio">{extraitBiographie(intervenant.bio, 220).extrait}</p>
               ) : (
                 intervenant.jobTitle && <p className="verso__fonction">{intervenant.jobTitle}</p>
               )}
+              <button
+                type="button"
+                className="verso__lire"
+                aria-label={libelleOuvrir}
+                aria-haspopup="dialog"
+                onClick={(evenement) => {
+                  evenement.stopPropagation();
+                  setOuverte(true);
+                }}
+              >
+                <UserRound aria-hidden size={15} />
+                {selon(langueSite, {
+                  fr: "Voir le profil",
+                  en: "View profile",
+                  pt: "Ver o perfil",
+                })}
+              </button>
               {intervenant.themes && intervenant.themes.length > 0 && (
                 <ul className="verso__themes">
                   {intervenant.themes.map((theme) => (
@@ -229,6 +278,26 @@ function CarteRetournable({
           )}
         </div>
       </div>
+
+      {fiche && (
+        <FenetreIntervenant
+          ouverte={ouverte}
+          onFermer={() => setOuverte(false)}
+          langue={langue}
+          profil={{
+            nom,
+            initiales: initiales(intervenant),
+            photoUrl,
+            fonction: intervenant.jobTitle,
+            organisation: intervenant.organization,
+            pays: intervenant.country,
+            roles,
+            panels: intervenant.panels,
+            themes: intervenant.themes,
+            bio: intervenant.bio,
+          }}
+        />
+      )}
     </article>
   );
 }

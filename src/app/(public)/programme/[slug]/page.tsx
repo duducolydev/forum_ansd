@@ -1,7 +1,6 @@
 import { avecCivilite, civiliteIntervenant } from "@/lib/civilite";
-import Image from "next/image";
 import { photoIntervenant } from "@/modules/speakers/photo";
-import { BiographieIntervenant } from "@/components/site/biographie-intervenant";
+import { CarteIntervenantSession } from "@/components/site/carte-intervenant-session";
 import { lireLangue, localeIntl, selon, traduire } from "@/lib/langue";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
@@ -175,82 +174,27 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
               {intervenants.map((lien, rang) => (
                 <li key={lien.speaker.id}>
                   <Reveal delai={rang * 60} className="h-full">
-                    <div className="border-border bg-surface carte-relief flex h-full flex-col rounded-xl border p-5">
-                      {/*
-                       * Portrait en grand, avec l'anneau des cartes de
-                       * /intervenants (5 novembre 2026) : la pastille de 44 px
-                       * n'affichait que des initiales, et c'est le visage qu'on
-                       * vient chercher sur la fiche d'un panel. Repli sur la
-                       * photo du participant lié, comme sur l'annuaire.
-                       */}
-                      <div className="text-center">
-                        <div className="avatar-anneau">
-                          <span className="avatar-anneau__contenu">
-                            {photoIntervenant(lien.speaker) ? (
-                              <Image
-                                src={`/api/v1/speakers/${lien.speaker.id}/photo`}
-                                alt=""
-                                fill
-                                sizes="118px"
-                                unoptimized
-                                className="object-cover"
-                              />
-                            ) : (
-                              <span aria-hidden>
-                                {lien.speaker.firstName.charAt(0)}
-                                {lien.speaker.lastName.charAt(0)}
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                        <p className="text-accent-text text-xs font-semibold tracking-wide uppercase">
-                          {libelleRole(lien.role, locale)}
-                        </p>
-                        <p className="text-heading mt-0.5 text-lg leading-snug font-semibold">
-                          {avecCivilite(
-                            civiliteIntervenant(lien.speaker),
-                            `${lien.speaker.firstName} ${lien.speaker.lastName}`,
-                            locale,
-                          )}
-                        </p>
-                      </div>
-                      <p className="text-text-3 mt-2 text-center text-sm leading-relaxed">
-                        {[lien.speaker.jobTitle, lien.speaker.organization, lien.speaker.country]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                      {/*
-                       * Extrait, et la biographie entière dans une fenêtre
-                       * (5 novembre 2026) : dépliée dans la carte, une
-                       * biographie de 600 mots l'allongeait de toute sa hauteur
-                       * et décalait la grille.
-                       */}
-                      {bioDe(lien.speaker) && (
-                        <div className="mt-auto flex flex-col items-start gap-2 pt-3">
-                          <BiographieIntervenant
-                            bio={bioDe(lien.speaker)!}
-                            limite={280}
-                            nom={avecCivilite(
-                              civiliteIntervenant(lien.speaker),
-                              `${lien.speaker.firstName} ${lien.speaker.lastName}`,
-                              locale,
-                            )}
-                            sousTitre={[lien.speaker.jobTitle, lien.speaker.organization]
-                              .filter(Boolean)
-                              .join(" · ")}
-                            photoUrl={
-                              photoIntervenant(lien.speaker)
-                                ? `/api/v1/speakers/${lien.speaker.id}/photo`
-                                : null
-                            }
-                            initiales={`${lien.speaker.firstName.charAt(0)}${lien.speaker.lastName.charAt(0)}`}
-                            langue={locale}
-                            classeExtrait="text-text-2 text-sm leading-relaxed whitespace-pre-line"
-                            classeBouton="text-link hover:text-secondary-hover inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold"
-                          />
-                        </div>
-                      )}
-                    </div>
+                    {/* Toute la carte ouvre la fiche détaillée (5 novembre 2026). */}
+                    <CarteIntervenantSession
+                      role={libelleRole(lien.role, locale)}
+                      langue={locale}
+                      profil={{
+                        nom: avecCivilite(
+                          civiliteIntervenant(lien.speaker),
+                          `${lien.speaker.firstName} ${lien.speaker.lastName}`,
+                          locale,
+                        ),
+                        initiales: `${lien.speaker.firstName.charAt(0)}${lien.speaker.lastName.charAt(0)}`,
+                        // Repli sur la photo du participant lié, comme sur l'annuaire.
+                        photoUrl: photoIntervenant(lien.speaker)
+                          ? `/api/v1/speakers/${lien.speaker.id}/photo`
+                          : null,
+                        fonction: lien.speaker.jobTitle,
+                        organisation: lien.speaker.organization,
+                        pays: lien.speaker.country,
+                        bio: bioDe(lien.speaker),
+                      }}
+                    />
                   </Reveal>
                 </li>
               ))}
