@@ -92,7 +92,14 @@ const SELECTION = {
   isFeatured: true,
   featuredOrder: true,
   participant: {
-    select: { id: true, publicId: true, email: true, status: true, civility: true },
+    select: {
+      id: true,
+      publicId: true,
+      email: true,
+      status: true,
+      civility: true,
+      photoPath: true,
+    },
   },
   sessions: {
     // Une session supprimée (suppression douce) ne compte plus au programme.

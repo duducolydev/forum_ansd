@@ -1,6 +1,7 @@
 import { AlertCircle, Mic } from "lucide-react";
 import { getSpeakerSession } from "@/modules/speakers/session";
 import { getSpeaker } from "@/modules/speakers/service";
+import { photoIntervenant } from "@/modules/speakers/photo";
 import { SpeakerSpace, type SpeakerVue } from "@/modules/speakers/components/speaker-space";
 import { LinkRequestForm } from "@/modules/speakers/components/link-request-form";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
@@ -79,7 +80,7 @@ export default async function EspaceIntervenantPage({
     bioFr: speaker.bioFr ?? "",
     bioEn: speaker.bioEn ?? "",
     bioPt: speaker.bioPt ?? "",
-    aPhoto: speaker.photoPath !== null,
+    aPhoto: photoIntervenant(speaker) !== null,
     aPresentation: speaker.presentationPath !== null,
     aConsenti: speaker.presentationConsentement,
     sessions: speaker.sessions.map((lien) => ({

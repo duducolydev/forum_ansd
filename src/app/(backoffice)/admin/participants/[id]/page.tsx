@@ -14,6 +14,7 @@ import { prisma } from "@/lib/db";
 import { LogStatusBadge } from "@/modules/notifications/components/log-status-badge";
 import { getSpeakerDuParticipant, sessionsPourRattachement } from "@/modules/speakers/service";
 import { SessionsIntervenant } from "@/modules/speakers/components/sessions-intervenant";
+import { PhotoFiche } from "@/components/ui/photo-fiche";
 
 const quand = new Intl.DateTimeFormat("fr-FR", {
   weekday: "short",
@@ -56,22 +57,51 @@ export default async function ParticipantDetailPage({
       ])
     : [null, []];
 
+  // Photo : la sienne, sinon celle de sa fiche intervenant — celle que porte
+  // aussi son badge (`badges/service.ts`). La seconde passe par la route des
+  // intervenants, qui exige `speakers.read` tant que la fiche n'est pas publiée.
+  const ficheIntervenant =
+    participant.photoPath || !can(session, "speakers.read")
+      ? null
+      : await prisma.speaker.findFirst({
+          where: { participantId: participant.id, deletedAt: null, photoPath: { not: null } },
+          select: { id: true },
+        });
+  const photo = participant.photoPath
+    ? { src: `/api/v1/participants/${participant.id}/photo`, legende: undefined }
+    : ficheIntervenant
+      ? {
+          src: `/api/v1/speakers/${ficheIntervenant.id}/photo`,
+          legende: "Photo de sa fiche intervenant",
+        }
+      : { src: null, legende: undefined };
+
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-5 flex items-start justify-between">
-        <div>
-          <span className="text-text-3 text-sm">{participant.publicId}</span>
-          <h2 className="text-2xl">
-            {avecCivilite(participant.civility, `${participant.firstName} ${participant.lastName}`)}
-          </h2>
-          <div className="mt-2 flex items-center gap-2">
-            <StatusBadge status={participant.status} />
-            <span className="text-text-3 text-sm">{participant.category.labelFr}</span>
-            {participant.category.requiresAccreditation && (
-              <span className="bg-gold-soft text-gold-text rounded-md px-2 py-0.5 text-xs font-semibold">
-                {participant.accreditedAt ? "Presse accréditée" : "Accréditation presse requise"}
-              </span>
-            )}
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-4">
+          <PhotoFiche
+            src={photo.src}
+            legende={photo.legende}
+            initiales={`${participant.firstName.charAt(0)}${participant.lastName.charAt(0)}`.toUpperCase()}
+          />
+          <div className="min-w-0">
+            <span className="text-text-3 text-sm">{participant.publicId}</span>
+            <h2 className="text-2xl">
+              {avecCivilite(
+                participant.civility,
+                `${participant.firstName} ${participant.lastName}`,
+              )}
+            </h2>
+            <div className="mt-2 flex items-center gap-2">
+              <StatusBadge status={participant.status} />
+              <span className="text-text-3 text-sm">{participant.category.labelFr}</span>
+              {participant.category.requiresAccreditation && (
+                <span className="bg-gold-soft text-gold-text rounded-md px-2 py-0.5 text-xs font-semibold">
+                  {participant.accreditedAt ? "Presse accréditée" : "Accréditation presse requise"}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         {can(session, "participants.write") && (

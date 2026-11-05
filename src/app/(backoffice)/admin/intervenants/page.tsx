@@ -143,7 +143,11 @@ export default async function IntervenantsPage({
                           ))}
                     </td>
                     <td className="text-text-3 px-2 py-2.5 text-xs">
-                      {speaker.photoPath ? "Photo" : "—"}
+                      {speaker.photoPath
+                        ? "Photo"
+                        : speaker.participant?.photoPath
+                          ? "Photo (participant)"
+                          : "—"}
                       {" · "}
                       {speaker.presentationPath ? "Présentation" : "—"}
                     </td>

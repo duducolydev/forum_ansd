@@ -2,16 +2,16 @@
 
 import { useActionState, useRef, useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, ImageUp, RefreshCw, Save, Upload } from "lucide-react";
+import { FileText, Save } from "lucide-react";
 import { BoutonSite } from "@/components/site/bouton-site";
 import { ZoneDepot } from "@/components/ui/zone-depot";
 import {
   consentementPresentationAction,
-  deposerPhotoAction,
   enregistrerFicheAction,
   type ActionState,
 } from "../actions";
 import { PRESENTATION_MAX_BYTES } from "../constantes";
+import { PhotoIntervenant } from "./photo-intervenant";
 
 const initialState: ActionState = {};
 const champ = "border-border bg-bg text-text w-full rounded-lg border px-3 py-2 text-sm";
@@ -226,7 +226,6 @@ function DepotPresentation({ speaker }: { speaker: SpeakerVue }) {
  */
 export function SpeakerSpace({ speaker }: { speaker: SpeakerVue }) {
   const [fiche, ficheAction, fichePending] = useActionState(enregistrerFicheAction, initialState);
-  const [photo, photoAction, photoPending] = useActionState(deposerPhotoAction, initialState);
 
   return (
     <div className="flex flex-col gap-6">
@@ -346,43 +345,7 @@ export function SpeakerSpace({ speaker }: { speaker: SpeakerVue }) {
       </form>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <form action={photoAction} className="border-border bg-surface rounded-xl border p-5">
-          <h2 className="text-heading mb-1 text-base font-semibold">Votre photo</h2>
-          <p className="text-text-3 mb-4 text-xs">
-            JPEG, PNG ou WebP, 2 Mo au plus. Elle paraît sur la fiche de vos sessions.
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            {speaker.aPhoto && (
-              /* eslint-disable-next-line @next/next/no-img-element -- servie par une route dédiée, hors optimiseur */
-              <img
-                src={`/api/v1/speakers/${speaker.id}/photo`}
-                alt=""
-                className="border-border h-16 w-16 rounded-full border object-cover"
-              />
-            )}
-            <ZoneDepot
-              name="photo"
-              libelle="Choisir votre photo"
-              icone={ImageUp}
-              accept="image/jpeg,image/png,image/webp"
-              required
-              aide="JPEG, PNG ou WebP — 2 Mo au plus"
-              className="min-w-[14rem] flex-1"
-            />
-            <BoutonSite
-              type="submit"
-              disabled={photoPending}
-              taille="compact"
-              icone={speaker.aPhoto ? RefreshCw : Upload}
-            >
-              {speaker.aPhoto ? "Remplacer" : "Déposer"}
-            </BoutonSite>
-          </div>
-          {photo.error && <p className="text-danger-text mt-2 text-sm">{photo.error}</p>}
-          {photo.message && !photo.error && (
-            <p className="text-text-3 mt-2 text-sm">{photo.message}</p>
-          )}
-        </form>
+        <PhotoIntervenant speakerId={speaker.id} aPhoto={speaker.aPhoto} />
 
         <DepotPresentation speaker={speaker} />
       </div>

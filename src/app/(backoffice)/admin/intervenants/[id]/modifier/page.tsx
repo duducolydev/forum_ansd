@@ -6,6 +6,8 @@ import { can } from "@/lib/rbac";
 import { getSpeaker, sessionsPourRattachement } from "@/modules/speakers/service";
 import { SpeakerForm } from "@/modules/speakers/components/speaker-form";
 import { SessionsIntervenant } from "@/modules/speakers/components/sessions-intervenant";
+import { PhotoFiche } from "@/components/ui/photo-fiche";
+import { originePhotoIntervenant } from "@/modules/speakers/photo";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +34,7 @@ export default async function ModifierIntervenantPage({
   if (!speaker) notFound();
 
   const sessions = await sessionsPourRattachement(speaker.editionId);
+  const originePhoto = originePhotoIntervenant(speaker);
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,14 +42,27 @@ export default async function ModifierIntervenantPage({
         <Link href="/admin/intervenants" className="text-text-3 text-sm">
           Intervenants
         </Link>
-        <h2 className="mt-2 text-2xl">
-          {avecCivilite(civiliteIntervenant(speaker), `${speaker.firstName} ${speaker.lastName}`)}
-        </h2>
-        <p className="text-text-3 text-sm">
-          {speaker.isPublished ? "Publié" : "Brouillon"}
-          {speaker.photoPath ? " · photo déposée" : ""}
-          {speaker.presentationPath ? " · présentation déposée" : ""}
-        </p>
+        <div className="mt-2 flex items-start gap-4">
+          <PhotoFiche
+            src={originePhoto ? `/api/v1/speakers/${speaker.id}/photo` : null}
+            legende={originePhoto === "participant" ? "Photo du participant lié" : undefined}
+            initiales={`${speaker.firstName.charAt(0)}${speaker.lastName.charAt(0)}`.toUpperCase()}
+          />
+          <div className="min-w-0">
+            <h2 className="text-2xl">
+              {avecCivilite(
+                civiliteIntervenant(speaker),
+                `${speaker.firstName} ${speaker.lastName}`,
+              )}
+            </h2>
+            <p className="text-text-3 text-sm">
+              {speaker.isPublished ? "Publié" : "Brouillon"}
+              {originePhoto === "fiche" ? " · photo déposée" : ""}
+              {originePhoto === "participant" ? " · photo reprise du participant" : ""}
+              {speaker.presentationPath ? " · présentation déposée" : ""}
+            </p>
+          </div>
+        </div>
       </div>
 
       <SessionsIntervenant

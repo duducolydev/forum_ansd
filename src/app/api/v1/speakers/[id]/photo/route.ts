@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { fileStorage } from "@/lib/storage";
 import { detectImageType } from "@/modules/participants/photo";
 import { getSpeakerSession } from "@/modules/speakers/session";
+import { photoIntervenant } from "@/modules/speakers/photo";
 
 /**
  * Photo d'un intervenant.
@@ -13,6 +14,9 @@ import { getSpeakerSession } from "@/modules/speakers/session";
  * programme. Tant qu'il ne l'est pas, seuls le comité et l'intéressé lui-même y
  * accèdent — un panéliste pressenti qui se désiste ne doit pas avoir laissé son
  * portrait accessible entre-temps.
+ *
+ * Sans photo sur la fiche, c'est celle du participant lié qui est servie
+ * (`photoIntervenant`), sous la même règle de publication.
  */
 export async function GET(
   _request: Request,
@@ -22,9 +26,10 @@ export async function GET(
 
   const speaker = await prisma.speaker.findFirst({
     where: { id, deletedAt: null },
-    select: { photoPath: true, isPublished: true },
+    select: { photoPath: true, isPublished: true, participant: { select: { photoPath: true } } },
   });
-  if (!speaker?.photoPath) {
+  const chemin = speaker ? photoIntervenant(speaker) : null;
+  if (!speaker || !chemin) {
     return NextResponse.json({ error: "Introuvable." }, { status: 404 });
   }
 
@@ -38,7 +43,7 @@ export async function GET(
 
   let fichier: Buffer;
   try {
-    fichier = await fileStorage.get(speaker.photoPath);
+    fichier = await fileStorage.get(chemin);
   } catch {
     return NextResponse.json({ error: "Introuvable." }, { status: 404 });
   }

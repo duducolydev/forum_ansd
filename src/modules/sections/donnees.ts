@@ -1,4 +1,5 @@
 import { civiliteIntervenant } from "@/lib/civilite";
+import { photoIntervenant } from "@/modules/speakers/photo";
 import type { Edition, PageSection } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getHomeStats } from "@/lib/stats";
@@ -115,7 +116,7 @@ export async function chargerDonnees(
           select: {
             id: true,
             civility: true,
-            participant: { select: { civility: true } },
+            participant: { select: { civility: true, photoPath: true } },
             firstName: true,
             lastName: true,
             jobTitle: true,
@@ -133,6 +134,9 @@ export async function chargerDonnees(
           donnees.intervenants = speakers.map(({ sessions, participant, ...speaker }) => ({
             ...speaker,
             civility: civiliteIntervenant({ civility: speaker.civility, participant }),
+            // Le chemin ne sert qu'à décider photo ou initiales : l'image
+            // passe par la route, qui fait le même repli.
+            photoPath: photoIntervenant({ photoPath: speaker.photoPath, participant }),
             themes: [
               ...new Set(
                 sessions
