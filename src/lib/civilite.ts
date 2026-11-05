@@ -1,7 +1,8 @@
 import { lireLangue } from "./langue";
 
 /**
- * Civilité abrégée devant un nom : « Dr Aminata SOW », « SE Amadou BA ».
+ * Civilité abrégée devant un nom : « M. Amadou BA », « Mme Aminata SOW »,
+ * « Dr Aminata SOW », « SE Amadou BA ».
  *
  * La civilité est saisie de plusieurs façons — liste du formulaire public
  * (« Madame », « Dr »…), texte libre du BackOffice et de l'import (« Mme »,
@@ -14,9 +15,10 @@ import { lireLangue } from "./langue";
 type Civilite = "MME" | "MR" | "DR" | "PR" | "SE";
 
 const ABREVIATIONS: Record<Civilite, { fr: string; en: string; pt: string }> = {
-  // « Mr » plutôt que « M. » : arbitrage du 2 novembre 2026, forum international.
+  // « M. » en français, l'usage typographique (demande du 5 novembre 2026) ;
+  // le « Mr » retenu le 2 novembre reste celui de la version anglaise.
   MME: { fr: "Mme", en: "Ms", pt: "Sra." },
-  MR: { fr: "Mr", en: "Mr", pt: "Sr." },
+  MR: { fr: "M.", en: "Mr", pt: "Sr." },
   DR: { fr: "Dr", en: "Dr", pt: "Dr." },
   PR: { fr: "Pr", en: "Prof.", pt: "Prof." },
   SE: { fr: "SE", en: "H.E.", pt: "S. Exa." },

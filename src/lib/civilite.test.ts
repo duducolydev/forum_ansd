@@ -4,7 +4,7 @@ import { abregerCivilite, avecCivilite } from "./civilite";
 describe("civilité abrégée", () => {
   it("abrège les valeurs du formulaire d'inscription", () => {
     expect(abregerCivilite("Madame")).toBe("Mme");
-    expect(abregerCivilite("Monsieur")).toBe("Mr");
+    expect(abregerCivilite("Monsieur")).toBe("M.");
     expect(abregerCivilite("Dr")).toBe("Dr");
     expect(abregerCivilite("Pr")).toBe("Pr");
     expect(abregerCivilite("SE")).toBe("SE");
@@ -12,7 +12,9 @@ describe("civilité abrégée", () => {
 
   it("reconnaît les saisies libres du BackOffice et de l'import", () => {
     expect(abregerCivilite("mme")).toBe("Mme");
-    expect(abregerCivilite("M.")).toBe("Mr");
+    expect(abregerCivilite("M.")).toBe("M.");
+    expect(abregerCivilite("Mr")).toBe("M.");
+    expect(abregerCivilite("Mme.")).toBe("Mme");
     expect(abregerCivilite("Professeur")).toBe("Pr");
     expect(abregerCivilite("S.E.")).toBe("SE");
     expect(abregerCivilite("Son Excellence")).toBe("SE");
@@ -26,6 +28,8 @@ describe("civilité abrégée", () => {
   });
 
   it("suit la langue demandée", () => {
+    expect(abregerCivilite("Monsieur", "en")).toBe("Mr");
+    expect(abregerCivilite("Madame", "en")).toBe("Ms");
     expect(abregerCivilite("SE", "en")).toBe("H.E.");
     expect(abregerCivilite("Pr", "pt")).toBe("Prof.");
   });

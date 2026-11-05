@@ -1,6 +1,7 @@
 import { audit } from "@/lib/audit";
 import * as repo from "./repository";
 import type { SessionRow } from "./repository";
+import { ordonnerIntervenants } from "./ordre-intervenants";
 import { slugifier, type RoomInput, type SessionInput } from "./schema";
 
 export interface Actor {
@@ -203,6 +204,7 @@ export async function listSessions(editionId: string, options: { onlyPublished?:
 
   return sessions.map((session) => ({
     ...session,
+    speakers: ordonnerIntervenants(session.speakers),
     places: calculerPlaces(session, compteurs.get(session.id) ?? { inscrits: 0, attente: 0 }),
   }));
 }
@@ -213,6 +215,8 @@ export async function getSession(id: string) {
   const compteurs = await repo.countRegistrations([session.id]);
   return {
     ...session,
+    // Modérateurs en tête, puis panélistes (`ordre-intervenants.ts`).
+    speakers: ordonnerIntervenants(session.speakers),
     places: calculerPlaces(session, compteurs.get(session.id) ?? { inscrits: 0, attente: 0 }),
   };
 }
@@ -223,6 +227,8 @@ export async function getSessionBySlug(editionId: string, slug: string) {
   const compteurs = await repo.countRegistrations([session.id]);
   return {
     ...session,
+    // Modérateurs en tête, puis panélistes (`ordre-intervenants.ts`).
+    speakers: ordonnerIntervenants(session.speakers),
     places: calculerPlaces(session, compteurs.get(session.id) ?? { inscrits: 0, attente: 0 }),
   };
 }

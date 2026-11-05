@@ -91,7 +91,7 @@ async function renderAndStore(badge: Badge): Promise<{ pdfPath: string; pngPath:
     logoDataUrl: await logoBadgeDataUrl(),
     policesCss: await policesBadgeCss(),
     eventDates: datesDuForum(participant.edition.startDate, participant.edition.endDate),
-    // Badge en français, comme le libellé de la catégorie : « Mr », « Mme »…
+    // Badge en français, comme le libellé de la catégorie : « M. », « Mme »…
     civility: abregerCivilite(participant.civility || participant.speaker?.civility) || null,
     firstName: participant.firstName,
     lastName: participant.lastName,

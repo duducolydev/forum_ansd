@@ -39,7 +39,7 @@ export function SpeakerForm({ valeurs }: { valeurs: SpeakerFormValues }) {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="civility" className={etiquette}>
-              Civilité — affichée en abrégé devant le nom (Mr, Mme, Dr, Pr, SE)
+              Civilité — affichée en abrégé devant le nom (M., Mme, Dr, Pr, SE)
             </label>
             <select id="civility" name="civility" defaultValue={valeurs.civility} className={champ}>
               <option value="">— (celle du participant rattaché, s&apos;il y en a une)</option>
