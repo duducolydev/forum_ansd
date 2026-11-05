@@ -4,7 +4,8 @@ import { audit } from "@/lib/audit";
 import { jobQueue } from "@/lib/queue";
 import { nomDeFamille } from "@/lib/nom-de-famille";
 import { enqueueBadgeRefresh, textesDuBadgeModifies } from "@/modules/badges/jobs";
-import { BIOGRAPHIE_MAX, propagerBioDuParticipant } from "@/modules/speakers/biographie";
+import { propagerBioDuParticipant } from "@/modules/speakers/biographie";
+import { schemaBiographie } from "@/lib/biographie";
 
 const texte = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
 
@@ -42,12 +43,7 @@ export const mySpaceInputSchema = z
     website: texte(300),
     // Même plafond que la fiche intervenant, dont c'est aussi la biographie
     // (`speakers/biographie.ts`). L'inscription garde sa biographie courte.
-    bio: z
-      .string()
-      .trim()
-      .max(BIOGRAPHIE_MAX, `${BIOGRAPHIE_MAX} caractères maximum`)
-      .optional()
-      .or(z.literal("")),
+    bio: schemaBiographie,
     participationDays: z.array(z.string()).min(1, "Sélectionnez au moins une journée"),
     attendsOpening: z.boolean().default(false),
     attendsClosing: z.boolean().default(false),

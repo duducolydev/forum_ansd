@@ -2100,6 +2100,34 @@ html[data-animations="aucune"] .vague__points {
   opacity: 0.92;
 }
 
+/* « Lire la biographie » : la suite d'un extrait, sur le fond sombre du verso. */
+.verso__lire {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: flex-start;
+  margin-top: 0.55rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid rgb(255 255 255 / 0.45);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgb(255 255 255 / 0.1);
+  cursor: pointer;
+  transition: background 0.2s var(--ease);
+}
+
+.verso__lire:hover,
+.verso__lire:focus-visible {
+  background: rgb(255 255 255 / 0.22);
+}
+
+.verso__lire:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 .verso__themes {
   display: flex;
   flex-wrap: wrap;

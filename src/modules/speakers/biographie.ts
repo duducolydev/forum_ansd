@@ -20,8 +20,6 @@ import { prisma } from "@/lib/db";
  * intervenant.
  */
 
-export { BIOGRAPHIE_MAX } from "./constantes";
-
 const vide = (texte: string | null | undefined) => !texte?.trim();
 
 /** Biographie modifiée par le participant : recopiée sur sa fiche intervenant. */

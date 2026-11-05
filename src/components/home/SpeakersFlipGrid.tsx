@@ -7,6 +7,7 @@ import { ArrowRight } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { avecCivilite } from "@/lib/civilite";
 import { useFinePointer, useReveal } from "@/components/motion/hooks";
+import { BiographieIntervenant } from "@/components/site/biographie-intervenant";
 
 export interface IntervenantCarte {
   id: string;
@@ -197,7 +198,23 @@ function CarteRetournable({
               </div>
               {blocRoles}
               {intervenant.bio ? (
-                <p className="verso__bio">{intervenant.bio}</p>
+                // Extrait, et la biographie entière à la demande : jusqu'à
+                // 600 mots, elle ne tient pas au verso d'une carte.
+                <BiographieIntervenant
+                  bio={intervenant.bio}
+                  limite={220}
+                  nom={nom}
+                  sousTitre={[intervenant.jobTitle, intervenant.organization]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  photoUrl={
+                    intervenant.photoPath ? `/api/v1/speakers/${intervenant.id}/photo` : null
+                  }
+                  initiales={initiales(intervenant)}
+                  langue={langue}
+                  classeExtrait="verso__bio"
+                  classeBouton="verso__lire"
+                />
               ) : (
                 intervenant.jobTitle && <p className="verso__fonction">{intervenant.jobTitle}</p>
               )}

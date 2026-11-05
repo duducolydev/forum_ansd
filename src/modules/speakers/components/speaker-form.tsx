@@ -5,6 +5,7 @@ import { enregistrerIntervenantAction, type ActionState } from "../actions";
 import { Save } from "lucide-react";
 import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
 import { CIVILITES } from "@/modules/participants/registration-i18n";
+import { ChampBiographie } from "@/components/ui/champ-biographie";
 
 const initialState: ActionState = {};
 const champ = "border-border bg-bg text-text w-full rounded-lg border px-3 py-2 text-sm";
@@ -139,11 +140,10 @@ export function SpeakerForm({ valeurs }: { valeurs: SpeakerFormValues }) {
             <label htmlFor="bioFr" className={etiquette}>
               Biographie (français)
             </label>
-            <textarea
+            <ChampBiographie
               id="bioFr"
               name="bioFr"
               rows={5}
-              maxLength={3000}
               defaultValue={valeurs.bioFr}
               className={champ}
             />
@@ -152,11 +152,10 @@ export function SpeakerForm({ valeurs }: { valeurs: SpeakerFormValues }) {
             <label htmlFor="bioEn" className={etiquette}>
               Biographie (anglais)
             </label>
-            <textarea
+            <ChampBiographie
               id="bioEn"
               name="bioEn"
               rows={5}
-              maxLength={3000}
               defaultValue={valeurs.bioEn}
               className={champ}
             />
@@ -165,11 +164,10 @@ export function SpeakerForm({ valeurs }: { valeurs: SpeakerFormValues }) {
             <label htmlFor="bioPt" className={etiquette}>
               Biographie (portugais — repli EN si vide)
             </label>
-            <textarea
+            <ChampBiographie
               id="bioPt"
               name="bioPt"
               rows={5}
-              maxLength={3000}
               defaultValue={valeurs.bioPt}
               className={champ}
             />

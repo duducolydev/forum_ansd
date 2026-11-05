@@ -22,7 +22,8 @@ import {
 import { nomDeFamille } from "@/lib/nom-de-famille";
 import { generateUniquePublicId } from "@/modules/participants/service";
 import { enqueueBadgeRefresh } from "@/modules/badges/jobs";
-import { alignerBiographies, BIOGRAPHIE_MAX, propagerBioDeLIntervenant } from "./biographie";
+import { alignerBiographies, propagerBioDeLIntervenant } from "./biographie";
+import { schemaBiographie } from "@/lib/biographie";
 
 /**
  * Intervenants (brief §5.8).
@@ -51,9 +52,9 @@ export const speakerInputSchema = z.object({
   jobTitle: z.string().trim().max(150).optional().or(z.literal("")),
   organization: z.string().trim().max(150).optional().or(z.literal("")),
   country: z.string().trim().max(80).optional().or(z.literal("")),
-  bioFr: z.string().trim().max(BIOGRAPHIE_MAX).optional().or(z.literal("")),
-  bioEn: z.string().trim().max(3000).optional().or(z.literal("")),
-  bioPt: z.string().trim().max(3000).optional().or(z.literal("")),
+  bioFr: schemaBiographie,
+  bioEn: schemaBiographie,
+  bioPt: schemaBiographie,
   isPublished: z.boolean().default(false),
   isFeatured: z.boolean().default(false),
   featuredOrder: z.coerce.number().int().min(0).max(999).default(0),
@@ -66,9 +67,9 @@ export const selfEditSchema = z.object({
   jobTitle: z.string().trim().max(150).optional().or(z.literal("")),
   organization: z.string().trim().max(150).optional().or(z.literal("")),
   country: z.string().trim().max(80).optional().or(z.literal("")),
-  bioFr: z.string().trim().max(BIOGRAPHIE_MAX).optional().or(z.literal("")),
-  bioEn: z.string().trim().max(3000).optional().or(z.literal("")),
-  bioPt: z.string().trim().max(3000).optional().or(z.literal("")),
+  bioFr: schemaBiographie,
+  bioEn: schemaBiographie,
+  bioPt: schemaBiographie,
 });
 
 export type SelfEditInput = z.infer<typeof selfEditSchema>;

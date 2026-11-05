@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { nomDeFamille } from "@/lib/nom-de-famille";
+import { schemaBiographie } from "@/lib/biographie";
 
 /**
  * Formulaire public d'inscription (brief §5.3) — schémas partagés client/serveur,
@@ -31,7 +32,7 @@ export const registrationProfessionSchema = z.object({
   organizationType: optionalText(100),
   jobTitle: optionalText(150),
   activityDomain: optionalText(150),
-  bio: z.string().trim().max(600, "600 caractères maximum").optional().or(z.literal("")),
+  bio: schemaBiographie,
   website: optionalText(300),
 });
 

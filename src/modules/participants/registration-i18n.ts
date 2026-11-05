@@ -36,13 +36,13 @@ const ERREURS: Record<string, { en: string; pt: string }> = {
     en: "Participation category is required",
     pt: "A categoria de participação é obrigatória",
   },
-  "600 caractères maximum": {
-    en: "600 characters maximum",
-    pt: "600 caracteres no máximo",
+  "5000 caractères maximum": {
+    en: "5,000 characters maximum",
+    pt: "5000 caracteres no máximo",
   },
-  "3000 caractères maximum": {
-    en: "3,000 characters maximum",
-    pt: "3000 caracteres no máximo",
+  "600 mots maximum": {
+    en: "600 words maximum",
+    pt: "600 palavras no máximo",
   },
   "Sélectionnez au moins une journée": {
     en: "Select at least one day",

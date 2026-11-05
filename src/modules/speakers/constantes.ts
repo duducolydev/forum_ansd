@@ -32,9 +32,3 @@ export const STATUTS_CONFIRMATION = {
 } as const;
 
 export type StatutConfirmation = keyof typeof STATUTS_CONFIRMATION;
-
-/**
- * Plafond de la biographie, commune au participant et à sa fiche intervenant
- * (`biographie.ts`) : celui de la fiche intervenant, la plus longue des deux.
- */
-export const BIOGRAPHIE_MAX = 3000;

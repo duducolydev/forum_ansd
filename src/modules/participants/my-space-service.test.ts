@@ -76,8 +76,9 @@ describe("mySpaceInputSchema", () => {
   });
 
   it("accepte la biographie longue de la fiche intervenant, dont c'est la même", () => {
-    expect(mySpaceInputSchema.safeParse({ ...MINIMUM, bio: "x".repeat(3000) }).success).toBe(true);
-    expect(mySpaceInputSchema.safeParse({ ...MINIMUM, bio: "x".repeat(3001) }).success).toBe(false);
+    const mots = (n: number) => Array.from({ length: n }, () => "mot").join(" ");
+    expect(mySpaceInputSchema.safeParse({ ...MINIMUM, bio: mots(600) }).success).toBe(true);
+    expect(mySpaceInputSchema.safeParse({ ...MINIMUM, bio: mots(601) }).success).toBe(false);
   });
 
   it("refuse une date mal formée ou un départ avant l'arrivée", () => {

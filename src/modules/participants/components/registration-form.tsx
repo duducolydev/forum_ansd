@@ -21,6 +21,7 @@ import {
 } from "../registration-i18n";
 import { PhotoField } from "./photo-field";
 import { ChampTelephone } from "@/components/ui/champ-telephone";
+import { ChampBiographie } from "@/components/ui/champ-biographie";
 
 const DRAFT_KEY = "forum-ansd:registration-draft";
 
@@ -476,14 +477,13 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
           />
           <div className="flex flex-col gap-1.5 md:col-span-2">
             <label htmlFor="bio" className="text-heading text-sm font-semibold">
-              {t({ fr: "Biographie courte", en: "Short biography", pt: "Biografia curta" })}
+              {t({ fr: "Biographie", en: "Biography", pt: "Biografia" })}
             </label>
-            <textarea
+            <ChampBiographie
               id="bio"
               name="bio"
               rows={5}
-              maxLength={600}
-              placeholder={traduireErreur(langue, "600 caractères maximum")}
+              langue={langue}
               className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
             />
           </div>

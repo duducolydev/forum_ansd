@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { nomDeFamille } from "@/lib/nom-de-famille";
+import { schemaBiographie } from "@/lib/biographie";
 
 /** Schéma partagé client/serveur (brief §3.3) — formulaire BackOffice de création/édition. */
 export const participantInputSchema = z.object({
@@ -17,7 +18,7 @@ export const participantInputSchema = z.object({
   organization: z.string().trim().max(200).optional().or(z.literal("")),
   organizationType: z.string().trim().max(100).optional().or(z.literal("")),
   activityDomain: z.string().trim().max(150).optional().or(z.literal("")),
-  bio: z.string().trim().max(2000).optional().or(z.literal("")),
+  bio: schemaBiographie,
   website: z.string().trim().max(300).optional().or(z.literal("")),
   country: z.string().trim().min(1, "Le pays est requis").max(100),
   city: z.string().trim().max(100).optional().or(z.literal("")),

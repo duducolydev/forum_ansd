@@ -1,6 +1,7 @@
 import { avecCivilite, civiliteIntervenant } from "@/lib/civilite";
 import Image from "next/image";
 import { photoIntervenant } from "@/modules/speakers/photo";
+import { BiographieIntervenant } from "@/components/site/biographie-intervenant";
 import { lireLangue, localeIntl, selon, traduire } from "@/lib/langue";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
@@ -218,15 +219,36 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
                           .filter(Boolean)
                           .join(" · ")}
                       </p>
+                      {/*
+                       * Extrait, et la biographie entière dans une fenêtre
+                       * (5 novembre 2026) : dépliée dans la carte, une
+                       * biographie de 600 mots l'allongeait de toute sa hauteur
+                       * et décalait la grille.
+                       */}
                       {bioDe(lien.speaker) && (
-                        <details className="mt-auto pt-3">
-                          <summary className="text-link hover:text-secondary-hover cursor-pointer text-sm font-semibold">
-                            {selon(locale, { fr: "Biographie", en: "Biography", pt: "Biografia" })}
-                          </summary>
-                          <p className="text-text-2 mt-2 text-sm leading-relaxed whitespace-pre-line">
-                            {bioDe(lien.speaker)}
-                          </p>
-                        </details>
+                        <div className="mt-auto flex flex-col items-start gap-2 pt-3">
+                          <BiographieIntervenant
+                            bio={bioDe(lien.speaker)!}
+                            limite={280}
+                            nom={avecCivilite(
+                              civiliteIntervenant(lien.speaker),
+                              `${lien.speaker.firstName} ${lien.speaker.lastName}`,
+                              locale,
+                            )}
+                            sousTitre={[lien.speaker.jobTitle, lien.speaker.organization]
+                              .filter(Boolean)
+                              .join(" · ")}
+                            photoUrl={
+                              photoIntervenant(lien.speaker)
+                                ? `/api/v1/speakers/${lien.speaker.id}/photo`
+                                : null
+                            }
+                            initiales={`${lien.speaker.firstName.charAt(0)}${lien.speaker.lastName.charAt(0)}`}
+                            langue={locale}
+                            classeExtrait="text-text-2 text-sm leading-relaxed whitespace-pre-line"
+                            classeBouton="text-link hover:text-secondary-hover inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold"
+                          />
+                        </div>
                       )}
                     </div>
                   </Reveal>

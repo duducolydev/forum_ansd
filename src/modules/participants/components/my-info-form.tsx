@@ -7,11 +7,9 @@ import { useLocale } from "next-intl";
 import { lireLangue, selon } from "@/lib/langue";
 import { CIVILITES, TYPES_ORGANISATION } from "../registration-i18n";
 import type { JourForum } from "../jours-forum";
-// Constante seule : `biographie.ts` importe Prisma, qui n'a rien à faire dans
-// le bundle du navigateur.
-import { BIOGRAPHIE_MAX } from "@/modules/speakers/constantes";
 import { updateMyInfoAction, type MySpaceState } from "../my-space-actions";
 import { ChampTelephone } from "@/components/ui/champ-telephone";
+import { ChampBiographie } from "@/components/ui/champ-biographie";
 
 const initialState: MySpaceState = {};
 const CHAMP =
@@ -203,19 +201,18 @@ export function MyInfoForm({ values, email, editable, deadlineLabel, days }: Pro
           {/* La même que sur la fiche intervenant, s'il en a une (`speakers/biographie.ts`). */}
           <span id="bio-aide" className="text-text-3 text-xs">
             {t({
-              fr: "Si vous intervenez au Forum, c'est aussi la biographie publiée sur votre fiche d'intervenant. 3 000 caractères au plus.",
-              en: "If you are a speaker at the Forum, this is also the biography published on your speaker profile. 3,000 characters at most.",
-              pt: "Se for orador no Fórum, é também a biografia publicada na sua ficha de orador. 3000 caracteres no máximo.",
+              fr: "Si vous intervenez au Forum, c'est aussi la biographie publiée sur votre fiche d'intervenant. 600 mots au plus.",
+              en: "If you are a speaker at the Forum, this is also the biography published on your speaker profile. 600 words at most.",
+              pt: "Se for orador no Fórum, é também a biografia publicada na sua ficha de orador. 600 palavras no máximo.",
             })}
           </span>
-          <textarea
+          <ChampBiographie
             id="bio"
             name="bio"
-            rows={6}
-            maxLength={BIOGRAPHIE_MAX}
             defaultValue={values.bio}
             disabled={!editable}
-            aria-describedby="bio-aide"
+            langue={langue}
+            describedBy="bio-aide"
             className={CHAMP}
           />
         </div>
