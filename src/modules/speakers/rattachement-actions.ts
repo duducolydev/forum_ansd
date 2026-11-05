@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import type { ActionState } from "./actions";
 import {
+  designerPourSession,
   modifierRattachement,
   rattacherSession,
   retirerSession,
@@ -88,6 +89,38 @@ export async function retirerSessionAction(
           : presentation === "conservee"
             ? "Intervenant retiré de la session. Sa présentation y est en ligne : elle reste publiée, à retirer depuis l'écran Contributions si besoin."
             : "Intervenant retiré de la session.",
+    };
+  } catch (error) {
+    return { error: messageErreur(error) };
+  }
+}
+
+/**
+ * Désigne un participant comme intervenant d'une session, depuis sa fiche
+ * participant : la fiche intervenant est reprise ou créée, puis rattachée
+ * (voir `designerPourSession`).
+ */
+export async function designerIntervenantAction(
+  participantId: string,
+  sessionId: string,
+  role: string,
+): Promise<ActionState> {
+  try {
+    const actor = await exigerEditeur();
+    if (!sessionId) return { error: "Choisissez une session." };
+    const { speakerId, origine, slug } = await designerPourSession(
+      participantId,
+      sessionId,
+      role,
+      actor,
+    );
+    invalider(speakerId, slug);
+    revalidatePath(`/admin/participants/${participantId}`);
+    return {
+      message:
+        origine === "creee"
+          ? "Participant ajouté à la session. Sa fiche intervenant est créée en brouillon : publiez-la pour qu'il apparaisse sur le site."
+          : "Participant ajouté à la session.",
     };
   } catch (error) {
     return { error: messageErreur(error) };

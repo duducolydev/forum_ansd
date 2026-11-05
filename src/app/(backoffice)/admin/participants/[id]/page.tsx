@@ -1,4 +1,5 @@
 import { avecCivilite } from "@/lib/civilite";
+import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { LienBouton } from "@/components/ui/bouton";
 import { notFound, redirect } from "next/navigation";
@@ -11,6 +12,17 @@ import { SuppressionParticipant } from "@/modules/participants/components/suppre
 import { BadgePanel } from "@/modules/badges/components/badge-panel";
 import { prisma } from "@/lib/db";
 import { LogStatusBadge } from "@/modules/notifications/components/log-status-badge";
+import { getSpeakerDuParticipant, sessionsPourRattachement } from "@/modules/speakers/service";
+import { SessionsIntervenant } from "@/modules/speakers/components/sessions-intervenant";
+
+const quand = new Intl.DateTimeFormat("fr-FR", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "UTC",
+});
 
 export default async function ParticipantDetailPage({
   params,
@@ -33,6 +45,16 @@ export default async function ParticipantDetailPage({
     orderBy: { createdAt: "desc" },
     take: 20,
   });
+
+  // Rôle au programme (panéliste, modérateur…) : le gestionnaire programme le
+  // donne d'ici, sans ressaisir la personne comme intervenant.
+  const peutProgrammer = can(session, "speakers.write");
+  const [intervenant, sessionsProgramme] = peutProgrammer
+    ? await Promise.all([
+        getSpeakerDuParticipant(participant.id),
+        sessionsPourRattachement(participant.editionId),
+      ])
+    : [null, []];
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -106,6 +128,46 @@ export default async function ParticipantDetailPage({
           />
         )}
       </dl>
+
+      {peutProgrammer && (
+        <div className="mt-5">
+          <SessionsIntervenant
+            speakerId={intervenant?.id ?? null}
+            participantId={participant.id}
+            titre="Intervenant au programme"
+            intro={
+              intervenant
+                ? "Rôle et statut de confirmation dans chaque session, enregistrés dès qu'on les change."
+                : "Pour en faire un panéliste, un modérateur ou un autre intervenant : choisissez la session et le rôle. Sa fiche intervenant est créée à partir de son inscription, en brouillon."
+            }
+            aPresentation={Boolean(intervenant?.presentationPath)}
+            rattachements={(intervenant?.sessions ?? []).map((lien) => ({
+              sessionId: lien.session.id,
+              titre: lien.session.titleFr,
+              quand: quand.format(lien.session.startTime),
+              role: lien.role,
+              statut: lien.confirmationStatus,
+            }))}
+            sessions={sessionsProgramme.map((item) => ({
+              id: item.id,
+              titre: item.titleFr,
+              quand: quand.format(item.startTime),
+            }))}
+          />
+          {intervenant && (
+            <p className="text-text-3 mt-2 text-xs">
+              Biographie, photo et publication sur le site :{" "}
+              <Link
+                href={`/admin/intervenants/${intervenant.id}/modifier`}
+                className="text-accent-text underline"
+              >
+                fiche intervenant
+              </Link>
+              {intervenant.isPublished ? " (publiée)." : " (brouillon)."}
+            </p>
+          )}
+        </div>
+      )}
 
       <BadgePanel
         participantId={participant.id}

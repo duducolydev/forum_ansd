@@ -7,6 +7,7 @@ import { Bouton } from "@/components/ui/bouton";
 import { auClicConfirme } from "@/components/ui/confirmer";
 import type { ActionState } from "../actions";
 import {
+  designerIntervenantAction,
   modifierRattachementAction,
   rattacherSessionAction,
   retirerSessionAction,
@@ -151,17 +152,28 @@ function LigneRattachement({
  * Cet écran manquait : seul le jeu de démonstration rattachait des intervenants
  * aux sessions. Un intervenant créé en BackOffice restait donc hors programme,
  * et sa présentation hors des contributions (§15.9).
+ *
+ * Affiché aussi sur la fiche d'un participant (5 novembre 2026), pour en faire
+ * un panéliste ou un modérateur sans ressaisir la personne : tant qu'il n'a pas
+ * de fiche intervenant (`speakerId` nul), le premier ajout la crée.
  */
 export function SessionsIntervenant({
   speakerId,
+  participantId,
   rattachements,
   sessions,
   aPresentation,
+  titre = "Sessions de l'intervenant",
+  intro = "Rôle et statut de confirmation, session par session. Enregistrés dès qu'on les change ; l'intervenant les voit dans son espace, sans pouvoir les modifier.",
 }: {
-  speakerId: string;
+  speakerId: string | null;
+  /** Requis quand `speakerId` est nul : le participant à désigner. */
+  participantId?: string;
   rattachements: RattachementVue[];
   sessions: SessionChoix[];
   aPresentation: boolean;
+  titre?: string;
+  intro?: string;
 }) {
   const [retour, setRetour] = useState<ActionState>({});
   const [sessionChoisie, setSessionChoisie] = useState("");
@@ -176,7 +188,11 @@ export function SessionsIntervenant({
   function ajouter() {
     setRetour({});
     startTransition(async () => {
-      const resultat = await rattacherSessionAction(speakerId, sessionChoisie, role);
+      const resultat = speakerId
+        ? await rattacherSessionAction(speakerId, sessionChoisie, role)
+        : participantId
+          ? await designerIntervenantAction(participantId, sessionChoisie, role)
+          : { error: "Intervenant introuvable." };
       setRetour(resultat);
       if (!resultat.error) {
         setSessionChoisie("");
@@ -191,12 +207,9 @@ export function SessionsIntervenant({
       className="border-border bg-surface rounded-xl border p-5"
     >
       <h3 id="titre-sessions-intervenant" className="text-heading text-sm font-semibold">
-        Sessions de l&apos;intervenant
+        {titre}
       </h3>
-      <p className="text-text-3 mt-1 text-xs">
-        Rôle et statut de confirmation, session par session. Enregistrés dès qu&apos;on les change ;
-        l&apos;intervenant les voit dans son espace, sans pouvoir les modifier.
-      </p>
+      <p className="text-text-3 mt-1 text-xs">{intro}</p>
 
       {aPresentation && rattachements.length === 0 && (
         <p className="bg-blue-soft text-blue-text mt-3 rounded-lg px-3 py-2 text-sm">
@@ -209,14 +222,15 @@ export function SessionsIntervenant({
         <p className="text-text-3 mt-3 text-sm">Rattaché à aucune session.</p>
       ) : (
         <ul className="mt-3 flex flex-col gap-2">
-          {rattachements.map((rattachement) => (
-            <LigneRattachement
-              key={rattachement.sessionId}
-              speakerId={speakerId}
-              rattachement={rattachement}
-              signaler={setRetour}
-            />
-          ))}
+          {speakerId &&
+            rattachements.map((rattachement) => (
+              <LigneRattachement
+                key={rattachement.sessionId}
+                speakerId={speakerId}
+                rattachement={rattachement}
+                signaler={setRetour}
+              />
+            ))}
         </ul>
       )}
 

@@ -200,6 +200,14 @@ export async function getSpeaker(id: string) {
   return prisma.speaker.findFirst({ where: { id, deletedAt: null }, select: SELECTION });
 }
 
+/** Fiche intervenant liée à un participant, pour sa fiche du BackOffice. */
+export async function getSpeakerDuParticipant(participantId: string) {
+  return prisma.speaker.findFirst({
+    where: { participantId, deletedAt: null },
+    select: SELECTION,
+  });
+}
+
 export async function createSpeaker(editionId: string, input: SpeakerInput, actor: Actor) {
   const speaker = await prisma.speaker.create({
     data: {
@@ -639,4 +647,149 @@ export async function createParticipantFromSpeaker(
   });
 
   return participant.id;
+}
+
+/**
+ * Fiche intervenant d'un participant déjà inscrit, pour le mettre au programme
+ * comme panéliste, modérateur… (5 novembre 2026).
+ *
+ * Sens inverse de `createParticipantFromSpeaker`. Une seule fiche par
+ * personne : on reprend celle déjà liée au participant, sinon celle, non liée,
+ * qui porte son adresse — une fiche saisie ou importée à part avant qu'on ne
+ * fasse le rapprochement. Faute de quoi elle est créée depuis l'inscription,
+ * **en brouillon** : sa publication sur le site reste une décision du comité.
+ *
+ * L'adresse n'est pas recopiée : sans adresse propre, l'intervenant est joint
+ * à celle du participant (`adresseIntervenant`), qui reste ainsi la seule à
+ * tenir à jour.
+ */
+export async function designerIntervenant(
+  participantId: string,
+  actor: Actor,
+): Promise<{ speakerId: string; origine: "existante" | "rapprochee" | "creee" }> {
+  const participant = await prisma.participant.findFirst({
+    where: { id: participantId, deletedAt: null },
+    select: {
+      id: true,
+      editionId: true,
+      email: true,
+      civility: true,
+      firstName: true,
+      lastName: true,
+      jobTitle: true,
+      organization: true,
+      country: true,
+      bio: true,
+      photoPath: true,
+      speaker: { select: { id: true, deletedAt: true } },
+    },
+  });
+  if (!participant) throw new SpeakerRuleError("Participant introuvable.");
+
+  if (participant.speaker) {
+    if (participant.speaker.deletedAt) {
+      await prisma.speaker.update({
+        where: { id: participant.speaker.id },
+        data: { deletedAt: null },
+      });
+    }
+    return { speakerId: participant.speaker.id, origine: "existante" };
+  }
+
+  const homonyme = await prisma.speaker.findFirst({
+    where: {
+      editionId: participant.editionId,
+      deletedAt: null,
+      participantId: null,
+      email: participant.email.toLowerCase(),
+    },
+    select: { id: true },
+  });
+
+  let speakerId: string;
+  let origine: "rapprochee" | "creee";
+  if (homonyme) {
+    await prisma.speaker.update({ where: { id: homonyme.id }, data: { participantId } });
+    speakerId = homonyme.id;
+    origine = "rapprochee";
+  } else {
+    const speaker = await prisma.speaker.create({
+      data: {
+        editionId: participant.editionId,
+        participantId,
+        civility: participant.civility,
+        firstName: participant.firstName,
+        lastName: participant.lastName,
+        jobTitle: participant.jobTitle,
+        organization: participant.organization,
+        country: participant.country,
+        bioFr: participant.bio,
+      },
+      select: { id: true },
+    });
+    speakerId = speaker.id;
+    origine = "creee";
+    if (participant.photoPath) await copierPhotoParticipant(speakerId, participant.photoPath);
+  }
+
+  await audit.log({
+    actorType: actor.type,
+    actorUserId: actor.userId,
+    action: origine === "creee" ? "speaker.created_from_participant" : "speaker.linked_participant",
+    entity: "Speaker",
+    entityId: speakerId,
+    after: { participantId },
+  });
+
+  return { speakerId, origine };
+}
+
+/**
+ * Désigne un participant comme intervenant d'une session, d'un seul geste
+ * depuis sa fiche participant.
+ *
+ * Rôle et session sont vérifiés **avant** de toucher aux fiches : une session
+ * d'une autre édition ou un rôle inconnu ne doit pas laisser derrière lui une
+ * fiche intervenant créée pour rien.
+ */
+export async function designerPourSession(
+  participantId: string,
+  sessionId: string,
+  role: string,
+  actor: Actor,
+): Promise<{ speakerId: string; origine: "existante" | "rapprochee" | "creee"; slug: string }> {
+  if (!estRole(role)) throw new SpeakerRuleError("Rôle inconnu.");
+  const participant = await prisma.participant.findFirst({
+    where: { id: participantId, deletedAt: null },
+    select: { editionId: true },
+  });
+  if (!participant) throw new SpeakerRuleError("Participant introuvable.");
+  const session = await prisma.session.findFirst({
+    where: { id: sessionId, editionId: participant.editionId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!session) throw new SpeakerRuleError("Session introuvable.");
+
+  const { speakerId, origine } = await designerIntervenant(participantId, actor);
+  const { slug } = await rattacherSession(speakerId, sessionId, role, actor);
+  return { speakerId, origine, slug };
+}
+
+/**
+ * Copie, et non partage, de la photo du participant : `saveSpeakerPhoto`
+ * supprime l'ancien fichier de la fiche quand on en dépose un nouveau, ce qui
+ * emporterait celle du participant. Une photo illisible n'empêche pas la
+ * désignation : la fiche reste simplement sans photo.
+ */
+async function copierPhotoParticipant(speakerId: string, photoPath: string): Promise<void> {
+  try {
+    const octets = await fileStorage.get(photoPath);
+    const detecte = detectImageType(octets);
+    if (!detecte) return;
+    const chemin = `speakers/${speakerId}-${randomBytes(6).toString("hex")}.${detecte.extension}`;
+    await fileStorage.put(chemin, octets, detecte.type);
+    await prisma.speaker.update({ where: { id: speakerId }, data: { photoPath: chemin } });
+  } catch {
+    // Fichier absent du stockage : rien à copier.
+  }
 }
