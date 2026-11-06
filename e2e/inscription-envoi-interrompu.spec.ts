@@ -21,9 +21,13 @@ import { accepterConsentements, allerJusquAuBout, choisirPays } from "./helpers/
  * 2. Une réponse qui n'est pas du RSC — page HTML d'un pare-feu ou d'un proxy,
  *    502 pendant un redémarrage — faisait tomber la page, formulaire perdu.
  *
- * Le second se rejoue sans réseau à simuler : la requête qui porte une photo
- * reçoit une page HTML, comme d'un équipement qui bloquerait le contenu
- * binaire ; celle qui n'en porte pas passe.
+ * Le second se rejoue sans réseau à simuler : le premier envoi reçoit une
+ * page HTML, comme d'un équipement qui bloquerait la requête au passage.
+ *
+ * Le formulaire ne propose plus d'« Envoyer sans la photo » (retiré le 30
+ * octobre, `dc9365b`) : après un refus, on réessaie le même envoi, photo
+ * comprise. Le test rejoue donc une coupure passagère — le second essai passe
+ * et l'inscription arrive avec sa photo.
  */
 const EMAIL = emailE2E("envoi-interrompu");
 
@@ -32,11 +36,13 @@ test.afterAll(async () => {
   await prisma.$disconnect();
 });
 
-test("seul « Envoyer » envoie ; un envoi rejeté en chemin garde le formulaire, qui aboutit sans la photo", async ({
+test("seul « Envoyer » envoie ; un envoi rejeté en chemin garde le formulaire, et un nouvel essai aboutit", async ({
   page,
 }) => {
   let envois = 0;
   let bloques = 0;
+  // Coupure passagère : seul le premier envoi est bloqué.
+  let bloquer = true;
   await page.route("**/inscription", async (route) => {
     const requete = route.request();
     if (requete.method() !== "POST" || !requete.headers()["next-action"]) {
@@ -44,9 +50,7 @@ test("seul « Envoyer » envoie ; un envoi rejeté en chemin garde le formulaire
       return;
     }
     envois++;
-    // La photo est le seul fichier de la requête. Son nom de champ ne se teste
-    // pas : React le préfixe (`1_photo`) en sérialisant le FormData.
-    if (requete.postDataBuffer()?.includes('filename="')) {
+    if (bloquer) {
       bloques++;
       await route.fulfill({
         status: 403,
@@ -87,14 +91,24 @@ test("seul « Envoyer » envoie ; un envoi rejeté en chemin garde le formulaire
   await expect(page.getByText(/Application error/)).toHaveCount(0);
   await expect(page.getByLabel(/J'accepte les conditions/)).toBeChecked();
 
-  await page.getByRole("button", { name: "Envoyer sans la photo" }).click();
-  await expect(page.getByText("Inscription enregistrée")).toBeVisible({ timeout: 20_000 });
+  // Le passage se rétablit ; on renvoie le même formulaire, sans rien ressaisir.
+  bloquer = false;
+  await page.getByRole("button", { name: "Envoyer mon inscription" }).click();
+  // Délai large pour `next dev` seulement : la photo est écrite dans
+  // `./storage`, que le serveur de développement surveille, et l'écriture y
+  // relance une compilation (jusqu'à 40 s mesurées). L'image de production n'a
+  // pas de surveillance.
+  await expect(page.getByText("Inscription enregistrée")).toBeVisible({ timeout: 90_000 });
   expect(envois).toBe(2);
+  expect(bloques).toBe(1);
 
   const edition = await prisma.edition.findFirstOrThrow({ where: { isActive: true } });
   const participant = await prisma.participant.findUniqueOrThrow({
     where: { editionId_email: { editionId: edition.id, email: EMAIL } },
   });
   expect(participant.consentTerms).toBe(true);
-  expect(participant.photoPath).toBeNull();
+  // La photo choisie avant la coupure est arrivée avec le second envoi.
+  expect(participant.photoPath).toMatch(
+    new RegExp(`^photos/${participant.publicId}-[0-9a-f]{12}\\.jpg$`),
+  );
 });

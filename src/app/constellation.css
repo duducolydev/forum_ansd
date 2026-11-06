@@ -1356,7 +1356,10 @@ html[data-motion] .mot-symbole__tri i {
 }
 
 .retournable {
-  height: 340px;
+  /* 380 px : de quoi loger nom, fonction et organisation sur deux lignes
+     chacun, avec le pays en bas (6 novembre 2026) ; à 340 px, les longues
+     fiches débordaient et écrasaient l'avatar. */
+  height: 380px;
   cursor: pointer;
   transition:
     opacity 0.9s var(--ease),
@@ -1429,6 +1432,9 @@ html[data-motion] .retournable:not([data-vu]) {
 
 .avatar-anneau {
   position: relative;
+  /* Jamais tassé : avec un nom, une fonction et une organisation longs, la
+     carte de hauteur fixe écrasait l'avatar en ovale (6 novembre 2026). */
+  flex-shrink: 0;
   width: 118px;
   height: 118px;
   margin: 0 auto 1.1rem;
@@ -1495,6 +1501,28 @@ html[data-motion] .retournable:not([data-vu]) {
   line-height: 1.35;
 }
 
+/* Au recto, deux lignes au plus : le texte entier est dans la fiche détaillée.
+   Sans `flex-shrink: 0`, la colonne tassait ces blocs à une ligne. */
+.face--recto .face__nom,
+.face--recto .face__fonction,
+.face--recto .face__organisation {
+  flex-shrink: 0;
+}
+
+.face--recto .face__nom,
+.face--recto .face__fonction,
+.face--recto .face__organisation {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* La pastille garde sa largeur de pastille. */
+.face--recto .face__organisation {
+  display: -webkit-inline-box;
+}
+
 .face__organisation {
   position: relative;
   display: inline-block;
@@ -1516,7 +1544,7 @@ html[data-motion] .retournable:not([data-vu]) {
   letter-spacing: 0.2em;
 }
 
-/* Pays de l'intervenant, à la place de l'indice (accueil). */
+/* Pays de l'intervenant, à la place de l'indice (accueil, page Intervenants). */
 .face__indice--pays {
   overflow: hidden;
   padding-inline: 1rem;

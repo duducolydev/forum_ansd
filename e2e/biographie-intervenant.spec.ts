@@ -99,6 +99,10 @@ test("page Intervenants : la carte et son bouton ouvrent la fiche", async ({ pag
     await verifierFiche(page, nom, () => bouton(carte).click());
     // La carte ne montre qu'un extrait d'une biographie longue.
     await expect(carte.getByText(FIN_DE_BIO)).toHaveCount(0);
+    // Le pays tient la place de « Cliquer pour le profil », en capitales.
+    const pays = carte.locator(".face__indice--pays");
+    await expect(pays).toHaveText("Sénégal");
+    await expect(pays).toHaveCSS("text-transform", "uppercase");
   }
 });
 
@@ -114,5 +118,9 @@ test("fiche d'un panel : chaque carte s'ouvre, biographie ou non", async ({ page
     await verifierFiche(page, nom, () => carte.getByText(nom).first().click());
     await verifierFiche(page, nom, () => bouton(carte).click());
     await expect(carte.getByText(FIN_DE_BIO)).toHaveCount(0);
+    // Le pays, seul sur sa ligne juste avant « Voir le profil », en capitales.
+    const pays = carte.getByText("Sénégal", { exact: true });
+    await expect(pays).toBeVisible();
+    await expect(pays).toHaveCSS("text-transform", "uppercase");
   }
 });

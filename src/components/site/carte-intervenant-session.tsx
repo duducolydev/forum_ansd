@@ -5,6 +5,7 @@ import Image from "next/image";
 import { UserRound } from "lucide-react";
 import { lireLangue, selon } from "@/lib/langue";
 import { extraitBiographie } from "@/lib/biographie";
+import { libellePays } from "@/lib/pays";
 import { FenetreIntervenant, type ProfilIntervenant } from "./fenetre-intervenant";
 
 /**
@@ -28,7 +29,9 @@ export function CarteIntervenantSession({
   const langue = lireLangue(langueBrute);
   const [ouverte, setOuverte] = useState(false);
   const bio = profil.bio?.trim();
-  const details = [profil.fonction, profil.organisation, profil.pays].filter(Boolean).join(" · ");
+  const details = [profil.fonction, profil.organisation].filter(Boolean).join(" · ");
+  // Enregistré en français, montré dans la langue de la page.
+  const pays = profil.pays ? libellePays(profil.pays, langue) : "";
 
   return (
     <div
@@ -66,7 +69,16 @@ export function CarteIntervenantSession({
           {extraitBiographie(bio, 280).extrait}
         </p>
       )}
-      <div className="mt-auto flex justify-center pt-4">
+      <div className="mt-auto flex flex-col items-center gap-2.5 pt-4">
+        {/*
+         * Le pays, bien visible juste avant le bouton (6 novembre 2026) : il se
+         * perdait en fin de ligne, après la fonction et l'organisation.
+         */}
+        {pays && (
+          <p className="police-grotesk text-center text-sm font-bold tracking-[0.14em] text-(--green-text) uppercase">
+            {pays}
+          </p>
+        )}
         <button
           type="button"
           aria-haspopup="dialog"

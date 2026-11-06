@@ -202,7 +202,13 @@ function CarteRetournable({
           {intervenant.organization && (
             <small className="face__organisation">{intervenant.organization}</small>
           )}
-          {fiche ? (
+          {pays ? (
+            // Le pays remplace l'indice, en capitales et en couleur : sur
+            // l'accueil (« Survoler ↻ ») comme sur la page Intervenants
+            // (« Cliquer pour le profil », 6 novembre 2026). Information
+            // propre, donc lue. La carte reste cliquable.
+            <span className="face__indice face__indice--pays police-grotesk">{pays}</span>
+          ) : fiche ? (
             <span aria-hidden className="face__indice police-grotesk">
               {selon(langueSite, {
                 fr: precis ? "Cliquer pour le profil" : "Toucher pour le profil",
@@ -210,10 +216,6 @@ function CarteRetournable({
                 pt: precis ? "Clicar para o perfil" : "Tocar para o perfil",
               })}
             </span>
-          ) : pays ? (
-            // Accueil : le pays remplace l'indice « Survoler ↻ » (6 novembre
-            // 2026), en capitales et en couleur. Information propre, donc lue.
-            <span className="face__indice face__indice--pays police-grotesk">{pays}</span>
           ) : (
             <span aria-hidden className="face__indice police-grotesk">
               {precis ? t("hover") : t("touch")}
