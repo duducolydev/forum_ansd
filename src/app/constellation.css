@@ -1516,6 +1516,18 @@ html[data-motion] .retournable:not([data-vu]) {
   letter-spacing: 0.2em;
 }
 
+/* Pays de l'intervenant, à la place de l'indice (accueil). */
+.face__indice--pays {
+  overflow: hidden;
+  padding-inline: 1rem;
+  color: var(--green-text);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .face--verso {
   display: flex;
   flex-direction: column;

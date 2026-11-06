@@ -21,6 +21,19 @@ interface Props {
   className?: string;
   /** Appelé à chaque choix, pour un filtre qui s'applique sans bouton d'envoi. */
   onChange?: (value: string) => void;
+  disabled?: boolean;
+  /** Valeur exigée à l'envoi ; à combiner avec `labelVide`, l'option vide restant le point de départ. */
+  required?: boolean;
+  /** Message d'une recherche sans résultat (« Aucun résultat. » par défaut). */
+  texteAucunResultat?: string;
+}
+
+/** Texte comparé sans casse ni accents : « senegal » trouve « Sénégal ». */
+function simplifier(texte: string): string {
+  return texte
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
 
 const CHAMP = "border-border bg-surface text-text w-full rounded-lg border px-3 py-2.5";
@@ -48,6 +61,9 @@ export function SelectRecherche({
   placeholderRecherche = "Rechercher…",
   className = "",
   onChange,
+  disabled,
+  required,
+  texteAucunResultat = "Aucun résultat.",
 }: Props) {
   const idGenere = useId();
   const idChamp = id ?? idGenere;
@@ -84,10 +100,10 @@ export function SelectRecherche({
   );
 
   const filtrees = useMemo(() => {
-    const terme = filtre.trim().toLowerCase();
+    const terme = simplifier(filtre.trim());
     if (!terme) return toutes;
     return toutes.filter((option) =>
-      `${option.label} ${option.detail ?? ""}`.toLowerCase().includes(terme),
+      simplifier(`${option.label} ${option.detail ?? ""}`).includes(terme),
     );
   }, [filtre, toutes]);
 
@@ -140,6 +156,8 @@ export function SelectRecherche({
         className={enrichi ? "sr-only" : `${CHAMP} ${className}`}
         tabIndex={enrichi ? -1 : undefined}
         aria-hidden={enrichi || undefined}
+        disabled={disabled}
+        required={required}
       >
         {toutes.map((option) => (
           <option key={option.value || "vide"} value={option.value}>
@@ -159,7 +177,9 @@ export function SelectRecherche({
             aria-haspopup="listbox"
             onClick={() => setOuvert((v) => !v)}
             onKeyDown={auClavier}
-            className={`${CHAMP} ${className} flex items-center justify-between gap-2 text-left`}
+            disabled={disabled}
+            aria-required={required || undefined}
+            className={`${CHAMP} ${className} flex items-center justify-between gap-2 text-left disabled:opacity-60`}
           >
             <span className={choisie?.value ? "text-text" : "text-text-3"}>
               {choisie?.label ?? labelVide ?? "—"}
@@ -222,7 +242,7 @@ export function SelectRecherche({
                   </li>
                 ))}
                 {filtrees.length === 0 && (
-                  <li className="text-text-3 px-3 py-3 text-sm">Aucun résultat.</li>
+                  <li className="text-text-3 px-3 py-3 text-sm">{texteAucunResultat}</li>
                 )}
               </ul>
             </div>

@@ -6,6 +6,7 @@ import { nomDeFamille } from "@/lib/nom-de-famille";
 import { enqueueBadgeRefresh, textesDuBadgeModifies } from "@/modules/badges/jobs";
 import { propagerBioDuParticipant } from "@/modules/speakers/biographie";
 import { schemaBiographie } from "@/lib/biographie";
+import { schemaPaysDeLaListe } from "@/lib/pays-schema";
 
 const texte = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
 
@@ -34,7 +35,7 @@ export const mySpaceInputSchema = z
     firstName: z.string().trim().min(1, "Le prénom est requis").max(100),
     lastName: z.string().trim().min(1, "Le nom est requis").max(100).transform(nomDeFamille),
     phone: texte(30),
-    country: z.string().trim().min(1, "Le pays est requis").max(100),
+    country: schemaPaysDeLaListe,
     city: texte(100),
     organization: texte(200),
     organizationType: texte(100),

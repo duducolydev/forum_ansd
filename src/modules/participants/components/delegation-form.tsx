@@ -7,6 +7,7 @@ import { SelectRecherche } from "@/components/ui/select-recherche";
 import { useActionState } from "react";
 import type { ActionState } from "../actions";
 import type { DelegationInput } from "../schema";
+import { ChampPays } from "@/components/ui/champ-pays";
 
 /** Référent tel qu'il est proposé au rattachement : fiches en service seulement. */
 export interface ReferentOption {
@@ -48,12 +49,7 @@ export function DelegationForm({ action, defaultValues, submitLabel, referents }
           <label htmlFor="country" className="text-heading text-sm font-semibold">
             Pays
           </label>
-          <input
-            id="country"
-            name="country"
-            defaultValue={d.country}
-            className="border-border bg-surface text-text rounded-lg border px-3 py-2.5"
-          />
+          <ChampPays id="country" defaultValue={d.country} />
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="institution" className="text-heading text-sm font-semibold">

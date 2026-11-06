@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { prisma } from "../src/lib/db";
 import { emailE2E } from "./helpers/comptes";
-import { accepterConsentements, allerJusquAuBout } from "./helpers/inscription";
+import { accepterConsentements, allerJusquAuBout, choisirPays } from "./helpers/inscription";
 
 /**
  * Inscription sur invitation (29 octobre 2026) : la catégorie choisie par le
@@ -63,7 +63,7 @@ test("l'invité trouve sa catégorie préremplie et s'inscrit jusqu'au bout", as
     page.getByText("Cette catégorie a été définie par le comité d'organisation."),
   ).toBeVisible();
 
-  await page.getByLabel("Pays", { exact: true }).fill("Sénégal");
+  await choisirPays(page, "Sénégal");
   await allerJusquAuBout(page);
   await accepterConsentements(page);
   await page.getByRole("button", { name: "Envoyer mon inscription" }).click();

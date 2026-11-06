@@ -28,6 +28,10 @@ const ERREURS: Record<string, { en: string; pt: string }> = {
     en: "Invalid email address",
     pt: "Endereço de e-mail inválido",
   },
+  "Choisissez un pays dans la liste": {
+    en: "Choose a country from the list",
+    pt: "Escolha um país da lista",
+  },
   "Le pays est requis": {
     en: "Country is required",
     pt: "O país é obrigatório",

@@ -24,6 +24,7 @@ import { generateUniquePublicId } from "@/modules/participants/service";
 import { enqueueBadgeRefresh } from "@/modules/badges/jobs";
 import { alignerBiographies, propagerBioDeLIntervenant } from "./biographie";
 import { schemaBiographie } from "@/lib/biographie";
+import { schemaPaysFacultatif } from "@/lib/pays-schema";
 
 /**
  * Intervenants (brief §5.8).
@@ -51,7 +52,7 @@ export const speakerInputSchema = z.object({
   email: z.email("Adresse e-mail invalide").optional().or(z.literal("")),
   jobTitle: z.string().trim().max(150).optional().or(z.literal("")),
   organization: z.string().trim().max(150).optional().or(z.literal("")),
-  country: z.string().trim().max(80).optional().or(z.literal("")),
+  country: schemaPaysFacultatif,
   bioFr: schemaBiographie,
   bioEn: schemaBiographie,
   bioPt: schemaBiographie,
@@ -66,7 +67,7 @@ export type SpeakerInput = z.infer<typeof speakerInputSchema>;
 export const selfEditSchema = z.object({
   jobTitle: z.string().trim().max(150).optional().or(z.literal("")),
   organization: z.string().trim().max(150).optional().or(z.literal("")),
-  country: z.string().trim().max(80).optional().or(z.literal("")),
+  country: schemaPaysFacultatif,
   bioFr: schemaBiographie,
   bioEn: schemaBiographie,
   bioPt: schemaBiographie,

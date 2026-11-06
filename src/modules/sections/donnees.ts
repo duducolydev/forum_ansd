@@ -37,6 +37,8 @@ export interface DonneesSections {
     lastName: string;
     jobTitle: string | null;
     organization: string | null;
+    /** Pays, en nom français : affiché en bas de la carte, à la place de « Survoler ». */
+    country: string | null;
     photoPath: string | null;
     /** Thèmes des sessions publiées où il intervient — ceux du filtre de la section. */
     themes: string[];
@@ -121,6 +123,7 @@ export async function chargerDonnees(
             lastName: true,
             jobTitle: true,
             organization: true,
+            country: true,
             photoPath: true,
             isFeatured: true,
             featuredOrder: true,

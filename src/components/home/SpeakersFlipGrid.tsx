@@ -10,6 +10,7 @@ import { useFinePointer, useReveal } from "@/components/motion/hooks";
 import { FenetreIntervenant } from "@/components/site/fenetre-intervenant";
 import { extraitBiographie } from "@/lib/biographie";
 import { lireLangue, selon } from "@/lib/langue";
+import { libellePays } from "@/lib/pays";
 
 export interface IntervenantCarte {
   id: string;
@@ -129,6 +130,8 @@ function CarteRetournable({
     if (fiche && window.location.hash === `#intervenant-${intervenant.id}`) setOuverte(true);
   }, [fiche, intervenant.id]);
 
+  // Nom enregistré en français, montré dans la langue de la page.
+  const pays = intervenant.country ? libellePays(intervenant.country, langueSite) : "";
   const photoUrl = intervenant.photoPath ? `/api/v1/speakers/${intervenant.id}/photo` : null;
   const libelleOuvrir = selon(langueSite, {
     fr: `Voir le profil de ${nom}`,
@@ -199,17 +202,23 @@ function CarteRetournable({
           {intervenant.organization && (
             <small className="face__organisation">{intervenant.organization}</small>
           )}
-          <span aria-hidden className="face__indice police-grotesk">
-            {fiche
-              ? selon(langueSite, {
-                  fr: precis ? "Cliquer pour le profil" : "Toucher pour le profil",
-                  en: precis ? "Click for profile" : "Tap for profile",
-                  pt: precis ? "Clicar para o perfil" : "Tocar para o perfil",
-                })
-              : precis
-                ? t("hover")
-                : t("touch")}
-          </span>
+          {fiche ? (
+            <span aria-hidden className="face__indice police-grotesk">
+              {selon(langueSite, {
+                fr: precis ? "Cliquer pour le profil" : "Toucher pour le profil",
+                en: precis ? "Click for profile" : "Tap for profile",
+                pt: precis ? "Clicar para o perfil" : "Tocar para o perfil",
+              })}
+            </span>
+          ) : pays ? (
+            // Accueil : le pays remplace l'indice « Survoler ↻ » (6 novembre
+            // 2026), en capitales et en couleur. Information propre, donc lue.
+            <span className="face__indice face__indice--pays police-grotesk">{pays}</span>
+          ) : (
+            <span aria-hidden className="face__indice police-grotesk">
+              {precis ? t("hover") : t("touch")}
+            </span>
+          )}
         </div>
 
         <div className="face face--verso">

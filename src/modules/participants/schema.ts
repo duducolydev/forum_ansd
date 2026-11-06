@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { nomDeFamille } from "@/lib/nom-de-famille";
 import { schemaBiographie } from "@/lib/biographie";
+import { schemaPaysFacultatif, schemaPaysObligatoire } from "@/lib/pays-schema";
 
 /** Schéma partagé client/serveur (brief §3.3) — formulaire BackOffice de création/édition. */
 export const participantInputSchema = z.object({
@@ -20,7 +21,7 @@ export const participantInputSchema = z.object({
   activityDomain: z.string().trim().max(150).optional().or(z.literal("")),
   bio: schemaBiographie,
   website: z.string().trim().max(300).optional().or(z.literal("")),
-  country: z.string().trim().min(1, "Le pays est requis").max(100),
+  country: schemaPaysObligatoire,
   city: z.string().trim().max(100).optional().or(z.literal("")),
   categoryId: z.string().min(1, "La catégorie est requise"),
   delegationId: z.string().optional().or(z.literal("")),
@@ -88,7 +89,7 @@ export type ParticipantSearchInput = z.infer<typeof participantSearchSchema>;
 
 export const delegationInputSchema = z.object({
   name: z.string().trim().min(1, "Le nom de la délégation est requis").max(200),
-  country: z.string().trim().max(100).optional().or(z.literal("")),
+  country: schemaPaysFacultatif,
   institution: z.string().trim().max(200).optional().or(z.literal("")),
   /*
    * Référent interne (§28). La chaîne vide vaut « aucun » : c'est la valeur que

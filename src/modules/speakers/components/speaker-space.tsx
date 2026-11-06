@@ -13,6 +13,7 @@ import {
 import { PRESENTATION_MAX_BYTES } from "../constantes";
 import { PhotoIntervenant } from "./photo-intervenant";
 import { ChampBiographie } from "@/components/ui/champ-biographie";
+import { ChampPays } from "@/components/ui/champ-pays";
 
 const initialState: ActionState = {};
 const champ = "border-border bg-bg text-text w-full rounded-lg border px-3 py-2 text-sm";
@@ -278,13 +279,7 @@ export function SpeakerSpace({ speaker }: { speaker: SpeakerVue }) {
             <label htmlFor="country" className={etiquette}>
               Pays
             </label>
-            <input
-              id="country"
-              name="country"
-              maxLength={80}
-              defaultValue={speaker.country}
-              className={champ}
-            />
+            <ChampPays id="country" defaultValue={speaker.country} className="py-2 text-sm" />
           </div>
         </div>
 

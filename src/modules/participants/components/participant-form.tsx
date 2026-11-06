@@ -7,6 +7,7 @@ import { useActionState } from "react";
 import type { ActionState } from "../actions";
 import type { ParticipantInput } from "../schema";
 import { ChampTelephone } from "@/components/ui/champ-telephone";
+import { ChampPays } from "@/components/ui/champ-pays";
 
 interface Props {
   action: (prevState: ActionState, formData: FormData) => Promise<ActionState>;
@@ -53,7 +54,12 @@ export function ParticipantForm({
           defaultValue={d.organizationType}
         />
         <Field label="Fonction" name="jobTitle" defaultValue={d.jobTitle} />
-        <Field label="Pays" name="country" defaultValue={d.country} required />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="country" className="text-heading text-sm font-semibold">
+            Pays
+          </label>
+          <ChampPays id="country" defaultValue={d.country} required />
+        </div>
         <Field label="Ville" name="city" defaultValue={d.city} />
 
         <div className="flex flex-col gap-1.5">

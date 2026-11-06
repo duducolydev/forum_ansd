@@ -6,6 +6,7 @@ import { Save } from "lucide-react";
 import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
 import { CIVILITES } from "@/modules/participants/registration-i18n";
 import { ChampBiographie } from "@/components/ui/champ-biographie";
+import { ChampPays } from "@/components/ui/champ-pays";
 
 const initialState: ActionState = {};
 const champ = "border-border bg-bg text-text w-full rounded-lg border px-3 py-2 text-sm";
@@ -123,13 +124,7 @@ export function SpeakerForm({ valeurs }: { valeurs: SpeakerFormValues }) {
             <label htmlFor="country" className={etiquette}>
               Pays
             </label>
-            <input
-              id="country"
-              name="country"
-              maxLength={80}
-              defaultValue={valeurs.country}
-              className={champ}
-            />
+            <ChampPays id="country" defaultValue={valeurs.country} className="py-2 text-sm" />
           </div>
         </div>
       </section>

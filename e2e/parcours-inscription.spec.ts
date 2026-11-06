@@ -3,7 +3,7 @@ import { prisma } from "../src/lib/db";
 import { emailE2E, seConnecterAdmin } from "./helpers/comptes";
 import { nettoyerDonneesE2E } from "./helpers/nettoyage";
 import { pngUni } from "./helpers/image";
-import { accepterConsentements, allerJusquAuBout } from "./helpers/inscription";
+import { accepterConsentements, allerJusquAuBout, choisirPays } from "./helpers/inscription";
 
 /**
  * Le parcours nommé par le **critère de sortie du Lot 1** :
@@ -44,7 +44,7 @@ test("1. un visiteur s'inscrit depuis le formulaire public", async ({ page }) =>
   await page.getByLabel("Adresse e-mail", { exact: true }).fill(EMAIL);
   // Organisation à l'étape Identité, avant le pays (28 octobre 2026).
   await page.getByLabel("Organisation", { exact: true }).fill("INSTAT");
-  await page.getByLabel("Pays", { exact: true }).fill("Mali");
+  await choisirPays(page, "Mali");
   await page.getByLabel("Catégorie de participation").selectOption({ label: CATEGORIE });
 
   await page.getByRole("button", { name: "Continuer" }).click();
@@ -101,7 +101,7 @@ test("3. une seconde inscription avec le même e-mail est refusée", async ({ pa
   await page.getByLabel("Prénom", { exact: true }).fill(PRENOM);
   await page.getByLabel("Nom", { exact: true }).fill(NOM);
   await page.getByLabel("Adresse e-mail", { exact: true }).fill(EMAIL);
-  await page.getByLabel("Pays", { exact: true }).fill("Mali");
+  await choisirPays(page, "Mali");
   await page.getByLabel("Catégorie de participation").selectOption({ label: CATEGORIE });
 
   await allerJusquAuBout(page);

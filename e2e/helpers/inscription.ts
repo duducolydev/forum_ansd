@@ -68,3 +68,14 @@ export async function accepterConsentements(page: Page): Promise<void> {
   await donnees.click();
   await expect(donnees).toBeChecked();
 }
+
+/**
+ * Choisit un pays dans la liste à recherche (6 novembre 2026) : le champ
+ * « Pays » n'est plus un texte libre. On ouvre la liste, on tape le début du
+ * nom, puis on clique le pays — comme un visiteur.
+ */
+export async function choisirPays(page: Page, pays: string): Promise<void> {
+  await page.getByRole("combobox", { name: "Pays", exact: true }).click();
+  await page.getByPlaceholder("Rechercher un pays…").fill(pays);
+  await page.getByRole("option", { name: pays, exact: true }).click();
+}

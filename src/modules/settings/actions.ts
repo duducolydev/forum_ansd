@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
 import * as service from "./service";
+import { harmoniserPays } from "./pays-service";
 import {
   categorieSchema,
   identiteSchema,
@@ -240,6 +241,45 @@ export async function creerCategorieAction(
     revalidatePath("/inscription");
     return {
       avis: `Catégorie « ${categorie.labelFr} » créée (code ${categorie.code}), ${zones} zone(s) ouverte(s).`,
+    };
+  } catch (erreur) {
+    return { erreur: messageErreur(erreur) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Harmonisation des pays (6 novembre 2026)
+// ---------------------------------------------------------------------------
+
+/**
+ * Remplacements cochés dans Paramètres › Pays. Le formulaire envoie, pour
+ * chaque ligne `i`, la valeur actuelle (`de_i`), le pays retenu (`vers_i`) et
+ * la case `appliquer_i` ; seules les lignes cochées et pourvues d'un pays sont
+ * appliquées.
+ */
+export async function harmoniserPaysAction(
+  _etat: EtatAction,
+  formData: FormData,
+): Promise<EtatAction> {
+  try {
+    const { acteur } = await exigerParametreur();
+    const remplacements: { de: string; vers: string }[] = [];
+    for (const [cle, valeur] of formData.entries()) {
+      const rang = /^appliquer_(\d+)$/.exec(cle)?.[1];
+      if (!rang || valeur !== "on") continue;
+      const de = String(formData.get(`de_${rang}`) ?? "");
+      const vers = String(formData.get(`vers_${rang}`) ?? "");
+      if (de && vers) remplacements.push({ de, vers });
+    }
+    if (remplacements.length === 0) {
+      return { erreur: "Cochez au moins une valeur, avec le pays à retenir." };
+    }
+
+    const { valeurs, fiches } = await harmoniserPays(remplacements, acteur);
+    revalidatePath("/admin/parametres/pays");
+    revalidatePath("/intervenants");
+    return {
+      avis: `${valeurs} valeur${valeurs > 1 ? "s" : ""} harmonisée${valeurs > 1 ? "s" : ""}, ${fiches} fiche${fiches > 1 ? "s" : ""} mise${fiches > 1 ? "s" : ""} à jour.`,
     };
   } catch (erreur) {
     return { erreur: messageErreur(erreur) };

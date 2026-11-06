@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { nomDeFamille } from "@/lib/nom-de-famille";
+import { schemaPaysFacultatif } from "@/lib/pays-schema";
 
 export const invitationInputSchema = z.object({
   email: z
@@ -11,7 +12,7 @@ export const invitationInputSchema = z.object({
   firstName: z.string().trim().min(1, "Le prénom est requis").max(100),
   lastName: z.string().trim().min(1, "Le nom est requis").max(100).transform(nomDeFamille),
   organization: z.string().trim().max(200).optional().or(z.literal("")),
-  country: z.string().trim().max(100).optional().or(z.literal("")),
+  country: schemaPaysFacultatif,
   categoryId: z.string().min(1, "La catégorie est requise"),
 });
 
@@ -23,7 +24,7 @@ export const invitationImportRowSchema = z.object({
   firstName: z.string().trim().min(1, "Prénom requis").max(100),
   lastName: z.string().trim().min(1, "Nom requis").max(100).transform(nomDeFamille),
   organization: z.string().trim().max(200).optional().or(z.literal("")),
-  country: z.string().trim().max(100).optional().or(z.literal("")),
+  country: schemaPaysFacultatif,
   categoryCode: z.string().trim().min(1, "Catégorie requise").max(60),
 });
 

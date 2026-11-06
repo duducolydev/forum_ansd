@@ -3,7 +3,7 @@ import { prisma } from "../src/lib/db";
 import { emailE2E } from "./helpers/comptes";
 import { nettoyerDonneesE2E } from "./helpers/nettoyage";
 import { pngUni } from "./helpers/image";
-import { accepterConsentements, allerJusquAuBout } from "./helpers/inscription";
+import { accepterConsentements, allerJusquAuBout, choisirPays } from "./helpers/inscription";
 
 /**
  * Envoi de l'inscription publique (30 octobre 2026).
@@ -63,7 +63,7 @@ test("seul « Envoyer » envoie ; un envoi rejeté en chemin garde le formulaire
   await page.getByLabel("Prénom", { exact: true }).fill("Moussa");
   await page.getByLabel("Nom", { exact: true }).fill("Sarr");
   await page.getByLabel("Adresse e-mail", { exact: true }).fill(EMAIL);
-  await page.getByLabel("Pays", { exact: true }).fill("Sénégal");
+  await choisirPays(page, "Sénégal");
   await page.getByLabel("Catégorie de participation").selectOption({ label: "Sponsor" });
 
   await page.getByRole("button", { name: "Continuer" }).click();

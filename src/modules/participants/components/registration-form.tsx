@@ -22,6 +22,7 @@ import {
 import { PhotoField } from "./photo-field";
 import { ChampTelephone } from "@/components/ui/champ-telephone";
 import { ChampBiographie } from "@/components/ui/champ-biographie";
+import { ChampPays } from "@/components/ui/champ-pays";
 
 const DRAFT_KEY = "forum-ansd:registration-draft";
 
@@ -110,6 +111,9 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
 
   // Brouillon local : restauration au montage, sauvegarde à chaque changement d'étape.
   const invite = useRef(Boolean(invitation));
+  // Pays du brouillon : la liste à recherche ne lit pas une valeur écrite dans
+  // le DOM, elle la reçoit à son montage.
+  const [paysBrouillon, setPaysBrouillon] = useState<string | null>(null);
   useEffect(() => {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
@@ -119,6 +123,10 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
         // Adresse et catégorie d'une invitation sont fixées par le comité : un
         // brouillon laissé sur l'appareil ne doit pas les remplacer.
         if (invite.current && (name === "email" || name === "categoryId")) continue;
+        if (name === "country") {
+          setPaysBrouillon(String(value));
+          continue;
+        }
         const field = formRef.current.elements.namedItem(name);
         if (!field) continue;
         if (field instanceof HTMLInputElement && field.type === "checkbox") {
@@ -392,7 +400,19 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
               name="organization"
             />
           </div>
-          <Field label={t({ fr: "Pays", en: "Country", pt: "País" })} name="country" required />
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="country" className="text-heading text-sm font-semibold">
+              {t({ fr: "Pays", en: "Country", pt: "País" })}
+            </label>
+            {/* Remonté quand le brouillon restaure un pays : la liste garde sa valeur en propre. */}
+            <ChampPays
+              key={paysBrouillon ?? "vide"}
+              id="country"
+              defaultValue={paysBrouillon}
+              langue={langue}
+              required
+            />
+          </div>
           <Field label={t({ fr: "Ville", en: "City", pt: "Cidade" })} name="city" />
           <div className="flex flex-col gap-1.5 md:col-span-2">
             <label htmlFor="categoryId" className="text-heading text-sm font-semibold">

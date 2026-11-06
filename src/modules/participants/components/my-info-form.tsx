@@ -10,6 +10,7 @@ import type { JourForum } from "../jours-forum";
 import { updateMyInfoAction, type MySpaceState } from "../my-space-actions";
 import { ChampTelephone } from "@/components/ui/champ-telephone";
 import { ChampBiographie } from "@/components/ui/champ-biographie";
+import { ChampPays } from "@/components/ui/champ-pays";
 
 const initialState: MySpaceState = {};
 const CHAMP =
@@ -130,13 +131,18 @@ export function MyInfoForm({ values, email, editable, deadlineLabel, days }: Pro
             disabled={!editable}
           />
         </div>
-        <Field
-          label={t({ fr: "Pays", en: "Country", pt: "País" })}
-          name="country"
-          value={values.country}
-          disabled={!editable}
-          required
-        />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="country" className="text-heading text-sm font-semibold">
+            {t({ fr: "Pays", en: "Country", pt: "País" })}
+          </label>
+          <ChampPays
+            id="country"
+            defaultValue={values.country}
+            langue={langue}
+            disabled={!editable}
+            required
+          />
+        </div>
         <Field
           label={t({ fr: "Ville", en: "City", pt: "Cidade" })}
           name="city"

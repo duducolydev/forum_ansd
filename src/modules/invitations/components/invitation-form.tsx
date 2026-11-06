@@ -6,6 +6,7 @@ import type { InvitationInput } from "../schema";
 import { MailPlus, Save } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 import { BoutonEnvoiConfirme } from "@/components/ui/bouton-confirme";
+import { ChampPays } from "@/components/ui/champ-pays";
 
 const initialState: ActionState = {};
 
@@ -42,7 +43,12 @@ export function InvitationForm({ categories, action, defaultValues, dejaEnvoyee 
       <Field label="Nom" name="lastName" required defaultValue={d.lastName} />
       <Field label="E-mail" name="email" type="email" required defaultValue={d.email} />
       <Field label="Organisation" name="organization" defaultValue={d.organization} />
-      <Field label="Pays" name="country" defaultValue={d.country} />
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="country" className="text-heading text-sm font-semibold">
+          Pays
+        </label>
+        <ChampPays id="country" defaultValue={d.country} />
+      </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="categoryId" className="text-heading text-sm font-semibold">
           Catégorie

@@ -14,6 +14,7 @@ import { useDocumentAvecCamera } from "@/lib/camera-document";
 import { ArrowLeft, ArrowRight, Printer, UserCheck, UserPlus } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 import { ChampTelephone } from "@/components/ui/champ-telephone";
+import { ChampPays } from "@/components/ui/champ-pays";
 
 const champ = "border-border bg-bg text-text w-full rounded-lg border px-3 py-2.5 text-sm";
 const etiquette = "text-text-3 text-xs font-semibold";
@@ -338,13 +339,9 @@ export function OnsiteDesk({
               <label htmlFor="country" className={etiquette}>
                 Pays *
               </label>
-              <input
-                id="country"
-                name="country"
-                required
-                defaultValue="Sénégal"
-                className={`${champ} mt-1.5`}
-              />
+              <div className="mt-1.5">
+                <ChampPays id="country" defaultValue="Sénégal" required className="text-sm" />
+              </div>
             </div>
             <div className="md:col-span-2">
               <label htmlFor="categoryId" className={etiquette}>

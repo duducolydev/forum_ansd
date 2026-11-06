@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { nomDeFamille } from "@/lib/nom-de-famille";
 import { schemaBiographie } from "@/lib/biographie";
+import { schemaPaysDeLaListe } from "@/lib/pays-schema";
 
 /**
  * Formulaire public d'inscription (brief §5.3) — schémas partagés client/serveur,
@@ -22,7 +23,7 @@ export const registrationIdentitySchema = z.object({
   phone: optionalText(30),
   // À l'étape Identité, juste avant le pays (28 octobre 2026).
   organization: optionalText(200),
-  country: z.string().trim().min(1, "Le pays est requis").max(100),
+  country: schemaPaysDeLaListe,
   city: optionalText(100),
   locale: z.enum(["fr", "en", "pt"]).default("fr"),
   categoryId: z.string().min(1, "La catégorie de participation est requise"),
