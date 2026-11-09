@@ -20,6 +20,8 @@ interface Props {
   hint?: string;
   /** Langue des textes du champ ; français par défaut (« Mon espace », BackOffice). */
   langue?: Langue;
+  /** Remplace l'aide au cadrage, écrite pour qui dépose sa propre photo. */
+  aideCadrage?: string;
 }
 
 /**
@@ -42,6 +44,7 @@ export function PhotoField({
   label = "Photo",
   hint,
   langue = "fr",
+  aideCadrage,
 }: Props) {
   const t = (textes: { fr: string; en: string; pt: string }) => selon(langue, textes);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -208,7 +211,7 @@ export function PhotoField({
 
   return (
     <div className="flex flex-col gap-2.5">
-      <span className="text-heading text-sm font-semibold">{label}</span>
+      {label && <span className="text-heading text-sm font-semibold">{label}</span>}
       {hint && <span className="text-text-3 text-xs">{hint}</span>}
 
       {/*
@@ -327,11 +330,12 @@ export function PhotoField({
           )}
 
           <p className="text-text-3 max-w-[15rem] text-xs">
-            {t({
-              fr: "Cadrez votre visage dans le cercle : c'est ce cadrage qui figurera sur votre badge. Déplacez l'image en la faisant glisser, ou avec les flèches du clavier.",
-              en: "Frame your face within the circle: this framing will appear on your badge. Move the image by dragging it, or with the arrow keys.",
-              pt: "Enquadre o rosto no círculo: é este enquadramento que figurará no seu crachá. Mova a imagem arrastando-a ou com as setas do teclado.",
-            })}
+            {aideCadrage ??
+              t({
+                fr: "Cadrez votre visage dans le cercle : c'est ce cadrage qui figurera sur votre badge. Déplacez l'image en la faisant glisser, ou avec les flèches du clavier.",
+                en: "Frame your face within the circle: this framing will appear on your badge. Move the image by dragging it, or with the arrow keys.",
+                pt: "Enquadre o rosto no círculo: é este enquadramento que figurará no seu crachá. Mova a imagem arrastando-a ou com as setas do teclado.",
+              })}
           </p>
         </div>
       </div>

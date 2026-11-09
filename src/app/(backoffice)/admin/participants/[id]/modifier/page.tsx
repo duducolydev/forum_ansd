@@ -5,6 +5,8 @@ import { getActiveEdition } from "@/lib/edition";
 import * as service from "@/modules/participants/service";
 import { updateParticipantAction } from "@/modules/participants/actions";
 import { ParticipantForm } from "@/modules/participants/components/participant-form";
+import { PhotoComite } from "@/modules/speakers/components/photo-comite";
+import { urlPhotoParticipant } from "@/modules/participants/url-photo";
 
 export default async function EditParticipantPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -29,6 +31,13 @@ export default async function EditParticipantPage({ params }: { params: Promise<
       <h2 className="mb-5 text-2xl">
         Modifier {participant.firstName} {participant.lastName}
       </h2>
+      <div className="mb-5">
+        <PhotoComite
+          cible={{ participantId: participant.id }}
+          photoUrl={urlPhotoParticipant(participant)}
+          nom={`${participant.firstName} ${participant.lastName}`}
+        />
+      </div>
       <div className="border-border bg-surface rounded-xl border p-6">
         <ParticipantForm
           action={boundAction}

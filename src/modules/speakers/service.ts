@@ -21,6 +21,7 @@ import {
 } from "./constantes";
 import { nomDeFamille } from "@/lib/nom-de-famille";
 import { generateUniquePublicId } from "@/modules/participants/service";
+import { removeParticipantPhoto, saveParticipantPhoto } from "@/modules/participants/photo";
 import { enqueueBadgeRefresh } from "@/modules/badges/jobs";
 import { alignerBiographies, propagerBioDeLIntervenant } from "./biographie";
 import { schemaBiographie } from "@/lib/biographie";
@@ -325,7 +326,16 @@ export async function updateSelf(speakerId: string, input: SelfEditInput) {
   });
 }
 
-export async function saveSpeakerPhoto(speakerId: string, file: File): Promise<void> {
+export async function saveSpeakerPhoto(
+  speakerId: string,
+  file: File,
+  options: {
+    /** Membre du comité qui dépose ; sans lui, c'est l'intervenant dans son espace. */
+    acteur?: { userId: string };
+    /** Faux quand la photo du participant lié suit, et refait le badge elle-même. */
+    rafraichirBadge?: boolean;
+  } = {},
+): Promise<void> {
   if (file.size > PHOTO_MAX_BYTES) {
     throw new SpeakerRuleError(`Photo trop lourde (maximum ${PHOTO_MAX_BYTES / 1024 / 1024} Mo).`);
   }
@@ -353,12 +363,14 @@ export async function saveSpeakerPhoto(speakerId: string, file: File): Promise<v
 
   // Le badge du participant lié prend cette photo quand il n'a pas la sienne
   // (`badges/service.ts`) : il est refait, même QR, sans e-mail.
-  if (ancien.participantId) {
+  if (ancien.participantId && options.rafraichirBadge !== false) {
     await enqueueBadgeRefresh(ancien.participantId, { silencieux: true });
   }
 
   await audit.log({
-    actorType: "SYSTEM",
+    ...(options.acteur
+      ? { actorType: "USER" as const, actorUserId: options.acteur.userId }
+      : { actorType: "SYSTEM" as const }),
     action: "speaker.photo_updated",
     entity: "Speaker",
     entityId: speakerId,
@@ -825,5 +837,103 @@ async function copierPhotoParticipant(speakerId: string, photoPath: string): Pro
     await prisma.speaker.update({ where: { id: speakerId }, data: { photoPath: chemin } });
   } catch {
     // Fichier absent du stockage : rien à copier.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Photo déposée par le comité (9 novembre 2026)
+// ---------------------------------------------------------------------------
+
+export type CiblePhoto = { participantId: string } | { speakerId: string };
+
+/**
+ * Les deux fiches d'une même personne, à partir de l'une d'elles.
+ *
+ * Le badge lit d'abord la photo du participant, le site celle de la fiche
+ * intervenant (`photoIntervenant`). Le comité dépose donc sur les deux : sinon,
+ * une photo envoyée depuis une fiche laisserait l'ancienne en place de l'autre
+ * côté, et on croirait l'envoi perdu.
+ */
+async function fichesDeLaPersonne(
+  cible: CiblePhoto,
+): Promise<{ participantId: string | null; speakerId: string | null }> {
+  if ("participantId" in cible) {
+    const participant = await prisma.participant.findFirst({
+      where: { id: cible.participantId, deletedAt: null },
+      select: { id: true, speaker: { select: { id: true, deletedAt: true } } },
+    });
+    if (!participant) throw new SpeakerRuleError("Participant introuvable.");
+    const speaker = participant.speaker?.deletedAt ? null : participant.speaker;
+    return { participantId: participant.id, speakerId: speaker?.id ?? null };
+  }
+  const speaker = await prisma.speaker.findFirst({
+    where: { id: cible.speakerId, deletedAt: null },
+    select: { id: true, participantId: true },
+  });
+  if (!speaker) throw new SpeakerRuleError("Intervenant introuvable.");
+  return { participantId: speaker.participantId, speakerId: speaker.id };
+}
+
+/**
+ * Photo déposée par le comité pour quelqu'un qui ne le fera pas lui-même :
+ * ministres, directeurs généraux… Elle n'est publique que si la fiche
+ * intervenant est publiée, comme toute photo d'intervenant.
+ */
+export async function deposerPhotoParLeComite(
+  cible: CiblePhoto,
+  fichier: File,
+  acteur: { userId: string },
+): Promise<void> {
+  const { participantId, speakerId } = await fichesDeLaPersonne(cible);
+
+  if (speakerId) {
+    await saveSpeakerPhoto(speakerId, fichier, {
+      acteur,
+      // Le dépôt côté participant, juste après, refait le badge.
+      rafraichirBadge: participantId === null,
+    });
+  }
+  if (participantId) {
+    const resultat = await saveParticipantPhoto(participantId, fichier, acteur);
+    if (resultat.status === "EMPTY") throw new SpeakerRuleError("Aucun fichier reçu.");
+    if (resultat.status === "TOO_LARGE") {
+      throw new SpeakerRuleError(
+        `Photo trop lourde (maximum ${resultat.maxBytes / 1024 / 1024} Mo).`,
+      );
+    }
+    if (resultat.status === "UNSUPPORTED_TYPE") {
+      throw new SpeakerRuleError("Format d'image non reconnu (JPEG, PNG ou WebP).");
+    }
+  }
+}
+
+/** Retire la photo des deux fiches : d'un seul côté, l'autre reprendrait aussitôt sa place. */
+export async function retirerPhotoParLeComite(
+  cible: CiblePhoto,
+  acteur: { userId: string },
+): Promise<void> {
+  const { participantId, speakerId } = await fichesDeLaPersonne(cible);
+
+  if (speakerId) {
+    const speaker = await prisma.speaker.findUniqueOrThrow({
+      where: { id: speakerId },
+      select: { photoPath: true },
+    });
+    if (speaker.photoPath) {
+      await prisma.speaker.update({ where: { id: speakerId }, data: { photoPath: null } });
+      await fileStorage.delete(speaker.photoPath).catch(() => undefined);
+      await audit.log({
+        actorType: "USER",
+        actorUserId: acteur.userId,
+        action: "speaker.photo_removed",
+        entity: "Speaker",
+        entityId: speakerId,
+      });
+    }
+  }
+  if (participantId) {
+    await removeParticipantPhoto(participantId, acteur);
+    // Le badge a pu porter la photo de la fiche intervenant seule.
+    await enqueueBadgeRefresh(participantId, { silencieux: true });
   }
 }

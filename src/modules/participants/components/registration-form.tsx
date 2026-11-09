@@ -595,12 +595,20 @@ export function RegistrationForm({ categories, days, invitation }: Props) {
       <div hidden={currentStep.key !== "logistics"} className="etape-panneau">
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
           <Field
-            label={t({ fr: "Date d'arrivée", en: "Arrival date", pt: "Data de chegada" })}
+            label={t({
+              fr: "Date d'arrivée (participants internationaux uniquement)",
+              en: "Arrival date (international participants only)",
+              pt: "Data de chegada (apenas participantes internacionais)",
+            })}
             name="arrivalDate"
             type="date"
           />
           <Field
-            label={t({ fr: "Date de départ", en: "Departure date", pt: "Data de partida" })}
+            label={t({
+              fr: "Date de départ (participants internationaux uniquement)",
+              en: "Departure date (international participants only)",
+              pt: "Data de partida (apenas participantes internacionais)",
+            })}
             name="departureDate"
             type="date"
           />

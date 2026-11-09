@@ -20,7 +20,8 @@ export interface IntervenantCarte {
   lastName: string;
   jobTitle: string | null;
   organization: string | null;
-  photoPath: string | null;
+  /** Adresse de la photo (`urlPhotoIntervenant`), jamais son chemin de stockage. */
+  photoUrl: string | null;
   /** Biographie et thèmes : montrés au verso sur la page Intervenants. */
   bio?: string | null;
   /**
@@ -132,7 +133,7 @@ function CarteRetournable({
 
   // Nom enregistré en français, montré dans la langue de la page.
   const pays = intervenant.country ? libellePays(intervenant.country, langueSite) : "";
-  const photoUrl = intervenant.photoPath ? `/api/v1/speakers/${intervenant.id}/photo` : null;
+  const { photoUrl } = intervenant;
   const libelleOuvrir = selon(langueSite, {
     fr: `Voir le profil de ${nom}`,
     en: `View ${nom}'s profile`,
@@ -183,9 +184,9 @@ function CarteRetournable({
         <div ref={refRecto} className="face face--recto">
           <div className="avatar-anneau">
             <span className="avatar-anneau__contenu">
-              {intervenant.photoPath ? (
+              {photoUrl ? (
                 <Image
-                  src={`/api/v1/speakers/${intervenant.id}/photo`}
+                  src={photoUrl}
                   alt=""
                   fill
                   sizes="110px"

@@ -61,6 +61,8 @@ export function detectImageType(data: Buffer): { extension: string; type: string
 export async function saveParticipantPhoto(
   participantId: string,
   file: File,
+  /** Membre du comité qui dépose à sa place ; sans lui, c'est le participant lui-même. */
+  acteur?: { userId: string },
 ): Promise<PhotoResult> {
   if (file.size === 0) return { status: "EMPTY" };
   if (file.size > PHOTO_MAX_BYTES) {
@@ -86,8 +88,9 @@ export async function saveParticipantPhoto(
   }
 
   await audit.log({
-    actorType: "PARTICIPANT",
-    actorParticipantId: participantId,
+    ...(acteur
+      ? { actorType: "USER" as const, actorUserId: acteur.userId }
+      : { actorType: "PARTICIPANT" as const, actorParticipantId: participantId }),
     action: "participant.photo_updated",
     entity: "Participant",
     entityId: participantId,
@@ -104,7 +107,11 @@ export async function saveParticipantPhoto(
 }
 
 /** Suppression de la photo — droit d'opposition sur l'image (brief §7). */
-export async function removeParticipantPhoto(participantId: string): Promise<void> {
+export async function removeParticipantPhoto(
+  participantId: string,
+  /** Membre du comité qui retire à sa place ; sans lui, c'est le participant lui-même. */
+  acteur?: { userId: string },
+): Promise<void> {
   const participant = await prisma.participant.findUniqueOrThrow({
     where: { id: participantId },
     select: { photoPath: true },
@@ -115,8 +122,9 @@ export async function removeParticipantPhoto(participantId: string): Promise<voi
   await fileStorage.delete(participant.photoPath).catch(() => undefined);
 
   await audit.log({
-    actorType: "PARTICIPANT",
-    actorParticipantId: participantId,
+    ...(acteur
+      ? { actorType: "USER" as const, actorUserId: acteur.userId }
+      : { actorType: "PARTICIPANT" as const, actorParticipantId: participantId }),
     action: "participant.photo_removed",
     entity: "Participant",
     entityId: participantId,

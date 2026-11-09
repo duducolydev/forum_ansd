@@ -1,5 +1,6 @@
 import { civiliteIntervenant } from "@/lib/civilite";
-import { photoIntervenant } from "@/modules/speakers/photo";
+import { urlPhotoIntervenant } from "@/modules/speakers/photo";
+import { ordonnerParRoles } from "@/modules/sessions/ordre-intervenants";
 import { selon, traduire, type Langue } from "@/lib/langue";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Mic } from "lucide-react";
@@ -83,28 +84,31 @@ export default async function SpeakersPage({ searchParams }: { searchParams: Pro
       a.localeCompare(b, "fr"),
     );
 
-  const intervenants: IntervenantAnnuaire[] = speakers.map((speaker) => ({
-    id: speaker.id,
-    civility: civiliteIntervenant(speaker),
-    firstName: speaker.firstName,
-    lastName: speaker.lastName,
-    jobTitle: speaker.jobTitle,
-    organization: speaker.organization,
-    country: speaker.country,
-    photoPath: photoIntervenant(speaker),
-    bio: traduire(locale, { fr: speaker.bioFr, en: speaker.bioEn, pt: speaker.bioPt }),
-    themes: unique(speaker.sessions.map((lien) => lien.session.theme)),
-    roles: [...new Set(speaker.sessions.map((lien) => lien.role))],
-    panels: unique(
-      speaker.sessions.map((lien) =>
-        traduire(locale, {
-          fr: lien.session.titleFr,
-          en: lien.session.titleEn,
-          pt: lien.session.titlePt,
-        }),
+  // Modérateurs d'abord, puis panélistes ; alphabétique dans chaque groupe.
+  const intervenants: IntervenantAnnuaire[] = ordonnerParRoles(
+    speakers.map((speaker) => ({
+      id: speaker.id,
+      civility: civiliteIntervenant(speaker),
+      firstName: speaker.firstName,
+      lastName: speaker.lastName,
+      jobTitle: speaker.jobTitle,
+      organization: speaker.organization,
+      country: speaker.country,
+      photoUrl: urlPhotoIntervenant(speaker),
+      bio: traduire(locale, { fr: speaker.bioFr, en: speaker.bioEn, pt: speaker.bioPt }),
+      themes: unique(speaker.sessions.map((lien) => lien.session.theme)),
+      roles: [...new Set(speaker.sessions.map((lien) => lien.role))],
+      panels: unique(
+        speaker.sessions.map((lien) =>
+          traduire(locale, {
+            fr: lien.session.titleFr,
+            en: lien.session.titleEn,
+            pt: lien.session.titlePt,
+          }),
+        ),
       ),
-    ),
-  }));
+    })),
+  );
 
   return (
     <>

@@ -1,5 +1,5 @@
 import { civiliteIntervenant } from "@/lib/civilite";
-import { photoIntervenant } from "@/modules/speakers/photo";
+import { urlPhotoIntervenant } from "@/modules/speakers/photo";
 import type { Edition, PageSection } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getHomeStats } from "@/lib/stats";
@@ -39,7 +39,7 @@ export interface DonneesSections {
     organization: string | null;
     /** Pays, en nom français : affiché en bas de la carte, à la place de « Survoler ». */
     country: string | null;
-    photoPath: string | null;
+    photoUrl: string | null;
     /** Thèmes des sessions publiées où il intervient — ceux du filtre de la section. */
     themes: string[];
     isFeatured: boolean;
@@ -134,21 +134,22 @@ export async function chargerDonnees(
           },
         })
         .then((speakers) => {
-          donnees.intervenants = speakers.map(({ sessions, participant, ...speaker }) => ({
-            ...speaker,
-            civility: civiliteIntervenant({ civility: speaker.civility, participant }),
-            // Le chemin ne sert qu'à décider photo ou initiales : l'image
-            // passe par la route, qui fait le même repli.
-            photoPath: photoIntervenant({ photoPath: speaker.photoPath, participant }),
-            themes: [
-              ...new Set(
-                sessions
-                  .map((lien) => lien.session.theme)
-                  .filter((theme): theme is string => Boolean(theme)),
-              ),
-            ].sort((a, b) => a.localeCompare(b, "fr")),
-            roles: [...new Set(sessions.map((lien) => lien.role))],
-          }));
+          donnees.intervenants = speakers.map(
+            ({ sessions, participant, photoPath, ...speaker }) => ({
+              ...speaker,
+              civility: civiliteIntervenant({ civility: speaker.civility, participant }),
+              // L'adresse seule va au navigateur, pas le chemin de stockage.
+              photoUrl: urlPhotoIntervenant({ id: speaker.id, photoPath, participant }),
+              themes: [
+                ...new Set(
+                  sessions
+                    .map((lien) => lien.session.theme)
+                    .filter((theme): theme is string => Boolean(theme)),
+                ),
+              ].sort((a, b) => a.localeCompare(b, "fr")),
+              roles: [...new Set(sessions.map((lien) => lien.role))],
+            }),
+          );
         }),
     );
   }

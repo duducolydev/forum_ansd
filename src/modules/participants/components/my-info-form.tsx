@@ -283,14 +283,22 @@ export function MyInfoForm({ values, email, editable, deadlineLabel, days }: Pro
 
       <Groupe titre={t({ fr: "Logistique", en: "Logistics", pt: "Logística" })}>
         <Field
-          label={t({ fr: "Date d'arrivée", en: "Arrival date", pt: "Data de chegada" })}
+          label={t({
+            fr: "Date d'arrivée (participants internationaux uniquement)",
+            en: "Arrival date (international participants only)",
+            pt: "Data de chegada (apenas participantes internacionais)",
+          })}
           name="arrivalDate"
           type="date"
           value={values.arrivalDate}
           disabled={!editable}
         />
         <Field
-          label={t({ fr: "Date de départ", en: "Departure date", pt: "Data de partida" })}
+          label={t({
+            fr: "Date de départ (participants internationaux uniquement)",
+            en: "Departure date (international participants only)",
+            pt: "Data de partida (apenas participantes internacionais)",
+          })}
           name="departureDate"
           type="date"
           value={values.departureDate}

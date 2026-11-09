@@ -124,3 +124,32 @@ test("fiche d'un panel : chaque carte s'ouvre, biographie ou non", async ({ page
     await expect(pays).toHaveCSS("text-transform", "uppercase");
   }
 });
+
+test("page Intervenants : modérateurs d'abord, puis panélistes", async ({ page }) => {
+  const edition = await prisma.edition.findFirstOrThrow({ where: { code: "FID-2026" } });
+  // Le modérateur vient après le panéliste dans l'alphabet : seul son rôle le place devant.
+  const panelisteNom = `ORDREA${SUFFIXE}`;
+  const moderateurNom = `ORDREZ${SUFFIXE}`;
+  const creer = (lastName: string) =>
+    prisma.speaker.create({
+      data: { editionId: edition.id, firstName: "Awa", lastName, isPublished: true },
+    });
+  const paneliste = await creer(panelisteNom);
+  const moderateur = await creer(moderateurNom);
+  await prisma.sessionSpeaker.createMany({
+    data: [
+      { sessionId, speakerId: paneliste.id, role: "PANELIST" },
+      { sessionId, speakerId: moderateur.id, role: "MODERATOR" },
+    ],
+  });
+
+  try {
+    await page.goto(`/intervenants?q=ORDRE`);
+    await expect(page.locator(".face__nom")).toHaveText([
+      new RegExp(moderateurNom),
+      new RegExp(panelisteNom),
+    ]);
+  } finally {
+    await prisma.speaker.deleteMany({ where: { id: { in: [paneliste.id, moderateur.id] } } });
+  }
+});

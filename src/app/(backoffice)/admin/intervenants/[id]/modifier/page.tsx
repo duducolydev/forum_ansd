@@ -7,7 +7,8 @@ import { getSpeaker, sessionsPourRattachement } from "@/modules/speakers/service
 import { SpeakerForm } from "@/modules/speakers/components/speaker-form";
 import { SessionsIntervenant } from "@/modules/speakers/components/sessions-intervenant";
 import { PhotoFiche } from "@/components/ui/photo-fiche";
-import { originePhotoIntervenant } from "@/modules/speakers/photo";
+import { originePhotoIntervenant, urlPhotoIntervenant } from "@/modules/speakers/photo";
+import { PhotoComite } from "@/modules/speakers/components/photo-comite";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export default async function ModifierIntervenantPage({
 
   const sessions = await sessionsPourRattachement(speaker.editionId);
   const originePhoto = originePhotoIntervenant(speaker);
+  const photoUrl = urlPhotoIntervenant(speaker);
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,7 +46,7 @@ export default async function ModifierIntervenantPage({
         </Link>
         <div className="mt-2 flex items-start gap-4">
           <PhotoFiche
-            src={originePhoto ? `/api/v1/speakers/${speaker.id}/photo` : null}
+            src={photoUrl}
             legende={originePhoto === "participant" ? "Photo du participant lié" : undefined}
             initiales={`${speaker.firstName.charAt(0)}${speaker.lastName.charAt(0)}`.toUpperCase()}
           />
@@ -80,6 +82,12 @@ export default async function ModifierIntervenantPage({
           titre: item.titleFr,
           quand: quand.format(item.startTime),
         }))}
+      />
+
+      <PhotoComite
+        cible={{ speakerId: speaker.id }}
+        photoUrl={photoUrl}
+        nom={`${speaker.firstName} ${speaker.lastName}`}
       />
 
       <SpeakerForm

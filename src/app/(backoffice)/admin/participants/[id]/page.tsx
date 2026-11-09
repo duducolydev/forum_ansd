@@ -15,6 +15,7 @@ import { LogStatusBadge } from "@/modules/notifications/components/log-status-ba
 import { getSpeakerDuParticipant, sessionsPourRattachement } from "@/modules/speakers/service";
 import { SessionsIntervenant } from "@/modules/speakers/components/sessions-intervenant";
 import { PhotoFiche } from "@/components/ui/photo-fiche";
+import { urlPhotoParticipant } from "@/modules/participants/url-photo";
 
 const quand = new Intl.DateTimeFormat("fr-FR", {
   weekday: "short",
@@ -68,7 +69,7 @@ export default async function ParticipantDetailPage({
           select: { id: true },
         });
   const photo = participant.photoPath
-    ? { src: `/api/v1/participants/${participant.id}/photo`, legende: undefined }
+    ? { src: urlPhotoParticipant(participant), legende: undefined }
     : ficheIntervenant
       ? {
           src: `/api/v1/speakers/${ficheIntervenant.id}/photo`,
@@ -93,9 +94,17 @@ export default async function ParticipantDetailPage({
                 `${participant.firstName} ${participant.lastName}`,
               )}
             </h2>
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <StatusBadge status={participant.status} />
               <span className="text-text-3 text-sm">{participant.category.labelFr}</span>
+              {can(session, "participants.write") && (
+                <Link
+                  href={`/admin/participants/${participant.id}/modifier#photo`}
+                  className="text-link text-sm"
+                >
+                  {photo.src ? "Changer la photo" : "Ajouter une photo"}
+                </Link>
+              )}
               {participant.category.requiresAccreditation && (
                 <span className="bg-gold-soft text-gold-text rounded-md px-2 py-0.5 text-xs font-semibold">
                   {participant.accreditedAt ? "Presse accréditée" : "Accréditation presse requise"}

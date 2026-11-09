@@ -1,5 +1,5 @@
 import { avecCivilite, civiliteIntervenant } from "@/lib/civilite";
-import { photoIntervenant } from "@/modules/speakers/photo";
+import { urlPhotoIntervenant } from "@/modules/speakers/photo";
 import { CarteIntervenantSession } from "@/components/site/carte-intervenant-session";
 import { lireLangue, localeIntl, selon, traduire } from "@/lib/langue";
 import type { ReactNode } from "react";
@@ -186,9 +186,7 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
                         ),
                         initiales: `${lien.speaker.firstName.charAt(0)}${lien.speaker.lastName.charAt(0)}`,
                         // Repli sur la photo du participant lié, comme sur l'annuaire.
-                        photoUrl: photoIntervenant(lien.speaker)
-                          ? `/api/v1/speakers/${lien.speaker.id}/photo`
-                          : null,
+                        photoUrl: urlPhotoIntervenant(lien.speaker),
                         fonction: lien.speaker.jobTitle,
                         organisation: lien.speaker.organization,
                         pays: lien.speaker.country,

@@ -1391,6 +1391,32 @@ html[data-motion] .retournable:not([data-vu]) {
   transform: rotateY(180deg);
 }
 
+/*
+ * Recto retiré une fois la carte retournée (9 novembre 2026) : Firefox
+ * n'applique pas `backface-visibility` à l'avatar, animé donc rendu sur son
+ * propre plan, et la photo restait visible à travers le verso. Le changement
+ * tombe à mi-rotation (0,45 s sur 0,9 s), quand le recto passe de dos, dans
+ * les deux sens : rien ne change à l'œil dans les autres navigateurs.
+ *
+ * Le verso, lui, n'est pas masqué en sens inverse : son lien ou son bouton doit
+ * pouvoir recevoir le focus clavier, c'est ce qui retourne la carte.
+ */
+.face--recto {
+  transition: visibility 0s linear 0.45s;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .retournable:hover .face--recto {
+    visibility: hidden;
+  }
+}
+
+.retournable:focus-within .face--recto,
+.retournable[data-retournee] .face--recto,
+.retournable:target .face--recto {
+  visibility: hidden;
+}
+
 .face {
   position: absolute;
   inset: 0;

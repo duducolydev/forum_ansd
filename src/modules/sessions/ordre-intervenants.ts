@@ -27,3 +27,18 @@ function rang(role: string): number {
 export function ordonnerIntervenants<T extends { role: string }>(liens: T[]): T[] {
   return [...liens].sort((a, b) => rang(a.role) - rang(b.role));
 }
+
+/**
+ * Annuaire des intervenants (page Intervenants, 9 novembre 2026) : les
+ * modérateurs d'abord, puis les panélistes, puis les autres rôles, et en
+ * dernier ceux qui ne tiennent aucun rôle dans une session publiée.
+ *
+ * Une même personne peut modérer un panel et intervenir dans un autre : son
+ * rôle le plus haut la classe. À rang égal, l'ordre reçu — alphabétique — est
+ * conservé.
+ */
+export function ordonnerParRoles<T extends { roles?: string[] }>(personnes: T[]): T[] {
+  const rangPersonne = (personne: T) =>
+    Math.min(Object.keys(RANG_ROLE).length + 1, ...(personne.roles ?? []).map(rang));
+  return [...personnes].sort((a, b) => rangPersonne(a) - rangPersonne(b));
+}
