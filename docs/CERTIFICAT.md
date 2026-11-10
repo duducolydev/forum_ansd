@@ -15,7 +15,7 @@ est celui qu'on ouvre quand il est question du certificat, et lui seul.
 | Nom couvert       | `*.ansd.sn`, donc `forum2026.ansd.sn`                             |
 | Autorité          | GlobalSign GCC R3 DV TLS CA 2020                                  |
 | Type              | joker du parc ANSD, partagé avec les autres services de la maison |
-| Certificat        | `/opt/forum-ansd/docker/certs/ansd.crt`                           |
+| Certificat        | `/opt/forum-ansd/docker/certs/fullchainansd.crt`                  |
 | Clé privée        | `/opt/forum-ansd/docker/certs/ansd.key`                           |
 | Vu par nginx sous | `/etc/nginx/certs`, monté en lecture seule                        |
 | Déclaré dans      | `docker/nginx.conf`, bloc `listen 443`                            |
@@ -65,21 +65,28 @@ Sans coupure : `nginx -s reload` laisse les connexions en cours se terminer et
 ne redémarre pas le conteneur. Aucune reconstruction d'image, aucun redémarrage
 de l'application.
 
+Le fichier `fullchainansd.crt` contient la **chaîne complète** : le certificat
+du joker, puis le certificat intermédiaire GlobalSign, dans cet ordre. Depuis
+le 9 novembre 2026, nginx lit ce fichier et non plus `ansd.crt`. Sans
+l'intermédiaire, la plupart des navigateurs s'en sortent mais d'autres clients
+(curl, applications, certains mobiles) refusent la connexion. Si la DSI livre les deux pièces séparément, les concaténer :
+`cat joker.crt intermediaire.crt > fullchainansd.crt`.
+
 ```bash
 cd /opt/forum-ansd
 
 # 1. Garder l'ancien à portée de main
-cp docker/certs/ansd.crt docker/certs/ansd.crt.bak
+cp docker/certs/fullchainansd.crt docker/certs/fullchainansd.crt.bak
 cp docker/certs/ansd.key docker/certs/ansd.key.bak
 
 # 2. Installer le nouveau
-cp /chemin/vers/nouveau.crt docker/certs/ansd.crt
+cp /chemin/vers/nouveau.crt docker/certs/fullchainansd.crt
 cp /chemin/vers/nouveau.key docker/certs/ansd.key
-chmod 644 docker/certs/ansd.crt
+chmod 644 docker/certs/fullchainansd.crt
 chmod 600 docker/certs/ansd.key
 
 # 3. Vérifier que la clé va bien avec le certificat
-openssl x509 -in docker/certs/ansd.crt -pubkey -noout | openssl md5
+openssl x509 -in docker/certs/fullchainansd.crt -pubkey -noout | openssl md5
 openssl pkey -in docker/certs/ansd.key -pubout        | openssl md5
 
 # 4. Valider la configuration, puis recharger
@@ -103,7 +110,7 @@ Supprimer les deux fichiers `.bak` une fois le nouveau certificat validé : une
 clé privée de moins qui traîne sur le disque.
 
 ```bash
-rm -f /opt/forum-ansd/docker/certs/ansd.crt.bak /opt/forum-ansd/docker/certs/ansd.key.bak
+rm -f /opt/forum-ansd/docker/certs/fullchainansd.crt.bak /opt/forum-ansd/docker/certs/ansd.key.bak
 ```
 
 ---
@@ -114,7 +121,7 @@ Si le contrôle échoue ou si le site ne répond plus, tant que les `.bak` sont 
 
 ```bash
 cd /opt/forum-ansd
-cp docker/certs/ansd.crt.bak docker/certs/ansd.crt
+cp docker/certs/fullchainansd.crt.bak docker/certs/fullchainansd.crt
 cp docker/certs/ansd.key.bak docker/certs/ansd.key
 docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
 ```
@@ -142,7 +149,7 @@ echo | openssl s_client -connect forum2026.ansd.sn:443 -servername forum2026.ans
 Ce que contient le fichier sur le disque :
 
 ```bash
-openssl x509 -in /opt/forum-ansd/docker/certs/ansd.crt -noout -subject -issuer -dates
+openssl x509 -in /opt/forum-ansd/docker/certs/fullchainansd.crt -noout -subject -issuer -dates
 ```
 
 L'état du conteneur et ses derniers messages :
@@ -173,7 +180,7 @@ sur une adresse IP que le certificat ne couvre pas.
 Répond sans détour, et convient à une vérification mensuelle :
 
 ```bash
-openssl x509 -in /opt/forum-ansd/docker/certs/ansd.crt -noout -checkend $((30*24*3600)) \
+openssl x509 -in /opt/forum-ansd/docker/certs/fullchainansd.crt -noout -checkend $((30*24*3600)) \
   && echo "OK : encore valide dans 30 jours" \
   || echo "ALERTE : expire dans moins de 30 jours"
 ```
@@ -196,7 +203,7 @@ Copier les deux fichiers là où sont gardées les sauvegardes de la base, et le
 traiter avec le même soin : accès restreint, et jamais de dépôt distant.
 
 ```bash
-cp /opt/forum-ansd/docker/certs/ansd.crt /opt/forum-ansd/backups/
+cp /opt/forum-ansd/docker/certs/fullchainansd.crt /opt/forum-ansd/backups/
 cp /opt/forum-ansd/docker/certs/ansd.key /opt/forum-ansd/backups/
 chmod 600 /opt/forum-ansd/backups/ansd.key
 ```
@@ -296,12 +303,12 @@ réveille pour une émission manuelle.
 
 ## 10. Où se trouve quoi
 
-| Fichier                      | Rôle                                               |
-| ---------------------------- | -------------------------------------------------- |
-| `docker/certs/ansd.crt`      | le certificat, hors dépôt                          |
-| `docker/certs/ansd.key`      | la clé privée, hors dépôt, `chmod 600`             |
-| `docker/nginx.conf`          | déclare les deux chemins, bloc `listen 443`        |
-| `docker-compose.prod.yml`    | monte `docker/certs` en lecture seule sur nginx    |
-| `docker-compose.interne.yml` | surcouche sans TLS, à ne plus passer               |
-| `.gitignore`                 | exclut `/docker/certs/` et `/backups/`             |
-| `docs/DEPLOIEMENT.md`        | la procédure de déploiement, chapitre 5 pour HTTPS |
+| Fichier                          | Rôle                                               |
+| -------------------------------- | -------------------------------------------------- |
+| `docker/certs/fullchainansd.crt` | le certificat, hors dépôt                          |
+| `docker/certs/ansd.key`          | la clé privée, hors dépôt, `chmod 600`             |
+| `docker/nginx.conf`              | déclare les deux chemins, bloc `listen 443`        |
+| `docker-compose.prod.yml`        | monte `docker/certs` en lecture seule sur nginx    |
+| `docker-compose.interne.yml`     | surcouche sans TLS, à ne plus passer               |
+| `.gitignore`                     | exclut `/docker/certs/` et `/backups/`             |
+| `docs/DEPLOIEMENT.md`            | la procédure de déploiement, chapitre 5 pour HTTPS |
