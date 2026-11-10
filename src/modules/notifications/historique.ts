@@ -19,9 +19,15 @@ export interface EnvoiHistorique {
   status: string;
   error: string | null;
   providerMessageId: string | null;
+  /** Rebond signalé après coup par un avis de non-distribution. */
+  bouncedAt: Date | null;
   templateKey: string;
   objet: string | null;
-  participant: { id: string; nom: string; publicId: string };
+  /** Qui était visé : un participant, un invité pas encore inscrit, ou personne de connu. */
+  destinataire:
+    | { genre: "participant"; id: string; nom: string }
+    | { genre: "invitation"; id: string; nom: string }
+    | null;
 }
 
 /** Fin de journée incluse : `au=2026-11-23` doit contenir le 23 au soir (Dakar est en UTC). */
@@ -45,6 +51,8 @@ function filtres(search: HistoriqueSearch): Prisma.NotificationLogWhereInput {
             { participant: { firstName: { contains: search.q } } },
             { participant: { lastName: { contains: search.q } } },
             { participant: { publicId: { contains: search.q } } },
+            { invitation: { firstName: { contains: search.q } } },
+            { invitation: { lastName: { contains: search.q } } },
           ],
         }
       : {}),
@@ -64,7 +72,8 @@ export async function listerEnvois(
       skip: (search.page - 1) * search.pageSize,
       take: search.pageSize,
       include: {
-        participant: { select: { id: true, firstName: true, lastName: true, publicId: true } },
+        participant: { select: { id: true, firstName: true, lastName: true } },
+        invitation: { select: { id: true, firstName: true, lastName: true } },
       },
     }),
     prisma.notificationLog.count({ where }),
@@ -85,13 +94,22 @@ export async function listerEnvois(
       status: ligne.status,
       error: ligne.error,
       providerMessageId: ligne.providerMessageId,
+      bouncedAt: ligne.bouncedAt,
       templateKey: ligne.templateKey,
       objet: objets.get(ligne.templateKey) ?? null,
-      participant: {
-        id: ligne.participant.id,
-        nom: `${ligne.participant.firstName} ${ligne.participant.lastName}`.trim(),
-        publicId: ligne.participant.publicId,
-      },
+      destinataire: ligne.participant
+        ? {
+            genre: "participant" as const,
+            id: ligne.participant.id,
+            nom: `${ligne.participant.firstName} ${ligne.participant.lastName}`.trim(),
+          }
+        : ligne.invitation
+          ? {
+              genre: "invitation" as const,
+              id: ligne.invitation.id,
+              nom: `${ligne.invitation.firstName} ${ligne.invitation.lastName}`.trim(),
+            }
+          : null,
     })),
     total,
   };

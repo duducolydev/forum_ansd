@@ -151,3 +151,25 @@ export async function planifierRappelsAction(): Promise<
     return { error: firstFieldError(error) };
   }
 }
+
+/** Relevé immédiat des rebonds différés (bouton de l'historique d'envoi). */
+export async function releverRebondsAction(): Promise<NotificationActionState> {
+  try {
+    await requireStaff("notifications.manage");
+    const { configImap, releverRebondsUneFois } = await import("./rebonds");
+    if (!configImap()) {
+      return { error: "La lecture de la boîte d'envoi n'est pas configurée sur ce serveur." };
+    }
+    const bilan = await releverRebondsUneFois();
+    revalidatePath("/admin/notifications");
+    revalidatePath("/admin/notifications/historique");
+    return {
+      success:
+        bilan.nouveaux > 0
+          ? `${bilan.nouveaux} nouveau(x) rebond(s) reporté(s).`
+          : "Aucun nouveau rebond dans la boîte d'envoi.",
+    };
+  } catch (error) {
+    return { error: firstFieldError(error) };
+  }
+}

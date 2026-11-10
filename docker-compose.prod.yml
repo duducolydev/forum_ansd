@@ -20,6 +20,11 @@ services:
       SMTP_USER: ${SMTP_USER}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM: ${SMTP_FROM}
+      # Relevé des rebonds : vides, ils sont déduits du SMTP Gmail (README).
+      IMAP_HOST: ${IMAP_HOST:-}
+      IMAP_PORT: ${IMAP_PORT:-}
+      IMAP_USER: ${IMAP_USER:-}
+      IMAP_PASSWORD: ${IMAP_PASSWORD:-}
       STORAGE_DRIVER: ${STORAGE_DRIVER}
       STORAGE_LOCAL_PATH: /app/storage
       AUTH_URL: ${PUBLIC_BASE_URL}

@@ -30,7 +30,10 @@ export default async function NotificationsPage() {
     prisma.notificationLog.findMany({
       orderBy: { createdAt: "desc" },
       take: 25,
-      include: { participant: { select: { firstName: true, lastName: true, publicId: true } } },
+      include: {
+        participant: { select: { firstName: true, lastName: true } },
+        invitation: { select: { firstName: true, lastName: true } },
+      },
     }),
     prisma.notificationLog.groupBy({ by: ["status"], _count: { _all: true } }),
     apercu(edition.id, edition.startDate),
@@ -158,7 +161,11 @@ export default async function NotificationsPage() {
                     {log.createdAt.toLocaleString("fr-FR")}
                   </td>
                   <td className="text-heading px-3 py-2">
-                    {log.participant.firstName} {log.participant.lastName}
+                    {log.participant
+                      ? `${log.participant.firstName} ${log.participant.lastName}`
+                      : log.invitation
+                        ? `${log.invitation.firstName} ${log.invitation.lastName} (invité)`
+                        : "—"}
                     <span className="text-text-3"> · {log.to}</span>
                   </td>
                   <td className="text-text-2 px-3 py-2">{log.templateKey}</td>

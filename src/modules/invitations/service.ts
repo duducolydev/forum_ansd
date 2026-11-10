@@ -406,6 +406,7 @@ export function registerInvitationJobs(): void {
       editionId: invitation.editionId,
       templateKey: invitation.remindersCount > 0 ? "invitation_reminder" : "invitation",
       to: invitation.email,
+      invitationId: invitation.id,
       variables: {
         prenom: invitation.firstName,
         lien_inscription: `${baseUrl}/inscription?inv=${invitation.token}`,

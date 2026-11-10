@@ -89,6 +89,8 @@ export async function sendTemplatedEmail(options: {
   to: string;
   variables: TemplateVariables;
   participantId?: string;
+  /** Envoi lié à une invitation (destinataire pas encore inscrit) : consigné lui aussi. */
+  invitationId?: string;
   /** Forcé par l'appelant ; sinon déduit de `Participant.locale`, sinon `fr`. */
   locale?: Locale;
   /** Ex. pixel de suivi d'ouverture (brief §5.5) — ajouté après le corps du message. */
@@ -107,10 +109,14 @@ export async function sendTemplatedEmail(options: {
   const body = interpolate(picked.body, options.variables);
 
   let log: { id: string } | undefined;
-  if (options.participantId) {
+  // Seuls les envois rattachés à quelqu'un sont consignés : le formulaire de
+  // contact et les codes de connexion du BackOffice ne visent ni participant
+  // ni invité.
+  if (options.participantId || options.invitationId) {
     log = await prisma.notificationLog.create({
       data: {
         participantId: options.participantId,
+        invitationId: options.invitationId,
         templateKey: options.templateKey,
         channel: "EMAIL",
         to: options.to,

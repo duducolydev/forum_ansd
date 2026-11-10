@@ -186,6 +186,26 @@ portail met un message en file par destinataire, sans cadence). Pour plus de 500
 participants, il faut le SMTP de l'ANSD ou un service d'envoi (Brevo, Mailjet, Amazon SES)
 configuré sur le domaine `ansd.sn` — mêmes cinq variables.
 
+### Rebonds différés (« Adresse introuvable »)
+
+Gmail accepte le message, puis le serveur du destinataire le refuse : l'envoi a
+« réussi », et l'avis de non-distribution n'arrive qu'ensuite dans la boîte du Forum.
+Le serveur relit ces avis **toutes les quinze minutes** par IMAP
+(`src/modules/notifications/rebonds.ts`) et les reporte dans l'historique d'envoi
+(BackOffice → Notifications → Historique, état « Rebond »), avec le motif et un lien
+pour corriger l'adresse d'une invitation. Un bouton « Relever les rebonds » lance la
+lecture tout de suite.
+
+- **Rien à configurer avec Gmail** : `smtp.gmail.com` entraîne `imap.gmail.com:993`,
+  avec le même compte et le même mot de passe d'application. Pour un autre fournisseur :
+  `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASSWORD`. Sans IMAP (Mailpit), le relevé
+  ne tourne pas.
+- **Lecture seule** : aucun message n'est déplacé, marqué lu ni supprimé.
+- **Le port 993 doit être ouvert en sortie** sur le serveur :
+  `timeout 5 bash -c 'cat < /dev/null > /dev/tcp/imap.gmail.com/993' && echo "IMAP joignable"`.
+- Seuls les échecs **définitifs** sont retenus ; un « problème temporaire » ne l'est pas,
+  Gmail réessaie et enverra un nouvel avis s'il abandonne.
+
 ## Scripts
 
 | Commande                       | Effet                                                              |

@@ -6,6 +6,9 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const nextConfig: NextConfig = {
   // Image Docker de production allégée (Dockerfile, docker/) — brief §11.
   output: "standalone",
+  // Client IMAP du relevé des rebonds (`modules/notifications/rebonds.ts`) :
+  // chargé tel quel par Node plutôt que réempaqueté (sockets, flux, pino).
+  serverExternalPackages: ["imapflow"],
   experimental: {
     /*
      * Les Server Actions acceptent 1 Mo par défaut : une photo de badge y tient

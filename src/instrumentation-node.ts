@@ -1,6 +1,7 @@
 import { registerNotificationJobs } from "@/modules/notifications/jobs";
 import { registerBadgeJobs } from "@/modules/badges/jobs";
 import { registerInvitationJobs } from "@/modules/invitations/service";
+import { demarrerReleveRebonds } from "@/modules/notifications/rebonds";
 
 /**
  * Enregistrement des workers, côté Node uniquement (§34.1).
@@ -21,4 +22,6 @@ export function enregistrerWorkers(): void {
   registerNotificationJobs();
   registerBadgeJobs();
   registerInvitationJobs();
+  // Avis « Adresse introuvable » lus dans la boîte d'envoi, toutes les 15 min.
+  demarrerReleveRebonds();
 }

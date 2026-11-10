@@ -423,6 +423,7 @@ model Invitation {
   edition     Edition             @relation(fields: [editionId], references: [id], onDelete: Cascade)
   category    ParticipantCategory @relation(fields: [categoryId], references: [id])
   participant Participant?
+  envois      NotificationLog[]
 
   @@index([editionId, status])
 }
@@ -1143,9 +1144,13 @@ model NotificationTemplate {
   @@unique([editionId, key, channel])
 }
 
+/// Journal des envois. Depuis le 10 novembre 2026, un envoi peut viser une
+/// invitation (pas encore de participant) : les deux liens sont facultatifs,
+/// et une ligne née d'un avis de rebond sans envoi retrouvé n'en porte aucun.
 model NotificationLog {
   id                String              @id @default(cuid())
-  participantId     String
+  participantId     String?
+  invitationId      String?
   templateKey       String
   channel           NotificationChannel
   to                String
@@ -1153,11 +1158,20 @@ model NotificationLog {
   providerMessageId String?
   error             String?             @db.Text
   sentAt            DateTime?
+  /// Rebond signalé après coup par un avis de non-distribution (boîte d'envoi).
+  bouncedAt         DateTime?
+  /// Message-ID de cet avis : le relevé repasse sur les mêmes messages, et ne
+  /// doit pas les compter deux fois.
+  bounceMessageId   String?             @unique
   createdAt         DateTime            @default(now())
 
-  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  participant Participant? @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  invitation  Invitation?  @relation(fields: [invitationId], references: [id], onDelete: Cascade)
 
   @@index([participantId])
+  @@index([invitationId])
+  @@index([providerMessageId])
+  @@index([to])
 }
 
 /// Lien à usage unique, pour un participant **ou** un intervenant.
