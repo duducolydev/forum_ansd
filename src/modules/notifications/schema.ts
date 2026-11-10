@@ -20,3 +20,27 @@ export const bulkSendSchema = z.object({
 });
 
 export type BulkSendInput = z.infer<typeof bulkSendSchema>;
+
+const jour = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date attendue au format AAAA-MM-JJ")
+  .optional()
+  .or(z.literal(""));
+
+/**
+ * Filtres de l'historique d'envoi (10 novembre 2026).
+ *
+ * Mêmes conventions que le journal d'audit : paramètres d'URL, chaîne vide
+ * acceptée pour « tous », bornes de dates incluses.
+ */
+export const historiqueSearchSchema = z.object({
+  q: z.string().trim().max(200).optional().or(z.literal("")),
+  statut: z.enum(["QUEUED", "SENT", "FAILED", "BOUNCED"]).optional().or(z.literal("")),
+  modele: z.string().trim().max(120).optional().or(z.literal("")),
+  du: jour,
+  au: jour,
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(200).default(50),
+});
+
+export type HistoriqueSearch = z.infer<typeof historiqueSearchSchema>;

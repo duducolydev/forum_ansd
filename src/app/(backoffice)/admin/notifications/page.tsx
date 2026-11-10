@@ -75,12 +75,14 @@ export default async function NotificationsPage() {
 
       <div className="mb-6 flex flex-wrap gap-2">
         {counts.map((row) => (
-          <span
+          <Link
             key={row.status}
-            className="border-border bg-surface rounded-lg border px-3 py-1.5 text-sm"
+            href={`/admin/notifications/historique?statut=${row.status}`}
+            title="Voir le détail de ces envois"
+            className="border-border bg-surface hover:border-blue-text rounded-lg border px-3 py-1.5 text-sm"
           >
             <LogStatusBadge status={row.status} /> <b className="text-heading">{row._count._all}</b>
-          </span>
+          </Link>
         ))}
         {counts.length === 0 && (
           <span className="text-text-3 text-sm">Aucun envoi enregistré.</span>
@@ -127,7 +129,15 @@ export default async function NotificationsPage() {
         })}
       </div>
 
-      <h3 className="text-heading mb-3 text-sm font-semibold">25 derniers envois</h3>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-heading text-sm font-semibold">25 derniers envois</h3>
+        <Link
+          href="/admin/notifications/historique"
+          className="text-blue-text text-sm font-medium hover:underline"
+        >
+          Tout l&apos;historique →
+        </Link>
+      </div>
       {logs.length === 0 ? (
         <p className="text-text-2 text-sm">Aucun envoi pour le moment.</p>
       ) : (
