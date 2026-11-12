@@ -91,8 +91,11 @@ export function ActionsBadges({
       <p className="text-text-2 text-sm">
         {surSelection ? (
           <>
-            Les actions portent sur les{" "}
-            <b className="text-heading">{taillePerimetre} ligne(s) cochée(s)</b>.{" "}
+            Les actions portent sur{" "}
+            <b className="text-heading">
+              {taillePerimetre} {taillePerimetre > 1 ? "lignes cochées" : "ligne cochée"}
+            </b>
+            , à l&apos;intérieur du filtre.{" "}
             <button
               type="button"
               onClick={onToutDeselectionner}
@@ -101,13 +104,16 @@ export function ActionsBadges({
             >
               Tout désélectionner
             </button>{" "}
-            pour revenir au filtre.
+            pour revenir au filtre entier.
           </>
         ) : (
           <>
-            Les actions portent sur les{" "}
-            <b className="text-heading">{taillePerimetre} participant(s) du filtre</b>, y compris
-            ceux que la page n&apos;affiche pas. Cochez des lignes pour viser plus fin.
+            Les actions portent sur{" "}
+            <b className="text-heading">
+              {taillePerimetre}{" "}
+              {taillePerimetre > 1 ? "participants du filtre" : "participant du filtre"}
+            </b>
+            , affichés ou non. Cochez des lignes pour viser plus fin.
           </>
         )}
       </p>

@@ -83,18 +83,42 @@ test("l'écran filtre par délégation et annonce ce qui reste à générer", as
   );
 });
 
-test("génère les badges manquants du périmètre, puis n'en propose plus", async ({ page }) => {
+/**
+ * Le geste courant : **filtrer, puis cocher** quelques lignes à l'intérieur du
+ * filtre (12 novembre 2026). Les deux se combinent — la case restreint ce que
+ * le filtre a désigné, elle ne le remplace pas.
+ */
+test("génère la seule ligne cochée du filtre, puis le reste du filtre", async ({ page }) => {
   await seConnecterAdmin(page);
   await page.goto(`/admin/badges?delegationId=${delegationId}`);
 
   // Aucune case cochée : le bouton porte sur tout le périmètre du filtre.
-  await expect(
-    page.getByText(/Les actions portent sur les 2 participant\(s\) du filtre/),
-  ).toBeVisible();
-  await page.getByRole("button", { name: /Générer 2 badge\(s\) manquant\(s\)/ }).click();
-  await expect(page.getByText(/2 badge\(s\) mis en file/)).toBeVisible();
+  await expect(page.getByText(/Les actions portent sur 2 participants du filtre/)).toBeVisible();
+
+  // Une seule case cochée : le périmètre se resserre sur elle, dans ce filtre.
+  await page
+    .getByRole("row", { name: new RegExp(`Sow${SUFFIXE}`, "i") })
+    .getByRole("checkbox")
+    .check();
+  await expect(page.getByText(/Les actions portent sur 1 ligne cochée/)).toBeVisible();
+  await page.getByRole("button", { name: "Générer 1 badge(s) manquant(s)" }).click();
+  await expect(page.getByText(/1 badge\(s\) mis en file/)).toBeVisible();
 
   // Le rendu se fait en arrière-plan : on attend les fichiers, pas le message.
+  await expect
+    .poll(async () => prisma.badge.count({ where: { participantId: participantIds[0] } }), {
+      timeout: 90_000,
+      message: "le badge de la ligne cochée n'a pas été créé",
+    })
+    .toBe(1);
+  // L'autre personne du filtre n'a rien reçu : la case a bien restreint.
+  expect(await prisma.badge.count({ where: { participantId: participantIds[1] } })).toBe(0);
+
+  // Sans case cochée, le même bouton reprend tout le filtre — ici le reste.
+  await page.goto(`/admin/badges?delegationId=${delegationId}`);
+  await page.getByRole("button", { name: "Générer 1 badge(s) manquant(s)" }).click();
+  await expect(page.getByText(/1 badge\(s\) mis en file/)).toBeVisible();
+
   await expect
     .poll(
       async () =>
@@ -185,9 +209,7 @@ test("cocher une ligne restreint l'action à celle-là", async ({ page }) => {
   await ligneSow.getByRole("checkbox").check();
 
   // Le périmètre et les compteurs suivent la case cochée.
-  await expect(
-    page.getByText(/Les actions portent sur les 1 ligne\(s\) cochée\(s\)/),
-  ).toBeVisible();
+  await expect(page.getByText(/Les actions portent sur 1 ligne cochée/)).toBeVisible();
   await cliquerPuisConfirmer(page, { nom: "Refaire 1 badge(s) déjà émis" });
 
   await expect(page.getByText(/1 badge\(s\) remis en file/)).toBeVisible();

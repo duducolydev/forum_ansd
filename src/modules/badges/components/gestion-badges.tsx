@@ -177,36 +177,47 @@ export function GestionBadges({
           total={compteurs.total}
           aGenerer={compteurs.manquants}
         />
-
-        {(peutGenerer || peutRevoquer) && (
-          <div className="border-border border-t pt-4">
-            <ActionsBadges
-              surSelection={surSelection}
-              taillePerimetre={surSelection ? selection.length : compteurs.total}
-              compteurs={comptes}
-              peutGenerer={peutGenerer}
-              peutRevoquer={peutRevoquer}
-              enCours={enCours}
-              onGenerer={generer}
-              onRevoquer={revoquer}
-              onToutDeselectionner={() => setCoches(new Set())}
-            />
-          </div>
-        )}
-
-        {bilan && (
-          <ul
-            role="status"
-            className={`flex flex-col gap-0.5 text-sm ${
-              bilan.ton === "ok" ? "text-accent-text" : "text-warn-text"
-            }`}
-          >
-            {bilan.lignes.map((ligne) => (
-              <li key={ligne}>{ligne}</li>
-            ))}
-          </ul>
-        )}
       </div>
+
+      {(peutGenerer || peutRevoquer) && (
+        /*
+         * La barre d'actions **suit le défilement dès qu'une case est cochée** :
+         * on coche quelques lignes au milieu d'une liste de deux cents, et le
+         * bouton reste sous les yeux avec son compte à jour. Sans sélection,
+         * elle reprend sa place pour ne pas manger l'écran.
+         */
+        <div
+          className={
+            "border-border bg-surface flex flex-col gap-4 rounded-xl border p-4" +
+            (surSelection ? " sticky top-4 z-10 shadow-lg" : "")
+          }
+        >
+          <ActionsBadges
+            surSelection={surSelection}
+            taillePerimetre={surSelection ? selection.length : compteurs.total}
+            compteurs={comptes}
+            peutGenerer={peutGenerer}
+            peutRevoquer={peutRevoquer}
+            enCours={enCours}
+            onGenerer={generer}
+            onRevoquer={revoquer}
+            onToutDeselectionner={() => setCoches(new Set())}
+          />
+
+          {bilan && (
+            <ul
+              role="status"
+              className={`flex flex-col gap-0.5 text-sm ${
+                bilan.ton === "ok" ? "text-accent-text" : "text-warn-text"
+              }`}
+            >
+              {bilan.lignes.map((ligne) => (
+                <li key={ligne}>{ligne}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {lignes.length === 0 ? (
         <p className="text-text-2 text-sm">Aucun participant dans ce périmètre.</p>

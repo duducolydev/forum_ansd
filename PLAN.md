@@ -991,6 +991,14 @@ sans phrase, que huit ont déjà le leur. Les compteurs du filtre sont comptés 
 deux cents lignes affichées — un bouton qui annoncerait « 200 » là où le périmètre en contient
 1 200 serait un piège.
 
+**Les deux se combinent**, et c'est le geste courant : choisir « Invité spécial » au filtre, puis
+n'en cocher que trois. La case **restreint** ce que le filtre a désigné, elle ne le remplace pas.
+La barre d'actions suit alors le défilement : on coche au milieu d'une longue liste sans perdre
+de vue le bouton ni son compte, et elle reprend sa place dès qu'on désélectionne. Côté serveur,
+une sélection vaut par ses identifiants — ce qui est coché est traité, même si l'état du
+participant a changé depuis l'affichage ; le bilan dit alors pourquoi une ligne a été écartée,
+plutôt que de la faire disparaître d'une intersection silencieuse.
+
 Les deux chemins passent par **les mêmes fonctions** (`modules/badges/lot.ts`), de sorte qu'une
 règle ne puisse pas valoir d'un côté et pas de l'autre, et chaque badge par la fonction de sa
 fiche : `enqueueBadgeGeneration`, `enqueueBadgeRefresh`, `revokeBadge` — mêmes règles, mêmes
