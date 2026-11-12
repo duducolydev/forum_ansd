@@ -87,7 +87,11 @@ test("génère les badges manquants du périmètre, puis n'en propose plus", asy
   await seConnecterAdmin(page);
   await page.goto(`/admin/badges?delegationId=${delegationId}`);
 
-  await page.getByRole("button", { name: /Générer les 2 badges manquants/ }).click();
+  // Aucune case cochée : le bouton porte sur tout le périmètre du filtre.
+  await expect(
+    page.getByText(/Les actions portent sur les 2 participant\(s\) du filtre/),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /Générer 2 badge\(s\) manquant\(s\)/ }).click();
   await expect(page.getByText(/2 badge\(s\) mis en file/)).toBeVisible();
 
   // Le rendu se fait en arrière-plan : on attend les fichiers, pas le message.
@@ -169,10 +173,31 @@ test("la planche d'impression affiche un badge par page, au format du badge", as
 });
 
 /**
+ * Les actions de masse se règlent sur une **sélection** à l'intérieur du
+ * filtre (12 novembre 2026). Ce test refait un badge déjà émis, ce qui ne
+ * change ni le QR ni le fichier attendu par les tests précédents.
+ */
+test("cocher une ligne restreint l'action à celle-là", async ({ page }) => {
+  await seConnecterAdmin(page);
+  await page.goto(`/admin/badges?delegationId=${delegationId}`);
+
+  const ligneSow = page.getByRole("row", { name: new RegExp(`Sow${SUFFIXE}`, "i") });
+  await ligneSow.getByRole("checkbox").check();
+
+  // Le périmètre et les compteurs suivent la case cochée.
+  await expect(
+    page.getByText(/Les actions portent sur les 1 ligne\(s\) cochée\(s\)/),
+  ).toBeVisible();
+  await cliquerPuisConfirmer(page, { nom: "Refaire 1 badge(s) déjà émis" });
+
+  await expect(page.getByText(/1 badge\(s\) remis en file/)).toBeVisible();
+});
+
+/**
  * Révocation groupée (12 novembre 2026).
  *
- * Placée après l'export et la planche : elle invalide pour de bon un des deux
- * badges du périmètre, ce que les tests précédents comptent encore.
+ * Placée après l'export et la planche : elle invalide pour de bon les badges
+ * du périmètre, que les tests précédents comptent encore.
  */
 test("révoque les badges cochés, et seulement ceux-là", async ({ page }) => {
   await seConnecterAdmin(page);
@@ -181,8 +206,10 @@ test("révoque les badges cochés, et seulement ceux-là", async ({ page }) => {
   const ligneSow = page.getByRole("row", { name: new RegExp(`Sow${SUFFIXE}`, "i") });
   await ligneSow.getByRole("checkbox").check();
 
+  await page.getByRole("button", { name: "Révoquer 1 badge(s)…" }).click();
+
   // Sans motif, le bouton reste inerte : la trace d'audit doit dire pourquoi.
-  const bouton = page.getByRole("button", { name: /Révoquer 1 badge/ });
+  const bouton = page.getByRole("button", { name: "Révoquer 1 badge(s)", exact: true });
   await expect(bouton).toBeDisabled();
 
   await page.getByLabel(/Motif de révocation/).fill("Badge perdu (E2E)");
@@ -198,6 +225,29 @@ test("révoque les badges cochés, et seulement ceux-là", async ({ page }) => {
   expect(revoques).toEqual([
     { participantId: participantIds[0], revokeReason: "Badge perdu (E2E)" },
   ]);
+});
+
+test("révoque tout le périmètre du filtre quand aucune case n'est cochée", async ({ page }) => {
+  await seConnecterAdmin(page);
+  await page.goto(`/admin/badges?delegationId=${delegationId}`);
+
+  // Un seul badge encore valide dans la délégation : celui que le test
+  // précédent a laissé. Le compteur du bouton le dit sans qu'on coche rien.
+  await page.getByRole("button", { name: "Révoquer 1 badge(s)…" }).click();
+  await page.getByLabel(/Motif de révocation/).fill("Délégation annulée (E2E)");
+  await cliquerPuisConfirmer(
+    page,
+    // Locator exact : « Révoquer 1 badge(s)… », le bouton qui déplie le motif,
+    // contient ce libellé et serait sinon ambigu.
+    page.getByRole("button", { name: "Révoquer 1 badge(s)", exact: true }),
+  );
+
+  await expect(page.getByText("1 badge(s) révoqué(s).")).toBeVisible();
+
+  const revoques = await prisma.badge.count({
+    where: { participantId: { in: participantIds }, revokedAt: { not: null } },
+  });
+  expect(revoques).toBe(2);
 });
 
 test("l'export reste fermé aux sessions sans permission", async ({ request }) => {

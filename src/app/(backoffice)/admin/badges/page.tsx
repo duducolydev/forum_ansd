@@ -5,8 +5,7 @@ import { can } from "@/lib/rbac";
 import { prisma } from "@/lib/db";
 import { getActiveEdition } from "@/lib/edition";
 import { compter, compterAncienGabarit, lister, type FiltreBadges } from "@/modules/badges/bulk";
-import { BulkToolbar } from "@/modules/badges/components/bulk-toolbar";
-import { BadgesTable } from "@/modules/badges/components/badges-table";
+import { GestionBadges } from "@/modules/badges/components/gestion-badges";
 
 export const dynamic = "force-dynamic";
 
@@ -40,22 +39,38 @@ export default async function BadgesPage({
   const filtre = lireFiltre(parametres);
   const edition = await getActiveEdition();
 
-  const [lignes, total, aGenerer, ancienGabarit, categories, delegations] = await Promise.all([
-    lister(edition.id, filtre, LIMITE),
-    compter(edition.id, filtre),
-    compter(edition.id, { ...filtre, etat: "SANS" }),
-    compterAncienGabarit(edition.id, filtre),
-    prisma.participantCategory.findMany({
-      where: { editionId: edition.id, isActive: true },
-      orderBy: { sortOrder: "asc" },
-      select: { id: true, labelFr: true },
-    }),
-    prisma.delegation.findMany({
-      where: { editionId: edition.id },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-  ]);
+  /*
+   * Les compteurs du filtre sont comptés **en base**, et non sur les lignes
+   * affichées : les actions de masse portent sur tout le filtre tant qu'aucune
+   * case n'est cochée, et un bouton qui annoncerait « 200 » là où le périmètre
+   * en contient 1 200 serait un piège.
+   *
+   * Un filtre d'état restreint déjà ce que l'action pourra traiter : rien à
+   * générer parmi des badges existants, rien à refaire parmi des révoqués. Le
+   * compteur le dit à zéro plutôt que d'aller compter en dehors du filtre, ce
+   * qu'un `etat` écrasé ferait sans bruit.
+   */
+  const sansBadgeValide = filtre.etat === "AVEC" || filtre.etat === "REVOQUE";
+  const sansBadgeARefaire = filtre.etat === "SANS" || filtre.etat === "REVOQUE";
+
+  const [lignes, total, manquants, existants, ancienGabarit, categories, delegations] =
+    await Promise.all([
+      lister(edition.id, filtre, LIMITE),
+      compter(edition.id, filtre),
+      sansBadgeValide ? 0 : compter(edition.id, { ...filtre, etat: "SANS" }),
+      sansBadgeARefaire ? 0 : compter(edition.id, { ...filtre, etat: "AVEC" }),
+      sansBadgeARefaire ? 0 : compterAncienGabarit(edition.id, filtre),
+      prisma.participantCategory.findMany({
+        where: { editionId: edition.id, isActive: true },
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, labelFr: true },
+      }),
+      prisma.delegation.findMany({
+        where: { editionId: edition.id },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+    ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,21 +82,16 @@ export default async function BadgesPage({
       </div>
 
       <Suspense fallback={null}>
-        <BulkToolbar
+        <GestionBadges
+          lignes={lignes}
+          limite={LIMITE}
+          compteurs={{ total, manquants, existants, ancienGabarit }}
           categories={categories}
           delegations={delegations}
-          total={total}
-          aGenerer={aGenerer}
-          ancienGabarit={ancienGabarit}
+          peutGenerer={can(session, "badges.generate")}
+          peutRevoquer={can(session, "badges.revoke")}
         />
       </Suspense>
-
-      <BadgesTable
-        lignes={lignes}
-        total={total}
-        limite={LIMITE}
-        peutRevoquer={can(session, "badges.revoke")}
-      />
     </div>
   );
 }

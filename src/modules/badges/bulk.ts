@@ -3,17 +3,16 @@ import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { fileStorage } from "@/lib/storage";
 import { creerZip, nomSur, type EntreeZip } from "@/lib/zip";
-import { enqueueBadgeGeneration } from "@/modules/participants/service";
 import { GABARIT_BADGE, auGabaritCourant } from "./format";
-import { enqueueBadgeRefresh } from "./jobs";
 
 /**
- * Génération et export de badges en lot (brief §5.4).
+ * Périmètre, liste et export de badges en lot (brief §5.4).
  *
- * La génération passe par la **file de jobs** : rendre 500 badges prend environ
- * deux minutes (`pnpm bench:badges`), ce qu'aucune requête HTTP ne doit
- * attendre. L'écran met en file et rend la main ; le compteur se met à jour au
- * rythme du worker.
+ * Ce fichier décrit **ce que le filtre de l'écran désigne** — les participants
+ * visés, leur état, ce qu'on en montre et ce qu'on en exporte. Les gestes qui
+ * agissent sur ce périmètre (générer, refaire, révoquer) vivent dans
+ * `lot.ts`, qui réutilise `perimetreFiltre` pour travailler exactement sur les
+ * mêmes lignes que la liste.
  */
 
 export interface FiltreBadges {
@@ -28,7 +27,14 @@ const STATUTS_BADGEABLES: Prisma.ParticipantWhereInput["status"] = {
   in: ["CONFIRMED", "BADGED", "CHECKED_IN"],
 };
 
-function where(editionId: string, filtre: FiltreBadges): Prisma.ParticipantWhereInput {
+/**
+ * Participants visés par le filtre de l.écran, exporté pour que les actions de
+ * lot (`lot.ts`) travaillent exactement sur le même périmètre que la liste.
+ */
+export function perimetreFiltre(
+  editionId: string,
+  filtre: FiltreBadges,
+): Prisma.ParticipantWhereInput {
   const base: Prisma.ParticipantWhereInput = {
     editionId,
     deletedAt: null,
@@ -64,6 +70,8 @@ export interface LigneBadge {
   version: number | null;
   genere: boolean;
   revoque: boolean;
+  /** Badge valide rendu avec un gabarit antérieur, donc à refaire (`format.ts`). */
+  ancienGabarit: boolean;
   impressions: number;
 }
 
@@ -73,7 +81,7 @@ export async function lister(
   limite = 200,
 ): Promise<LigneBadge[]> {
   const participants = await prisma.participant.findMany({
-    where: where(editionId, filtre),
+    where: perimetreFiltre(editionId, filtre),
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     take: limite,
     select: {
@@ -86,7 +94,14 @@ export async function lister(
       badges: {
         orderBy: { version: "desc" },
         take: 1,
-        select: { id: true, version: true, generatedAt: true, revokedAt: true, printedCount: true },
+        select: {
+          id: true,
+          version: true,
+          generatedAt: true,
+          revokedAt: true,
+          printedCount: true,
+          pngPath: true,
+        },
       },
     },
   });
@@ -103,56 +118,29 @@ export async function lister(
       version: badge?.version ?? null,
       genere: Boolean(badge?.generatedAt),
       revoque: badge?.revokedAt != null,
+      ancienGabarit:
+        Boolean(badge?.generatedAt) &&
+        badge?.revokedAt == null &&
+        !auGabaritCourant(badge?.pngPath ?? null),
       impressions: badge?.printedCount ?? 0,
     };
   });
 }
 
 export async function compter(editionId: string, filtre: FiltreBadges): Promise<number> {
-  return prisma.participant.count({ where: where(editionId, filtre) });
-}
-
-/**
- * Met en file la génération pour tout le périmètre du filtre.
- *
- * Les participants qui ont déjà un badge valide sont **écartés** : régénérer
- * produirait le même fichier pour un coût réel, et le bouton sert à rattraper
- * ce qui manque, pas à tout refaire. La réédition d'un badge précis reste
- * accessible depuis la fiche.
- */
-export async function genererEnLot(
-  editionId: string,
-  filtre: FiltreBadges,
-  actorUserId: string | undefined,
-): Promise<{ misEnFile: number }> {
-  const participants = await prisma.participant.findMany({
-    where: where(editionId, { ...filtre, etat: "SANS" }),
-    select: { id: true },
-  });
-
-  for (const participant of participants) {
-    await enqueueBadgeGeneration(participant.id);
-  }
-
-  await audit.log({
-    actorType: "USER",
-    actorUserId,
-    action: "badge.bulk_generate",
-    entity: "Edition",
-    entityId: editionId,
-    after: { misEnFile: participants.length, filtre },
-  });
-
-  return { misEnFile: participants.length };
+  return prisma.participant.count({ where: perimetreFiltre(editionId, filtre) });
 }
 
 /**
  * Badges valides rendus avec un gabarit antérieur — la carte CR80, le premier
  * 100 × 150 mm —, repérés au nom de leur fichier (`format.ts`).
  */
-function aRefaire(editionId: string, filtre: FiltreBadges): Prisma.ParticipantWhereInput {
+export function aRefaireAuGabarit(
+  editionId: string,
+  filtre: FiltreBadges,
+): Prisma.ParticipantWhereInput {
   return {
-    ...where(editionId, { ...filtre, etat: undefined }),
+    ...perimetreFiltre(editionId, { ...filtre, etat: undefined }),
     badges: {
       some: {
         revokedAt: null,
@@ -167,42 +155,7 @@ export async function compterAncienGabarit(
   editionId: string,
   filtre: FiltreBadges,
 ): Promise<number> {
-  return prisma.participant.count({ where: aRefaire(editionId, filtre) });
-}
-
-/**
- * Refait avec le gabarit en vigueur les badges rendus avec un gabarit antérieur.
- *
- * Même version, donc **même QR** : un badge déjà téléchargé ou imprimé reste
- * valable aux contrôles. Sans e-mail : seule l'allure change, pas le droit
- * d'entrée. Les anciens fichiers restent sur le disque ; la base pointe sur
- * les nouveaux une fois le rendu fait.
- */
-export async function refaireAuGabaritEnLot(
-  editionId: string,
-  filtre: FiltreBadges,
-  actorUserId: string | undefined,
-): Promise<{ misEnFile: number }> {
-  const participants = await prisma.participant.findMany({
-    where: aRefaire(editionId, filtre),
-    select: { id: true },
-  });
-
-  let misEnFile = 0;
-  for (const participant of participants) {
-    if (await enqueueBadgeRefresh(participant.id, { silencieux: true })) misEnFile++;
-  }
-
-  await audit.log({
-    actorType: "USER",
-    actorUserId,
-    action: "badge.bulk_reformat",
-    entity: "Edition",
-    entityId: editionId,
-    after: { misEnFile, gabarit: GABARIT_BADGE, filtre },
-  });
-
-  return { misEnFile };
+  return prisma.participant.count({ where: aRefaireAuGabarit(editionId, filtre) });
 }
 
 export interface ArchiveBadges {
@@ -229,7 +182,7 @@ export async function exporterZip(
   actorUserId: string | undefined,
 ): Promise<ArchiveBadges> {
   const participants = await prisma.participant.findMany({
-    where: where(editionId, filtre),
+    where: perimetreFiltre(editionId, filtre),
     orderBy: [{ delegation: { name: "asc" } }, { lastName: "asc" }],
     select: {
       publicId: true,
@@ -305,7 +258,7 @@ export async function badgesAImprimer(
 ): Promise<{ badgeId: string; nom: string; publicId: string; ancienGabarit: boolean }[]> {
   const participants = await prisma.participant.findMany({
     where: {
-      ...where(editionId, filtre),
+      ...perimetreFiltre(editionId, filtre),
       badges: { some: { revokedAt: null, pngPath: { not: null } } },
     },
     orderBy: [{ delegation: { name: "asc" } }, { lastName: "asc" }],

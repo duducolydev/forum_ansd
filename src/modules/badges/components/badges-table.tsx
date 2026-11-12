@@ -1,29 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ShieldOff } from "lucide-react";
-import { Bouton } from "@/components/ui/bouton";
-import { confirmer } from "@/components/ui/confirmer";
-import { revoquerEnLotAction } from "../bulk-actions";
 import type { LigneBadge } from "../bulk";
 
 /**
- * Liste des badges, avec révocation groupée (12 novembre 2026).
+ * Liste des badges, avec cases à cocher (12 novembre 2026).
  *
- * Seules les lignes qui ont un **badge valide** se cochent : une ligne sans
- * badge ou déjà révoquée n'a rien à révoquer, et laisser sa case cliquable
- * ferait croire que « tout cocher » porte sur plus de monde qu'en réalité.
+ * **Toutes les lignes se cochent**, y compris celles sans badge : la
+ * sélection sert aussi bien à générer qu'à révoquer, et une case grisée là où
+ * il n'y a rien à révoquer empêcherait de demander une génération. C'est
+ * chaque action qui dit, par son compteur, sur combien de lignes cochées elle
+ * porte vraiment.
  *
- * La sélection ne survit pas à un changement de filtre ou de page : les
- * filtres passent par l'URL, donc le composant est remonté avec d'autres
- * lignes, et le compteur de la barre ne peut pas annoncer des gens qu'on ne
- * voit plus.
+ * La sélection vit chez le parent (`gestion-badges.tsx`), qui la partage avec
+ * la barre d'actions ; elle ne survit pas à un changement de filtre ou de
+ * page, le composant étant remonté avec d'autres lignes.
  */
-
-/** Seuls les badges valides se révoquent. */
-const selectionnable = (ligne: LigneBadge) => ligne.badgeId !== null && !ligne.revoque;
 
 /** Case d'en-tête : cochée, vide, ou « en partie » quand une partie de la page l'est. */
 function CaseTout({
@@ -48,7 +41,7 @@ function CaseTout({
       checked={coche}
       disabled={disabled}
       onChange={(evenement) => onChange(evenement.target.checked)}
-      aria-label="Sélectionner tous les badges valides de la page"
+      aria-label="Sélectionner toutes les lignes de la page"
       className="accent-primary h-4 w-4"
     />
   );
@@ -58,150 +51,38 @@ export function BadgesTable({
   lignes,
   total,
   limite,
-  peutRevoquer,
+  selectionnable,
+  coches,
+  enCours,
+  onBasculer,
+  onToutBasculer,
 }: {
   lignes: LigneBadge[];
   total: number;
   limite: number;
-  /** Cases à cocher et révocation groupée (permission `badges.revoke`). */
-  peutRevoquer: boolean;
+  /** Cases à cocher (permission `badges.generate` ou `badges.revoke`). */
+  selectionnable: boolean;
+  coches: Set<string>;
+  enCours: boolean;
+  onBasculer: (participantId: string, valeur: boolean) => void;
+  onToutBasculer: (valeur: boolean) => void;
 }) {
-  const router = useRouter();
-  const [coches, setCoches] = useState<Set<string>>(() => new Set());
-  const [motif, setMotif] = useState("");
-  const [enCours, startTransition] = useTransition();
-  const [bilan, setBilan] = useState<{ ton: "ok" | "alerte"; lignes: string[] } | null>(null);
-
-  const eligibles = useMemo(() => lignes.filter(selectionnable), [lignes]);
-  // Sélection effective : ce qui est coché **et** encore affiché comme
-  // révocable. Après un traitement, les cases disparues tombent d'elles-mêmes.
-  const selection = eligibles.filter((ligne) => coches.has(ligne.badgeId!));
-  const tousCoches = eligibles.length > 0 && selection.length === eligibles.length;
-  const motifRempli = motif.trim().length > 0;
-
-  function basculer(badgeId: string, valeur: boolean) {
-    setCoches((avant) => {
-      const apres = new Set(avant);
-      if (valeur) apres.add(badgeId);
-      else apres.delete(badgeId);
-      return apres;
-    });
-  }
-
-  function toutBasculer(valeur: boolean) {
-    setCoches(valeur ? new Set(eligibles.map((ligne) => ligne.badgeId!)) : new Set());
-  }
-
-  function revoquer() {
-    const cibles = selection;
-    const n = cibles.length;
-    void confirmer({
-      titre: `Révoquer ${n} badge(s) ?`,
-      texte: `Aucun nouveau badge n'est émis : ces ${n} QR cessent immédiatement d'être valides et les personnes se verront refuser l'accès à tous les points de contrôle. Une erreur se rattrape fiche par fiche avec la réémission.`,
-      confirmer: `Révoquer ${n} badge(s)`,
-      ton: "danger",
-    }).then((accepte) => {
-      if (!accepte) return;
-      setBilan(null);
-      startTransition(async () => {
-        const reponse = await revoquerEnLotAction(
-          cibles.map((ligne) => ligne.badgeId!),
-          motif,
-        );
-        if (reponse.error || !reponse.resultat) {
-          setBilan({ ton: "alerte", lignes: [reponse.error ?? "La révocation a échoué."] });
-          return;
-        }
-        const { revoques, ignores } = reponse.resultat;
-        setBilan({
-          ton: ignores.length > 0 ? "alerte" : "ok",
-          lignes: [
-            `${revoques} badge(s) révoqué(s).`,
-            ...ignores.map((ignore) => `Non révoqué — ${ignore.nom} : ${ignore.raison}`),
-          ],
-        });
-        setCoches(new Set());
-        setMotif("");
-        router.refresh();
-      });
-    });
-  }
-
-  if (lignes.length === 0) {
-    return <p className="text-text-2 text-sm">Aucun participant dans ce périmètre.</p>;
-  }
+  const nombreCoches = lignes.filter((ligne) => coches.has(ligne.participantId)).length;
+  const tousCoches = lignes.length > 0 && nombreCoches === lignes.length;
 
   return (
     <>
-      {peutRevoquer && (selection.length > 0 || bilan) && (
-        <div className="border-border bg-surface flex flex-col gap-3 rounded-xl border p-3.5">
-          {selection.length > 0 && (
-            <>
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="flex min-w-64 flex-1 flex-col gap-1.5">
-                  <label htmlFor="motif-lot" className="text-text-3 text-xs font-semibold">
-                    Motif de révocation (badge perdu, erreur de saisie, exclusion…)
-                  </label>
-                  <input
-                    id="motif-lot"
-                    value={motif}
-                    onChange={(evenement) => setMotif(evenement.target.value)}
-                    disabled={enCours}
-                    className="border-border bg-bg text-text rounded-lg border px-3 py-2 text-sm"
-                  />
-                </div>
-                <Bouton
-                  ton="danger"
-                  icone={ShieldOff}
-                  type="button"
-                  disabled={enCours || !motifRempli}
-                  titre={motifRempli ? undefined : "Renseignez d'abord un motif."}
-                  onClick={revoquer}
-                >
-                  {enCours ? "Révocation…" : `Révoquer ${selection.length} badge(s)`}
-                </Bouton>
-                <Bouton
-                  ton="discret"
-                  type="button"
-                  disabled={enCours}
-                  onClick={() => setCoches(new Set())}
-                >
-                  Tout désélectionner
-                </Bouton>
-              </div>
-              <p className="text-text-3 text-xs">
-                Le même motif est enregistré pour les {selection.length} badges. Aucun badge
-                n&apos;est réémis et aucun e-mail n&apos;est envoyé : la réémission se fait fiche
-                par fiche.
-              </p>
-            </>
-          )}
-          {bilan && (
-            <ul
-              role="status"
-              className={`flex flex-col gap-0.5 text-sm ${
-                bilan.ton === "ok" ? "text-accent-text" : "text-warn-text"
-              }`}
-            >
-              {bilan.lignes.map((ligne) => (
-                <li key={ligne}>{ligne}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="text-text-3 text-xs">
-              {peutRevoquer && (
+              {selectionnable && (
                 <th scope="col" className="w-10 px-2 py-2 text-left font-semibold">
                   <CaseTout
                     coche={tousCoches}
-                    partiel={selection.length > 0 && !tousCoches}
-                    disabled={eligibles.length === 0 || enCours}
-                    onChange={toutBasculer}
+                    partiel={nombreCoches > 0 && !tousCoches}
+                    disabled={lignes.length === 0 || enCours}
+                    onChange={onToutBasculer}
                   />
                 </th>
               )}
@@ -222,18 +103,18 @@ export function BadgesTable({
           <tbody>
             {lignes.map((ligne) => (
               <tr key={ligne.participantId} className="border-border border-t">
-                {peutRevoquer && (
+                {selectionnable && (
                   <td className="px-2 py-2">
-                    {selectionnable(ligne) && (
-                      <input
-                        type="checkbox"
-                        checked={coches.has(ligne.badgeId!)}
-                        disabled={enCours}
-                        onChange={(evenement) => basculer(ligne.badgeId!, evenement.target.checked)}
-                        aria-label={`Sélectionner le badge de ${ligne.nom}`}
-                        className="accent-primary h-4 w-4"
-                      />
-                    )}
+                    <input
+                      type="checkbox"
+                      checked={coches.has(ligne.participantId)}
+                      disabled={enCours}
+                      onChange={(evenement) =>
+                        onBasculer(ligne.participantId, evenement.target.checked)
+                      }
+                      aria-label={`Sélectionner le badge de ${ligne.nom}`}
+                      className="accent-primary h-4 w-4"
+                    />
                   </td>
                 )}
                 <td className="px-2 py-2">
@@ -254,14 +135,21 @@ export function BadgesTable({
                       Révoqué
                     </span>
                   ) : ligne.genere ? (
-                    <a
-                      href={`/api/v1/badges/${ligne.badgeId}/pdf`}
-                      target="_blank"
-                      rel="noopener"
-                      className="text-link text-xs font-semibold"
-                    >
-                      v{ligne.version} · PDF
-                    </a>
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <a
+                        href={`/api/v1/badges/${ligne.badgeId}/pdf`}
+                        target="_blank"
+                        rel="noopener"
+                        className="text-link text-xs font-semibold"
+                      >
+                        v{ligne.version} · PDF
+                      </a>
+                      {ligne.ancienGabarit && (
+                        <span className="bg-warn-soft text-warn-text rounded-md px-2 py-0.5 text-xs font-semibold">
+                          Ancienne maquette
+                        </span>
+                      )}
+                    </span>
                   ) : (
                     <span className="text-text-3 text-xs">À générer</span>
                   )}
@@ -277,9 +165,9 @@ export function BadgesTable({
 
       {total > limite && (
         <p className="text-text-3 text-xs">
-          {limite} premières lignes affichées sur {total}. La génération, l&apos;export et la
-          planche portent sur le périmètre entier ; la révocation ne porte que sur les lignes
-          cochées.
+          {limite} premières lignes affichées sur {total}. Sans case cochée, les actions portent sur
+          le périmètre entier du filtre ; dès qu&apos;une case l&apos;est, elles ne portent que sur
+          les lignes cochées — donc sur ce qui est visible.
         </p>
       )}
     </>

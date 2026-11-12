@@ -1,89 +1,265 @@
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import type { Actor } from "@/modules/participants/service";
+import { enqueueBadgeGeneration, type Actor } from "@/modules/participants/service";
+import { aRefaireAuGabarit, perimetreFiltre, type FiltreBadges } from "./bulk";
+import { GABARIT_BADGE } from "./format";
+import { enqueueBadgeRefresh } from "./jobs";
 import { revokeBadge } from "./service";
 
 /**
- * Révocation de plusieurs badges en une passe (12 novembre 2026), depuis la
- * liste des badges du BackOffice.
+ * Actions de masse sur les badges, depuis la liste du BackOffice
+ * (12 novembre 2026).
  *
- * Chaque badge passe par **la même fonction** que le bouton de la fiche
- * (`revokeBadge`) : même horodatage, même motif enregistré, même trace
- * d'audit. Un badge déjà révoqué entre-temps n'arrête pas le lot : il est mis
- * de côté avec sa raison, et les autres suivent.
+ * **Deux périmètres, les mêmes actions.** Un geste porte soit sur tout ce que
+ * le filtre affiche — c'est ainsi qu'on traite « toute la délégation du Mali »
+ * sans cocher deux cents lignes —, soit sur les seules lignes cochées, pour
+ * viser plus fin à l'intérieur de ce filtre. Les deux chemins passent par les
+ * mêmes fonctions, de sorte qu'une règle (statut badgeable, badge déjà
+ * révoqué) ne puisse pas valoir d'un côté et pas de l'autre.
  *
- * Il n'y a **pas** de réémission en lot : réémettre relance un rendu et un
- * e-mail par personne, et surtout cela change le QR de chacune — un geste qui
- * se décide fiche par fiche. Ici on retire des droits d'accès, rien de plus.
+ * Chaque badge passe par **la fonction de la fiche** — `revokeBadge`,
+ * `enqueueBadgeGeneration`, `enqueueBadgeRefresh` — et donc par les mêmes
+ * règles, les mêmes e-mails et la même trace d'audit. Une cible refusée
+ * n'arrête pas le lot : elle est mise de côté avec sa raison.
  */
 
-/** Une page de la liste au plus : c'est ce qu'on peut cocher d'un coup. */
-export const LOT_BADGES_MAX = 200;
+/**
+ * Plafond d'un lot. Les mises en file sont bornées haut car elles ne coûtent
+ * qu'une ligne de file ; la révocation écrit en base et journalise badge par
+ * badge, et une passe de mille suffit largement au plus gros geste réel.
+ */
+export const LOT_BADGES_MAX = 1000;
 
-export const lotRevocationSchema = z.object({
-  badgeIds: z
-    .array(z.string().min(1))
-    .min(1, "Aucun badge sélectionné.")
-    .max(LOT_BADGES_MAX, `${LOT_BADGES_MAX} badges au plus par lot.`),
-  motif: z.string().trim().min(1, "Un motif de révocation est requis."),
+/** Ce sur quoi porte l'action : tout le filtre, ou les lignes cochées. */
+export type PerimetreLot =
+  { mode: "filtre"; filtre: FiltreBadges } | { mode: "selection"; participantIds: string[] };
+
+const filtreSchema = z.object({
+  categoryId: z.string().min(1).optional(),
+  delegationId: z.string().min(1).optional(),
+  etat: z.enum(["SANS", "AVEC", "REVOQUE"]).optional(),
 });
 
-export interface ResultatRevocationLot {
-  revoques: number;
-  /** Badges laissés de côté, avec le nom à montrer et la raison. */
-  ignores: { badgeId: string; nom: string; raison: string }[];
+export const perimetreSchema: z.ZodType<PerimetreLot> = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("filtre"), filtre: filtreSchema }),
+  z.object({
+    mode: z.literal("selection"),
+    participantIds: z
+      .array(z.string().min(1))
+      .min(1, "Aucune ligne sélectionnée.")
+      .max(LOT_BADGES_MAX),
+  }),
+]);
+
+/** Ce que fait une mise en file, et sur quelles lignes elle porte. */
+export type ModeGeneration =
+  /** Les participants sans badge valide : première génération, avec e-mail. */
+  | "manquants"
+  /** Les badges valides, refaits dans leur version : même QR, sans e-mail. */
+  | "existants"
+  /** Les seuls badges valides rendus avec un gabarit antérieur. */
+  | "ancien-gabarit";
+
+export interface ResultatLotBadges {
+  traites: number;
+  /** Les premières cibles mises de côté, avec leur raison : de quoi comprendre. */
+  ignores: { nom: string; raison: string }[];
+  /** Total mis de côté, détaillé ou non. */
+  ignoresTotal: number;
+  /** Cibles au-delà du plafond, à reprendre en relançant l'action. */
+  reste: number;
 }
 
-export async function revoquerEnLot(
-  editionId: string,
-  badgeIds: string[],
-  motif: string,
-  actor: Actor,
-): Promise<ResultatRevocationLot> {
-  const uniques = [...new Set(badgeIds)].slice(0, LOT_BADGES_MAX);
+/** Au-delà, la liste des mises de côté encombre l'écran plus qu'elle n'informe. */
+const DETAILS_MAX = 20;
 
-  // Les identifiants viennent du navigateur : on ne révoque que des badges de
-  // l'édition en cours, et on relit `revokedAt` en base plutôt que de croire
-  // l'état affiché, qui peut avoir quelques minutes.
-  const cibles = await prisma.badge.findMany({
-    where: { id: { in: uniques }, participant: { editionId } },
+interface CibleLot {
+  participantId: string;
+  nom: string;
+  badgeId: string | null;
+  badgeRevoque: boolean;
+  badgeGenere: boolean;
+}
+
+/**
+ * Participants visés, dans l'ordre de la liste.
+ *
+ * Le périmètre est **toujours recalculé en base**, jamais déduit de ce que le
+ * navigateur annonce : une sélection vieille de dix minutes peut porter sur
+ * des badges révoqués depuis, et des identifiants reçus d'un client ne disent
+ * rien de l'édition à laquelle ils appartiennent.
+ */
+async function cibles(
+  editionId: string,
+  perimetre: PerimetreLot,
+  restriction: Prisma.ParticipantWhereInput,
+  plafond: number,
+): Promise<{ lignes: CibleLot[]; reste: number }> {
+  const base =
+    perimetre.mode === "filtre"
+      ? perimetreFiltre(editionId, perimetre.filtre)
+      : {
+          ...perimetreFiltre(editionId, {}),
+          id: { in: [...new Set(perimetre.participantIds)] },
+        };
+
+  const participants = await prisma.participant.findMany({
+    where: { AND: [base, restriction] },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+    // Une de plus que le plafond : c'est ce qui permet de dire « il en reste ».
+    take: plafond + 1,
     select: {
       id: true,
-      version: true,
-      revokedAt: true,
-      participant: { select: { firstName: true, lastName: true } },
+      firstName: true,
+      lastName: true,
+      badges: {
+        orderBy: { version: "desc" },
+        take: 1,
+        select: { id: true, version: true, generatedAt: true, revokedAt: true },
+      },
     },
   });
 
-  const resultat: ResultatRevocationLot = { revoques: 0, ignores: [] };
-  const connus = new Set(cibles.map((badge) => badge.id));
+  const lignes = participants.slice(0, plafond).map((participant) => {
+    const badge = participant.badges[0];
+    return {
+      participantId: participant.id,
+      nom: `${participant.lastName.toUpperCase()} ${participant.firstName}`,
+      badgeId: badge?.id ?? null,
+      badgeRevoque: badge?.revokedAt != null,
+      badgeGenere: Boolean(badge?.generatedAt) && badge?.revokedAt == null,
+    };
+  });
 
-  for (const badgeId of uniques) {
-    if (!connus.has(badgeId)) {
-      resultat.ignores.push({
-        badgeId,
-        nom: badgeId,
-        raison: "badge introuvable dans cette édition",
-      });
-    }
+  return { lignes, reste: Math.max(0, participants.length - plafond) };
+}
+
+/** Sélection d'un badge valide, généré ou non — ce qui se révoque. */
+const AVEC_BADGE_VALIDE: Prisma.ParticipantWhereInput = { badges: { some: { revokedAt: null } } };
+
+/** Restriction propre à chaque mode de mise en file. */
+function restrictionDe(editionId: string, mode: ModeGeneration, perimetre: PerimetreLot) {
+  if (mode === "manquants") {
+    return { badges: { none: { revokedAt: null, generatedAt: { not: null } } } };
   }
+  if (mode === "existants") {
+    return { badges: { some: { revokedAt: null, generatedAt: { not: null } } } };
+  }
+  // Le repérage du gabarit vit dans `bulk.ts`, au plus près du compteur qui
+  // l'affiche ; appliqué ici à l'intérieur du périmètre, filtre ou sélection.
+  const filtre = perimetre.mode === "filtre" ? perimetre.filtre : {};
+  return aRefaireAuGabarit(editionId, { ...filtre, etat: undefined });
+}
 
-  for (const badge of cibles) {
-    const nom = `${badge.participant.lastName.toUpperCase()} ${badge.participant.firstName} (v${badge.version})`;
+function resultat(
+  traites: number,
+  ignores: { nom: string; raison: string }[],
+  reste: number,
+): ResultatLotBadges {
+  return { traites, ignores: ignores.slice(0, DETAILS_MAX), ignoresTotal: ignores.length, reste };
+}
 
-    if (badge.revokedAt) {
-      resultat.ignores.push({ badgeId: badge.id, nom, raison: "était déjà révoqué" });
+/**
+ * Met en file la génération ou le rafraîchissement du périmètre.
+ *
+ * Rien n'est rendu ici : rendre 500 badges prend deux à trois minutes
+ * (`pnpm bench:badges`), ce qu'aucune requête HTTP ne doit attendre. L'écran
+ * annonce donc une **mise en file**, et le worker suit à son rythme.
+ */
+export async function mettreEnFileEnLot(
+  editionId: string,
+  perimetre: PerimetreLot,
+  mode: ModeGeneration,
+  actor: Actor,
+): Promise<ResultatLotBadges> {
+  const { lignes, reste } = await cibles(
+    editionId,
+    perimetre,
+    restrictionDe(editionId, mode, perimetre),
+    LOT_BADGES_MAX,
+  );
+
+  const ignores: { nom: string; raison: string }[] = [];
+  let traites = 0;
+
+  for (const cible of lignes) {
+    // Un badge révoqué ne se régénère pas : il faut une réémission, qui change
+    // le QR et se décide fiche par fiche (`generateBadge` la refuse d'ailleurs).
+    if (cible.badgeRevoque) {
+      ignores.push({ nom: cible.nom, raison: "badge révoqué : à réémettre depuis la fiche" });
       continue;
     }
 
     try {
-      await revokeBadge(badge.id, motif, actor);
-      resultat.revoques += 1;
+      if (mode === "manquants") {
+        await enqueueBadgeGeneration(cible.participantId);
+        traites += 1;
+      } else if (await enqueueBadgeRefresh(cible.participantId, { silencieux: true })) {
+        traites += 1;
+      } else {
+        // Le badge a été révoqué ou supprimé entre la liste et le clic.
+        ignores.push({ nom: cible.nom, raison: "plus de badge valide à refaire" });
+      }
     } catch (error) {
-      resultat.ignores.push({
-        badgeId: badge.id,
-        nom,
+      ignores.push({
+        nom: cible.nom,
+        raison: error instanceof Error ? error.message : "erreur inattendue",
+      });
+    }
+  }
+
+  await audit.log({
+    actorType: actor.type,
+    actorUserId: actor.userId,
+    action: mode === "ancien-gabarit" ? "badge.bulk_reformat" : "badge.bulk_generate",
+    entity: "Edition",
+    entityId: editionId,
+    after: {
+      mode,
+      perimetre: perimetre.mode,
+      ...(perimetre.mode === "filtre" ? { filtre: perimetre.filtre } : { coches: lignes.length }),
+      misEnFile: traites,
+      ignores: ignores.length,
+      reste,
+      ...(mode === "ancien-gabarit" ? { gabarit: GABARIT_BADGE } : {}),
+    },
+  });
+
+  return resultat(traites, ignores, reste);
+}
+
+/**
+ * Révoque le badge valide de chaque cible du périmètre.
+ *
+ * Il n'y a **pas de réémission en lot** : elle change le QR de chacun et
+ * relance un rendu puis un e-mail par personne, ce qui se décide fiche par
+ * fiche. Ici on retire des droits d'accès, rien de plus.
+ */
+export async function revoquerEnLot(
+  editionId: string,
+  perimetre: PerimetreLot,
+  motif: string,
+  actor: Actor,
+): Promise<ResultatLotBadges> {
+  const { lignes, reste } = await cibles(editionId, perimetre, AVEC_BADGE_VALIDE, LOT_BADGES_MAX);
+
+  const ignores: { nom: string; raison: string }[] = [];
+  let traites = 0;
+
+  for (const cible of lignes) {
+    if (!cible.badgeId || cible.badgeRevoque) {
+      ignores.push({ nom: cible.nom, raison: "n'a plus de badge valide" });
+      continue;
+    }
+
+    try {
+      await revokeBadge(cible.badgeId, motif, actor);
+      traites += 1;
+    } catch (error) {
+      ignores.push({
+        nom: cible.nom,
         raison: error instanceof Error ? error.message : "erreur inattendue",
       });
     }
@@ -99,12 +275,14 @@ export async function revoquerEnLot(
     entity: "Badge",
     entityId: "lot",
     after: {
-      demandes: uniques.length,
-      revoques: resultat.revoques,
-      ignores: resultat.ignores,
+      perimetre: perimetre.mode,
+      ...(perimetre.mode === "filtre" ? { filtre: perimetre.filtre } : { coches: lignes.length }),
+      revoques: traites,
+      ignores,
+      reste,
       motif,
     },
   });
 
-  return resultat;
+  return resultat(traites, ignores, reste);
 }
