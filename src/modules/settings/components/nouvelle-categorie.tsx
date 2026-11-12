@@ -132,18 +132,6 @@ export function NouvelleCategorie({
               className="border-border h-10 w-full cursor-pointer rounded-lg border"
             />
           </div>
-          <div className="flex min-w-[220px] flex-1 flex-col gap-1.5">
-            <label htmlFor="nc-mention" className="text-text-3 text-xs font-semibold">
-              Mention sur le badge
-            </label>
-            <input
-              id="nc-mention"
-              name="badgeMention"
-              maxLength={30}
-              placeholder="ex. COMITÉ D'ORGANISATION"
-              className={CHAMP}
-            />
-          </div>
           <div className="flex min-w-[240px] flex-1 flex-col gap-1.5">
             <label htmlFor="nc-zones" className="text-text-3 text-xs font-semibold">
               Zones d&apos;accès au départ

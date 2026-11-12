@@ -40,7 +40,6 @@ function nouvelle(valeurs: Partial<NouvelleCategorieInput> = {}): NouvelleCatego
     requiresLogistics: false,
     alertOnScan: false,
     requiresAccreditation: false,
-    badgeMention: "COMITÉ D'ORGANISATION",
     code: "",
     zonesDepuis: "TOUTES",
     ...valeurs,
@@ -103,7 +102,6 @@ describe("création d'une catégorie en BackOffice (24 octobre 2026)", () => {
     expect(categorie).toMatchObject({
       isPublic: false,
       isActive: true,
-      badgeMention: "COMITÉ D'ORGANISATION",
       color: "#6d4c9f",
     });
     expect(zones).toBe(personnel.categoryZones.length);
@@ -195,15 +193,16 @@ describe("badge tenu à jour de la catégorie", () => {
       alertOnScan: false,
       requiresAccreditation: false,
       isPublic: false,
-      badgeMention: comite.badgeMention ?? "",
     };
     rafraichis.length = 0;
 
-    // Une règle change, pas l'apparence : aucun badge refait.
+    // Une règle ou le libellé changent, pas l'apparence imprimée : aucun badge
+    // refait. Le badge ne porte plus le nom de la catégorie depuis le
+    // 12 novembre 2026, donc la renommer ne vaut plus un nouveau rendu.
     const sansApparence = await enregistrerCategorie(
       editionId,
       comite.id,
-      { ...valeurs, alertOnScan: true },
+      { ...valeurs, alertOnScan: true, labelFr: `${valeurs.labelFr} (renommé)` },
       acteur,
     );
     expect(sansApparence.badgesRafraichis).toBe(0);

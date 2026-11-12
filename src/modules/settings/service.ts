@@ -308,20 +308,19 @@ export async function enregistrerCategorie(
       alertOnScan: valeurs.alertOnScan,
       requiresAccreditation: valeurs.requiresAccreditation,
       isPublic: valeurs.isPublic,
-      badgeMention: valeurs.badgeMention?.trim() || null,
     },
   });
 
   /*
-   * Ce que le badge imprime de la catégorie — libellé, couleur, mention — a
-   * changé : les badges déjà générés sont refaits dans leur version (même QR),
-   * sans e-mail : une nuance de couleur ne vaut pas un message à chacun
-   * (24 octobre 2026).
+   * Ce que le badge imprime de la catégorie a changé : les badges déjà
+   * générés sont refaits dans leur version (même QR), sans e-mail — une
+   * nuance de couleur ne vaut pas un message à chacun (24 octobre 2026).
+   *
+   * Depuis le 12 novembre 2026, le badge ne porte plus que **la couleur** de
+   * la catégorie : renommer une catégorie ne change plus rien à l'impression
+   * et ne doit donc plus déclencher le rendu de deux cents badges.
    */
-  const apparenceModifiee =
-    avant.labelFr !== apres.labelFr ||
-    avant.color !== apres.color ||
-    avant.badgeMention !== apres.badgeMention;
+  const apparenceModifiee = avant.color !== apres.color;
   let badgesRafraichis = 0;
   if (apparenceModifiee) {
     const porteurs = await prisma.participant.findMany({
@@ -350,7 +349,6 @@ export async function enregistrerCategorie(
       isPublic: avant.isPublic,
       alertOnScan: avant.alertOnScan,
       requiresAccreditation: avant.requiresAccreditation,
-      badgeMention: avant.badgeMention,
     },
     after: {
       labelFr: apres.labelFr,
@@ -359,7 +357,6 @@ export async function enregistrerCategorie(
       isPublic: apres.isPublic,
       alertOnScan: apres.alertOnScan,
       requiresAccreditation: apres.requiresAccreditation,
-      badgeMention: apres.badgeMention,
       badgesRafraichis,
     },
   });
@@ -435,7 +432,6 @@ export async function creerCategorie(
       requiresLogistics: valeurs.requiresLogistics,
       alertOnScan: valeurs.alertOnScan,
       requiresAccreditation: valeurs.requiresAccreditation,
-      badgeMention: valeurs.badgeMention?.trim() || null,
       categoryZones: { create: zones.map((zoneId) => ({ zoneId })) },
     },
   });
@@ -450,7 +446,6 @@ export async function creerCategorie(
       code,
       labelFr: categorie.labelFr,
       isPublic: categorie.isPublic,
-      badgeMention: categorie.badgeMention,
       zones: zones.length,
       zonesDepuis: valeurs.zonesDepuis,
     },

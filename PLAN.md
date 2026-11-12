@@ -993,6 +993,18 @@ du navigateur sont **refiltrés sur l'édition en cours** ; un badge révoqué e
 côté avec sa raison, sans arrêter le lot. Il n'y a **pas de réémission en lot** : elle change le
 QR de chacun et relance un rendu puis un e-mail par personne, ce qui se décide fiche par fiche.
 
+**Le badge ne porte plus le nom de la catégorie** (12 novembre 2026) : ni le libellé, ni la
+mention (« ACCRÉDITATION PRESSE »…), seulement le **code couleur** porté par le bandeau du bas,
+le cadre de la photo et celui du QR. La catégorie reste lisible en clair là où elle sert
+vraiment, à la vérification du QR, où l'agent de contrôle la lit à l'écran. Le champ « Mention
+sur le badge » a donc quitté Paramètres > Catégories — un champ qui promet une impression qui
+n'a plus lieu est pire que pas de champ ; la colonne reste en base, avec son contenu, et n'est
+simplement plus écrite. Conséquence à ne pas manquer : les badges **déjà rendus portent encore
+le libellé**. Le gabarit en vigueur est passé à `maquette-2026-d` (`format.ts`), ce qui les fait
+compter comme « ancienne maquette » : le bouton « Refaire N badge(s) avec la nouvelle maquette »
+de cet écran les reprend, **même QR et sans e-mail**. C'est un geste à faire une fois, après le
+déploiement ; sans lui, deux générations de badges circuleraient côte à côte le jour J.
+
 **Vérification** : 9 tests unitaires sur le format ZIP (signatures, répertoire central, CRC,
 drapeau UTF-8, archive vide, assainissement des noms), 4 tests unitaires sur la révocation
 groupée (périmètre de l'édition, badge déjà révoqué, trace d'audit) et 6 tests de bout en bout,

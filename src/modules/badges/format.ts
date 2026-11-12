@@ -25,7 +25,7 @@ export const FORMAT_BADGE = {
 /**
  * Gabarit en vigueur : la maquette de l'infographe (26 octobre 2026).
  *
- * Il figure dans le nom des fichiers (`badges/<id>/v1-maquette-2026-b.pdf`) :
+ * Il figure dans le nom des fichiers (`badges/<id>/v1-maquette-2026-d.pdf`) :
  * un badge rendu avec un gabarit antérieur — la carte CR80, puis le premier
  * 100 × 150 mm du 25 octobre — se reconnaît ainsi sans migration, et se refait
  * depuis l'écran Badges, même QR. Changer de gabarit, c'est changer ce repère.
@@ -36,8 +36,14 @@ export const FORMAT_BADGE = {
  *
  * Révision « c » (2 novembre 2026) : la civilité abrégée (« Dr », « SE »…)
  * précède le prénom. Mêmes conséquences pour les badges rendus avant.
+ *
+ * Révision « d » (12 novembre 2026) : le bandeau du bas ne porte plus de
+ * texte — ni le libellé de la catégorie, ni la mention (« ACCRÉDITATION
+ * PRESSE »…) —, seulement le code couleur de la catégorie. Les badges déjà
+ * rendus portent encore le libellé ; le repère changé les fait proposer à
+ * refaire depuis l'écran Badges, même QR et sans e-mail.
  */
-export const GABARIT_BADGE = "maquette-2026-c";
+export const GABARIT_BADGE = "maquette-2026-d";
 
 /**
  * Fente pour cordon : oblongue, 15 × 3 mm, centrée, à 5 mm du bord haut — la

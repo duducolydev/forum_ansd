@@ -15,7 +15,6 @@ async function sampleHtml(index: number): Promise<string> {
     lastName: "Sow",
     jobTitle: "Directrice des statistiques démographiques",
     organization: "ANSD",
-    categoryLabel: "Participante nationale",
     categoryColor: "#3dbb6e",
     publicId,
     qrDataUrl: await generateQrDataUrl(`http://localhost:3000/v/${buildBadgeToken(publicId, 1)}`),
@@ -28,11 +27,13 @@ const enPoints = (mm: number) => (mm / 25.4) * 72;
 
 describe("gabarit du badge", () => {
   it("reconnaît un fichier rendu avec la maquette en vigueur", () => {
-    expect(auGabaritCourant("badges/FID26-AB12/v1-maquette-2026-c.png")).toBe(true);
+    expect(auGabaritCourant("badges/FID26-AB12/v1-maquette-2026-d.png")).toBe(true);
     // Carte CR80, premier 100 × 150 mm du 25 octobre 2026, maquette avant la
-    // photo d'intervenant (29 octobre 2026), puis avant la civilité (2 novembre).
+    // photo d'intervenant (29 octobre 2026), avant la civilité (2 novembre),
+    // puis avant le bandeau sans libellé de catégorie (12 novembre).
     expect(auGabaritCourant("badges/FID26-AB12/v1-maquette-2026.png")).toBe(false);
     expect(auGabaritCourant("badges/FID26-AB12/v1-maquette-2026-b.png")).toBe(false);
+    expect(auGabaritCourant("badges/FID26-AB12/v1-maquette-2026-c.png")).toBe(false);
     expect(auGabaritCourant("badges/FID26-AB12/v1.png")).toBe(false);
     expect(auGabaritCourant("badges/FID26-AB12/v1-100x150.png")).toBe(false);
     expect(auGabaritCourant(null)).toBe(false);

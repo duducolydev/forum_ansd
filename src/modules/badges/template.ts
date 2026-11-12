@@ -27,14 +27,13 @@ export interface BadgeTemplateData {
   lastName: string;
   jobTitle: string | null;
   organization: string | null;
-  categoryLabel: string;
-  /** Couleur de la catégorie : bandeau, cadre de la photo et du QR. */
-  categoryColor: string | null;
   /**
-   * Mention portée par le bandeau à la place du libellé de la catégorie
-   * (`mention.ts`) : « ACCRÉDITATION PRESSE », « COMITÉ D'ORGANISATION »…
+   * Couleur de la catégorie : bandeau du bas, cadre de la photo et du QR.
+   *
+   * C'est **le seul repère de catégorie sur le badge** depuis le 12 novembre
+   * 2026 : ni le libellé ni la mention ne s'impriment plus.
    */
-  mention?: string | null;
+  categoryColor: string | null;
   publicId: string;
   qrDataUrl: string;
   photoDataUrl: string | null;
@@ -53,26 +52,6 @@ function escapeHtml(value: string): string {
 
 function initials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-}
-
-/**
- * Libellé du bandeau sur deux lignes, comme « Personnel / ANSD » dans la
- * maquette : la coupure qui équilibre le mieux les deux lignes. La seconde
- * s'imprime en gras. Un seul mot tient sur une ligne, en gras.
- */
-export function libelleEnDeuxLignes(libelle: string): string[] {
-  const mots = libelle.trim().split(/\s+/);
-  if (mots.length < 2) return [mots.join(" ")];
-  let coupure = 1;
-  let plusLongue = Number.POSITIVE_INFINITY;
-  for (let i = 1; i < mots.length; i++) {
-    const longueur = Math.max(mots.slice(0, i).join(" ").length, mots.slice(i).join(" ").length);
-    if (longueur < plusLongue) {
-      plusLongue = longueur;
-      coupure = i;
-    }
-  }
-  return [mots.slice(0, coupure).join(" "), mots.slice(coupure).join(" ")];
 }
 
 /** Générateur à graine fixe (mulberry32) : la constellation est la même sur tous les badges. */
@@ -180,9 +159,9 @@ const FOND = `
 /*
  * Ajustement des textes longs, une fois les polices chargées : chaque texte
  * tient en deux lignes au plus, quitte à réduire sa taille ; puis le bloc
- * d'identité tient dans sa zone, et chaque ligne du bandeau dans sa largeur.
- * Par pas de 5 %, jusqu'à 55 % de la taille d'origine au plus. Le rendu
- * attend la promesse `window.__pret` (`lib/pdf.ts`).
+ * d'identité tient dans sa zone. Par pas de 5 %, jusqu'à 55 % de la taille
+ * d'origine au plus. Le rendu attend la promesse `window.__pret`
+ * (`lib/pdf.ts`).
  */
 const AJUSTEMENT = `
 (function () {
@@ -206,15 +185,6 @@ const AJUSTEMENT = `
         return identite.scrollHeight > identite.clientHeight + 1;
       });
     }
-    var bandeau = document.querySelector(".bandeau");
-    if (bandeau) {
-      var lignes = Array.prototype.slice.call(bandeau.children);
-      reduire(lignes, function () {
-        return bandeau.scrollHeight > bandeau.clientHeight + 1 || lignes.some(function (l) {
-          return l.scrollWidth > l.clientWidth + 1;
-        });
-      });
-    }
   }
   window.__pret = Promise.all([
     document.fonts.load('800 18pt "Roboto"'),
@@ -225,9 +195,10 @@ const AJUSTEMENT = `
 export function renderBadgeHtml(data: BadgeTemplateData): string {
   const accent = data.categoryColor ?? VERT_PAR_DEFAUT;
   /*
-   * Texte blanc sur la couleur de la catégorie, comme dans la maquette, dès
-   * qu'il s'y lit — il est grand et gras ; l'encre sombre sur les couleurs
-   * claires (or, jaune), où le blanc disparaîtrait.
+   * Encre des initiales posées sur la couleur de la catégorie, faute de photo :
+   * blanc comme dans la maquette dès qu'il s'y lit — elles sont grandes et
+   * grasses ; encre sombre sur les couleurs claires (or, jaune), où le blanc
+   * disparaîtrait.
    */
   const encreAccent = ratioContraste(accent, BLANC) >= 2 ? BLANC : texteSur(accent);
   const largeur = `${FORMAT_BADGE.largeurMm}mm`;
@@ -240,13 +211,6 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
   const entete = data.logoDataUrl
     ? `<img class="logo" src="${data.logoDataUrl}" alt="" />`
     : `<div class="logo titre">${escapeHtml(data.editionName)}</div>`;
-
-  const lignesBandeau = libelleEnDeuxLignes(data.mention ?? data.categoryLabel)
-    .map((ligne, i, toutes) => {
-      const classe = i === toutes.length - 1 ? "fort" : "leger";
-      return `<span class="${classe}">${escapeHtml(ligne)}</span>`;
-    })
-    .join("");
 
   return `<!doctype html>
 <html lang="fr">
@@ -323,18 +287,17 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
     position: absolute; left: 1mm; width: 33.9mm; top: 141.1mm; text-align: center;
     font-size: 9.5pt; font-weight: 700; line-height: 1.2;
   }
-  /* Bandeau de la catégorie, jusqu'au bord droit : la mention, sinon le libellé. */
+  /*
+   * Bandeau de la catégorie, jusqu'au bord droit : **le code couleur seul**,
+   * sans libellé ni mention depuis le 12 novembre 2026. La bande garde la
+   * place et la hauteur qu'elle avait dans la maquette : c'est à cet aplat,
+   * reconnaissable de loin, que l'agent de contrôle lit la catégorie.
+   */
   .bandeau {
     position: absolute; left: 32.5mm; right: 0; top: 119.6mm; height: 17.6mm;
-    padding: 0 3mm 0 3.4mm; overflow: hidden;
-    display: flex; flex-direction: column; justify-content: center;
     background: linear-gradient(100deg,
       color-mix(in srgb, ${accent} 88%, #000), color-mix(in srgb, ${accent} 88%, #fff));
-    color: ${encreAccent};
   }
-  .bandeau > span { display: block; white-space: nowrap; overflow: hidden; line-height: 1.04; }
-  .bandeau .leger { font-size: 20pt; font-weight: 500; }
-  .bandeau .fort { font-size: 22pt; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -351,7 +314,7 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
     </div>
     <div class="qr"><img src="${data.qrDataUrl}" alt="" /></div>
     <div class="uid">${escapeHtml(data.publicId)}</div>
-    <div class="bandeau">${lignesBandeau}</div>
+    <div class="bandeau"></div>
   </div>
   <script>${AJUSTEMENT}</script>
 </body>

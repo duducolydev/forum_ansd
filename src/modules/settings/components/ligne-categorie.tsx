@@ -22,7 +22,6 @@ export interface CategorieAffichee {
   alertOnScan: boolean;
   requiresAccreditation: boolean;
   isPublic: boolean;
-  badgeMention: string;
   inscrits: number;
 }
 
@@ -113,19 +112,6 @@ export function LigneCategorie({ categorie }: { categorie: CategorieAffichee }) 
             type="color"
             defaultValue={categorie.color || "#0b4f8a"}
             className="border-border h-10 w-full cursor-pointer rounded-lg border"
-          />
-        </div>
-        <div className="flex min-w-[190px] flex-1 flex-col gap-1.5">
-          <label htmlFor={`mention-${categorie.id}`} className="text-text-3 text-xs font-semibold">
-            Mention sur le badge
-          </label>
-          <input
-            id={`mention-${categorie.id}`}
-            name="badgeMention"
-            maxLength={30}
-            defaultValue={categorie.badgeMention}
-            placeholder={categorie.requiresAccreditation ? "ACCRÉDITATION PRESSE" : "Aucune"}
-            className={CHAMP}
           />
         </div>
         <div className="flex w-[82px] flex-col gap-1.5">

@@ -84,7 +84,6 @@ export default async function CategoriesPage() {
               alertOnScan: categorie.alertOnScan,
               requiresAccreditation: categorie.requiresAccreditation,
               isPublic: categorie.isPublic,
-              badgeMention: categorie.badgeMention ?? "",
               inscrits: categorie._count.participants,
             }}
           />

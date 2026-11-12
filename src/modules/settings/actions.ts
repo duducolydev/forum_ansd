@@ -191,7 +191,6 @@ export async function enregistrerCategorieAction(
       alertOnScan: formData.get("alertOnScan") === "on",
       requiresAccreditation: formData.get("requiresAccreditation") === "on",
       isPublic: formData.get("isPublic") === "on",
-      badgeMention: formData.get("badgeMention") ?? "",
     });
     const { badgesRafraichis } = await service.enregistrerCategorie(
       editionId,
@@ -232,7 +231,6 @@ export async function creerCategorieAction(
       requiresLogistics: formData.get("requiresLogistics") === "on",
       alertOnScan: formData.get("alertOnScan") === "on",
       requiresAccreditation: formData.get("requiresAccreditation") === "on",
-      badgeMention: formData.get("badgeMention") ?? "",
       zonesDepuis: formData.get("zonesDepuis") ?? "TOUTES",
     });
     const { categorie, zones } = await service.creerCategorie(editionId, valeurs, acteur);

@@ -239,12 +239,6 @@ export const categorieSchema = z.object({
   requiresAccreditation: z.boolean().default(false),
   // 24 octobre 2026 : catégories créées en BackOffice.
   isPublic: z.boolean().default(true),
-  badgeMention: z
-    .string()
-    .trim()
-    .max(30, "La mention du badge tient en 30 caractères au plus.")
-    .optional()
-    .or(z.literal("")),
 });
 
 /**

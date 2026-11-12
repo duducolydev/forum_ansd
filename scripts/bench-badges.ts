@@ -35,7 +35,6 @@ async function sample(index: number): Promise<string> {
     lastName: "Sow",
     jobTitle: "Directrice des statistiques démographiques",
     organization: "ANSD",
-    categoryLabel: "Participante nationale",
     categoryColor: "#3dbb6e",
     publicId,
     qrDataUrl: await generateQrDataUrl(`http://localhost:3000/v/${buildBadgeToken(publicId, 1)}`),

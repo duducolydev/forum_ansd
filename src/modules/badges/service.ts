@@ -9,7 +9,6 @@ import { markBadged, type Actor } from "@/modules/participants/service";
 import { InvalidParticipantTransitionError } from "@/modules/participants/errors";
 import { detectImageType } from "@/modules/participants/photo";
 import { renderBadgeHtml } from "./template";
-import { mentionDuBadge } from "./mention";
 import { logoBadgeDataUrl } from "./logo";
 import { policesBadgeCss } from "./polices";
 import { datesDuForum } from "./dates";
@@ -35,16 +34,8 @@ const participantForBadge = {
   // d'intervenant, publiée sur le site (29 octobre 2026).
   speaker: { select: { photoPath: true, civility: true } },
   editionId: true,
-  accreditedAt: true,
-  category: {
-    select: {
-      labelFr: true,
-      labelEn: true,
-      color: true,
-      requiresAccreditation: true,
-      badgeMention: true,
-    },
-  },
+  // Seule la couleur de la catégorie entre dans le badge (12 novembre 2026).
+  category: { select: { color: true } },
   edition: { select: { title: true, startDate: true, endDate: true } },
 } satisfies Prisma.ParticipantSelect;
 
@@ -64,7 +55,7 @@ async function photoDataUrl(photoPath: string | null): Promise<string | null> {
 }
 
 /**
- * Le gabarit figure dans le nom (`v1-maquette-2026-c.pdf`) : un badge rendu avec
+ * Le gabarit figure dans le nom (`v1-maquette-2026-d.pdf`) : un badge rendu avec
  * un gabarit antérieur garde ses fichiers, et se repère pour être refait.
  */
 function storageKey(publicId: string, version: number, extension: string): string {
@@ -97,12 +88,10 @@ async function renderAndStore(badge: Badge): Promise<{ pdfPath: string; pngPath:
     lastName: participant.lastName,
     jobTitle: participant.jobTitle,
     organization: participant.organization,
-    categoryLabel: participant.category.labelFr,
+    // La catégorie ne s'imprime plus que par sa couleur (12 novembre 2026) :
+    // ni libellé ni mention. Elle reste lisible en clair à la vérification du
+    // QR (`verifyBadgeToken`), où l'agent de contrôle la lit à l'écran.
     categoryColor: participant.category.color,
-    // Presse accréditée, ou catégorie dotée d'une mention (comité
-    // d'organisation…) : portée par le bandeau du bas, à la place du libellé
-    // de la catégorie, pour le contrôle à l'entrée (`mention.ts`).
-    ...mentionDuBadge(participant.category, participant.accreditedAt),
     publicId: participant.publicId,
     // Le QR encode l'URL de vérification publique : un scanner générique
     // (appareil photo de téléphone) ouvre directement la page de contrôle.
