@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { expect, test } from "@playwright/test";
 import { prisma } from "../src/lib/db";
 import { seConnecterAdmin } from "./helpers/comptes";
+import { cliquerPuisConfirmer } from "./helpers/dialogue";
 
 const executer = promisify(execFile);
 
@@ -165,6 +166,38 @@ test("la planche d'impression affiche un badge par page, au format du badge", as
   // Le format de page est celui du badge, en portrait (25 octobre 2026).
   const styles = await page.locator("style").allTextContents();
   expect(styles.join("")).toContain("size: 100mm 150mm");
+});
+
+/**
+ * Révocation groupée (12 novembre 2026).
+ *
+ * Placée après l'export et la planche : elle invalide pour de bon un des deux
+ * badges du périmètre, ce que les tests précédents comptent encore.
+ */
+test("révoque les badges cochés, et seulement ceux-là", async ({ page }) => {
+  await seConnecterAdmin(page);
+  await page.goto(`/admin/badges?delegationId=${delegationId}`);
+
+  const ligneSow = page.getByRole("row", { name: new RegExp(`Sow${SUFFIXE}`, "i") });
+  await ligneSow.getByRole("checkbox").check();
+
+  // Sans motif, le bouton reste inerte : la trace d'audit doit dire pourquoi.
+  const bouton = page.getByRole("button", { name: /Révoquer 1 badge/ });
+  await expect(bouton).toBeDisabled();
+
+  await page.getByLabel(/Motif de révocation/).fill("Badge perdu (E2E)");
+  await cliquerPuisConfirmer(page, bouton);
+
+  await expect(page.getByText("1 badge(s) révoqué(s).")).toBeVisible();
+  await expect(ligneSow).toContainText("Révoqué");
+
+  const revoques = await prisma.badge.findMany({
+    where: { participantId: { in: participantIds }, revokedAt: { not: null } },
+    select: { participantId: true, revokeReason: true },
+  });
+  expect(revoques).toEqual([
+    { participantId: participantIds[0], revokeReason: "Badge perdu (E2E)" },
+  ]);
 });
 
 test("l'export reste fermé aux sessions sans permission", async ({ request }) => {

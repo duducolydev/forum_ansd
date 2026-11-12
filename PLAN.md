@@ -952,6 +952,7 @@ parcours complet d'un inconnu jusqu'au badge imprimable.
 - [x] Écran `/admin/badges` : filtres catégorie / délégation / état du badge, génération en lot du périmètre, compteur d'impressions.
 - [x] **Export ZIP rangé par délégation** — un dossier par délégation, plus « Sans délégation ».
 - [x] **Planche d'impression** au format carte (85,6 × 54 mm), un badge par page.
+- [x] **Révocation groupée** — cases à cocher sur les lignes à badge valide, motif commun obligatoire, confirmation chiffrée.
 
 **La génération passe par la file, pas par la requête.** Rendre 500 badges prend environ deux
 minutes ; aucune requête HTTP ne doit attendre cela. L'écran annonce donc une **mise en file**, et
@@ -980,9 +981,22 @@ l'agent choisit « plusieurs pages par feuille ».
 **Le nombre de badges manquants voyage dans un en-tête de réponse** (`X-Badges-Manquants`) : une
 archive de 180 fichiers là où on en attendait 200 doit se voir sans avoir à l'ouvrir.
 
+**La révocation groupée ne porte que sur ce qui est coché** (12 novembre 2026). Les autres boutons
+de l'écran agissent sur tout le filtre ; invalider des droits d'accès, non : on ne retire pas un
+badge à quelqu'un dont la ligne n'est pas sous les yeux. Seules les lignes à **badge valide** se
+cochent — une ligne sans badge ou déjà révoquée n'a rien à révoquer, et laisser sa case cliquable
+ferait croire que « tout cocher » porte sur plus de monde qu'en réalité. Un **motif commun** est
+exigé comme sur la fiche, le bouton restant inerte sans lui : une révocation sans motif se
+retrouve des semaines plus tard dans l'audit sans que personne sache pourquoi. Chaque badge passe
+par `revokeBadge`, la fonction de la fiche (`modules/badges/lot.ts`), et les identifiants reçus
+du navigateur sont **refiltrés sur l'édition en cours** ; un badge révoqué entre-temps est mis de
+côté avec sa raison, sans arrêter le lot. Il n'y a **pas de réémission en lot** : elle change le
+QR de chacun et relance un rendu puis un e-mail par personne, ce qui se décide fiche par fiche.
+
 **Vérification** : 9 tests unitaires sur le format ZIP (signatures, répertoire central, CRC,
-drapeau UTF-8, archive vide, assainissement des noms) et 5 tests de bout en bout, dont
-l'extraction réelle.
+drapeau UTF-8, archive vide, assainissement des noms), 4 tests unitaires sur la révocation
+groupée (périmètre de l'édition, badge déjà révoqué, trace d'audit) et 6 tests de bout en bout,
+dont l'extraction réelle de l'archive et la révocation d'une ligne cochée.
 
 ### 4.9 Rapports et exports (`modules/reporting`) — **fait**
 
