@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { RefreshCw, ShieldOff, Sparkles } from "lucide-react";
+import { BadgeCheck, RefreshCw, ShieldOff, Sparkles } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 import { confirmer } from "@/components/ui/confirmer";
 import type { ModeGeneration } from "../lot";
 
 /** Ce que le périmètre courant contient, action par action. */
 export interface CompteursLot {
-  /** Participants sans badge valide : première génération. */
+  /** Participants sans aucun badge : première génération. */
   manquants: number;
+  /** Badges révoqués, à réémettre en version+1 (nouveau QR). */
+  aReemettre: number;
   /** Badges valides, qu'on peut refaire à version constante. */
   existants: number;
   /** Badges valides rendus avec un gabarit antérieur. */
@@ -72,6 +74,18 @@ export function ActionsBadges({
     });
   }
 
+  function reemettre() {
+    void confirmer({
+      titre: `Réémettre ${compteurs.aReemettre} badge(s) révoqué(s) ?`,
+      texte:
+        "Chaque personne reçoit un badge de version suivante, avec un QR neuf, et l'e-mail qui l'invite à le retélécharger. Les QR révoqués restent refusés aux contrôles.",
+      confirmer: `Réémettre ${compteurs.aReemettre} badge(s)`,
+      ton: "neutre",
+    }).then((accepte) => {
+      if (accepte) onGenerer("reemission");
+    });
+  }
+
   function revoquer() {
     void confirmer({
       titre: `Révoquer ${compteurs.revocables} badge(s) ?`,
@@ -129,6 +143,19 @@ export function ActionsBadges({
               onClick={() => onGenerer("manquants")}
             >
               {enCours ? "Mise en file…" : `Générer ${compteurs.manquants} badge(s) manquant(s)`}
+            </Bouton>
+
+            {/* Sans ce bouton, un badge révoqué n'a plus aucune issue depuis
+                la liste : il ne se régénère pas, sa version est morte. */}
+            <Bouton
+              ton="secondaire"
+              icone={BadgeCheck}
+              type="button"
+              disabled={enCours || compteurs.aReemettre === 0}
+              titre="Version suivante, nouveau QR, e-mail envoyé : ce qu'il faut après une révocation."
+              onClick={reemettre}
+            >
+              {`Réémettre ${compteurs.aReemettre} badge(s) révoqué(s)`}
             </Bouton>
 
             <Bouton

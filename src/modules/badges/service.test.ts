@@ -178,6 +178,42 @@ describe.skipIf(!resolveBrowserPath())("badges (brief §5.4)", () => {
     expect(current?.version).toBe(2);
   }, 90_000);
 
+  /*
+   * Le cas qui laissait une personne sans badge (12 novembre 2026) : révoquer
+   * sans réémettre, puis réémettre. La version suivante se comptait sur le
+   * badge **courant**, qui n'existe plus ici — la réémission repartait donc de
+   * la version 1, retrouvait la ligne révoquée par son `qrToken` et lui
+   * réécrivait ses fichiers sans jamais lever la révocation.
+   */
+  it("réémet un badge valide même quand tout a été révoqué sans réémission", async () => {
+    const participant = await makeConfirmedParticipant();
+    const badge = await generateBadge(participant.id, ACTOR);
+    await revokeBadge(badge.id, "Badge perdu", ACTOR);
+    expect(await getCurrentBadge(participant.id)).toBeNull();
+
+    // Sans badge valide, aucun motif n'est exigé : rien n'est retiré.
+    const reissued = await reissueBadge(participant.id, "", ACTOR);
+
+    expect(reissued.version).toBe(2);
+    expect(reissued.revokedAt).toBeNull();
+    expect(reissued.id).not.toBe(badge.id);
+    expect((await getCurrentBadge(participant.id))?.version).toBe(2);
+
+    // Le QR révoqué le reste, le neuf est valide.
+    expect((await verifyBadgeToken(buildBadgeToken(participant.publicId, 1))).status).toBe(
+      "REVOKED",
+    );
+    expect((await verifyBadgeToken(buildBadgeToken(participant.publicId, 2))).status).toBe("VALID");
+  }, 90_000);
+
+  it("exige un motif tant qu'il reste un badge valide à retirer", async () => {
+    const participant = await makeConfirmedParticipant();
+    await generateBadge(participant.id, ACTOR);
+
+    await expect(reissueBadge(participant.id, "  ", ACTOR)).rejects.toThrow(/motif/i);
+    expect((await getCurrentBadge(participant.id))?.version).toBe(1);
+  }, 60_000);
+
   it("compte les impressions", async () => {
     const participant = await makeConfirmedParticipant();
     const badge = await generateBadge(participant.id, ACTOR);

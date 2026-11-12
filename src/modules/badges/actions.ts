@@ -44,8 +44,9 @@ export async function reissueBadgeAction(
 ): Promise<BadgeActionState> {
   try {
     const actor = await requireStaff("badges.revoke");
-    if (!reason.trim()) return { error: "Un motif de réémission est requis." };
-    const badge = await service.reissueBadge(participantId, reason.trim(), actor);
+    // Le motif est exigé par le service, et seulement quand il y a un badge
+    // valide à retirer : réémettre après une révocation n'en retire aucun.
+    const badge = await service.reissueBadge(participantId, reason, actor);
     revalidatePath(`/admin/participants/${participantId}`);
     return { success: `Badge réémis en version ${badge.version}. L'ancien QR est invalidé.` };
   } catch (error) {

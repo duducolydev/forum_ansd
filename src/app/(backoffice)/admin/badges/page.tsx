@@ -52,12 +52,14 @@ export default async function BadgesPage({
    */
   const sansBadgeValide = filtre.etat === "AVEC" || filtre.etat === "REVOQUE";
   const sansBadgeARefaire = filtre.etat === "SANS" || filtre.etat === "REVOQUE";
+  const sansRevoque = filtre.etat === "SANS" || filtre.etat === "AVEC";
 
-  const [lignes, total, manquants, existants, ancienGabarit, categories, delegations] =
+  const [lignes, total, manquants, revoques, existants, ancienGabarit, categories, delegations] =
     await Promise.all([
       lister(edition.id, filtre, LIMITE),
       compter(edition.id, filtre),
       sansBadgeValide ? 0 : compter(edition.id, { ...filtre, etat: "SANS" }),
+      sansRevoque ? 0 : compter(edition.id, { ...filtre, etat: "REVOQUE" }),
       sansBadgeARefaire ? 0 : compter(edition.id, { ...filtre, etat: "AVEC" }),
       sansBadgeARefaire ? 0 : compterAncienGabarit(edition.id, filtre),
       prisma.participantCategory.findMany({
@@ -85,7 +87,7 @@ export default async function BadgesPage({
         <GestionBadges
           lignes={lignes}
           limite={LIMITE}
-          compteurs={{ total, manquants, existants, ancienGabarit }}
+          compteurs={{ total, manquants, revoques, existants, ancienGabarit }}
           categories={categories}
           delegations={delegations}
           peutGenerer={can(session, "badges.generate")}

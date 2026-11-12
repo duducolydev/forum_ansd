@@ -24,15 +24,20 @@ import { FiltresBadges } from "./filtres-badges";
 export interface CompteursFiltre {
   total: number;
   manquants: number;
+  /** Participants dont le dernier badge est révoqué : à réémettre. */
+  revoques: number;
   existants: number;
   ancienGabarit: number;
 }
 
 function messageDe(mode: ModeGeneration, resultat: ResultatLotBadges): string {
   if (resultat.traites === 0) {
-    return mode === "manquants"
-      ? "Aucun badge à générer dans ce périmètre."
-      : "Aucun badge à refaire dans ce périmètre.";
+    if (mode === "manquants") return "Aucun badge à générer dans ce périmètre.";
+    if (mode === "reemission") return "Aucun badge révoqué à réémettre dans ce périmètre.";
+    return "Aucun badge à refaire dans ce périmètre.";
+  }
+  if (mode === "reemission") {
+    return `${resultat.traites} badge(s) réémis en version suivante et mis en file. Nouveau QR : chaque personne reçoit l'e-mail qui l'invite à le retélécharger.`;
   }
   if (mode === "manquants") {
     // On annonce une mise en file, pas une génération : le rendu se fait en
@@ -88,12 +93,14 @@ export function GestionBadges({
   const comptes: CompteursLot = surSelection
     ? {
         manquants: selection.filter((ligne) => !ligne.revoque && !ligne.genere).length,
+        aReemettre: selection.filter((ligne) => ligne.revoque).length,
         existants: selection.filter((ligne) => ligne.genere && !ligne.revoque).length,
         ancienGabarit: selection.filter((ligne) => ligne.ancienGabarit).length,
         revocables: selection.filter((ligne) => ligne.badgeId !== null && !ligne.revoque).length,
       }
     : {
         manquants: compteurs.manquants,
+        aReemettre: compteurs.revoques,
         existants: compteurs.existants,
         ancienGabarit: compteurs.ancienGabarit,
         revocables: compteurs.existants,

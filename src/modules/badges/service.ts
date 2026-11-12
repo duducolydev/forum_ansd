@@ -272,6 +272,48 @@ export async function revokeBadge(badgeId: string, reason: string, actor: Actor)
 }
 
 /**
+ * Prépare une réémission **sans rendre** : révoque le badge courant s'il y en
+ * a un, puis crée la ligne de la version suivante.
+ *
+ * Séparée du rendu parce que la réémission en lot (`lot.ts`) met le rendu en
+ * file : rendre deux cents badges dans la requête tiendrait la minute et demie.
+ *
+ * La version suivante se compte sur **le dernier badge, révoqué ou non**, et
+ * non sur le badge courant : quand tous les badges ont été révoqués sans
+ * réémission, il n'y a pas de badge courant, et repartir de zéro rendait la
+ * version 1 — c'est-à-dire la ligne révoquée elle-même, que `ensureBadgeRow`
+ * retrouvait par son `qrToken`. La réémission réécrivait alors les fichiers
+ * d'un badge qui restait révoqué, sans jamais en produire un valide.
+ */
+export async function prepareReissue(
+  participantId: string,
+  reason: string,
+  actor: Actor,
+): Promise<Badge> {
+  const current = await getCurrentBadge(participantId);
+  if (current) {
+    // Le motif n'est exigé que s'il y a un badge valide à retirer : quand tout
+    // est déjà révoqué, la raison est inscrite sur la ligne révoquée, et rien
+    // n'est retiré à personne.
+    if (!reason.trim()) throw new Error("Un motif de réémission est requis.");
+    await revokeBadge(current.id, reason.trim(), actor);
+  }
+
+  const participant = await prisma.participant.findUniqueOrThrow({
+    where: { id: participantId },
+    select: { publicId: true },
+  });
+  const dernier = await prisma.badge.findFirst({
+    where: { participantId },
+    orderBy: { version: "desc" },
+    select: { version: true },
+  });
+  const version = (dernier?.version ?? 0) + 1;
+
+  return ensureBadgeRow(participantId, participant.publicId, version);
+}
+
+/**
  * Réémission : révoque le badge courant puis en génère un de version+1.
  * Le token change (la version entre dans le HMAC), donc l'ancien QR ne
  * correspond plus — vérifié par un test.
@@ -281,18 +323,8 @@ export async function reissueBadge(
   reason: string,
   actor: Actor,
 ): Promise<Badge> {
-  const current = await getCurrentBadge(participantId);
-  if (current) {
-    await revokeBadge(current.id, reason, actor);
-  }
-
-  const participant = await prisma.participant.findUniqueOrThrow({
-    where: { id: participantId },
-    select: { publicId: true },
-  });
-  const version = (current?.version ?? 0) + 1;
-
-  const badge = await ensureBadgeRow(participantId, participant.publicId, version);
+  const badge = await prepareReissue(participantId, reason, actor);
+  const version = badge.version;
 
   const { pdfPath, pngPath } = await renderAndStore(badge);
   const updated = await prisma.badge.update({

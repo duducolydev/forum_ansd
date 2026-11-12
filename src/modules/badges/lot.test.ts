@@ -1,18 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findMany, revokeBadge, enqueueBadgeGeneration, enqueueBadgeRefresh, log } = vi.hoisted(
-  () => ({
-    findMany: vi.fn(),
-    revokeBadge: vi.fn(),
-    enqueueBadgeGeneration: vi.fn(),
-    enqueueBadgeRefresh: vi.fn(),
-    log: vi.fn(),
-  }),
-);
+const {
+  findMany,
+  revokeBadge,
+  prepareReissue,
+  enqueueBadgeGeneration,
+  enqueueBadgeRefresh,
+  enqueueBadgeReissueRender,
+  log,
+} = vi.hoisted(() => ({
+  findMany: vi.fn(),
+  revokeBadge: vi.fn(),
+  prepareReissue: vi.fn(),
+  enqueueBadgeGeneration: vi.fn(),
+  enqueueBadgeRefresh: vi.fn(),
+  enqueueBadgeReissueRender: vi.fn(),
+  log: vi.fn(),
+}));
 
 vi.mock("@/lib/db", () => ({ prisma: { participant: { findMany } } }));
-vi.mock("@/modules/badges/service", () => ({ revokeBadge }));
-vi.mock("@/modules/badges/jobs", () => ({ enqueueBadgeRefresh }));
+vi.mock("@/modules/badges/service", () => ({ revokeBadge, prepareReissue }));
+vi.mock("@/modules/badges/jobs", () => ({ enqueueBadgeRefresh, enqueueBadgeReissueRender }));
 vi.mock("@/modules/participants/service", () => ({ enqueueBadgeGeneration }));
 vi.mock("@/lib/audit", () => ({ audit: { log } }));
 
@@ -173,7 +181,37 @@ describe("mise en file de la génération en lot", () => {
     expect(enqueueBadgeGeneration).not.toHaveBeenCalled();
     expect(resultat).toMatchObject({
       traites: 0,
-      ignores: [{ nom: "NDIAYE Awa", raison: "badge révoqué : à réémettre depuis la fiche" }],
+      ignores: [{ nom: "NDIAYE Awa", raison: "badge révoqué : passez par la réémission" }],
+    });
+  });
+
+  /*
+   * Le cas qui laissait une impasse : six badges révoqués d'un coup, et plus
+   * aucun bouton qui puisse rendre un badge valide à ces personnes.
+   */
+  it("réémet un badge révoqué en version suivante, et met son rendu en file", async () => {
+    findMany.mockResolvedValue([
+      ligne("p1", { id: "b-p1", generatedAt: new Date(), revokedAt: new Date() }),
+    ]);
+    prepareReissue.mockResolvedValue({ id: "b-p1-v2", version: 2 });
+
+    const resultat = await mettreEnFileEnLot("e1", FILTRE, "reemission", acteur);
+
+    // Pas de motif : il n'y a plus rien à révoquer, on émet la suite.
+    expect(prepareReissue).toHaveBeenCalledWith("p1", "", acteur);
+    expect(enqueueBadgeReissueRender).toHaveBeenCalledWith("p1", 2);
+    expect(resultat.traites).toBe(1);
+  });
+
+  it("ne réémet pas un badge encore valide", async () => {
+    findMany.mockResolvedValue([ligne("p1")]);
+
+    const resultat = await mettreEnFileEnLot("e1", FILTRE, "reemission", acteur);
+
+    expect(prepareReissue).not.toHaveBeenCalled();
+    expect(resultat).toMatchObject({
+      traites: 0,
+      ignores: [{ nom: "NDIAYE Awa", raison: "a déjà un badge valide : rien à réémettre" }],
     });
   });
 

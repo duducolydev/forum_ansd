@@ -5,8 +5,8 @@ import { audit } from "@/lib/audit";
 import { enqueueBadgeGeneration, type Actor } from "@/modules/participants/service";
 import { aRefaireAuGabarit, perimetreFiltre, type FiltreBadges } from "./bulk";
 import { GABARIT_BADGE } from "./format";
-import { enqueueBadgeRefresh } from "./jobs";
-import { revokeBadge } from "./service";
+import { enqueueBadgeReissueRender, enqueueBadgeRefresh } from "./jobs";
+import { prepareReissue, revokeBadge } from "./service";
 
 /**
  * Actions de masse sur les badges, depuis la liste du BackOffice
@@ -55,12 +55,14 @@ export const perimetreSchema: z.ZodType<PerimetreLot> = z.discriminatedUnion("mo
 
 /** Ce que fait une mise en file, et sur quelles lignes elle porte. */
 export type ModeGeneration =
-  /** Les participants sans badge valide : première génération, avec e-mail. */
+  /** Les participants sans aucun badge : première génération, avec e-mail. */
   | "manquants"
   /** Les badges valides, refaits dans leur version : même QR, sans e-mail. */
   | "existants"
   /** Les seuls badges valides rendus avec un gabarit antérieur. */
-  | "ancien-gabarit";
+  | "ancien-gabarit"
+  /** Les badges révoqués : version+1, **nouveau QR**, avec e-mail. */
+  | "reemission";
 
 export interface ResultatLotBadges {
   traites: number;
@@ -142,7 +144,16 @@ const AVEC_BADGE_VALIDE: Prisma.ParticipantWhereInput = { badges: { some: { revo
 /** Restriction propre à chaque mode de mise en file. */
 function restrictionDe(editionId: string, mode: ModeGeneration, perimetre: PerimetreLot) {
   if (mode === "manquants") {
-    return { badges: { none: { revokedAt: null, generatedAt: { not: null } } } };
+    // Même définition que l'état « À générer » de l'écran (`bulk.ts`) : un
+    // badge révoqué n'en est pas, il relève de la réémission.
+    return {
+      badges: { none: { OR: [{ revokedAt: { not: null } }, { generatedAt: { not: null } }] } },
+    };
+  }
+  if (mode === "reemission") {
+    // Plus aucun badge valide, et au moins un révoqué : exactement l'état
+    // « Révoqué » de l'écran.
+    return { badges: { some: { revokedAt: { not: null } }, none: { revokedAt: null } } };
   }
   if (mode === "existants") {
     return { badges: { some: { revokedAt: null, generatedAt: { not: null } } } };
@@ -185,15 +196,30 @@ export async function mettreEnFileEnLot(
   let traites = 0;
 
   for (const cible of lignes) {
-    // Un badge révoqué ne se régénère pas : il faut une réémission, qui change
-    // le QR et se décide fiche par fiche (`generateBadge` la refuse d'ailleurs).
-    if (cible.badgeRevoque) {
-      ignores.push({ nom: cible.nom, raison: "badge révoqué : à réémettre depuis la fiche" });
+    // Un badge révoqué ne se **régénère** pas : sa version est morte avec lui,
+    // il faut en émettre une nouvelle. C'est le mode `reemission`, pas les
+    // autres, que `generateBadge` refuserait d'ailleurs.
+    if (cible.badgeRevoque && mode !== "reemission") {
+      ignores.push({ nom: cible.nom, raison: "badge révoqué : passez par la réémission" });
+      continue;
+    }
+    if (!cible.badgeRevoque && mode === "reemission") {
+      ignores.push({ nom: cible.nom, raison: "a déjà un badge valide : rien à réémettre" });
       continue;
     }
 
     try {
-      if (mode === "manquants") {
+      if (mode === "reemission") {
+        /*
+         * La version suivante est créée ici, le rendu part en file : deux
+         * cents rendus dans la requête tiendraient la minute et demie. Le
+         * motif de la ligne révoquée reste le sien — on ne révoque rien de
+         * plus, on émet la suite.
+         */
+        const badge = await prepareReissue(cible.participantId, "", actor);
+        await enqueueBadgeReissueRender(cible.participantId, badge.version);
+        traites += 1;
+      } else if (mode === "manquants") {
         await enqueueBadgeGeneration(cible.participantId);
         traites += 1;
       } else if (await enqueueBadgeRefresh(cible.participantId, { silencieux: true })) {
@@ -213,7 +239,12 @@ export async function mettreEnFileEnLot(
   await audit.log({
     actorType: actor.type,
     actorUserId: actor.userId,
-    action: mode === "ancien-gabarit" ? "badge.bulk_reformat" : "badge.bulk_generate",
+    action:
+      mode === "ancien-gabarit"
+        ? "badge.bulk_reformat"
+        : mode === "reemission"
+          ? "badge.bulk_reissue"
+          : "badge.bulk_generate",
     entity: "Edition",
     entityId: editionId,
     after: {

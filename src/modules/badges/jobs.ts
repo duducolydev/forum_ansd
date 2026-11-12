@@ -85,3 +85,24 @@ export async function enqueueBadgeRefresh(
   );
   return true;
 }
+
+/**
+ * Met en file le rendu d'une version **qui vient d'être créée** par une
+ * réémission (`prepareReissue`), avec l'e-mail « badge prêt » : le QR a changé,
+ * la personne doit retélécharger son badge.
+ *
+ * Clé d'idempotence portant la version : celle de la première génération est
+ * fixe par participant, et une réémission ne doit pas se faire écarter comme
+ * un doublon du rendu initial.
+ */
+export async function enqueueBadgeReissueRender(
+  participantId: string,
+  version: number,
+): Promise<void> {
+  registerBadgeJobs();
+  await jobQueue.enqueue<BadgeGenerateJobPayload>(
+    "badge.generate",
+    { participantId },
+    { idempotencyKey: `badge-reissue:${participantId}:v${version}` },
+  );
+}

@@ -999,6 +999,28 @@ une sélection vaut par ses identifiants — ce qui est coché est traité, mêm
 participant a changé depuis l'affichage ; le bilan dit alors pourquoi une ligne a été écartée,
 plutôt que de la faire disparaître d'une intersection silencieuse.
 
+**Un badge révoqué n'était plus rattrapable, et c'était une impasse** (12 novembre 2026, trouvé en
+recette sur six badges « Personnel ANSD » révoqués d'un coup). L'écran annonçait « 6 sans badge »
+en face d'un bouton « Générer 0 », et la fiche ne proposait qu'une génération que le service
+refuse — une version révoquée est morte avec son QR, elle se réémet. Trois défauts, tous corrigés :
+
+1. **La réémission se trompait de version.** La version suivante se comptait sur le badge
+   _courant_ ; quand tout est révoqué il n'y en a plus, et le calcul repartait de la version 1 —
+   soit la ligne révoquée elle-même, que `ensureBadgeRow` retrouvait par son `qrToken`. La
+   réémission lui réécrivait ses fichiers **sans jamais lever la révocation**. Elle compte
+   désormais sur le dernier badge, révoqué ou non (`prepareReissue`).
+2. **Les trois états ne formaient pas une partition.** « À générer » incluait les révoqués, d'où
+   le compteur qui contredisait le bouton. `SANS` exclut maintenant tout participant ayant un
+   badge révoqué : aucun badge / badge révoqué / badge valide ne se recouvrent plus.
+3. **Aucun geste de masse n'y menait.** La liste a son bouton « Réémettre N badge(s) révoqué(s) »
+   — version+1, **nouveau QR**, e-mail de retéléchargement — et la fiche propose « Réémettre en
+   v2 » dès qu'il ne reste que des badges révoqués, au lieu d'un bouton voué à l'échec. Le motif
+   n'est exigé que s'il y a un badge valide à retirer : quand tout est déjà révoqué, la raison est
+   inscrite sur la ligne révoquée et rien n'est retiré à personne. Comme les autres gestes, la
+   réémission crée la version en base et **met le rendu en file**, avec une clé d'idempotence
+   portant la version — celle de la première génération est fixe par participant et aurait fait
+   écarter le nouveau rendu comme un doublon.
+
 Les deux chemins passent par **les mêmes fonctions** (`modules/badges/lot.ts`), de sorte qu'une
 règle ne puisse pas valoir d'un côté et pas de l'autre, et chaque badge par la fonction de sa
 fiche : `enqueueBadgeGeneration`, `enqueueBadgeRefresh`, `revokeBadge` — mêmes règles, mêmes

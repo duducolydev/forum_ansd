@@ -272,6 +272,40 @@ test("révoque tout le périmètre du filtre quand aucune case n'est cochée", a
   expect(revoques).toBe(2);
 });
 
+/**
+ * La sortie de secours d'une révocation (12 novembre 2026) : les deux badges
+ * de la délégation viennent d'être révoqués, et ces personnes doivent pouvoir
+ * en recevoir un valide sans qu'on reprenne leur fiche une par une.
+ */
+test("réémet les badges révoqués du filtre, en version suivante", async ({ page }) => {
+  await seConnecterAdmin(page);
+  await page.goto(`/admin/badges?delegationId=${delegationId}`);
+
+  // Rien à générer : un badge révoqué se réémet, il ne se régénère pas.
+  await expect(
+    page.getByRole("button", { name: /Générer 0 badge\(s\) manquant\(s\)/ }),
+  ).toBeDisabled();
+  await cliquerPuisConfirmer(page, { nom: "Réémettre 2 badge(s) révoqué(s)" });
+
+  await expect(page.getByText(/2 badge\(s\) réémis en version suivante/)).toBeVisible();
+
+  // Chacun a une v2 valide, et sa v1 reste révoquée.
+  await expect
+    .poll(
+      async () =>
+        prisma.badge.count({
+          where: { participantId: { in: participantIds }, version: 2, revokedAt: null },
+        }),
+      { timeout: 30_000, message: "les versions 2 n'ont pas été créées" },
+    )
+    .toBe(2);
+  expect(
+    await prisma.badge.count({
+      where: { participantId: { in: participantIds }, version: 1, revokedAt: { not: null } },
+    }),
+  ).toBe(2);
+});
+
 test("l'export reste fermé aux sessions sans permission", async ({ request }) => {
   expect((await request.get("/api/v1/badges/export")).status()).toBe(401);
 });

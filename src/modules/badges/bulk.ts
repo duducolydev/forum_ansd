@@ -44,9 +44,19 @@ export function perimetreFiltre(
   };
 
   if (filtre.etat === "SANS") {
-    // Aucun badge, ou aucun badge encore rendu : les deux cas se traitent de la
-    // même façon, il faut lancer une génération.
-    return { ...base, badges: { none: { revokedAt: null, generatedAt: { not: null } } } };
+    /*
+     * Aucun badge, ou un badge créé mais pas encore rendu : les deux se
+     * traitent de la même façon, il faut lancer une génération.
+     *
+     * Un badge **révoqué** n'en fait pas partie, bien qu'il ne laisse lui non
+     * plus aucun badge valide : il se réémet (version+1, nouveau QR), il ne se
+     * génère pas. Les trois états forment ainsi une partition, et l'écran ne
+     * peut plus annoncer « 6 sans badge » en face d'un bouton « Générer 0 ».
+     */
+    return {
+      ...base,
+      badges: { none: { OR: [{ revokedAt: { not: null } }, { generatedAt: { not: null } }] } },
+    };
   }
   if (filtre.etat === "AVEC") {
     return { ...base, badges: { some: { revokedAt: null, generatedAt: { not: null } } } };

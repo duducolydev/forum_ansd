@@ -41,6 +41,14 @@ export function BadgePanel({ participantId, badges, canGenerate, canRevoke, canP
   const [reason, setReason] = useState("");
 
   const current = badges.find((badge) => !badge.revokedAt) ?? null;
+  /*
+   * Tous les badges révoqués : il n'y a plus rien à régénérer — la version
+   * révoquée est morte avec son QR — mais tout à réémettre. Sans ce cas, la
+   * fiche ne proposait qu'une génération que le service refuse, et la personne
+   * restait sans badge sans qu'aucun bouton n'y puisse rien.
+   */
+  const toutRevoque = !current && badges.length > 0;
+  const prochaineVersion = badges.reduce((max, badge) => Math.max(max, badge.version), 0) + 1;
 
   function run(action: () => Promise<BadgeActionState>) {
     setState({});
@@ -115,7 +123,7 @@ export function BadgePanel({ participantId, badges, canGenerate, canRevoke, canP
       )}
 
       <div className="flex flex-wrap gap-2">
-        {canGenerate && (
+        {canGenerate && !toutRevoque && (
           <Bouton
             ton="principal"
             icone={current ? RefreshCw : BadgeCheck}
@@ -123,6 +131,27 @@ export function BadgePanel({ participantId, badges, canGenerate, canRevoke, canP
             onClick={() => run(() => generateBadgeAction(participantId))}
           >
             {current ? "Régénérer (même version)" : "Générer le badge"}
+          </Bouton>
+        )}
+
+        {canRevoke && toutRevoque && (
+          <Bouton
+            ton="principal"
+            icone={BadgeCheck}
+            disabled={pending}
+            onClick={auClicConfirme(
+              {
+                titre: `Réémettre le badge en v${prochaineVersion} ?`,
+                texte:
+                  "La personne retrouve un badge valide, avec un QR neuf, et reçoit l'e-mail qui l'invite à le retélécharger. Les QR révoqués restent refusés aux contrôles.",
+                confirmer: `Réémettre en v${prochaineVersion}`,
+                ton: "neutre",
+              },
+              // Pas de motif : il n'y a plus rien à révoquer, on émet la suite.
+              () => run(() => reissueBadgeAction(participantId, "")),
+            )}
+          >
+            Réémettre en v{prochaineVersion}
           </Bouton>
         )}
         {canPrint && current?.hasFiles && (
