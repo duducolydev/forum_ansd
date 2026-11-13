@@ -1,6 +1,16 @@
+import type { Prisma } from "@prisma/client";
 import { audit } from "@/lib/audit";
+import { oublierProgramme } from "@/modules/notifications/recap-programme";
 import * as repo from "./repository";
 import type { SessionRow } from "./repository";
+import {
+  comparerSession,
+  figerEtat,
+  lireEtatAnnonce,
+  type Changement,
+  type EtatSuivi,
+} from "./changements";
+import { alerterSansBloquer, alerterSession } from "./notifications";
 import { ordonnerIntervenants } from "./ordre-intervenants";
 import { slugifier, type RoomInput, type SessionInput } from "./schema";
 
@@ -236,6 +246,7 @@ export async function getSessionBySlug(editionId: string, slug: string) {
 export async function createSession(editionId: string, input: SessionInput, actor: Actor) {
   const slug = await slugUnique(editionId, input.slug || slugifier(input.titleFr));
   const session = await repo.createSession({ ...versDonnees(editionId, input), slug });
+  oublierProgramme(editionId);
 
   await audit.log({
     actorType: actor.type,
@@ -259,7 +270,12 @@ export async function updateSession(
   if (!avant) throw new SessionRuleError("Session introuvable.");
 
   const slug = await slugUnique(editionId, input.slug || slugifier(input.titleFr), id);
-  const session = await repo.updateSession(id, { ...versDonnees(editionId, input), slug });
+  const session = await repo.updateSession(id, {
+    ...versDonnees(editionId, input),
+    slug,
+    ...etatConnuAvant(avant),
+  });
+  oublierProgramme(editionId);
 
   await audit.log({
     actorType: actor.type,
@@ -271,7 +287,106 @@ export async function updateSession(
     after: { titleFr: session.titleFr, isPublished: session.isPublished, day: session.day },
   });
 
-  return session;
+  // Aucun envoi ici : c'est le bouton « Prévenir les inscrits » qui décide
+  // (13 novembre 2026). Un envoi d'office aurait écrit trois fois à deux cents
+  // personnes pour un horaire corrigé en trois essais, et la correction d'une
+  // coquille au milieu d'une refonte serait partie seule.
+  return { ...session, changements: changementsNonAnnonces(session).length };
+}
+
+/**
+ * Pose l'état annoncé d'une session publiée qui n'en a pas encore.
+ *
+ * Le programme tournait avant que ces colonnes existent : les sessions déjà en
+ * ligne n'ont pas d'état annoncé, et sans celui-ci le bouton n'aurait jamais
+ * rien à annoncer. L'état retenu est celui d'**avant** la modification en
+ * cours : c'est bien ce que le public avait sous les yeux.
+ *
+ * Posé ici et non par la migration : une reprise en masse aurait affirmé, pour
+ * chaque session, un état annoncé que personne n'a vérifié.
+ */
+function etatConnuAvant(avant: SessionRow): { announcedState?: Prisma.InputJsonValue } {
+  if (!avant.isPublished || lireEtatAnnonce(avant.announcedState)) return {};
+  return { announcedState: figerEtat(etatSuivi(avant)) };
+}
+
+/**
+ * Ce qui a changé depuis le dernier message envoyé aux inscrits.
+ *
+ * Vide tant que la session n'est pas publiée (rien n'a été annoncé) ou qu'aucun
+ * état annoncé n'est enregistré. Comparer à l'état annoncé plutôt qu'à l'état
+ * précédent est ce qui permet de corriger un horaire en trois essais et de
+ * n'écrire qu'une fois : un aller-retour revient à l'état connu, et ne laisse
+ * donc rien à dire.
+ */
+export function changementsNonAnnonces(session: SessionRow): Changement[] {
+  if (!session.isPublished) return [];
+  const annonce = lireEtatAnnonce(session.announcedState);
+  if (!annonce) return [];
+  return comparerSession(annonce, etatSuivi(session));
+}
+
+function etatSuivi(session: SessionRow): EtatSuivi {
+  return {
+    titleFr: session.titleFr,
+    titleEn: session.titleEn,
+    titlePt: session.titlePt,
+    day: session.day,
+    startTime: session.startTime,
+    endTime: session.endTime,
+    salle: session.room?.name ?? null,
+  };
+}
+
+/**
+ * Envoie l'annonce, sur geste explicite du comité.
+ *
+ * L'état annoncé n'est mis à jour **qu'après** la mise en file : si celle-ci
+ * échoue, la session reste « à annoncer » et le bouton se represse, au lieu de
+ * laisser croire que le message est parti.
+ */
+export async function annoncerChangements(
+  id: string,
+  actor: Actor,
+): Promise<{ prevenus: number; changements: number }> {
+  const session = await repo.findSession(id);
+  if (!session) throw new SessionRuleError("Session introuvable.");
+  if (!session.isPublished) {
+    throw new SessionRuleError(
+      "Cette session n'est pas publiée : il n'y a rien à annoncer tant qu'elle ne figure pas au programme.",
+    );
+  }
+
+  const changements = changementsNonAnnonces(session);
+  if (changements.length === 0) {
+    throw new SessionRuleError("Rien de nouveau à annoncer depuis le dernier message.");
+  }
+
+  const prevenus = await alerterSession({
+    editionId: session.editionId,
+    sessionId: session.id,
+    slug: session.slug,
+    titre: { fr: session.titleFr, en: session.titleEn, pt: session.titlePt },
+    motif: "modifiee",
+    changements,
+    empreinte: session.updatedAt.toISOString(),
+  });
+
+  await repo.updateSession(id, {
+    announcedState: figerEtat(etatSuivi(session)),
+    announcedAt: new Date(),
+  });
+
+  await audit.log({
+    actorType: actor.type,
+    actorUserId: actor.userId,
+    action: "session.announced",
+    entity: "Session",
+    entityId: id,
+    after: { prevenus, changements: changements.map((ligne) => ligne.texte.fr) },
+  });
+
+  return { prevenus, changements: changements.length };
 }
 
 /**
@@ -326,8 +441,32 @@ export async function duplicateSession(editionId: string, id: string, actor: Act
   return copie;
 }
 
-export async function setPublished(id: string, isPublished: boolean, actor: Actor) {
-  const session = await repo.updateSession(id, { isPublished });
+/**
+ * Publie ou dépublie une session.
+ *
+ * `prevenir` n'a de sens qu'au retrait, et il est **décidé par l'appelant** :
+ * la boîte de dialogue du BackOffice pose la question, le script du programme
+ * officiel n'écrit à personne (`prevenir` vaut faux par défaut). Un envoi
+ * d'office au retrait était l'automatisme que le comité a refusé.
+ */
+export async function setPublished(
+  id: string,
+  isPublished: boolean,
+  actor: Actor,
+  options: { prevenir?: boolean } = {},
+) {
+  const avant = await repo.findSession(id);
+  if (!avant) throw new SessionRuleError("Session introuvable.");
+
+  const session = await repo.updateSession(id, {
+    isPublished,
+    // Mettre une session en ligne, c'est l'annoncer dans l'état où elle est :
+    // les retouches faites en brouillon n'ont donc rien à rattraper ensuite.
+    ...(isPublished && !avant.isPublished
+      ? { announcedState: figerEtat(etatSuivi(avant)), announcedAt: new Date() }
+      : {}),
+  });
+  oublierProgramme(session.editionId);
 
   await audit.log({
     actorType: actor.type,
@@ -335,13 +474,34 @@ export async function setPublished(id: string, isPublished: boolean, actor: Acto
     action: isPublished ? "session.publish" : "session.unpublish",
     entity: "Session",
     entityId: id,
-    after: { isPublished },
+    after: { isPublished, prevenus: options.prevenir === true },
   });
 
-  return session;
+  // Retirer une session de l'affiche, c'est l'annuler pour ceux qui l'avaient
+  // notée. La remettre en ligne n'écrit jamais : ils n'ont rien su de son
+  // retrait, et une annonce de « rétablissement » créerait l'inquiétude
+  // qu'elle prétend lever.
+  const prevenus =
+    options.prevenir && avant.isPublished && !isPublished
+      ? await alerterSansBloquer({
+          editionId: avant.editionId,
+          sessionId: id,
+          slug: session.slug,
+          titre: { fr: session.titleFr, en: session.titleEn, pt: session.titlePt },
+          motif: "annulee",
+          changements: [],
+          empreinte: session.updatedAt.toISOString(),
+        })
+      : 0;
+
+  return { ...session, prevenus };
 }
 
-export async function deleteSession(id: string, actor: Actor) {
+export async function deleteSession(
+  id: string,
+  actor: Actor,
+  options: { prevenir?: boolean } = {},
+) {
   const session = await repo.findSession(id);
   if (!session) throw new SessionRuleError("Session introuvable.");
   if (session._count.registrations > 0) {
@@ -350,7 +510,9 @@ export async function deleteSession(id: string, actor: Actor) {
     );
   }
 
-  await repo.softDeleteSession(id);
+  const supprimee = await repo.softDeleteSession(id);
+  oublierProgramme(session.editionId);
+
   await audit.log({
     actorType: actor.type,
     actorUserId: actor.userId,
@@ -358,7 +520,26 @@ export async function deleteSession(id: string, actor: Actor) {
     entity: "Session",
     entityId: id,
     before: { slug: session.slug, titleFr: session.titleFr },
+    after: { prevenus: options.prevenir === true },
   });
+
+  // Une session supprimée ne porte aucune inscription (la règle ci-dessus le
+  // garantit) : restent les intervenants, qui avaient bloqué le créneau et à
+  // qui plus rien ne l'apprendrait — si le comité l'a demandé.
+  const prevenus =
+    options.prevenir && session.isPublished
+      ? await alerterSansBloquer({
+          editionId: session.editionId,
+          sessionId: id,
+          slug: session.slug,
+          titre: { fr: session.titleFr, en: session.titleEn, pt: session.titlePt },
+          motif: "annulee",
+          changements: [],
+          empreinte: supprimee.updatedAt.toISOString(),
+        })
+      : 0;
+
+  return { prevenus };
 }
 
 export async function setTdrPath(id: string, tdrPath: string | null, actor: Actor) {

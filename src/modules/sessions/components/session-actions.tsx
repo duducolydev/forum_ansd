@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Copy, Eye, EyeOff, Trash2 } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
-import { auClicConfirme, confirmer } from "@/components/ui/confirmer";
+import { confirmerAvecOuSans } from "@/components/ui/confirmer";
 import { deleteSessionAction, duplicateSessionAction, togglePublishedAction } from "../actions";
 
 /**
@@ -14,6 +14,11 @@ import { deleteSessionAction, duplicateSessionAction, togglePublishedAction } fr
  * message qui remonte le dit. Rien n'est masqué ici en fonction du nombre
  * d'inscrits : la règle vit à un seul endroit, et l'écran se contente de la
  * relayer.
+ *
+ * **Retirer une session ne prévient personne tout seul** (13 novembre 2026).
+ * La boîte de dialogue pose la question en deux boutons — « Retirer et
+ * prévenir » ou « Retirer sans prévenir » —, parce qu'après coup il n'y a plus
+ * d'écran où le demander : la session a quitté la liste.
  */
 export function SessionActions({
   id,
@@ -25,26 +30,45 @@ export function SessionActions({
   isPublished: boolean;
 }) {
   const [erreur, setErreur] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [enCours, startTransition] = useTransition();
   const router = useRouter();
 
-  function lancer(action: () => Promise<{ error?: string }>) {
+  function lancer(action: () => Promise<{ error?: string; message?: string }>) {
     setErreur(null);
+    setMessage(null);
     startTransition(async () => {
       const resultat = await action();
       if (resultat.error) setErreur(resultat.error);
-      else router.refresh();
+      else {
+        // Quand un envoi a eu lieu, l'écran dit combien de personnes ont été
+        // prévenues : un départ silencieux se découvrirait par les réponses.
+        setMessage(resultat.message ?? null);
+        router.refresh();
+      }
     });
   }
 
   async function supprimer() {
-    const confirme = await confirmer({
+    const issue = await confirmerAvecOuSans({
       titre: "Supprimer cette session ?",
-      texte: `« ${titre} » sera retirée du programme. La suppression est refusée si des inscriptions existent.`,
-      confirmer: "Supprimer",
+      texte: `« ${titre} » sera retirée du programme. La suppression est refusée si des inscriptions existent ; ses intervenants, eux, peuvent être avertis par e-mail.`,
+      confirmer: "Supprimer et prévenir",
+      sansPrevenir: "Supprimer sans prévenir",
       ton: "danger",
     });
-    if (confirme) lancer(() => deleteSessionAction(id));
+    if (issue !== "annule") lancer(() => deleteSessionAction(id, issue === "avec"));
+  }
+
+  async function depublier() {
+    const issue = await confirmerAvecOuSans({
+      titre: "Dépublier cette session ?",
+      texte: `« ${titre} » disparaîtra du programme public. Ses inscrits, la liste d'attente et ses intervenants peuvent être avertis de son retrait.`,
+      confirmer: "Dépublier et prévenir",
+      sansPrevenir: "Dépublier sans prévenir",
+      ton: "danger",
+    });
+    if (issue !== "annule") lancer(() => togglePublishedAction(id, false, issue === "avec"));
   }
 
   /*
@@ -61,17 +85,7 @@ export function SessionActions({
         titre={isPublished ? "Dépublier" : "Publier"}
         disabled={enCours}
         onClick={
-          isPublished
-            ? auClicConfirme(
-                {
-                  titre: "Dépublier cette session ?",
-                  texte: `« ${titre} » disparaîtra du programme public.`,
-                  confirmer: "Dépublier",
-                  ton: "danger",
-                },
-                () => lancer(() => togglePublishedAction(id, false)),
-              )
-            : () => lancer(() => togglePublishedAction(id, true))
+          isPublished ? () => void depublier() : () => lancer(() => togglePublishedAction(id, true))
         }
       />
       <Bouton
@@ -91,6 +105,11 @@ export function SessionActions({
         onClick={() => void supprimer()}
       />
       {erreur && <p className="text-danger-text basis-full text-right text-xs">{erreur}</p>}
+      {message && (
+        <p role="status" className="text-text-2 basis-full text-right text-xs">
+          {message}
+        </p>
+      )}
     </div>
   );
 }

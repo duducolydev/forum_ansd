@@ -1,4 +1,4 @@
-import { lireLangue } from "@/lib/langue";
+import { lireLangue, type Langue } from "@/lib/langue";
 import { jobQueue } from "@/lib/queue";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
@@ -11,6 +11,12 @@ export interface NotificationJobPayload {
   to: string;
   variables: Record<string, string>;
   participantId?: string;
+  /**
+   * Langue imposée. Sans elle, `sendTemplatedEmail` la déduit du participant —
+   * ce qui ne marche pas pour un intervenant, qui n'en a pas et n'est pas
+   * toujours rattaché à un participant.
+   */
+  locale?: Langue;
   /** Adresse de réponse (formulaire de contact). */
   replyTo?: string;
 }
@@ -44,6 +50,28 @@ export async function enqueueNotification(
 ): Promise<void> {
   registerNotificationJobs();
   await jobQueue.enqueue("notification.send", payload, { idempotencyKey, runAt });
+}
+
+/**
+ * Mise en file d'une série de notifications **en une écriture**.
+ *
+ * Avertir les inscrits d'un panel déplacé peut viser deux cents personnes : un
+ * `enqueueNotification` par destinataire ferait deux cents allers-retours au
+ * milieu de l'enregistrement du formulaire (même constat qu'au §22 pour les
+ * invitations).
+ */
+export async function enqueueNotifications(
+  entrees: { payload: NotificationJobPayload; idempotencyKey?: string; runAt?: Date }[],
+): Promise<void> {
+  if (entrees.length === 0) return;
+  registerNotificationJobs();
+  await jobQueue.enqueueMany(
+    "notification.send",
+    entrees.map((entree) => ({
+      payload: entree.payload,
+      options: { idempotencyKey: entree.idempotencyKey, runAt: entree.runAt },
+    })),
+  );
 }
 
 /**

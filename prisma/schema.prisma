@@ -637,6 +637,16 @@ model Session {
   tdrPath              String?
   isPublished          Boolean     @default(false)
   liveStreamUrl        String?
+  /// Dernier état **annoncé** aux inscrits et aux intervenants : jour, horaire,
+  /// salle et intitulé au moment où le message est parti (13 novembre 2026).
+  ///
+  /// Ce qui s'en écarte reste à annoncer, et c'est le bouton « Prévenir les
+  /// inscrits » qui décide du départ. Garder la trace ici plutôt que de
+  /// transmettre l'écart d'écran en écran est ce qui permet de corriger un
+  /// horaire en trois essais et de n'écrire qu'une fois, avec le seul écart qui
+  /// compte : celui entre ce que les gens savent et ce qui est vrai.
+  announcedState       Json?
+  announcedAt          DateTime?
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
   deletedAt            DateTime?

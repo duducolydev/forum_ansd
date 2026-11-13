@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { CalendarClock } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 import { planifierRappelsAction } from "../actions";
@@ -13,6 +14,7 @@ export interface PlanAffichable {
   destinataires: number;
   depasse: boolean;
   dejaProgrammes: number;
+  recapProgramme: boolean;
 }
 
 /**
@@ -37,7 +39,10 @@ export function ReminderPlanner({ plans }: { plans: PlanAffichable[] }) {
       <h3 className="text-heading mb-1 text-sm font-semibold">Rappels avant le Forum</h3>
       <p className="text-text-3 mb-4 text-xs">
         Adressés aux participants confirmés, à 9 h heure de Dakar. Distincts des relances
-        d&apos;invitation, qui poursuivent ceux qui ne se sont pas inscrits.
+        d&apos;invitation, qui poursuivent ceux qui ne se sont pas inscrits. Chaque rappel reprend
+        les panels réservés (<code>{"{{mes_panels}}"}</code>) et le programme détaillé (
+        <code>{"{{programme}}"}</code>), composés au moment de l&apos;envoi et non de la
+        programmation.
       </p>
 
       <ul className="mb-4 flex flex-col gap-2">
@@ -51,6 +56,14 @@ export function ReminderPlanner({ plans }: { plans: PlanAffichable[] }) {
             {plan.depasse && (
               <span className="text-warn-text ml-2 text-xs font-semibold">
                 échéance passée — rien ne sera envoyé
+              </span>
+            )}
+            {!plan.recapProgramme && (
+              <span className="text-warn-text ml-2 text-xs font-semibold">
+                sans récapitulatif du programme —{" "}
+                <Link href={`/admin/notifications/${plan.cle}`} className="underline">
+                  ajouter {"{{programme}}"} au modèle
+                </Link>
               </span>
             )}
           </li>

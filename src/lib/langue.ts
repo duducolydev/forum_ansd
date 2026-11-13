@@ -62,6 +62,18 @@ export function selon<T>(langue: string, textes: { fr: T; en: T; pt: T }): T {
   return textes[lireLangue(langue)];
 }
 
+/**
+ * Ponctuation du deux-points : « Salle : A » en français, « Room: A » en
+ * anglais et en portugais.
+ *
+ * L'espace avant le signe est une règle française, et une seule : l'appliquer
+ * aux trois langues donnait « Room : A », visiblement fautif pour un lecteur
+ * anglophone. Utile partout où un libellé traduit introduit une valeur.
+ */
+export function deuxPoints(langue: string): string {
+  return lireLangue(langue) === "fr" ? " : " : ": ";
+}
+
 /** Locale `Intl` de chaque langue, pour les dates et les nombres. */
 export const LOCALE_INTL: Record<Langue, string> = {
   fr: "fr-FR",

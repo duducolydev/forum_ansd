@@ -5,7 +5,12 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
-import { ETAT_LABELS, listRooms, listSessions } from "@/modules/sessions/service";
+import {
+  changementsNonAnnonces,
+  ETAT_LABELS,
+  listRooms,
+  listSessions,
+} from "@/modules/sessions/service";
 import { TYPE_LABELS } from "@/modules/sessions/schema";
 import { SessionActions } from "@/modules/sessions/components/session-actions";
 import { RoomRowForm } from "@/modules/sessions/components/room-row-form";
@@ -94,68 +99,83 @@ export default async function SessionsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {duJour.map((item) => (
-                      <tr key={item.id} className="border-border border-t align-top">
-                        <td className="text-text-3 px-2 py-2.5 whitespace-nowrap tabular-nums">
-                          {heure(item.startTime)}
-                          <br />
-                          {heure(item.endTime)}
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <Link
-                            href={`/admin/sessions/${item.id}/modifier`}
-                            className="text-heading font-medium"
-                          >
-                            {item.titleFr}
-                          </Link>
-                          <span className="text-text-3 block text-xs">
-                            {TYPE_LABELS[item.type]}
-                            {item.theme ? ` · ${item.theme}` : ""}
-                            {!item.isPublished && " · brouillon"}
-                          </span>
-                        </td>
-                        <td className="text-text-2 px-2 py-2.5">{item.room?.name ?? "—"}</td>
-                        <td className="px-2 py-2.5">
-                          <Remplissage
-                            etat={ETAT_LABELS[item.places.etat]}
-                            inscrits={item.places.inscrits}
-                            attente={item.places.attente}
-                            capacite={item.places.capacite}
-                            salle={item.room?.capacity ?? null}
-                          />
-                        </td>
-                        <td className="px-2 py-2.5 text-right">
-                          {/* Une seule ligne d'icônes : les quatre actions
+                    {duJour.map((item) => {
+                      const aAnnoncer = changementsNonAnnonces(item).length;
+                      return (
+                        <tr key={item.id} className="border-border border-t align-top">
+                          <td className="text-text-3 px-2 py-2.5 whitespace-nowrap tabular-nums">
+                            {heure(item.startTime)}
+                            <br />
+                            {heure(item.endTime)}
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <Link
+                              href={`/admin/sessions/${item.id}/modifier`}
+                              className="text-heading font-medium"
+                            >
+                              {item.titleFr}
+                            </Link>
+                            <span className="text-text-3 block text-xs">
+                              {TYPE_LABELS[item.type]}
+                              {item.theme ? ` · ${item.theme}` : ""}
+                              {!item.isPublished && " · brouillon"}
+                            </span>
+                            {/* Un changement enregistré n'écrit à personne tant
+                              que le bouton de la fiche n'a pas été pressé : le
+                              signaler ici évite qu'il soit oublié dans la
+                              liste. */}
+                            {aAnnoncer > 0 && (
+                              <Link
+                                href={`/admin/sessions/${item.id}/modifier`}
+                                className="bg-warn-soft text-warn-text mt-1 inline-block rounded px-2 py-0.5 text-xs font-semibold"
+                              >
+                                {aAnnoncer} changement(s) à annoncer
+                              </Link>
+                            )}
+                          </td>
+                          <td className="text-text-2 px-2 py-2.5">{item.room?.name ?? "—"}</td>
+                          <td className="px-2 py-2.5">
+                            <Remplissage
+                              etat={ETAT_LABELS[item.places.etat]}
+                              inscrits={item.places.inscrits}
+                              attente={item.places.attente}
+                              capacite={item.places.capacite}
+                              salle={item.room?.capacity ?? null}
+                            />
+                          </td>
+                          <td className="px-2 py-2.5 text-right">
+                            {/* Une seule ligne d'icônes : les quatre actions
                               tenaient sur trois lignes et allongeaient chaque
                               rangée du tableau. */}
-                          {can(session, "sessions.write") && (
-                            <div className="flex items-center justify-end gap-1">
-                              <LienBouton
-                                href={`/admin/sessions/${item.id}/inscriptions`}
-                                ton="discret"
-                                taille="petit"
-                                icone={ClipboardList}
-                                titre="Inscriptions"
-                              />
-                              {can(session, "contributions.write") && (
+                            {can(session, "sessions.write") && (
+                              <div className="flex items-center justify-end gap-1">
                                 <LienBouton
-                                  href={`/admin/sessions/${item.id}/contributions`}
+                                  href={`/admin/sessions/${item.id}/inscriptions`}
                                   ton="discret"
                                   taille="petit"
-                                  icone={FileStack}
-                                  titre="Contributions"
+                                  icone={ClipboardList}
+                                  titre="Inscriptions"
                                 />
-                              )}
-                              <SessionActions
-                                id={item.id}
-                                titre={item.titleFr}
-                                isPublished={item.isPublished}
-                              />
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                                {can(session, "contributions.write") && (
+                                  <LienBouton
+                                    href={`/admin/sessions/${item.id}/contributions`}
+                                    ton="discret"
+                                    taille="petit"
+                                    icone={FileStack}
+                                    titre="Contributions"
+                                  />
+                                )}
+                                <SessionActions
+                                  id={item.id}
+                                  titre={item.titleFr}
+                                  isPublished={item.isPublished}
+                                />
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

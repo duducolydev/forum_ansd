@@ -26,6 +26,15 @@ describe("interpolation des modèles", () => {
     expect(html).not.toContain("<script>");
     expect(html).toContain("&lt;script&gt;");
   });
+
+  it("garde l'indentation du récapitulatif, que HTML réduirait à une espace", () => {
+    // Le programme aligne les intervenants sous leur session : sans espaces
+    // insécables, les deux lignes se confondent à l'arrivée.
+    const html = renderHtml("Mardi 24 novembre\n  09:00 - 10:30 · Panel\n    Modération : A. BA");
+    expect(html).toContain("<p>Mardi 24 novembre</p>");
+    expect(html).toContain("<p>&nbsp;&nbsp;09:00 - 10:30 · Panel</p>");
+    expect(html).toContain("<p>&nbsp;&nbsp;&nbsp;&nbsp;Modération : A. BA</p>");
+  });
 });
 
 describe("choix de la langue (le squelette initial envoyait toujours en français)", () => {

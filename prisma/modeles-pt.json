@@ -47,15 +47,31 @@
     },
     "reminder_j1": {
       "subject": "O Fórum começa amanhã",
-      "body": "Olá {{prenom}},\n\nO Fórum Internacional sobre Dados abre amanhã de manhã no Hotel King Fahd Palace, em Dacar. O balcão de acolhimento abre às 8h00.\n\nApresente o código QR do seu crachá à entrada, no telemóvel ou impresso: {{lien_espace}}\n\nTenha um bom dia,\nO comité organizador"
+      "body": "Olá {{prenom}},\n\nO Fórum Internacional sobre Dados abre amanhã de manhã no Hotel King Fahd Palace, em Dacar. O balcão de acolhimento abre às 8h00.\n\nApresente o código QR do seu crachá à entrada, no telemóvel ou impresso: {{lien_espace}}\n\nOs painéis que reservou:\n{{mes_panels}}\n\nO programa detalhado dos três dias:\n{{programme}}\n\nTenha um bom dia,\nO comité organizador"
     },
     "reminder_j7": {
       "subject": "O Fórum abre dentro de uma semana",
-      "body": "Olá {{prenom}},\n\nO Fórum Internacional sobre Dados abre dentro de uma semana, de 23 a 25 de novembro de 2026, no Hotel King Fahd Palace, em Dacar.\n\nDescarregue o seu crachá antes de vir: o crachá é obrigatório e será verificado à entrada. Descarregue-o no seu espaço pessoal: {{lien_espace}}\n\nAté breve,\nO comité organizador"
+      "body": "Olá {{prenom}},\n\nO Fórum Internacional sobre Dados abre dentro de uma semana, de 23 a 25 de novembro de 2026, no Hotel King Fahd Palace, em Dacar.\n\nDescarregue o seu crachá antes de vir: o crachá é obrigatório e será verificado à entrada. Descarregue-o no seu espaço pessoal: {{lien_espace}}\n\nOs painéis que reservou:\n{{mes_panels}}\n\nO programa detalhado dos três dias:\n{{programme}}\n\nAté breve,\nO comité organizador"
+    },
+    "session_cancelled": {
+      "subject": "Sessão retirada do programa: {{session}}",
+      "body": "Olá {{prenom}},\n\nA sessão «{{session}}», na qual estava inscrito(a), foi retirada do programa.\n\nA sua reserva deixa de ter efeito; não tem nada a fazer.\n\nO programa atualizado: {{lien_programme}}\nAs suas reservas: {{lien_espace}}\n\nCom os nossos pedidos de desculpa por esta alteração,\nO comité organizador"
+    },
+    "session_cancelled_speaker": {
+      "subject": "Sessão retirada do programa: {{session}}",
+      "body": "Olá {{prenom}},\n\nA sessão «{{session}}», na qual iria participar como orador(a), foi retirada do programa.\n\nO comité entrará em contacto consigo caso lhe seja proposta outra intervenção.\n\nO programa atualizado: {{lien_programme}}\n\nCom os nossos pedidos de desculpa por esta alteração,\nO comité organizador"
     },
     "session_promoted": {
       "subject": "Vagou um lugar: {{session}}",
       "body": "Olá {{prenom}},\n\nVagou um lugar na sessão «{{session}}» e era o(a) primeiro(a) na lista de espera: a sua inscrição está agora confirmada.\n\nConsulte o seu programa no seu espaço pessoal: {{lien_espace}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "session_updated": {
+      "subject": "Alteração do programa: {{session}}",
+      "body": "Olá {{prenom}},\n\nA sessão «{{session}}», na qual está inscrito(a), acaba de ser alterada:\n\n{{changements}}\n\nDetalhes da sessão: {{lien_session}}\nAs suas reservas: {{lien_espace}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+    },
+    "session_updated_speaker": {
+      "subject": "Alteração do programa: {{session}}",
+      "body": "Olá {{prenom}},\n\nA sessão «{{session}}», na qual participa como orador(a), acaba de ser alterada:\n\n{{changements}}\n\nDetalhes da sessão: {{lien_session}}\nO seu espaço de orador: {{lien_espace}}\n\nSe este horário deixou de lhe convir, responda a esta mensagem e o comité entrará em contacto consigo.\n\nCom os melhores cumprimentos,\nO comité organizador"
     },
     "speaker_link": {
       "subject": "O seu espaço de orador — Fórum Internacional sobre Dados",

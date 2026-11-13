@@ -1115,6 +1115,91 @@ programmées et combien ignorées.
 Une échéance dépassée est **sautée et signalée**, jamais envoyée en retard : recevoir « le Forum
 commence dans sept jours » la veille de l'ouverture décrédibiliserait tout le dispositif.
 
+#### Le rappel portait la date, pas le programme (13 novembre 2026)
+
+**Demande.** Les rappels devaient reprendre les panels réservés et le programme détaillé ; et
+toute modification du programme — horaire déplacé, salle changée, panel retiré — devait prévenir
+les inscrits et les intervenants, qui jusque-là l'apprenaient en arrivant devant une salle vide.
+
+**Deux variables, et le moment où on les remplit.** `{{mes_panels}}` et `{{programme}}` sont
+utilisables dans n'importe quel modèle depuis le BackOffice. Le point qui décide de tout est
+**quand** elles sont résolues : un rappel J-7 est mis en file des semaines à l'avance, et un
+programme recopié à la planification aurait annoncé, le jour du départ, des horaires changés
+depuis. Elles sont donc remplies dans `sendTemplatedEmail` — le seul endroit qui connaisse à la
+fois la langue retenue pour ce destinataire et le texte réellement envoyé. Un modèle qui ne les
+emploie pas ne déclenche aucune lecture : le tri se fait sur le texte.
+
+Trois conséquences techniques, chacune corrigeant un défaut constaté :
+
+1. **L'indentation disparaissait.** `renderHtml` compose un paragraphe par ligne, et HTML réduit
+   plusieurs espaces à une seule : les intervenants alignés sous leur session se confondaient avec
+   elle. Les espaces de tête deviennent des espaces insécables, ce dont profitent aussi la
+   composition d'une délégation et les panels réservés.
+2. **La ponctuation était française dans les trois langues.** « Room : Salle A » est fautif pour
+   un anglophone. `deuxPoints()` porte la règle, une fois pour tout le site.
+3. **Cent quarante envois relisaient cent quarante fois le même programme.** Une mémoire de 60 s
+   par édition — la durée déjà retenue pour les contenus éditoriaux — vidée dès qu'une session
+   change, pour qu'un horaire corrigé parte dans la minute.
+
+**Rien ne part tout seul : c'est un bouton qui décide.** La première version envoyait l'alerte à
+l'enregistrement du formulaire. Le comité l'a refusée, et il a eu raison : un horaire corrigé en
+trois essais aurait écrit trois fois à deux cents personnes, et la correction d'une coquille au
+milieu d'une refonte serait partie seule. L'enregistrement ne fait plus qu'**enregistrer** ; un
+encadré « Changements à annoncer » les liste, et le bouton
+« Prévenir les N inscrit(s) et intervenant(s) » décide du départ.
+
+**Ce qui rend le bouton possible, c'est la mémoire de ce qui a été dit.** Un écart transmis
+d'écran en écran serait perdu au premier rafraîchissement, et une annonce rédigée dans le
+navigateur serait un texte fourni par le client. La session retient donc son **dernier état
+annoncé** (`Session.announcedState` : jour, horaire, salle, intitulé), et le bouton n'annonce que
+l'écart avec lui. Trois propriétés en découlent, qu'aucune autre solution ne donnait :
+
+- corriger un horaire en trois essais et revenir au point de départ ne laisse **rien** à annoncer,
+  puisque l'état connu est de nouveau l'état vrai ;
+- trois modifications d'affilée font **une** annonce, portant l'écart cumulé — et non trois
+  messages dont les deux premiers sont déjà faux ;
+- l'état annoncé n'est mis à jour qu'**après** la mise en file : un envoi qui échoue laisse la
+  session « à annoncer », au lieu de faire croire que le message est parti.
+
+Aucune reprise n'a été faite en base : poser en masse un état annoncé serait affirmer ce que
+personne ne peut vérifier. Une session publiée qui n'en a pas encore reçoit, **au premier
+changement**, celui d'avant la modification — qui est bien ce que le public avait sous les yeux.
+Une mise en ligne, elle, vaut annonce de l'état du moment : les retouches faites en brouillon
+n'ont rien à rattraper.
+
+**Ce qui est suivi, et ce qui ne l'est pas.** Quatre champs — **jour, horaire, salle, intitulé** —,
+ceux que le destinataire a notés quelque part et sur lesquels il a organisé sa venue ; corriger une
+description, déposer un TDR ou rouvrir les réservations ne fait rien apparaître. Et rien n'est à
+annoncer tant que la session n'est pas publiée : ce qui n'a jamais été dit ne se corrige pas.
+
+**Retirer de l'affiche, c'est annuler — et la question se pose à ce moment-là.** Après coup, il
+n'y a plus d'écran où la poser : la session a quitté la liste. La boîte de dialogue offre donc
+deux boutons d'action, « Dépublier et prévenir » et « Dépublier sans prévenir » (de même pour la
+suppression), plutôt qu'une case à cocher — on ne coche pas ce qu'on n'a pas lu, alors qu'on
+choisit forcément entre deux libellés qui disent ce qu'ils font. Une session créée par erreur le
+matin même n'a prévenu personne, et lui consacrer un courriel d'excuses serait absurde. Remettre
+en ligne n'écrit jamais : les destinataires n'ont rien su du retrait, et une annonce de
+rétablissement créerait l'inquiétude qu'elle prétend lever. Le lien du message renvoie au
+programme, non à la fiche, qui n'est plus en ligne.
+
+**Deux publics, quatre modèles.** Un inscrit perd une séance qu'il avait réservée ; un intervenant
+perd un créneau qu'il avait préparé. `session_updated`, `session_updated_speaker`,
+`session_cancelled` et `session_cancelled_speaker` sont éditables séparément. Une même adresse
+n'est servie qu'une fois, et c'est le message d'intervenant qui l'emporte. La liste d'attente est
+prévenue comme les inscrits : elle attend précisément ce créneau.
+
+**Ce que l'écran doit dire, sous peine d'oublis.** L'enregistrement annonce combien de changements
+restent à annoncer, la liste du programme porte une pastille « N changement(s) à annoncer » sur
+les sessions concernées — sans quoi un changement enregistré un lundi se retrouverait oublié le
+jeudi —, et le bouton dit sa portée avant d'être pressé. Enfin, comme une migration de modèle
+n'écrase jamais un texte retouché en BackOffice, l'insertion du récapitulatif peut ne pas avoir eu
+lieu : l'écran des rappels signale alors « sans récapitulatif du programme », avec le lien pour
+l'ajouter — sinon le manque ne se découvrirait qu'après l'envoi.
+
+**Vérification** : 25 tests unitaires (13 sur la comparaison de deux états d'une session et sur
+l'état annoncé — aller-retour JSON, valeur illisible, horaire revenu à sa valeur connue —, 12 sur
+la mise en forme du récapitulatif) et 1 sur l'indentation conservée par `renderHtml`.
+
 #### C13 et T35 : l'ISR n'aura pas lieu, et c'est mesuré
 
 **Constat, par l'observation et non par lecture de code** : `/` renvoie `lang="en"` avec le

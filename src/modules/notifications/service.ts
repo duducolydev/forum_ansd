@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { sendMail } from "@/lib/mail";
 import { audit } from "@/lib/audit";
 import type { Actor } from "@/modules/participants/service";
+import { resoudreVariablesProgramme, variablesProgrammeUtilisees } from "./recap-programme";
 import type { TemplateInput } from "./schema";
 
 export type Locale = Langue;
@@ -43,11 +44,24 @@ export function pickLocalised(
   };
 }
 
+/**
+ * Corps en HTML, une ligne par paragraphe.
+ *
+ * L'indentation de tête est convertie en espaces insécables : HTML réduit
+ * plusieurs espaces à une seule, et le récapitulatif du programme — qui aligne
+ * les intervenants sous leur session — perdait sa structure à l'envoi. Les
+ * listes déjà indentées (composition d'une délégation, panels réservés) y
+ * gagnent aussi.
+ */
 export function renderHtml(text: string): string {
   return text
     .split("\n")
-    .map((line) => (line.trim() ? `<p>${escapeHtml(line)}</p>` : "<p>&nbsp;</p>"))
+    .map((line) => (line.trim() ? `<p>${indenter(escapeHtml(line))}</p>` : "<p>&nbsp;</p>"))
     .join("\n");
+}
+
+function indenter(line: string): string {
+  return line.replace(/^ +/, (espaces) => "&nbsp;".repeat(espaces.length));
 }
 
 function escapeHtml(text: string): string {
@@ -70,9 +84,41 @@ export async function renderTemplate(options: {
     throw new Error(`Modèle de notification introuvable : "${options.templateKey}" (EMAIL).`);
   }
   const picked = pickLocalised(template, options.locale);
-  const subject = interpolate(picked.subject, options.variables);
-  const body = interpolate(picked.body, options.variables);
+  const variables = await avecVariablesProgramme(picked, options);
+  const subject = interpolate(picked.subject, variables);
+  const body = interpolate(picked.body, variables);
   return { subject, body, html: renderHtml(body) };
+}
+
+/**
+ * Les variables de l'appelant, complétées par celles du programme
+ * (`{{programme}}`, `{{mes_panels}}`) si le modèle les emploie.
+ *
+ * Résolues **ici** et non à la mise en file : un rappel J-7 est programmé des
+ * semaines à l'avance, et un programme recopié à ce moment-là aurait annoncé
+ * des horaires périmés le jour du départ (voir `recap-programme.ts`).
+ */
+async function avecVariablesProgramme(
+  picked: { subject: string; body: string },
+  options: {
+    editionId: string;
+    locale: Locale;
+    participantId?: string;
+    variables: TemplateVariables;
+  },
+): Promise<TemplateVariables> {
+  const noms = variablesProgrammeUtilisees(`${picked.subject}\n${picked.body}`, options.variables);
+  if (noms.length === 0) return options.variables;
+
+  return {
+    ...options.variables,
+    ...(await resoudreVariablesProgramme({
+      editionId: options.editionId,
+      participantId: options.participantId,
+      langue: options.locale,
+      noms,
+    })),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -105,8 +151,9 @@ export async function sendTemplatedEmail(options: {
 
   const locale = options.locale ?? (await resolveLocale(options.participantId));
   const picked = pickLocalised(template, locale);
-  const subject = interpolate(picked.subject, options.variables);
-  const body = interpolate(picked.body, options.variables);
+  const variables = await avecVariablesProgramme(picked, { ...options, locale });
+  const subject = interpolate(picked.subject, variables);
+  const body = interpolate(picked.body, variables);
 
   let log: { id: string } | undefined;
   // Seuls les envois rattachés à quelqu'un sont consignés : le formulaire de

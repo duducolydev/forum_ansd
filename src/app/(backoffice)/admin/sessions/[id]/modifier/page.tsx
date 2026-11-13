@@ -3,7 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
-import { getSession, listRooms } from "@/modules/sessions/service";
+import { changementsNonAnnonces, getSession, listRooms } from "@/modules/sessions/service";
+import { compterDestinataires } from "@/modules/sessions/notifications";
+import { AnnonceChangements } from "@/modules/sessions/components/annonce-changements";
 import { SessionForm } from "@/modules/sessions/components/session-form";
 import { TdrForm } from "@/modules/sessions/components/tdr-form";
 
@@ -24,6 +26,11 @@ export default async function ModifierSessionPage({ params }: { params: Promise<
 
   if (!courante) notFound();
 
+  // L'encadré n'apparaît que s'il y a quelque chose à annoncer : le comptage
+  // des destinataires n'est fait que dans ce cas, inutile sinon.
+  const changements = changementsNonAnnonces(courante);
+  const destinataires = changements.length > 0 ? await compterDestinataires(courante.id) : 0;
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -38,6 +45,12 @@ export default async function ModifierSessionPage({ params }: { params: Promise<
           </Link>
         </p>
       </div>
+
+      <AnnonceChangements
+        id={courante.id}
+        changements={changements.map((ligne) => ligne.texte.fr)}
+        destinataires={destinataires}
+      />
 
       <SessionForm
         salles={salles.map((salle) => ({

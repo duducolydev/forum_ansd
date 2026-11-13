@@ -71,6 +71,7 @@ export default async function NotificationsPage() {
               destinataires: plan.destinataires,
               depasse: plan.depasse,
               dejaProgrammes: plan.dejaProgrammes,
+              recapProgramme: plan.recapProgramme,
             }))}
           />
         </div>

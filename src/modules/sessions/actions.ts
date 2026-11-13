@@ -67,6 +67,7 @@ export async function saveSessionAction(
   formData: FormData,
 ): Promise<ActionState> {
   let slug: string | undefined;
+  let changements = 0;
   try {
     const session = await requireEditor();
     const actor = { type: "USER" as const, userId: session.user.id };
@@ -74,17 +75,45 @@ export async function saveSessionAction(
     const input = lireSession(formData);
 
     const id = formData.get("id");
-    const enregistree =
-      typeof id === "string" && id.length > 0
-        ? await service.updateSession(edition.id, id, input, actor)
-        : await service.createSession(edition.id, input, actor);
-    slug = enregistree.slug;
+    if (typeof id === "string" && id.length > 0) {
+      const enregistree = await service.updateSession(edition.id, id, input, actor);
+      slug = enregistree.slug;
+      changements = enregistree.changements;
+    } else {
+      slug = (await service.createSession(edition.id, input, actor)).slug;
+    }
   } catch (error) {
     return { error: firstFieldError(error) };
   }
 
   refresh(slug);
-  return { message: "Session enregistrée." };
+  // L'enregistrement n'envoie rien : il signale ce qui reste à annoncer, et
+  // c'est le bouton de l'encadré qui décide du départ.
+  return {
+    message:
+      changements > 0
+        ? `Session enregistrée. ${changements} changement(s) à annoncer aux inscrits et aux intervenants.`
+        : "Session enregistrée.",
+  };
+}
+
+/** Envoi de l'annonce, sur clic explicite (encadré « Changements à annoncer »). */
+export async function annoncerChangementsAction(id: string): Promise<ActionState> {
+  let resultat: { prevenus: number; changements: number };
+  try {
+    const session = await requireEditor();
+    resultat = await service.annoncerChangements(id, {
+      type: "USER",
+      userId: session.user.id,
+    });
+  } catch (error) {
+    return { error: firstFieldError(error) };
+  }
+
+  refresh();
+  return {
+    message: `${resultat.changements} changement(s) annoncé(s) à ${resultat.prevenus} personne(s) : inscrits, liste d'attente et intervenants.`,
+  };
 }
 
 export async function duplicateSessionAction(id: string): Promise<ActionState> {
@@ -103,31 +132,52 @@ export async function duplicateSessionAction(id: string): Promise<ActionState> {
   return {};
 }
 
+/**
+ * Publie ou retire une session.
+ *
+ * `prevenir` vient de la boîte de dialogue du retrait, qui pose la question en
+ * toutes lettres : rien ne part sans que quelqu'un l'ait décidé.
+ */
 export async function togglePublishedAction(
   id: string,
   isPublished: boolean,
+  prevenir = false,
 ): Promise<ActionState> {
+  let prevenus = 0;
   try {
     const session = await requireEditor();
-    await service.setPublished(id, isPublished, { type: "USER", userId: session.user.id });
+    const resultat = await service.setPublished(
+      id,
+      isPublished,
+      { type: "USER", userId: session.user.id },
+      { prevenir },
+    );
+    prevenus = resultat.prevenus;
   } catch (error) {
     return { error: firstFieldError(error) };
   }
 
   refresh();
-  return {};
+  return prevenus > 0 ? { message: messageAnnulation(prevenus) } : {};
 }
 
-export async function deleteSessionAction(id: string): Promise<ActionState> {
+export async function deleteSessionAction(id: string, prevenir = false): Promise<ActionState> {
+  let prevenus = 0;
   try {
     const session = await requireEditor();
-    await service.deleteSession(id, { type: "USER", userId: session.user.id });
+    prevenus = (
+      await service.deleteSession(id, { type: "USER", userId: session.user.id }, { prevenir })
+    ).prevenus;
   } catch (error) {
     return { error: firstFieldError(error) };
   }
 
   refresh();
-  return {};
+  return prevenus > 0 ? { message: messageAnnulation(prevenus) } : {};
+}
+
+function messageAnnulation(prevenus: number): string {
+  return `${prevenus} personne(s) prévenue(s) du retrait de cette session.`;
 }
 
 // ---------------------------------------------------------------------------

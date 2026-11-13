@@ -74,6 +74,52 @@ export function auClicConfirme(options: OptionsConfirmation, action: () => void)
   };
 }
 
+/**
+ * Confirmation à **trois issues** : agir en prévenant, agir sans prévenir, ou
+ * renoncer.
+ *
+ * Née du retrait d'une session (13 novembre 2026). Les inscrits et les
+ * intervenants doivent en être avertis, mais pas toujours : une session créée
+ * par erreur le matin même n'a prévenu personne, et lui consacrer un courriel
+ * d'excuses serait absurde. Deux boutons d'action valent mieux qu'une case à
+ * cocher dans une boîte de dialogue — on ne coche pas ce qu'on n'a pas lu,
+ * alors qu'on choisit forcément entre deux libellés qui disent ce qu'ils font.
+ */
+export type IssueTriple = "avec" | "sans" | "annule";
+
+export async function confirmerAvecOuSans(
+  options: OptionsConfirmation & { sansPrevenir: string },
+): Promise<IssueTriple> {
+  const danger = options.ton === "danger";
+
+  const resultat = await Swal.fire({
+    title: options.titre,
+    text: options.texte,
+    icon: options.icone ?? (danger ? "warning" : "question"),
+    showDenyButton: true,
+    showCancelButton: true,
+    confirmButtonText: options.confirmer,
+    denyButtonText: options.sansPrevenir,
+    cancelButtonText: options.annuler ?? "Annuler",
+    focusCancel: true,
+    reverseButtons: true,
+    background: jeton("--surface", "#ffffff"),
+    color: jeton("--text", "#12212f"),
+    confirmButtonColor: danger ? jeton("--rouge", "#c8323a") : jeton("--primary", "#1d8247"),
+    denyButtonColor: jeton("--bg-3", "#e8f0f8"),
+    cancelButtonColor: jeton("--bg-3", "#e8f0f8"),
+    customClass: {
+      popup: "forum-swal",
+      denyButton: "forum-swal-annuler",
+      cancelButton: "forum-swal-annuler",
+    },
+  });
+
+  if (resultat.isConfirmed) return "avec";
+  if (resultat.isDenied) return "sans";
+  return "annule";
+}
+
 /** Message court après une action réussie, sans bouton à cliquer. */
 export async function informer(titre: string, texte?: string): Promise<void> {
   await Swal.fire({

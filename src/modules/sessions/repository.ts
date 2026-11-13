@@ -39,6 +39,7 @@ export async function countSessionsInRoom(roomId: string) {
 /** Projection commune : tout ce qu'il faut pour afficher une session, nulle part ailleurs. */
 const SELECTION = {
   id: true,
+  editionId: true,
   slug: true,
   number: true,
   type: true,
@@ -61,6 +62,13 @@ const SELECTION = {
   tdrPath: true,
   isPublished: true,
   liveStreamUrl: true,
+  /** Horodatage de la dernière écriture : clé d'idempotence des alertes de
+   * changement (`notifications.ts`), pour qu'un double clic sur « Prévenir les
+   * inscrits » ne prévienne pas deux fois. */
+  updatedAt: true,
+  /** Dernier état annoncé, et quand : ce qui s'en écarte reste à annoncer. */
+  announcedState: true,
+  announcedAt: true,
   room: { select: { id: true, name: true, capacity: true } },
   speakers: {
     orderBy: { sortOrder: "asc" },

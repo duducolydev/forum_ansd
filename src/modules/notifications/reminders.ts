@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { enqueueNotification } from "./jobs";
+import { VARIABLES_PROGRAMME } from "./recap-programme";
 
 /**
  * Rappels planifiés avant le Forum (brief §14, Lot 2).
@@ -33,6 +34,16 @@ export interface PlanRappel {
   /** Déjà passé : rien ne sera programmé, et l'écran doit le dire. */
   depasse: boolean;
   dejaProgrammes: number;
+  /**
+   * Le modèle porte-t-il le récapitulatif du programme (`{{programme}}` ou
+   * `{{mes_panels}}`) ?
+   *
+   * Demandé le 13 novembre 2026, et posé par migration — mais un modèle
+   * retouché dans le BackOffice n'est jamais écrasé, et l'insertion peut donc
+   * ne pas avoir eu lieu. L'écran le signale plutôt que de laisser partir un
+   * rappel muet sur le programme, ce que personne ne verrait avant l'envoi.
+   */
+  recapProgramme: boolean;
 }
 
 /** 9 h, heure de Dakar (UTC) : un rappel reçu à 3 h du matin ne sert personne. */
@@ -69,6 +80,15 @@ async function destinataires(editionId: string) {
   });
 }
 
+/** Le modèle emploie-t-il au moins une variable de récapitulatif ? */
+function porteLeRecap(
+  modele: { bodyFr: string; bodyEn: string; bodyPt: string | null } | null,
+): boolean {
+  if (!modele) return false;
+  const corps = `${modele.bodyFr}\n${modele.bodyEn}\n${modele.bodyPt ?? ""}`;
+  return VARIABLES_PROGRAMME.some((nom) => corps.includes(`{{${nom}}}`));
+}
+
 export async function apercu(editionId: string, debutEdition: Date): Promise<PlanRappel[]> {
   const attendus = await destinataires(editionId);
   const maintenant = Date.now();
@@ -76,9 +96,15 @@ export async function apercu(editionId: string, debutEdition: Date): Promise<Pla
   return Promise.all(
     ECHEANCES.map(async (echeance) => {
       const envoiLe = dateEnvoi(debutEdition, echeance.joursAvant);
-      const dejaProgrammes = await prisma.notificationLog.count({
-        where: { templateKey: echeance.cle, participant: { editionId } },
-      });
+      const [dejaProgrammes, modele] = await Promise.all([
+        prisma.notificationLog.count({
+          where: { templateKey: echeance.cle, participant: { editionId } },
+        }),
+        prisma.notificationTemplate.findUnique({
+          where: { editionId_key_channel: { editionId, key: echeance.cle, channel: "EMAIL" } },
+          select: { bodyFr: true, bodyEn: true, bodyPt: true },
+        }),
+      ]);
 
       return {
         cle: echeance.cle,
@@ -87,6 +113,7 @@ export async function apercu(editionId: string, debutEdition: Date): Promise<Pla
         destinataires: attendus.length,
         depasse: envoiLe.getTime() < maintenant,
         dejaProgrammes,
+        recapProgramme: porteLeRecap(modele),
       };
     }),
   );
