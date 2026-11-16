@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { creerCodeSecours } from "./magic-link";
+import { accesEspace, type MotifRefusAcces } from "./acces-espace";
 
 /**
  * Accès direct à « Mon espace » depuis un e-mail (demande du 29 septembre
@@ -58,22 +59,35 @@ export async function lireAccesDirect(jeton: string): Promise<string | null> {
   }
 }
 
-/** Statuts pour lesquels l'espace ne s'ouvre plus. */
-const STATUTS_FERMES = new Set(["CANCELLED", "DECLINED"]);
+export type AccesDirectResultat =
+  | { statut: "OK"; participantId: string }
+  | { statut: "REFUSE"; motif: MotifRefusAcces }
+  | { statut: "INVALIDE" };
 
 /**
- * Vérifie un lien d'accès et le dossier qu'il désigne. Renvoie l'identifiant
- * du participant, ou `null` si l'accès est refusé.
+ * Vérifie un lien d'accès et le dossier qu'il désigne.
+ *
+ * La liste des statuts fermés vivait ici en double de celle du lien magique
+ * (16 novembre 2026) : les deux portes n'auraient pas tardé à diverger. La
+ * règle est maintenant celle de `acces-espace.ts`, et un refus porte son motif
+ * — « annulée » et « en attente de validation » ne se disent pas pareil.
  */
-export async function consommerAccesDirect(jeton: string): Promise<string | null> {
+export async function consommerAccesDirect(jeton: string): Promise<AccesDirectResultat> {
   const participantId = await lireAccesDirect(jeton);
-  if (!participantId) return null;
+  if (!participantId) return { statut: "INVALIDE" };
 
   const participant = await prisma.participant.findUnique({
     where: { id: participantId },
-    select: { deletedAt: true, status: true },
+    select: {
+      deletedAt: true,
+      status: true,
+      category: { select: { requiresAccreditation: true } },
+    },
   });
-  if (!participant || participant.deletedAt || STATUTS_FERMES.has(participant.status)) return null;
+  if (!participant || participant.deletedAt) return { statut: "INVALIDE" };
+
+  const acces = accesEspace(participant);
+  if (!acces.autorise) return { statut: "REFUSE", motif: acces.motif };
 
   await audit.log({
     actorType: "PARTICIPANT",
@@ -82,7 +96,7 @@ export async function consommerAccesDirect(jeton: string): Promise<string | null
     entity: "Participant",
     entityId: participantId,
   });
-  return participantId;
+  return { statut: "OK", participantId };
 }
 
 /**

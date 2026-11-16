@@ -342,6 +342,59 @@ React ne se reproduit pas fidèlement en `curl` (cf. T27) ; leur logique métier
 couverte par les tests d'intégration. La réception réelle de l'e-mail (Mailpit) reste à vérifier
 avec le module 3.8.
 
+#### Le lien partait à qui n'avait pas encore de compte (16 novembre 2026)
+
+**Signalement.** Une personne inscrite mais **pas encore validée** par le comité demandait son
+accès : elle recevait un lien et un code à six chiffres, puis, en s'en servant, lisait « ce lien
+est invalide ou a expiré ». Deux défauts en un.
+
+**Le premier est une porte ouverte à tort.** `requestMagicLink` ne regardait que l'existence du
+participant, jamais l'état de son dossier. Recevoir un lien, c'est apprendre qu'on a un compte :
+le message disait l'inverse de la vérité, et le portail lui-même invitait à une tentative vouée
+à l'échec.
+
+**Le second est un message qui désigne la mauvaise cause.** Le lien est à usage unique et vaut
+trente minutes ; une fois consommé ou périmé, l'écran parle d'expiration. Pour qui attendait la
+validation de son dossier, c'était une explication fausse — et la seule suite possible était
+d'écrire au comité. Nous n'avons pas pu reproduire ici la consommation elle-même (ni base de
+démonstration ni boîte de réception accessibles depuis ce poste) : entre un second clic, une
+passerelle de messagerie qui ouvre les liens avant le destinataire et une demande renvoyée qui
+annule la précédente, plusieurs chemins y mènent. Le correctif les rend tous sans objet : la
+personne ne reçoit plus de lien du tout, et lit ce qui la concerne.
+
+**La règle vit désormais à un seul endroit** (`modules/auth/acces-espace.ts`) et commande les
+quatre portes : l'envoi du lien, la consommation du lien, la saisie du code et l'affichage de
+l'espace. Dispersée, elle aurait fini par autoriser d'un côté ce qu'elle refuse de l'autre — ce
+qui est exactement le défaut d'origine. Elle a déjà absorbé la liste de statuts que
+`acces-direct.ts` tenait en double.
+
+Trois refus, parce qu'ils n'appellent pas la même suite : **en attente de validation** (le dossier
+est complet, le comité n'a pas encore tranché, un e-mail viendra), **inscription à terminer**
+(`INVITED`, `INVITATION_SENT`, `REGISTRATION_STARTED` — le formulaire n'est pas allé à son terme,
+le message mène à l'inscription) et **inscription annulée**. La presse en attente d'accréditation
+**garde** son accès : son espace ne montre que l'état de sa demande (arbitrage du 29 septembre
+2026), et lui fermer la porte ici aurait supprimé un écran voulu.
+
+Deux détails qui comptent. Un lien refusé **n'est pas consommé** : le brûler ajouterait un « lien
+expiré » au refus si le dossier était validé dans la demi-heure. Et un code refusé **ne compte pas
+comme un essai raté** : le code est peut-être juste, et l'annuler au bout de cinq punirait
+quelqu'un dont le seul tort est d'attendre.
+
+**Le prix, assumé.** La page de connexion ne répondait jusqu'ici qu'une seule chose, pour n'être
+pas un oracle d'énumération d'adresses (§18). Elle en dit maintenant une seconde : « ce dossier
+attend sa validation ». Un tiers peut donc apprendre qu'une adresse est inscrite et pas encore
+validée — il n'apprend toujours rien d'une adresse inconnue ou d'un compte ouvert, qui reçoivent
+la même réponse qu'avant. L'arbitrage est celui du commanditaire : des gens réels butaient
+chaque jour sur un message faux. La variante sans oracle — le même texte envoyé par e-mail, et
+l'écran inchangé — reste réalisable en une heure si le comité préfère.
+
+**Vérification** : 9 tests unitaires sur la règle d'accès (dont un qui a attrapé un défaut au
+passage : `"refus" in TEXTES_REFUS` remonte la chaîne de prototypes, si bien que `?refus=toString`
+passait pour un motif valide) et 3 tests d'intégration sur le lien magique — aucun lien créé pour
+un dossier en attente, « en attente » plutôt que « code invalide » sur un code pourtant juste,
+jeton non consommé par un refus. **Les tests d'intégration n'ont pas pu être exécutés ici** :
+Docker Desktop est arrêté sur ce poste, et la base locale avec lui.
+
 ### 3.6 Badges et QR (`modules/badges`) — ✅ complété (deux réserves)
 
 - [x] Génération du token : `publicId + "." + base32(HMAC-SHA256(secret, publicId + version))[0:16]` ; secret en variable d'environnement, versionnable. Test unitaire signature/vérification. - `modules/badges/token.ts` : base32 RFC 4648 (sans remplissage), comparaison en **temps

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { rateLimit } from "@/lib/rate-limit";
 import { enqueueNotification } from "@/modules/notifications/jobs";
+import { accesEspace, type MotifRefusAcces } from "./acces-espace";
 
 const LINK_TTL_MINUTES = 30;
 const REQUEST_LIMIT = 3;
@@ -85,12 +86,18 @@ function codesEgaux(attendu: string, saisi: string): boolean {
 }
 
 export type MagicLinkRequestResult =
-  { status: "SENT" } | { status: "RATE_LIMITED"; retryAfterSeconds: number };
+  | { status: "SENT" }
+  | { status: "RATE_LIMITED"; retryAfterSeconds: number }
+  | { status: "ACCES_REFUSE"; motif: MotifRefusAcces };
 
 export type MagicLinkConsumeResult =
   | { status: "OK"; participantId: string }
   | { status: "INVALID" }
-  | { status: "RATE_LIMITED"; retryAfterSeconds: number };
+  | { status: "RATE_LIMITED"; retryAfterSeconds: number }
+  | { status: "ACCES_REFUSE"; motif: MotifRefusAcces };
+
+/** Tout ce qu'il faut pour trancher l'accès, et rien de plus (`acces-espace.ts`). */
+const POUR_ACCES = { status: true, category: { select: { requiresAccreditation: true } } } as const;
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -100,6 +107,12 @@ function hashToken(token: string): string {
  * Demande d'accès à l'espace participant (brief §5.3).
  * Renvoie toujours `SENT` lorsqu'aucun participant ne correspond : sinon le
  * formulaire deviendrait un oracle permettant d'énumérer les e-mails inscrits.
+ *
+ * **Un dossier non validé ne reçoit rien** (16 novembre 2026) : lui envoyer un
+ * lien lui faisait croire son compte ouvert, pour finir sur « lien invalide ou
+ * expiré » qui ne disait rien de la vraie raison. Le refus est renvoyé tel
+ * quel, pour que l'écran dise ce qu'il en est — c'est le seul endroit où cette
+ * réponse est plus explicite que `SENT`, et le prix en est dit dans PLAN.md.
  */
 export async function requestMagicLink(
   editionId: string,
@@ -113,10 +126,25 @@ export async function requestMagicLink(
 
   const participant = await prisma.participant.findUnique({
     where: { editionId_email: { editionId, email: normalisedEmail } },
+    include: { category: { select: { requiresAccreditation: true } } },
   });
 
   if (!participant || participant.deletedAt) {
     return { status: "SENT" };
+  }
+
+  const acces = accesEspace(participant);
+  if (!acces.autorise) {
+    await audit.log({
+      actorType: "PARTICIPANT",
+      actorParticipantId: participant.id,
+      action: "magic_link.refused",
+      entity: "Participant",
+      entityId: participant.id,
+      after: { motif: acces.motif, statut: participant.status },
+      ip,
+    });
+    return { status: "ACCES_REFUSE", motif: acces.motif };
   }
 
   const token = randomBytes(32).toString("base64url");
@@ -207,6 +235,20 @@ export async function consumeMagicLink(token: string): Promise<MagicLinkConsumeR
   }
   const participantId = magicLink.participantId;
 
+  /*
+   * Le statut est revérifié ici, et pas seulement à l'envoi : un lien émis
+   * avant une annulation, ou avant la règle du 16 novembre 2026, ne doit pas
+   * ouvrir un espace fermé. Le jeton n'est **pas** consommé dans ce cas — il
+   * n'a servi à rien, et le brûler ajouterait un « lien expiré » au refus.
+   */
+  const participant = await prisma.participant.findFirst({
+    where: { id: participantId, deletedAt: null },
+    select: POUR_ACCES,
+  });
+  if (!participant) return { status: "INVALID" };
+  const acces = accesEspace(participant);
+  if (!acces.autorise) return { status: "ACCES_REFUSE", motif: acces.motif };
+
   if (!(await marquerUtilise(magicLink.id))) return { status: "INVALID" };
 
   await audit.log({
@@ -239,8 +281,18 @@ export async function consumeCode(
 
   const participant = await prisma.participant.findUnique({
     where: { editionId_email: { editionId, email: normalisedEmail } },
+    include: { category: { select: { requiresAccreditation: true } } },
   });
   if (!participant || participant.deletedAt) return { status: "INVALID" };
+
+  /*
+   * Accès refusé : on le dit **avant** de comparer quoi que ce soit. Compter
+   * un essai raté contre le code, ou l'annuler au bout de cinq, punirait
+   * quelqu'un dont le code est peut-être juste et dont le seul tort est
+   * d'attendre la validation de son dossier.
+   */
+  const acces = accesEspace(participant);
+  if (!acces.autorise) return { status: "ACCES_REFUSE", motif: acces.motif };
 
   /*
    * Seuls le **dernier** lien demandé et le **dernier** code de secours encore

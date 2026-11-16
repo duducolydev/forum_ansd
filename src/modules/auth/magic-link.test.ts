@@ -279,4 +279,81 @@ describe("lien magique (brief §5.3)", () => {
       expect((await consumeCode(editionId, participant.email, "654321")).status).toBe("INVALID");
     });
   });
+
+  /**
+   * Dossier non validé (16 novembre 2026).
+   *
+   * Le défaut signalé : la personne recevait un lien et un code, puis lisait
+   * « lien invalide ou expiré » — un message qui ne disait rien de la vraie
+   * raison et l'envoyait écrire au comité.
+   */
+  describe("inscription en attente de validation", () => {
+    async function enAttente() {
+      const participant = await makeParticipant();
+      await prisma.participant.update({
+        where: { id: participant.id },
+        data: { status: "REGISTERED", confirmedAt: null },
+      });
+      return participant;
+    }
+
+    it("n'envoie ni lien ni code, et dit pourquoi", async () => {
+      const participant = await enAttente();
+
+      expect(await requestMagicLink(editionId, participant.email, "127.0.0.1")).toEqual({
+        status: "ACCES_REFUSE",
+        motif: "EN_ATTENTE_VALIDATION",
+      });
+      // Rien n'a été créé : c'est le lien envoyé pour rien qui faisait croire
+      // le compte ouvert.
+      expect(await prisma.magicLink.count({ where: { participantId: participant.id } })).toBe(0);
+    });
+
+    it("répond « en attente » plutôt que « code invalide » à un code pourtant juste", async () => {
+      const participant = await makeParticipant();
+      await prisma.magicLink.create({
+        data: {
+          participantId: participant.id,
+          tokenHash: hash(randomBytes(32).toString("base64url")),
+          code6: "112233",
+          expiresAt: new Date(Date.now() + 30 * 60_000),
+        },
+      });
+      await prisma.participant.update({
+        where: { id: participant.id },
+        data: { status: "REGISTERED", confirmedAt: null },
+      });
+
+      expect(await consumeCode(editionId, participant.email, "112233")).toEqual({
+        status: "ACCES_REFUSE",
+        motif: "EN_ATTENTE_VALIDATION",
+      });
+    });
+
+    it("refuse un lien émis avant la mise en attente, sans le consommer", async () => {
+      const participant = await makeParticipant();
+      const token = randomBytes(32).toString("base64url");
+      await prisma.magicLink.create({
+        data: {
+          participantId: participant.id,
+          tokenHash: hash(token),
+          code6: "445566",
+          expiresAt: new Date(Date.now() + 30 * 60_000),
+        },
+      });
+      await prisma.participant.update({
+        where: { id: participant.id },
+        data: { status: "CANCELLED" },
+      });
+
+      expect(await consumeMagicLink(token)).toEqual({
+        status: "ACCES_REFUSE",
+        motif: "INSCRIPTION_CLOSE",
+      });
+      // Le jeton n'a servi à rien : le brûler ajouterait un « lien expiré » au
+      // refus si le dossier était rouvert dans la demi-heure.
+      const lien = await prisma.magicLink.findUniqueOrThrow({ where: { tokenHash: hash(token) } });
+      expect(lien.usedAt).toBeNull();
+    });
+  });
 });

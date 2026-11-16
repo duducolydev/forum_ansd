@@ -8,6 +8,7 @@ import { getLocale } from "next-intl/server";
 import { lireLangue, selon } from "@/lib/langue";
 import { getActiveEdition } from "@/lib/edition";
 import { consumeCode, requestMagicLink } from "@/modules/auth/magic-link";
+import type { MotifRefusAcces } from "@/modules/auth/acces-espace";
 import {
   clearParticipantSession,
   createParticipantSession,
@@ -27,6 +28,12 @@ export interface MagicLinkState {
   error?: string;
   /** E-mail pour lequel un lien vient d'être demandé (affiche le champ « code »). */
   sentTo?: string;
+  /**
+   * Dossier non validé : aucun lien n'est parti, et l'écran explique pourquoi
+   * (16 novembre 2026). Le texte vit dans `auth/acces-espace.ts`, traduit ;
+   * l'action ne transporte que le motif.
+   */
+  refus?: MotifRefusAcces;
 }
 
 const emailSchema = z.string().trim().toLowerCase().email("Adresse e-mail invalide");
@@ -54,6 +61,10 @@ export async function requestMagicLinkAction(
       sentTo: parsed.data,
     };
   }
+  // Pas de `sentTo` : le champ « code à 6 chiffres » ne doit pas s'ouvrir sur
+  // un code qui n'a jamais été envoyé.
+  if (result.status === "ACCES_REFUSE") return { refus: result.motif };
+
   return { sentTo: parsed.data };
 }
 
@@ -81,6 +92,10 @@ export async function verifyCodeAction(
       sentTo: parsedEmail.data,
     };
   }
+  // Le code était peut-être juste : c'est le dossier qui n'est pas validé.
+  // Lui répondre « code invalide » était le défaut signalé le 16 novembre 2026.
+  if (result.status === "ACCES_REFUSE") return { refus: result.motif };
+
   if (result.status === "INVALID") {
     return {
       error: selon(langue, {

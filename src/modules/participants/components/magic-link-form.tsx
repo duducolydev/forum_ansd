@@ -4,12 +4,20 @@ import { useActionState, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { lireLangue, selon } from "@/lib/langue";
 import { requestMagicLinkAction, verifyCodeAction, type MagicLinkState } from "../my-space-actions";
-import { AlertCircle, KeyRound, Mail } from "lucide-react";
+import { TEXTES_REFUS, type MotifRefusAcces } from "@/modules/auth/acces-espace";
+import { AlertCircle, Clock, KeyRound, Mail } from "lucide-react";
 import { BoutonSite } from "@/components/site/bouton-site";
 
 const initialState: MagicLinkState = {};
 
-export function MagicLinkForm({ linkError }: { linkError?: boolean }) {
+export function MagicLinkForm({
+  linkError,
+  refus,
+}: {
+  linkError?: boolean;
+  /** Refus venu d'un lien ouvert (paramètre d'URL), avant toute saisie ici. */
+  refus?: MotifRefusAcces;
+}) {
   const [requestState, requestAction, requestPending] = useActionState(
     requestMagicLinkAction,
     initialState,
@@ -26,9 +34,42 @@ export function MagicLinkForm({ linkError }: { linkError?: boolean }) {
   const sentTo = codeState.sentTo ?? requestState.sentTo;
   const emailCode = sentTo ?? (saisieDirecte ? email.trim().toLowerCase() : null);
 
+  /*
+   * Dossier non validé (16 novembre 2026) : le motif prime sur tout le reste.
+   * Il vient soit de la dernière action, soit du lien que la personne vient
+   * d'ouvrir. Tant qu'il est là, ni le message « lien expiré » ni le champ du
+   * code ne s'affichent : aucun des deux ne décrit ce qui se passe.
+   */
+  const motifRefus = codeState.refus ?? requestState.refus ?? refus ?? null;
+  const texteRefus = motifRefus ? TEXTES_REFUS[motifRefus] : null;
+
   return (
     <div className="flex flex-col gap-6">
-      {linkError && !sentTo && (
+      {texteRefus && (
+        <div
+          role="status"
+          className="border-warn-text/40 bg-warn-soft flex items-start gap-3 rounded-lg border p-4"
+        >
+          <Clock aria-hidden size={17} className="text-warn-text mt-0.5 shrink-0" />
+          <div>
+            <p className="text-heading font-semibold">{t(texteRefus.titre)}</p>
+            <p className="text-text-2 mt-1 text-sm leading-relaxed">{t(texteRefus.message)}</p>
+            {motifRefus === "INSCRIPTION_INCOMPLETE" && (
+              <p className="mt-2 text-sm">
+                <a href="/inscription" className="text-link underline underline-offset-2">
+                  {t({
+                    fr: "Remplir le formulaire d'inscription",
+                    en: "Fill in the registration form",
+                    pt: "Preencher o formulário de inscrição",
+                  })}
+                </a>
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {linkError && !sentTo && !texteRefus && (
         <p className="border-border bg-surface text-text-2 flex items-start gap-2 rounded-lg border p-3 text-sm">
           <AlertCircle aria-hidden size={15} className="text-warn-text mt-0.5 shrink-0" />
           {t({
@@ -90,7 +131,10 @@ export function MagicLinkForm({ linkError }: { linkError?: boolean }) {
         )}
       </form>
 
-      {emailCode && (
+      {/* Le champ du code disparaît devant un refus : aucun code n'ouvrira
+          l'espace tant que le dossier n'est pas validé, et le laisser inviterait
+          à réessayer en vain. */}
+      {emailCode && !texteRefus && (
         <div className="border-border flex flex-col gap-3 rounded-xl border p-5">
           {sentTo ? (
             <p className="text-text-2 text-sm">

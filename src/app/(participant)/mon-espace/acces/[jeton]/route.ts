@@ -24,13 +24,19 @@ export async function GET(
   { params }: { params: Promise<{ jeton: string }> },
 ): Promise<NextResponse> {
   const { jeton } = await params;
-  const participantId = await consommerAccesDirect(jeton);
-  if (!participantId) return redirectTo("/mon-espace?erreur=lien");
+  const resultat = await consommerAccesDirect(jeton);
+
+  // Dossier annulé ou pas encore validé : le lien est bon, c'est la porte qui
+  // est fermée. Le dire évite un « lien expiré » qui n'apprend rien.
+  if (resultat.statut === "REFUSE") {
+    return redirectTo(`/mon-espace?refus=${resultat.motif}`);
+  }
+  if (resultat.statut !== "OK") return redirectTo("/mon-espace?erreur=lien");
 
   const response = redirectTo("/mon-espace");
   response.cookies.set(
     PARTICIPANT_SESSION_COOKIE,
-    await signParticipantSession(participantId),
+    await signParticipantSession(resultat.participantId),
     participantSessionCookieOptions,
   );
   response.cookies.set(COMPTE_CONNU_COOKIE, "1", compteConnuCookieOptions);

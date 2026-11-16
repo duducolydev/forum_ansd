@@ -27,6 +27,12 @@ export async function GET(
   const { token } = await params;
   const result = await consumeMagicLink(token);
 
+  // Dossier non validé : le lien n'est ni invalide ni expiré, et le dire le
+  // serait aussi (16 novembre 2026). Le motif voyage dans l'URL, la page le
+  // relit et affiche le texte correspondant.
+  if (result.status === "ACCES_REFUSE") {
+    return redirectTo(`/mon-espace?refus=${result.motif}`);
+  }
   if (result.status !== "OK") {
     return redirectTo("/mon-espace?erreur=lien");
   }

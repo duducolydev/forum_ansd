@@ -18,6 +18,7 @@ import {
   Newspaper,
 } from "lucide-react";
 import { getParticipantSession } from "@/modules/auth/participant-session";
+import { accesEspace, lireMotifRefus, TEXTES_REFUS } from "@/modules/auth/acces-espace";
 import { logoutAction } from "@/modules/participants/my-space-actions";
 import { editDeadline, canEditNow, getMySpaceData } from "@/modules/participants/my-space-service";
 import { MagicLinkForm } from "@/modules/participants/components/magic-link-form";
@@ -89,13 +90,55 @@ function Panneau({
 export default async function MySpacePage({
   searchParams,
 }: {
-  searchParams: Promise<{ erreur?: string }>;
+  searchParams: Promise<{ erreur?: string; refus?: string }>;
 }) {
-  const { erreur } = await searchParams;
+  const { erreur, refus } = await searchParams;
   const session = await getParticipantSession();
   const participant = session ? await getMySpaceData(session.participantId) : null;
   const langue = lireLangue(await getLocale());
   const t = (textes: { fr: string; en: string; pt: string }) => selon(langue, textes);
+
+  /*
+   * Session ouverte mais dossier non validé (16 novembre 2026).
+   *
+   * Le cas existe : une session dure trente jours, et un dossier peut être
+   * annulé entre-temps — ou avoir été ouvert avant que cette règle existe.
+   * L'espace ne s'affiche pas, et la personne lit pourquoi au lieu de voir un
+   * panneau vide.
+   */
+  const acces = participant ? accesEspace(participant) : null;
+  if (participant && acces && !acces.autorise) {
+    const texte = TEXTES_REFUS[acces.motif];
+    return (
+      <>
+        <BandeauPage largeur="moyen" reseau={false}>
+          <h1>
+            {t({ fr: "Bonjour", en: "Hello", pt: "Olá" })}{" "}
+            {avecCivilite(
+              participant.civility,
+              `${participant.firstName} ${participant.lastName}`,
+              langue,
+            )}
+          </h1>
+        </BandeauPage>
+        <span data-sans-curseur hidden />
+        <CorpsPage largeur="moyen" className="flex flex-col gap-6">
+          <Panneau icone={Clock} ton="bg-gold-soft text-gold-text" titre={t(texte.titre)}>
+            <p className="text-text-2 leading-relaxed">{t(texte.message)}</p>
+            <p className="text-text-3 mt-3 text-sm">
+              {t({ fr: "N° de dossier", en: "File number", pt: "N.º de processo" })} :{" "}
+              {participant.publicId}
+            </p>
+          </Panneau>
+          <form action={logoutAction}>
+            <BoutonSite type="submit" taille="compact" icone={LogOut}>
+              {t({ fr: "Se déconnecter", en: "Sign out", pt: "Terminar sessão" })}
+            </BoutonSite>
+          </form>
+        </CorpsPage>
+      </>
+    );
+  }
 
   if (!participant) {
     return (
@@ -124,7 +167,10 @@ export default async function MySpacePage({
             })}
           </p>
           <div className="border-border bg-surface rounded-2xl border p-7 shadow-sm">
-            <MagicLinkForm linkError={erreur === "lien"} />
+            <MagicLinkForm
+              linkError={erreur === "lien"}
+              refus={lireMotifRefus(refus) ?? undefined}
+            />
           </div>
           <p className="text-text-3 mt-8 text-center text-sm">
             {t({
