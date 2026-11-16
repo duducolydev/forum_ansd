@@ -32,6 +32,17 @@ services:
       MAGIC_LINK_SECRET: ${MAGIC_LINK_SECRET}
       BADGE_HMAC_SECRET: ${BADGE_HMAC_SECRET}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      # Jeton de l'export du corpus public (docs/ASSISTANT-RECHERCHE.md).
+      #
+      # Repli explicite sur le vide : la variable n'existe pas forcément dans le
+      # `.env` du serveur, et Compose refuserait de démarrer en la réclamant.
+      # Vide, la route reste ouverte — ce que `modules/corpus/jeton.ts` assume.
+      #
+      # Ce bloc `environment` énumère les variables une à une : une ligne
+      # ajoutée au seul `.env` n'atteint **pas** le conteneur. Un jeton posé là
+      # sans cette ligne-ci laisserait la route ouverte en croyant l'avoir
+      # fermée, et rien ne le signalerait.
+      CORPUS_TOKEN: ${CORPUS_TOKEN:-}
     volumes:
       - storage_data:/app/storage
     depends_on:

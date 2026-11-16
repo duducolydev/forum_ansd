@@ -577,6 +577,58 @@ sous le titre de chaque journée, ouverte toute la journée.
 Les intervenants se rattachent aux séances par l'import (Intervenants →
 Importer) : colonne `seances` = numéro de la séance, par exemple `4` ou `4; 7`.
 
+### 4.4 Ouvrir l'export du corpus à l'assistant de recherche
+
+`GET /api/v1/corpus` livre le contenu public du portail à l'assistant de
+recherche interne (`docs/ASSISTANT-RECHERCHE.md`). Sans `CORPUS_TOKEN`, la route
+est **ouverte** : le contenu qu'elle sert est déjà public page par page, mais un
+export d'un bloc invite à l'aspiration automatique. Pour la fermer :
+
+```bash
+cd /opt/forum-ansd
+JETON="$(openssl rand -hex 32)"
+: "${JETON:?génération échouée}"
+printf '\n# --- Export du corpus (docs/ASSISTANT-RECHERCHE.md) ---------------------\nCORPUS_TOKEN="%s"\n' "$JETON" >> .env
+grep -cE '^CORPUS_TOKEN="[0-9a-f]{64}"$' .env   # 1
+```
+
+Puis **recréer le conteneur** : `restart` relance le processus avec les
+variables qu'il avait déjà, et ne reprend donc pas la nouvelle.
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps app
+```
+
+Vérifier que la route est bien fermée, puis ouverte avec le jeton — le premier
+appel doit répondre `404`, le second `200` :
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1/api/v1/corpus
+curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $JETON" \
+  http://127.0.0.1/api/v1/corpus
+```
+
+Transmettre le jeton par un canal séparé de l'adresse, et jamais dans le même
+message que la documentation.
+
+**Le piège.** Le service `app` de `docker-compose.prod.yml` énumère ses
+variables une à une : une ligne ajoutée au seul `.env` n'atteint pas le
+conteneur. `CORPUS_TOKEN` y figure depuis le 16 novembre 2026 — sans cette
+ligne, le jeton posé dans `.env` laisserait la route ouverte en donnant à croire
+qu'elle est fermée, et rien ne le signalerait. Le `404` du contrôle ci-dessus est
+ce qui le prouve.
+
+**Et le contenu ?** `pnpm corpus:apercu` compte le corpus par type et **nomme les
+contenus publiés mais vides** — un titre sans texte, indexé tel quel, fait
+remonter une page vide en réponse à une vraie question. À passer avant
+d'annoncer l'export, puis après chaque campagne de saisie :
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm outils pnpm corpus:apercu
+```
+
+Lecture seule : le script n'écrit rien en base.
+
 ---
 
 ## 5. HTTPS sur `forum2026.ansd.sn`

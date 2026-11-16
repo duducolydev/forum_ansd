@@ -4193,3 +4193,93 @@ configuration nginx par celle sans TLS et remet le portail en clair — sans rie
 signaler, puisque le port 80 répond et que le site s'affiche. L'avertissement
 est écrit en tête de `docker-compose.interne.yml`, là où on le lit avant de
 lancer la commande, et non dans le guide seul.
+
+## 28. Corpus public pour un assistant de recherche (16 novembre 2026)
+
+Une équipe interne à l'ANSD propose d'ajouter un assistant conversationnel qui
+aiderait le visiteur à trouver plus vite ce qu'il cherche sur le portail. La
+question posée n'était pas « comment le construire » mais « de quoi a-t-il
+besoin de notre part ». Réponse arrêtée : **un export, pas un accès**.
+
+### 28.1 Pourquoi pas la base
+
+Le contenu public est réparti sur une quinzaine de tables, en trois langues,
+chacune portant son propre drapeau de publication, et les textes longs y sont
+stockés en document structuré et non en HTML (§17). Un indexeur branché sur
+MySQL devrait rejouer toutes ces règles, et la première oubliée publie un
+brouillon. L'application les connaît déjà : `GET /api/v1/corpus` les applique
+une fois et ne livre que du texte lisible, avec l'adresse de la page qui le
+porte.
+
+Trois paramètres suffisent : `langue` (un document par langue — un index
+trilingue mélangé renvoie des extraits dans la mauvaise langue), `depuis` pour
+la réindexation partielle, et un jeton facultatif `CORPUS_TOKEN`. Le débit est
+plafonné à 6 appels par minute et par adresse : une réindexation complète en
+coûte un.
+
+### 28.2 La garantie tient à la liste des requêtes, pas à un filtre
+
+Aucune table de personnes n'est lue par `modules/corpus/service.ts`, hormis
+`Speaker` restreinte aux intervenants publiés — qui sont déjà sur
+`/intervenants`. Ni `Participant`, ni `Invitation`, ni `Badge`, ni `ScanLog`,
+ni `SessionRegistration`, ni `User`. Écrire la règle en commentaire n'aurait
+rien garanti : `construire.test.ts` relit le **code source** du service et
+échoue si l'une de ces tables y apparaît. C'est la seule forme de garantie qui
+survive à une jointure ajoutée dans six mois sans y penser.
+
+Le code de réservation négocié avec les hôtels est écarté de la même manière :
+il part au participant après confirmation, et n'a rien à faire dans un index.
+
+### 28.3 Les pages sans texte, et celles qui demandent une connexion
+
+Un indexeur qui ne lit que du contenu ne trouve jamais `/inscription` ni
+`/verifier` : ces pages portent un formulaire. Elles sont donc décrites à la
+main dans `modules/corpus/reperes.ts`, dans les trois langues.
+
+La même table porte `/mon-espace` et `/espace-intervenant` avec
+`connexionRequise`. « Où est mon badge », « suis-je inscrit à la session 4 » :
+la réponse est propre à une personne, elle n'est pas dans le corpus, et
+l'assistant doit renvoyer vers `/connexion` sans tenter de répondre. Un
+assistant qui tenterait une réponse « générale » sur un badge nominatif en
+inventerait une. C'est écrit comme une obligation dans
+`docs/ASSISTANT-RECHERCHE.md`, remis à l'équipe avec l'adresse de l'export.
+
+### 28.4 Le plan du site n'indexait que les pages d'index
+
+Constaté au passage : `app/sitemap.ts` omettait les fiches de séance, les
+lettres d'information et les six rubriques pratiques — soit l'essentiel du
+contenu rédigé. Un moteur qui suit ce plan ne voyait que les pages de liste, et
+une recherche « visa Forum Dakar » ne menait nulle part. Corrigé, chatbot ou
+pas.
+
+### 28.5 Ce qui reste à décider avec l'équipe de l'assistant
+
+- **L'intégration dans les pages du portail**, si elle est voulue : la CSP est à
+  nonce avec `strict-dynamic` et `connect-src 'self'` (§18). Une balise
+  `<script>` collée à la main ne s'exécute pas, et un widget qui appelle son
+  propre domaine est bloqué par le navigateur. Trois chemins possibles, décrits
+  au §7.2 du document remis ; le plus simple pour commencer est un assistant sur
+  sa propre page, hors du portail, qui consomme l'export.
+- **La fraîcheur** : le portail ne notifie pas les changements. Pour le
+  programme et les hôtels, mieux vaut interroger au moment de répondre que
+  servir un index de la nuit — un horaire corrigé la veille au soir doit être
+  juste le lendemain matin.
+
+### 28.6 Le jeton n'atteignait pas le conteneur
+
+Le service `app` de `docker-compose.prod.yml` énumère ses variables une à une.
+`CORPUS_TOKEN` posé dans le seul `.env` du serveur ne serait donc jamais arrivé
+dans le conteneur : la route serait restée **ouverte** alors que tout le monde
+l'aurait crue fermée, et rien ne l'aurait signalé — ni erreur au démarrage, ni
+ligne de journal. La variable est ajoutée au bloc `environment`, avec un repli
+explicite sur le vide (`${CORPUS_TOKEN:-}`) pour que Compose ne réclame pas une
+ligne absente du `.env`.
+
+C'est le même piège que `PUBLIC_BASE_URL` au §27 : une variable qui ne produit
+aucune erreur quand elle manque est la seule qu'on oublie. La procédure du
+§4.4 de `docs/DEPLOIEMENT.md` fait donc vérifier le `404` **avant** le `200` :
+c'est le refus sans jeton qui prouve que la fermeture a pris effet, pas le
+succès avec.
+
+Noter aussi que `restart` ne suffit pas — il relance le processus avec les
+variables qu'il avait déjà. Il faut recréer le conteneur.

@@ -206,6 +206,20 @@ lecture tout de suite.
 - Seuls les échecs **définitifs** sont retenus ; un « problème temporaire » ne l'est pas,
   Gmail réessaie et enverra un nouvel avis s'il abandonne.
 
+## Corpus public (assistant de recherche)
+
+`GET /api/v1/corpus` livre tout le contenu **publié** du portail, aplati en texte, avec
+l'adresse de la page qui le porte : de quoi indexer le site pour un assistant de recherche
+sans accès à la base. Un document par contenu et par langue (`?langue=fr,en`),
+réindexation partielle par `?depuis=<ISO>`, débit de 6 appels/min/IP, jeton facultatif
+(`CORPUS_TOKEN`).
+
+Aucune donnée personnelle n'en sort : les tables de participants, badges, présences et
+inscriptions ne sont pas lues, et `src/modules/corpus/construire.test.ts` le vérifie.
+
+Spécification à remettre à l'équipe qui construit l'assistant :
+[`docs/ASSISTANT-RECHERCHE.md`](docs/ASSISTANT-RECHERCHE.md).
+
 ## Scripts
 
 | Commande                       | Effet                                                              |
@@ -221,6 +235,7 @@ lecture tout de suite.
 | `pnpm db:seed`                 | Initialise une base vide (`SEED_DEMO=1` : + démonstration)         |
 | `pnpm demo:purger`             | Inventorie les données de démonstration ; `--appliquer` les retire |
 | `pnpm migrations:verifier`     | Refuse une migration qui supprimerait ou réécrirait des données    |
+| `pnpm corpus:apercu`           | Compte le corpus public et nomme les documents sans texte          |
 | `./scripts/deployer.sh`        | Mise à jour en production, sans toucher aux données                |
 
 Un hook Husky `pre-commit` lance `lint-staged` (ESLint + Prettier sur les fichiers modifiés).
