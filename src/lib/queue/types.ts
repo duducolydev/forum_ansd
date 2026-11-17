@@ -24,6 +24,15 @@ export interface JobQueue {
    */
   enqueueMany<T = unknown>(type: string, entrees: EnqueueEntry<T>[]): Promise<void>;
   process<T = unknown>(type: string, handler: JobHandler<T>): void;
+  /**
+   * Démarre la consommation, une fois **tous** les handlers enregistrés.
+   *
+   * Séparé de `process` depuis le 17 novembre 2026 : un worker consomme tous
+   * les types de la file, et celui qui naissait au premier `process` rejetait
+   * les jobs des types pas encore enregistrés (`queue/index.ts`). Idempotent,
+   * et sans effet là où la file n'a pas de worker propre (`DbJobQueue`).
+   */
+  demarrerWorker(): void;
   /** Ferme les connexions ouvertes (Redis…) — à appeler en fin de script court-lived (ex. seed). */
   close(): Promise<void>;
 }

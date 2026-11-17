@@ -61,8 +61,28 @@ export class BullMqJobQueue implements JobQueue {
     );
   }
 
+  /**
+   * Enregistre un handler — **sans** démarrer le worker.
+   *
+   * Le worker naissait ici, au premier `process()`. Or il consomme **tous** les
+   * types de jobs de la file, pas seulement celui qu'on vient d'enregistrer :
+   * un worker né d'un `registerBadgeJobs()` happait les `notification.send` et
+   * les rejetait faute de handler. Le démarrage est donc explicite, et vient
+   * après l'enregistrement de tous les handlers (`instrumentation-node.ts`).
+   *
+   * C'est la seconde barrière. La première est le singleton de `queue/index.ts`,
+   * qui garantit une table de handlers unique ; celle-ci garantit qu'aucun
+   * worker ne tourne avant qu'elle soit complète.
+   */
   process<T>(type: string, handler: JobHandler<T>): void {
     this.handlers.set(type, handler as JobHandler);
+  }
+
+  /**
+   * Démarre la consommation. Appelé une seule fois, au démarrage du serveur,
+   * une fois tous les handlers enregistrés. Idempotent.
+   */
+  demarrerWorker(): void {
     this.worker ??= new Worker(
       QUEUE_NAME,
       async (job: BullJob) => {

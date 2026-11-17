@@ -48,6 +48,9 @@ export class DbJobQueue implements JobQueue {
     this.handlers.set(type, handler as JobHandler);
   }
 
+  /** Sans objet ici : cette file n'a pas de worker propre, elle exécute à la demande. */
+  demarrerWorker(): void {}
+
   close(): Promise<void> {
     // Aucune connexion propre à fermer : `prisma` est un singleton partagé par ailleurs.
     return Promise.resolve();

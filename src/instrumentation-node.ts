@@ -1,3 +1,4 @@
+import { jobQueue } from "@/lib/queue";
 import { registerNotificationJobs } from "@/modules/notifications/jobs";
 import { registerBadgeJobs } from "@/modules/badges/jobs";
 import { registerInvitationJobs } from "@/modules/invitations/service";
@@ -22,6 +23,10 @@ export function enregistrerWorkers(): void {
   registerNotificationJobs();
   registerBadgeJobs();
   registerInvitationJobs();
+  // Après les trois, et seulement après : le worker consomme tous les types de
+  // la file, et démarrer plus tôt le ferait rejeter ceux pas encore enregistrés
+  // (`lib/queue/index.ts`, 17 novembre 2026).
+  jobQueue.demarrerWorker();
   // Avis « Adresse introuvable » lus dans la boîte d'envoi, toutes les 15 min.
   demarrerReleveRebonds();
 }

@@ -23,7 +23,11 @@ const emails: string[] = [];
 const participantIds: string[] = [];
 const participants: { publicId: string; nom: string }[] = [];
 
-async function creerParticipantAvecBadge(prenom: string, nom: string, revoque = false) {
+async function creerParticipantAvecBadge(
+  prenom: string,
+  nom: string,
+  statut: "CONFIRMED" | "CANCELLED" = "CONFIRMED",
+) {
   const email = `e2e-scan-${randomUUID()}@example.test`;
   emails.push(email);
 
@@ -43,7 +47,7 @@ async function creerParticipantAvecBadge(prenom: string, nom: string, revoque = 
       country: "Sénégal",
       organization: "ANSD",
       categoryId: categorie.id,
-      status: "CONFIRMED",
+      status: statut,
       source: "ONSITE",
       confirmedAt: new Date(),
     },
@@ -55,7 +59,6 @@ async function creerParticipantAvecBadge(prenom: string, nom: string, revoque = 
       version: 1,
       qrToken: hashBadgeToken(buildBadgeToken(publicId, 1)),
       generatedAt: new Date(),
-      revokedAt: revoque ? new Date() : null,
     },
   });
 
@@ -109,9 +112,17 @@ test.beforeAll(async () => {
 
   await creerParticipantAvecBadge("Aminata", `Sow${SUFFIXE.slice(0, 3)}`);
   await creerParticipantAvecBadge("Oumar", `Ba${SUFFIXE.slice(0, 3)}`);
-  // Badge révoqué : le rouge que l'agent peut réellement rencontrer à l'entrée,
-  // depuis que le refus de zone ne s'obtient plus en changeant de poste.
-  await creerParticipantAvecBadge("Fatou", `Ndiaye${SUFFIXE.slice(0, 3)}`, true);
+  /*
+   * Inscription annulée : le rouge que ce test peut atteindre.
+   *
+   * Un badge **révoqué** serait plus parlant, mais la recherche manuelle
+   * l'écarte à dessein (`modules/scan/client/store.ts`) — pour qu'un agent ne
+   * puisse pas sélectionner un badge périmé —, et Playwright n'a pas de caméra
+   * pour présenter le QR. Une inscription annulée reste embarquée dans le
+   * manifeste, se trouve à la recherche, et produit un refus explicite : c'est
+   * exactement la situation d'un visiteur qui se présente après annulation.
+   */
+  await creerParticipantAvecBadge("Fatou", `Ndiaye${SUFFIXE.slice(0, 3)}`, "CANCELLED");
 });
 
 test.afterAll(async () => {
@@ -142,7 +153,7 @@ async function scannerManuellement(page: import("@playwright/test").Page, public
   await page.getByRole("button", { name: new RegExp(publicId) }).click();
 }
 
-test("rend un verdict vert à l'entrée, et rouge sur un badge révoqué", async ({ page }) => {
+test("rend un verdict vert à l'entrée, et rouge sur une inscription annulée", async ({ page }) => {
   await seConnecterAdmin(page);
   await page.goto("/scan");
   await attendreManifeste(page);
@@ -160,7 +171,7 @@ test("rend un verdict vert à l'entrée, et rouge sur un badge révoqué", async
 
   await scannerManuellement(page, participants[2]!.publicId);
   await expect(page.getByTestId("verdict")).toHaveAttribute("data-couleur", "ROUGE");
-  await expect(page.getByTestId("verdict")).toContainText("Badge révoqué");
+  await expect(page.getByTestId("verdict")).toContainText("Inscription annulée");
 });
 
 test("annonce « déjà badgé » au second passage de la journée", async ({ page }) => {
