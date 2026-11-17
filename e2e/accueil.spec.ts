@@ -70,12 +70,18 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await prisma.scanLog.deleteMany({ where: { checkpointId } });
-  await prisma.checkpoint.deleteMany({ where: { id: checkpointId } });
   const crees = await prisma.participant.findMany({
     where: { editionId, lastName: { contains: SUFFIXE } },
     select: { id: true },
   });
+  /*
+   * Les scans sont effacés par **participant** : ils peuvent avoir été écrits
+   * sur le point de l'entrée du seed, que ce test ne doit pas supprimer.
+   */
+  await prisma.scanLog.deleteMany({
+    where: { OR: [{ checkpointId }, { participantId: { in: crees.map((p) => p.id) } }] },
+  });
+  await prisma.checkpoint.deleteMany({ where: { id: checkpointId } });
   await prisma.participant.deleteMany({
     where: { OR: [{ email: { in: emails } }, { id: { in: crees.map((p) => p.id) } }] },
   });
@@ -99,9 +105,6 @@ test("retrouve un inscrit, le valide, le badge et enregistre son passage", async
   await seConnecterAdmin(page);
   await page.goto("/admin/accueil");
 
-  await page
-    .getByLabel("Point de contrôle")
-    .selectOption({ label: `Comptoir ${SUFFIXE} — ZACC${SUFFIXE}` });
   await page.getByLabel(/Nom, e-mail, téléphone/).fill(`Invitee${SUFFIXE}`);
 
   const ligne = page.getByRole("listitem").filter({ hasText: `Invitee${SUFFIXE}` });
@@ -116,16 +119,19 @@ test("retrouve un inscrit, le valide, le badge et enregistre son passage", async
   const recharge = await prisma.participant.findUniqueOrThrow({ where: { id: inviteId } });
   expect(recharge.status).toBe("CHECKED_IN");
   expect(await prisma.badge.count({ where: { participantId: inviteId } })).toBe(1);
-  expect(await prisma.scanLog.count({ where: { checkpointId, participantId: inviteId } })).toBe(1);
+  /*
+   * Compté sur la personne et non sur le point (17 novembre 2026) : le comptoir
+   * se rattache désormais seul au point de l'entrée, et le test n'a plus la
+   * main sur celui qui sera retenu. Ce qui compte reste vrai — un passage, un
+   * seul, pour cette personne.
+   */
+  expect(await prisma.scanLog.count({ where: { participantId: inviteId } })).toBe(1);
 });
 
 test("inscrit une personne inconnue et la fait entrer dans la foulée", async ({ page }) => {
   await seConnecterAdmin(page);
   await page.goto("/admin/accueil");
 
-  await page
-    .getByLabel("Point de contrôle")
-    .selectOption({ label: `Comptoir ${SUFFIXE} — ZACC${SUFFIXE}` });
   await page.getByRole("button", { name: "Nouvelle inscription" }).click();
 
   const creation = formulaire(page);

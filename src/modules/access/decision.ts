@@ -19,8 +19,19 @@ import type { ParticipantStatus, ScanResult } from "@prisma/client";
 
 export type CouleurVerdict = "VERT" | "ORANGE" | "ROUGE";
 
-/** Anti-double-scan : même badge, même point de contrôle (brief §2.5). */
-export const DELAI_ANTI_DOUBLE_SCAN_MS = 2 * 60 * 1000;
+/**
+ * Un badge, un passage par jour (17 novembre 2026).
+ *
+ * Le dispositif retenu par le comité est **un badgeage quotidien à l'entrée**,
+ * et non un contrôle porte par porte : les points de contrôle de salle ne sont
+ * plus tenus. La règle suit : au-delà du premier passage réussi de la journée,
+ * tout scan du même badge repasse en orange — la personne entre, mais l'agent
+ * sait qu'elle est déjà venue, et à quelle heure.
+ *
+ * Cela remplace l'anti-double-scan de deux minutes, qui ne protégeait que du
+ * double bip accidentel. La nouvelle règle le couvre : le second bip est le
+ * second passage du jour, et il s'annonce comme tel.
+ */
 
 /**
  * Seuls ces statuts franchissent un point de contrôle.
@@ -52,10 +63,15 @@ export interface ContexteScan {
   /** Zone du point de contrôle où a lieu le scan. */
   zoneCode: string;
   scanneA: Date;
-  /** Dernier scan du **même badge au même point**, ou `null`. */
-  dernierScanIci: Date | null;
-  /** Aucun scan réussi de ce badge aujourd'hui, tous points confondus. */
-  premierPassageDuJour: boolean;
+  /**
+   * Heure du **premier passage réussi de ce badge aujourd'hui**, ou `null`
+   * si la personne ne s'est pas encore présentée.
+   *
+   * Une heure plutôt qu'un booléen : l'agent qui voit « déjà badgé » veut
+   * savoir quand, sans quoi il ne peut pas distinguer un retour d'après-midi
+   * d'un double bip. C'est ce que l'écran affiche.
+   */
+  premierPassageDuJour: Date | null;
 }
 
 export interface Verdict {
@@ -75,6 +91,20 @@ export interface Verdict {
  * ponctuel », jamais de retrait. Retirer une zone à un individu se fait en
  * changeant sa catégorie, ce qui reste visible et explicable.
  */
+/**
+ * Heure affichable d'un passage, en heure locale de Dakar — qui est UTC.
+ *
+ * Lue en UTC explicitement, et non par `toLocaleTimeString` : l'appareil d'un
+ * agent peut porter n'importe quel fuseau, et une heure de premier passage
+ * décalée d'une heure se lirait comme une erreur de la personne, pas de
+ * l'horloge. Même raison qu'au `jourDeScan` du module de scan.
+ */
+function heureCourte(quand: Date): string {
+  const h = String(quand.getUTCHours()).padStart(2, "0");
+  const m = String(quand.getUTCMinutes()).padStart(2, "0");
+  return `${h}h${m}`;
+}
+
 export function resoudreZones(
   zonesCategorie: readonly string[],
   exceptions: readonly string[],
@@ -132,17 +162,18 @@ export function evaluerAcces(badge: BadgeConnu | null, contexte: ContexteScan): 
 
   const alertes: string[] = [];
   if (badge.alerteAccueil) alertes.push("À accueillir");
-  if (contexte.premierPassageDuJour) alertes.push("Premier passage du jour");
 
-  if (
-    contexte.dernierScanIci &&
-    contexte.scanneA.getTime() - contexte.dernierScanIci.getTime() < DELAI_ANTI_DOUBLE_SCAN_MS
-  ) {
+  /*
+   * Le vert dit désormais « premier passage du jour » à lui seul : l'alerte qui
+   * le répétait a été retirée. Sur un écran lu entre deux badges, une mention
+   * qui redit la couleur n'ajoute rien et dilue celles qui comptent.
+   */
+  if (contexte.premierPassageDuJour) {
     return {
       couleur: "ORANGE",
       resultat: "ALREADY",
-      motif: "Déjà scanné ici",
-      alertes,
+      motif: "Déjà badgé aujourd'hui",
+      alertes: [...alertes, `Premier passage : ${heureCourte(contexte.premierPassageDuJour)}`],
     };
   }
 

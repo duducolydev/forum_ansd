@@ -20,22 +20,25 @@ export function ExportPanel({
   jour,
   jourLibelle,
   categories,
-  zones,
 }: {
   /** Jour choisi en haut de page (`AAAA-MM-JJ`), transmis tel quel à l'export. */
   jour: string;
   jourLibelle: string;
   categories: { id: string; labelFr: string }[];
-  zones: { id: string; name: string }[];
 }) {
   const [categoryId, setCategoryId] = useState("");
-  const [zoneId, setZoneId] = useState("");
   const [presence, setPresence] = useState<"TOUS" | "PRESENTS" | "ABSENTS">("TOUS");
 
   function lien(forme: "EMARGEMENT" | "CONSTAT"): string {
     const parametres = new URLSearchParams({ jour, forme });
     if (categoryId) parametres.set("categoryId", categoryId);
-    if (zoneId) parametres.set("zoneId", zoneId);
+    /*
+     * Le filtre par zone a été retiré de cet écran le 17 novembre 2026 : on
+     * badge une fois par jour à l'entrée, et proposer les trois zones aurait
+     * produit deux exports vides sur trois, sans dire pourquoi. Le paramètre
+     * `zoneId` reste accepté par la route, pour le jour où des portes seraient
+     * de nouveau tenues.
+     */
     // L'émargement se signe avant la séance : le filtre ne concerne que le constat.
     if (forme === "CONSTAT" && presence !== "TOUS") parametres.set("presence", presence);
     return `/api/v1/presences/export?${parametres.toString()}`;
@@ -64,25 +67,6 @@ export function ExportPanel({
             {categories.map((categorie) => (
               <option key={categorie.id} value={categorie.id}>
                 {categorie.labelFr}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="export-zone" className="text-text-3 text-xs font-semibold">
-            Zone (passage constaté)
-          </label>
-          <select
-            id="export-zone"
-            value={zoneId}
-            onChange={(evenement) => setZoneId(evenement.target.value)}
-            className={`${champ} w-52`}
-          >
-            <option value="">Toutes zones</option>
-            {zones.map((zone) => (
-              <option key={zone.id} value={zone.id}>
-                {zone.name}
               </option>
             ))}
           </select>

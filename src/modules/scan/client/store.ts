@@ -212,27 +212,15 @@ export async function depiler(identifiants: string[]): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
- * Dernier passage d'un badge à un point donné, conservé localement.
+ * Passages d'un badge, conservés localement.
  *
- * **Portée volontairement limitée à l'appareil** : hors ligne, deux tablettes
- * postées à la même entrée ne peuvent pas se voir. La règle des deux minutes
- * (§2.5) vaut donc par appareil. La faire porter sur le serveur reviendrait à
- * la perdre exactement quand le réseau manque, c'est-à-dire quand elle sert.
+ * La clé garde le point de contrôle, bien que la règle n'en dépende plus
+ * (un badgeage par jour, `modules/access/decision.ts`) : l'historique déjà
+ * écrit sur les appareils en service reste lisible, et un retour à un contrôle
+ * porte par porte ne demanderait pas de le vider.
  */
 function cleHistorique(empreinte: string, checkpointId: string): string {
   return `${empreinte}:${checkpointId}`;
-}
-
-export async function dernierPassage(
-  empreinte: string,
-  checkpointId: string,
-): Promise<Date | null> {
-  const base = await ouvrir();
-  const tx = transaction(base, [HISTORIQUE], "readonly");
-  const valeur = await attendre<{ cle: string; a: string } | undefined>(
-    tx.objectStore(HISTORIQUE).get(cleHistorique(empreinte, checkpointId)),
-  );
-  return valeur ? new Date(valeur.a) : null;
 }
 
 export async function noterPassage(
@@ -251,14 +239,32 @@ export async function noterPassage(
   );
 }
 
-/** Le badge a-t-il déjà été vu aujourd'hui, tous points confondus ? */
-export async function vuAujourdhui(empreinte: string, jour: string): Promise<boolean> {
+/**
+ * Heure du **premier** passage réussi de ce badge aujourd'hui, ou `null`.
+ *
+ * La plus ancienne des entrées du jour, et non la dernière : c'est l'heure
+ * d'arrivée que l'agent veut lire quand l'écran annonce « déjà badgé »
+ * (`modules/access/decision.ts`). Un passage n'est noté que s'il a été
+ * autorisé, et le second scan d'une même journée ne réécrit pas le premier.
+ *
+ * **Portée : cet appareil.** L'historique vit dans l'IndexedDB du scanner, qui
+ * doit rendre son verdict hors ligne. Deux appareils tenus à la même porte ne
+ * se voient donc pas l'un l'autre : un badge scanné sur le premier passera au
+ * vert sur le second. C'est le prix du fonctionnement hors connexion, assumé
+ * depuis l'origine du scanner — et sans conséquence sur les comptages, qui
+ * dédoublonnent par participant côté serveur.
+ */
+export async function premierPassageDuJour(empreinte: string, jour: string): Promise<Date | null> {
   const base = await ouvrir();
   const tx = transaction(base, [HISTORIQUE], "readonly");
   const toutes = await attendre<{ cle: string; a: string; empreinte?: string }[]>(
     tx.objectStore(HISTORIQUE).getAll(),
   );
-  return toutes.some((ligne) => ligne.empreinte === empreinte && ligne.a.startsWith(jour));
+  const duJour = toutes
+    .filter((ligne) => ligne.empreinte === empreinte && ligne.a.startsWith(jour))
+    .map((ligne) => ligne.a)
+    .sort();
+  return duJour.length > 0 ? new Date(duJour[0]!) : null;
 }
 
 /** Utilisé par les tests, et par le bouton « oublier cet appareil ». */

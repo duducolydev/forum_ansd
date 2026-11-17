@@ -9,11 +9,20 @@ import { prisma } from "@/lib/db";
  * jour J (mauvaise salle, badge périmé) mais ne sont pas des présences.
  *
  * Le scan de sortie est facultatif dans le brief (§2.5) et n'est pas déployé.
- * On ne prétend donc **pas** connaître le nombre de personnes présentes dans une
- * zone à l'instant t : sans sortie, ce chiffre ne ferait que croître et
- * donnerait une fausse assurance à qui doit décider d'ouvrir une salle. Ce qui
- * est mesuré, et affiché sous ce nom, est l'**affluence** — le nombre de
- * personnes distinctes passées par la zone dans la journée.
+ * On ne prétend donc **pas** connaître le nombre de personnes présentes à
+ * l'instant t : sans sortie, ce chiffre ne ferait que croître et donnerait une
+ * fausse assurance à qui doit décider d'ouvrir une salle. Ce qui est compté est
+ * le nombre de personnes **distinctes** entrées dans la journée.
+ *
+ * ## Plus de ventilation par point ni par zone (17 novembre 2026)
+ *
+ * Le comité a retenu un **badgeage quotidien à l'entrée** : les portes de salle
+ * ne sont plus tenues. Un tableau par point de contrôle et une affluence par
+ * zone n'auraient plus montré qu'une seule ligne, en laissant croire qu'il en
+ * existe d'autres à surveiller. Les deux ont donc été retirés, avec les
+ * requêtes qui les alimentaient. Les scans gardent leur `checkpointId` : rien
+ * n'est perdu en base, et le jour où des portes seraient de nouveau tenues, il
+ * y aura de quoi reconstruire ces vues.
  */
 
 export interface KpisPresence {
@@ -22,20 +31,6 @@ export interface KpisPresence {
   taux: number | null;
   scans: number;
   refus: number;
-}
-
-export interface LignePoint {
-  checkpointId: string;
-  nom: string;
-  zone: string;
-  autorises: number;
-  refuses: number;
-  dejaScannes: number;
-}
-
-export interface LigneZone {
-  zone: string;
-  affluence: number;
 }
 
 export interface LigneTaux {
@@ -59,8 +54,6 @@ export interface LigneFlux {
 export interface PresenceDuJour {
   jour: Date;
   kpis: KpisPresence;
-  parPoint: LignePoint[];
-  parZone: LigneZone[];
   parCategorie: LigneTaux[];
   parPays: LigneTaux[];
 }
@@ -87,7 +80,7 @@ export async function getPresenceDuJour(editionId: string, jour: Date): Promise<
   const day = debutDeJour(jour);
   const perimetre = { checkpoint: { editionId }, day };
 
-  const [scans, refus, presentsIds, attendus, parPointBrut, points] = await Promise.all([
+  const [scans, refus, presentsIds, attendus] = await Promise.all([
     prisma.scanLog.count({ where: perimetre }),
     prisma.scanLog.count({
       where: {
@@ -103,41 +96,11 @@ export async function getPresenceDuJour(editionId: string, jour: Date): Promise<
     prisma.participant.count({
       where: { editionId, deletedAt: null, status: { in: [...STATUTS_ATTENDUS] } },
     }),
-    prisma.scanLog.groupBy({
-      by: ["checkpointId", "result"],
-      where: perimetre,
-      _count: { _all: true },
-    }),
-    prisma.checkpoint.findMany({
-      where: { editionId },
-      select: { id: true, name: true, zone: { select: { code: true, name: true } } },
-    }),
   ]);
 
   const presents = presentsIds.length;
 
-  const parPoint: LignePoint[] = points
-    .map((point) => {
-      const lignes = parPointBrut.filter((ligne) => ligne.checkpointId === point.id);
-      const compter = (resultats: string[]) =>
-        lignes
-          .filter((ligne) => resultats.includes(ligne.result))
-          .reduce((total, ligne) => total + ligne._count._all, 0);
-
-      return {
-        checkpointId: point.id,
-        nom: point.name,
-        zone: point.zone.name,
-        autorises: compter(["OK"]),
-        refuses: compter(["DENIED_ZONE", "DENIED_STATUS", "REVOKED", "UNKNOWN"]),
-        dejaScannes: compter(["ALREADY"]),
-      };
-    })
-    .filter((ligne) => ligne.autorises + ligne.refuses + ligne.dejaScannes > 0)
-    .sort((a, b) => b.autorises - a.autorises);
-
-  const [parZone, parCategorie, parPays] = await Promise.all([
-    affluenceParZone(editionId, day),
+  const [parCategorie, parPays] = await Promise.all([
     tauxParChamp(editionId, day, "categorie"),
     tauxParChamp(editionId, day, "pays"),
   ]);
@@ -151,35 +114,9 @@ export async function getPresenceDuJour(editionId: string, jour: Date): Promise<
       scans,
       refus,
     },
-    parPoint,
-    parZone,
     parCategorie,
     parPays,
   };
-}
-
-/**
- * Affluence par zone : personnes **distinctes** passées, pas nombre de scans.
- *
- * SQL brut parce qu'il faut un `COUNT(DISTINCT …)` sur une jointure, que Prisma
- * n'exprime pas. Même exception, localisée et commentée, que pour la courbe du
- * tableau de bord.
- */
-async function affluenceParZone(editionId: string, day: Date): Promise<LigneZone[]> {
-  const lignes = await prisma.$queryRaw<{ zone: string; affluence: bigint }[]>`
-    SELECT z.name AS zone, COUNT(DISTINCT s.participantId) AS affluence
-    FROM ScanLog s
-    JOIN Checkpoint c ON c.id = s.checkpointId
-    JOIN Zone z ON z.id = c.zoneId
-    WHERE c.editionId = ${editionId}
-      AND s.day = ${day}
-      AND s.result = 'OK'
-      AND s.direction = 'IN'
-      AND s.participantId IS NOT NULL
-    GROUP BY z.id, z.name
-    ORDER BY affluence DESC
-  `;
-  return lignes.map((ligne) => ({ zone: ligne.zone, affluence: Number(ligne.affluence) }));
 }
 
 /**

@@ -19,6 +19,15 @@ import { ChampPays } from "@/components/ui/champ-pays";
 const champ = "border-border bg-bg text-text w-full rounded-lg border px-3 py-2.5 text-sm";
 const etiquette = "text-text-3 text-xs font-semibold";
 
+/**
+ * Zone du point de contrôle auquel le comptoir rattache ses passages.
+ *
+ * Même code que le scanner (`modules/scan/components/scanner-app.tsx`) et même
+ * raison : on badge une fois par jour à l'entrée, et le comptoir y est. Stable
+ * depuis le seed (`prisma/seed.ts`).
+ */
+const ZONE_ENTREE = "ENTREE";
+
 const STATUT_LABEL: Record<string, string> = {
   INVITED: "Invité",
   INVITATION_SENT: "Invitation envoyée",
@@ -49,7 +58,14 @@ export function OnsiteDesk({
 }) {
   const [terme, setTerme] = useState("");
   const [candidats, setCandidats] = useState<Candidat[]>([]);
-  const [checkpointId, setCheckpointId] = useState(checkpoints[0]?.id ?? "");
+  /*
+   * Le point de contrôle est déduit, plus choisi (17 novembre 2026) : on badge
+   * une fois par jour à l'entrée, et le comptoir est à l'entrée. Le sélecteur
+   * a disparu de cet écran ; la zone d'entrée est préférée, à défaut le premier
+   * point connu — sans quoi le passage ne serait pas enregistré du tout.
+   */
+  const checkpointId =
+    (checkpoints.find((point) => point.zoneCode === ZONE_ENTREE) ?? checkpoints[0])?.id ?? "";
   const [resultat, setResultat] = useState<ResultatAccueil | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [mode, setMode] = useState<"RECHERCHE" | "CREATION">("RECHERCHE");
@@ -64,14 +80,14 @@ export function OnsiteDesk({
   // rien n'est encore saisi, un rechargement ne fait rien perdre.
   useDocumentAvecCamera();
 
+  /*
+   * Le choix mémorisé par les versions précédentes est effacé : un poste réglé
+   * jadis sur « Sans enregistrement de présence » aurait continué de ne rien
+   * enregistrer, sur un écran qui ne montre plus pourquoi.
+   */
   useEffect(() => {
-    if (checkpointId) localStorage.setItem("accueil.checkpoint", checkpointId);
-  }, [checkpointId]);
-
-  useEffect(() => {
-    const memorise = localStorage.getItem("accueil.checkpoint");
-    if (memorise && checkpoints.some((point) => point.id === memorise)) setCheckpointId(memorise);
-  }, [checkpoints]);
+    localStorage.removeItem("accueil.checkpoint");
+  }, []);
 
   useEffect(() => {
     let vivant = true;
@@ -196,24 +212,6 @@ export function OnsiteDesk({
             placeholder="Sow, ANSD, FID26-…"
             className={`${champ} mt-1.5`}
           />
-        </div>
-        <div>
-          <label htmlFor="checkpoint" className={etiquette}>
-            Point de contrôle
-          </label>
-          <select
-            id="checkpoint"
-            value={checkpointId}
-            onChange={(evenement) => setCheckpointId(evenement.target.value)}
-            className={`${champ} mt-1.5 w-56`}
-          >
-            <option value="">Sans enregistrement de présence</option>
-            {checkpoints.map((point) => (
-              <option key={point.id} value={point.id}>
-                {point.name} — {point.zoneCode}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 

@@ -4395,3 +4395,69 @@ d'un badge l'emporte sur l'adresse générique.
 Au passage, `session_promoted` annonçait le titre français de la séance à tout
 le monde, objet du message compris, alors que le reste du courriel était traduit.
 `annuler()` rend maintenant le titre dans la langue du promu.
+
+## 29. Un badgeage par jour, à l'entrée (17 novembre 2026)
+
+Le dispositif d'accès prévu au brief était un contrôle **porte par porte** :
+trois points — Accueil (Entrée), Porte Ouverture (Amphi), Porte Plénière —, un
+scan à chacun, et des tableaux qui ventilaient les passages par point et par
+zone. Le comité a tranché autrement : **on badge une fois par jour, à
+l'entrée**. Les portes de salle ne seront pas tenues.
+
+### 29.1 Ce que le portail montrait, et qui mentait
+
+Un sélecteur de point de contrôle sur le scanner et sur le comptoir d'accueil,
+une section de gestion des points dans les zones d'accès, un tableau « par point
+de contrôle » et un graphique « affluence par zone » sur la page des présences.
+Tous auraient continué de fonctionner — et c'est le problème : un écran qui
+propose trois portes quand une seule est tenue ne se contente pas d'être
+inutile, il invite à l'erreur. Un agent qui pose sa tablette et la trouve réglée
+sur « Porte Plénière » rattache ses passages à une porte qui n'existe pas, sans
+qu'aucun signal ne le lui dise.
+
+Tout cela est retiré de l'affichage. Le scanner et le comptoir se rattachent
+seuls au point de la zone `ENTREE` ; le choix mémorisé par les versions
+précédentes est **effacé au démarrage**, sans quoi un appareil déjà en service
+aurait gardé son ancienne porte sur un écran qui ne la montre plus.
+
+### 29.2 La règle de verdict suit le dispositif
+
+L'anti-double-scan de deux minutes ne protégeait que du double bip. Il est
+remplacé par la règle qui correspond au dispositif réel : **au-delà du premier
+passage réussi de la journée, tout scan du même badge passe en orange**, avec
+l'heure du premier passage — « Déjà badgé aujourd'hui · Premier passage : 08h42 ».
+
+Une heure, et non un booléen : sans elle, l'agent ne distingue pas un retour
+d'après-midi d'un badge présenté deux fois de suite, et ne peut donc rien faire
+de l'information. L'heure est lue en UTC, comme tout le reste du module de scan
+— l'appareil d'un agent peut porter n'importe quel fuseau, et une heure décalée
+se lirait comme une erreur de la personne.
+
+L'alerte « Premier passage du jour » disparaît : le vert le dit désormais à lui
+seul. Sur un écran lu entre deux badges, une mention qui redit la couleur dilue
+celles qui comptent.
+
+**Limite assumée.** L'historique des passages vit dans l'IndexedDB de chaque
+appareil, parce que le scanner doit rendre son verdict hors ligne. Deux
+tablettes à la même porte ne se voient donc pas : un badge scanné sur la
+première passera au vert sur la seconde. C'était déjà vrai de la règle des deux
+minutes. Sans conséquence sur les comptages, qui dédoublonnent par participant
+côté serveur — `kpis.presents` compte des personnes, pas des passages.
+
+### 29.3 Rien n'est supprimé en base
+
+La table `Checkpoint`, son écran de gestion (`CheckpointRowForm`,
+`service.listCheckpoints`) et la colonne `ScanLog.checkpointId` restent en
+place, intacts. Les données de production ne sont pas touchées — seul
+l'affichage change. Rétablir un contrôle porte par porte demanderait de
+réafficher une section et deux tableaux, pas de reconstruire quoi que ce soit.
+
+C'est la raison pour laquelle le choix s'est porté sur un masquage plutôt que
+sur une suppression : à six jours de l'ouverture, une migration qui efface des
+lignes est un risque sans contrepartie.
+
+### 29.4 Ce qui disparaît aussi des rapports
+
+Le rapport « Présences » perdait deux colonnes à répéter « Accueil / Entrée
+principale » sur chaque ligne : elles sont retirées. La donnée reste en base, et
+le rapport se lit pour compter des personnes.

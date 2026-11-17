@@ -5,7 +5,6 @@ import { can } from "@/lib/rbac";
 import { prisma } from "@/lib/db";
 import { getActiveEdition } from "@/lib/edition";
 import { StatTile } from "@/modules/dashboard/components/stat-tile";
-import { BarList } from "@/modules/dashboard/components/bar-list";
 import { getFluxRecent, getPresenceDuJour, listerJours } from "@/modules/attendance/service";
 import { LiveFeed } from "@/modules/attendance/components/live-feed";
 import { ExportPanel } from "@/modules/attendance/components/export-panel";
@@ -77,18 +76,13 @@ export default async function PresencesPage({
   }
   const disponibles = [...raccourcis.values()].sort((a, b) => a.getTime() - b.getTime());
 
-  const [presence, flux, categories, zones] = await Promise.all([
+  const [presence, flux, categories] = await Promise.all([
     getPresenceDuJour(edition.id, choisi),
     getFluxRecent(edition.id),
     prisma.participantCategory.findMany({
       where: { editionId: edition.id, isActive: true },
       orderBy: { sortOrder: "asc" },
       select: { id: true, labelFr: true },
-    }),
-    prisma.zone.findMany({
-      where: { editionId: edition.id },
-      orderBy: { code: "asc" },
-      select: { id: true, name: true },
     }),
   ]);
 
@@ -97,9 +91,7 @@ export default async function PresencesPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl">Présences</h2>
-          <p className="text-text-3 text-sm">
-            Ce que les points de contrôle ont enregistré, jour par jour.
-          </p>
+          <p className="text-text-3 text-sm">Ce que l&apos;entrée a enregistré, jour par jour.</p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           {disponibles.map((jour) => {
@@ -148,68 +140,9 @@ export default async function PresencesPage({
         jour={enIso(choisi)}
         jourLibelle={dateLongue.format(choisi)}
         categories={categories}
-        zones={zones}
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="border-border bg-surface rounded-xl border p-5">
-          <h3 className="text-heading mb-1 text-sm font-semibold">Par point de contrôle</h3>
-          <p className="text-text-3 mb-3 text-xs">
-            Les refus ne sont pas des incidents en soi : une mauvaise salle est un refus normal.
-          </p>
-          {presence.parPoint.length === 0 ? (
-            <p className="text-text-2 text-sm">Aucun passage ce jour.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="text-text-3 text-xs">
-                    <th scope="col" className="px-2 py-2 text-left font-semibold">
-                      Point
-                    </th>
-                    <th scope="col" className="px-2 py-2 text-right font-semibold">
-                      Autorisés
-                    </th>
-                    <th scope="col" className="px-2 py-2 text-right font-semibold">
-                      Déjà scannés
-                    </th>
-                    <th scope="col" className="px-2 py-2 text-right font-semibold">
-                      Refusés
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {presence.parPoint.map((ligne) => (
-                    <tr key={ligne.checkpointId} className="border-border border-t">
-                      <td className="px-2 py-2">
-                        <span className="text-heading block font-medium">{ligne.nom}</span>
-                        <span className="text-text-3 text-xs">{ligne.zone}</span>
-                      </td>
-                      <td className="px-2 py-2 text-right tabular-nums">{ligne.autorises}</td>
-                      <td className="text-text-3 px-2 py-2 text-right tabular-nums">
-                        {ligne.dejaScannes}
-                      </td>
-                      <td className="px-2 py-2 text-right tabular-nums">{ligne.refuses}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        <section className="border-border bg-surface rounded-xl border p-5">
-          <h3 className="text-heading mb-1 text-sm font-semibold">Affluence par zone</h3>
-          <p className="text-text-3 mb-3 text-xs">
-            Personnes distinctes passées dans la journée — pas le nombre de personnes présentes à
-            l&apos;instant t, que le scan de sortie seul permettrait de connaître.
-          </p>
-          <BarList
-            data={presence.parZone.map((ligne) => ({ label: ligne.zone, value: ligne.affluence }))}
-            emptyLabel="Aucun passage ce jour."
-          />
-        </section>
-
         <section className="border-border bg-surface rounded-xl border p-5">
           <h3 className="text-heading mb-3 text-sm font-semibold">Taux par catégorie</h3>
           <TableauTaux lignes={presence.parCategorie} />

@@ -1,7 +1,7 @@
 import { evaluerAcces, type BadgeConnu, type Verdict } from "@/modules/access/decision";
 import type { EntreeManifeste } from "../manifest";
 import type { ScanEntry } from "../schema";
-import { dernierPassage, empiler, noterPassage, vuAujourdhui } from "./store";
+import { empiler, noterPassage, premierPassageDuJour } from "./store";
 
 /**
  * Passage du manifeste à la forme que consomme la décision d'accès.
@@ -44,16 +44,10 @@ export async function traiterScan(
   const scanneA = new Date();
   const jour = scanneA.toISOString().slice(0, 10);
 
-  const [precedent, dejaVu] = await Promise.all([
-    dernierPassage(empreinte, checkpointId),
-    vuAujourdhui(empreinte, jour),
-  ]);
-
   const verdict = evaluerAcces(versBadgeConnu(entree), {
     zoneCode,
     scanneA,
-    dernierScanIci: precedent,
-    premierPassageDuJour: !dejaVu,
+    premierPassageDuJour: await premierPassageDuJour(empreinte, jour),
   });
 
   const scan: ScanEntry = {

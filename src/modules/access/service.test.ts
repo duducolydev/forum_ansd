@@ -55,8 +55,8 @@ function contexte(zoneCode: string) {
   return {
     zoneCode,
     scanneA: new Date(),
-    dernierScanIci: null,
-    premierPassageDuJour: false,
+
+    premierPassageDuJour: null,
   };
 }
 

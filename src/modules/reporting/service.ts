@@ -112,8 +112,14 @@ const participants: Rapport = {
 const presences: Rapport = {
   cle: "presences",
   titre: "Présences",
-  description: "Un passage autorisé par ligne : qui, quand, à quel point de contrôle.",
-  colonnes: ["Jour", "Heure", "Identifiant", "Nom", "Catégorie", "Point de contrôle", "Zone"],
+  description: "Un passage autorisé par ligne : qui, et quand.",
+  /*
+   * Les colonnes « Point de contrôle » et « Zone » ont été retirées le
+   * 17 novembre 2026 : on badge une fois par jour à l'entrée, et deux colonnes
+   * qui répètent « Accueil / Entrée principale » sur chaque ligne encombrent un
+   * tableau qu'on ouvre pour compter des personnes. La donnée reste en base.
+   */
+  colonnes: ["Jour", "Heure", "Identifiant", "Nom", "Catégorie"],
   async lignes(editionId) {
     const lignes = await prisma.scanLog.findMany({
       where: { checkpoint: { editionId }, result: "OK", direction: "IN" },
@@ -129,7 +135,6 @@ const presences: Rapport = {
             category: { select: { labelFr: true } },
           },
         },
-        checkpoint: { select: { name: true, zone: { select: { name: true } } } },
       },
     });
 
@@ -141,8 +146,6 @@ const presences: Rapport = {
         ? `${ligne.participant.lastName.toUpperCase()} ${ligne.participant.firstName}`
         : "Badge inconnu",
       ligne.participant?.category.labelFr ?? "",
-      ligne.checkpoint.name,
-      ligne.checkpoint.zone.name,
     ]);
   },
 };

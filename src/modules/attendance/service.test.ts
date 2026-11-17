@@ -129,18 +129,20 @@ describe("présences (brief §5.6)", () => {
 
   it("exclut refus et badges inconnus des présences, mais les compte comme scans", async () => {
     const presence = await getPresenceDuJour(editionId, JOUR);
-    const poste = presence.parPoint.find((p) => p.checkpointId === checkpointId);
 
-    expect(poste).toBeDefined();
-    expect(poste!.autorises).toBe(2);
-    expect(poste!.refuses).toBe(2);
+    // Deux personnes réellement entrées, deux refus, et des scans en plus grand
+    // nombre que les présents : c'est tout l'écart que la page doit montrer.
+    expect(presence.kpis.presents).toBe(2);
     expect(presence.kpis.refus).toBeGreaterThanOrEqual(2);
+    expect(presence.kpis.scans).toBeGreaterThan(presence.kpis.presents);
   });
 
-  it("ne compte qu'une fois dans l'affluence un participant passé à deux postes de la zone", async () => {
+  it("ne compte qu'une fois un participant passé deux fois dans la journée", async () => {
+    // L'invariant que la ventilation par zone vérifiait avant son retrait
+    // (17 novembre 2026) : on compte des personnes distinctes, pas des passages.
     const presence = await getPresenceDuJour(editionId, JOUR);
-    const zone = presence.parZone.find((z) => z.zone === `Zone présence ${SUFFIXE}`);
-    expect(zone?.affluence).toBe(2);
+    expect(presence.kpis.presents).toBe(2);
+    expect(presence.kpis.presents).toBeLessThan(presence.kpis.scans);
   });
 
   /**

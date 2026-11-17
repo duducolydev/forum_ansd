@@ -5,7 +5,6 @@ import { getActiveEdition } from "@/lib/edition";
 import * as service from "@/modules/access/service";
 import { MatrixForm } from "@/modules/access/components/matrix-form";
 import { ZoneRowForm } from "@/modules/access/components/zone-row-form";
-import { CheckpointRowForm } from "@/modules/access/components/checkpoint-row-form";
 import { OverridePanel } from "@/modules/access/components/override-panel";
 
 export const dynamic = "force-dynamic";
@@ -24,10 +23,16 @@ export default async function ZonesPage() {
   }
 
   const edition = await getActiveEdition();
-  const [matrice, zones, checkpoints, overrides] = await Promise.all([
+  /*
+   * Les points de contrôle ne sont plus présentés ici (17 novembre 2026) : on
+   * badge une fois par jour à l'entrée, et le scanner s'y rattache seul. La
+   * table et son écran de gestion (`CheckpointRowForm`, `service.listCheckpoints`)
+   * restent en place, intacts — rien n'a été supprimé en base, et rétablir cette
+   * section suffirait à reprendre un contrôle porte par porte.
+   */
+  const [matrice, zones, overrides] = await Promise.all([
     service.getAccessMatrix(edition.id),
     service.listZones(edition.id),
-    service.listCheckpoints(edition.id),
     service.listOverrides(edition.id),
   ]);
 
@@ -38,8 +43,8 @@ export default async function ZonesPage() {
       <div>
         <h2 className="text-2xl">Zones d&apos;accès</h2>
         <p className="text-text-3 text-sm">
-          Qui entre où, le jour J. Ces réglages pilotent le scanner des points de contrôle, y
-          compris hors connexion.
+          Qui entre où, le jour J. Ces réglages pilotent le scanner de l&apos;entrée, y compris hors
+          connexion.
         </p>
       </div>
 
@@ -78,31 +83,6 @@ export default async function ZonesPage() {
             />
           ))}
           <ZoneRowForm />
-        </div>
-      </section>
-
-      <section>
-        <h3 className="text-heading mb-1 text-sm font-semibold">Points de contrôle</h3>
-        <p className="text-text-3 mb-3 text-xs">
-          Un point par poste physique. Un point qui a déjà scanné se désactive, il ne se supprime
-          pas.
-        </p>
-        <div className="flex flex-col gap-3">
-          {checkpoints.map((checkpoint) => (
-            <CheckpointRowForm
-              key={checkpoint.id}
-              zones={zonesSimples}
-              checkpoint={{
-                id: checkpoint.id,
-                name: checkpoint.name,
-                zoneId: checkpoint.zoneId,
-                deviceLabel: checkpoint.deviceLabel,
-                isActive: checkpoint.isActive,
-                scans: checkpoint._count.scanLogs,
-              }}
-            />
-          ))}
-          {zonesSimples.length > 0 && <CheckpointRowForm zones={zonesSimples} />}
         </div>
       </section>
 

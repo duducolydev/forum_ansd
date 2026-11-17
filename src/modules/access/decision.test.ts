@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  DELAI_ANTI_DOUBLE_SCAN_MS,
   evaluerAcces,
   resoudreZones,
   type BadgeConnu,
@@ -25,8 +24,7 @@ function contexte(surcharge: Partial<ContexteScan> = {}): ContexteScan {
   return {
     zoneCode: "ENTREE",
     scanneA: T0,
-    dernierScanIci: null,
-    premierPassageDuJour: false,
+    premierPassageDuJour: null,
     ...surcharge,
   };
 }
@@ -103,26 +101,44 @@ describe("verdict de scan (brief §2.5)", () => {
     );
   });
 
-  it("signale un second passage au même point sous deux minutes", () => {
+  it("annonce « déjà badgé » au second passage de la journée", () => {
     const verdict = evaluerAcces(
       badge(),
-      contexte({ dernierScanIci: new Date(T0.getTime() - 30_000) }),
+      contexte({ premierPassageDuJour: new Date("2026-11-23T08:04:00.000Z") }),
     );
     expect(verdict).toMatchObject({ couleur: "ORANGE", resultat: "ALREADY" });
+    expect(verdict.motif).toBe("Déjà badgé aujourd'hui");
   });
 
-  it("laisse repasser au-delà du délai anti-double-scan", () => {
+  it("donne l'heure du premier passage, sans quoi l'agent ne peut rien en faire", () => {
     const verdict = evaluerAcces(
       badge(),
-      contexte({ dernierScanIci: new Date(T0.getTime() - DELAI_ANTI_DOUBLE_SCAN_MS - 1) }),
+      contexte({ premierPassageDuJour: new Date("2026-11-23T08:04:00.000Z") }),
     );
-    expect(verdict.resultat).toBe("OK");
+    expect(verdict.alertes).toContain("Premier passage : 08h04");
   });
 
-  it("ne prétend pas « déjà scanné » quand la zone est refusée", () => {
+  it("lit l'heure en UTC, quel que soit le fuseau de l'appareil de l'agent", () => {
+    // Une heure décalée se lirait comme une erreur de la personne, pas de
+    // l'horloge. Dakar est à UTC toute l'année.
     const verdict = evaluerAcces(
       badge(),
-      contexte({ zoneCode: "VIP", dernierScanIci: new Date(T0.getTime() - 10_000) }),
+      contexte({ premierPassageDuJour: new Date("2026-11-23T23:50:00.000Z") }),
+    );
+    expect(verdict.alertes).toContain("Premier passage : 23h50");
+  });
+
+  it("laisse passer au vert le premier badgeage de la journée", () => {
+    expect(evaluerAcces(badge(), contexte({ premierPassageDuJour: null }))).toMatchObject({
+      couleur: "VERT",
+      resultat: "OK",
+    });
+  });
+
+  it("ne prétend pas « déjà badgé » quand la zone est refusée", () => {
+    const verdict = evaluerAcces(
+      badge(),
+      contexte({ zoneCode: "VIP", premierPassageDuJour: new Date(T0.getTime() - 10_000) }),
     );
     expect(verdict.resultat).toBe("DENIED_ZONE");
   });
@@ -133,12 +149,15 @@ describe("verdict de scan (brief §2.5)", () => {
     expect(verdict.alertes).toContain("À accueillir");
   });
 
-  it("mentionne le premier passage du jour sans faire basculer la couleur", () => {
-    // Sinon toute la file du matin serait orange à l'entrée principale, et un
-    // agent qui voit vingt oranges d'affilée cesse de lire la couleur.
-    const verdict = evaluerAcces(badge(), contexte({ premierPassageDuJour: true }));
-    expect(verdict.couleur).toBe("VERT");
-    expect(verdict.alertes).toContain("Premier passage du jour");
+  it("garde « À accueillir » sur un second passage", () => {
+    // La catégorie à accueillir ne cesse pas de l'être parce que la personne
+    // est déjà venue le matin : l'agent doit toujours la voir.
+    const verdict = evaluerAcces(
+      badge({ alerteAccueil: true }),
+      contexte({ premierPassageDuJour: new Date(T0.getTime() - 3_600_000) }),
+    );
+    expect(verdict.resultat).toBe("ALREADY");
+    expect(verdict.alertes).toContain("À accueillir");
   });
 
   it("ne renvoie jamais VERT avec un résultat autre que OK", () => {
@@ -146,9 +165,12 @@ describe("verdict de scan (brief §2.5)", () => {
     for (const statut of ["CONFIRMED", "CANCELLED"] as const) {
       for (const revoque of [false, true]) {
         for (const zoneCode of ["ENTREE", "VIP"]) {
-          for (const dernierScanIci of [null, new Date(T0.getTime() - 5_000)]) {
+          for (const premierPassageDuJour of [null, new Date(T0.getTime() - 5_000)]) {
             combinaisons.push(
-              evaluerAcces(badge({ statut, revoque }), contexte({ zoneCode, dernierScanIci })),
+              evaluerAcces(
+                badge({ statut, revoque }),
+                contexte({ zoneCode, premierPassageDuJour }),
+              ),
             );
           }
         }

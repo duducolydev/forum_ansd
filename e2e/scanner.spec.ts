@@ -14,16 +14,16 @@ import { seConnecterAdmin } from "./helpers/comptes";
  * chemin exigé par le brief pour les QR illisibles.
  */
 const SUFFIXE = randomUUID().slice(0, 8).toUpperCase();
-const CODE_ZONE = `ZE2E${SUFFIXE}`;
 
 let editionId = "";
-let zoneId = "";
-let checkpointOuvertId = "";
-let checkpointFermeId = "";
+let checkpointEntreeId = "";
+/** Vrai si le point d'entrée a été créé par ce test, donc à lui de l'effacer. */
+let checkpointCree = false;
 const emails: string[] = [];
+const participantIds: string[] = [];
 const participants: { publicId: string; nom: string }[] = [];
 
-async function creerParticipantAvecBadge(prenom: string, nom: string) {
+async function creerParticipantAvecBadge(prenom: string, nom: string, revoque = false) {
   const email = `e2e-scan-${randomUUID()}@example.test`;
   emails.push(email);
 
@@ -55,9 +55,11 @@ async function creerParticipantAvecBadge(prenom: string, nom: string) {
       version: 1,
       qrToken: hashBadgeToken(buildBadgeToken(publicId, 1)),
       generatedAt: new Date(),
+      revokedAt: revoque ? new Date() : null,
     },
   });
 
+  participantIds.push(participant.id);
   participants.push({ publicId, nom: `${prenom} ${nom}` });
   return participant;
 }
@@ -68,45 +70,58 @@ test.beforeAll(async () => {
   const edition = await prisma.edition.findFirstOrThrow({ where: { code: "FID-2026" } });
   editionId = edition.id;
 
-  const zone = await prisma.zone.create({
-    data: { editionId, code: CODE_ZONE, name: `Zone E2E scan ${SUFFIXE}` },
+  /*
+   * Le scanner se rattache seul au point de la zone d'entrée (17 novembre
+   * 2026) : il n'y a plus de sélecteur, et le test ne peut donc plus poser des
+   * postes à lui. Il s'assure qu'un point d'entrée existe — le seed en pose un
+   * — et n'en crée un que s'il manque, auquel cas il le reprend à la fin.
+   */
+  const zoneEntree = await prisma.zone.findFirstOrThrow({ where: { editionId, code: "ENTREE" } });
+  const pointExistant = await prisma.checkpoint.findFirst({
+    where: { editionId, zoneId: zoneEntree.id },
   });
-  zoneId = zone.id;
+  checkpointCree = pointExistant === null;
+  checkpointEntreeId =
+    pointExistant?.id ??
+    (
+      await prisma.checkpoint.create({
+        data: { editionId, zoneId: zoneEntree.id, name: `Entrée E2E ${SUFFIXE}` },
+      })
+    ).id;
 
-  // La zone de test est ouverte à la catégorie des participants nationaux ;
-  // l'espace VIP du jeu de démonstration ne l'est pas — d'où deux postes, un
-  // par verdict attendu.
+  /*
+   * L'entrée doit être ouverte à la catégorie des participants nationaux, sans
+   * quoi le verdict vert attendu serait un refus de zone. La matrice du seed
+   * l'accorde ; la ligne est posée si elle manque, pour que le test ne dépende
+   * pas d'un réglage modifiable en BackOffice.
+   */
   const categorie = await prisma.participantCategory.findFirstOrThrow({
     where: { editionId, code: "PARTICIPANT_NATIONAL" },
   });
-  await prisma.categoryZone.create({ data: { categoryId: categorie.id, zoneId } });
-
-  const zoneVip = await prisma.zone.findFirstOrThrow({ where: { editionId, code: "VIP" } });
-
-  checkpointOuvertId = (
-    await prisma.checkpoint.create({
-      data: { editionId, zoneId, name: `Poste ouvert ${SUFFIXE}` },
-    })
-  ).id;
-  checkpointFermeId = (
-    await prisma.checkpoint.create({
-      data: { editionId, zoneId: zoneVip.id, name: `Poste VIP ${SUFFIXE}` },
-    })
-  ).id;
+  const acces = await prisma.categoryZone.findFirst({
+    where: { categoryId: categorie.id, zoneId: zoneEntree.id },
+  });
+  if (!acces) {
+    await prisma.categoryZone.create({
+      data: { categoryId: categorie.id, zoneId: zoneEntree.id },
+    });
+  }
 
   await creerParticipantAvecBadge("Aminata", `Sow${SUFFIXE.slice(0, 3)}`);
   await creerParticipantAvecBadge("Oumar", `Ba${SUFFIXE.slice(0, 3)}`);
+  // Badge révoqué : le rouge que l'agent peut réellement rencontrer à l'entrée,
+  // depuis que le refus de zone ne s'obtient plus en changeant de poste.
+  await creerParticipantAvecBadge("Fatou", `Ndiaye${SUFFIXE.slice(0, 3)}`, true);
 });
 
 test.afterAll(async () => {
-  await prisma.scanLog.deleteMany({
-    where: { checkpointId: { in: [checkpointOuvertId, checkpointFermeId] } },
-  });
-  await prisma.checkpoint.deleteMany({
-    where: { id: { in: [checkpointOuvertId, checkpointFermeId] } },
-  });
+  // Par participant : les scans portent désormais le point d'entrée commun,
+  // que ce test ne doit pas emporter avec lui.
+  await prisma.scanLog.deleteMany({ where: { participantId: { in: participantIds } } });
   await prisma.participant.deleteMany({ where: { email: { in: emails } } });
-  await prisma.zone.deleteMany({ where: { id: zoneId } });
+  if (checkpointCree) {
+    await prisma.checkpoint.deleteMany({ where: { id: checkpointEntreeId } });
+  }
   await prisma.$disconnect();
 });
 
@@ -127,27 +142,43 @@ async function scannerManuellement(page: import("@playwright/test").Page, public
   await page.getByRole("button", { name: new RegExp(publicId) }).click();
 }
 
-test("rend un verdict vert au poste ouvert et rouge au poste fermé", async ({ page }) => {
+test("rend un verdict vert à l'entrée, et rouge sur un badge révoqué", async ({ page }) => {
   await seConnecterAdmin(page);
   await page.goto("/scan");
   await attendreManifeste(page);
 
-  await page
-    .getByLabel("Point de contrôle")
-    .selectOption({ label: `Poste ouvert ${SUFFIXE} — ${CODE_ZONE}` });
-  await scannerManuellement(page, participants[0]!.publicId);
+  // Aucun point à choisir : l'appareil se rattache seul à l'entrée. Qu'un scan
+  // soit enregistré sans ce geste est précisément ce qui est vérifié ici.
+  await expect(page.getByLabel("Point de contrôle")).toHaveCount(0);
 
+  await scannerManuellement(page, participants[0]!.publicId);
   const verdict = page.getByTestId("verdict");
   await expect(verdict).toHaveAttribute("data-couleur", "VERT");
   await expect(verdict).toContainText("Accès autorisé");
   await expect(verdict).toContainText(participants[0]!.nom);
   await verdict.click();
 
-  await page.getByLabel("Point de contrôle").selectOption({ label: `Poste VIP ${SUFFIXE} — VIP` });
-  await scannerManuellement(page, participants[0]!.publicId);
-
+  await scannerManuellement(page, participants[2]!.publicId);
   await expect(page.getByTestId("verdict")).toHaveAttribute("data-couleur", "ROUGE");
-  await expect(page.getByTestId("verdict")).toContainText("Zone non autorisée");
+  await expect(page.getByTestId("verdict")).toContainText("Badge révoqué");
+});
+
+test("annonce « déjà badgé » au second passage de la journée", async ({ page }) => {
+  await seConnecterAdmin(page);
+  await page.goto("/scan");
+  await attendreManifeste(page);
+
+  await scannerManuellement(page, participants[0]!.publicId);
+  await expect(page.getByTestId("verdict")).toHaveAttribute("data-couleur", "VERT");
+  await page.getByTestId("verdict").click();
+
+  // On badge une fois par jour : le second passage reste autorisé, mais
+  // l'agent doit voir qu'il en est un, et depuis quelle heure.
+  await scannerManuellement(page, participants[0]!.publicId);
+  const second = page.getByTestId("verdict");
+  await expect(second).toHaveAttribute("data-couleur", "ORANGE");
+  await expect(second).toContainText("Déjà badgé aujourd'hui");
+  await expect(second).toContainText("Premier passage :");
 });
 
 test("rend son verdict sans réseau, met le scan en file et le remonte au retour", async ({
@@ -157,9 +188,6 @@ test("rend son verdict sans réseau, met le scan en file et le remonte au retour
   await seConnecterAdmin(page);
   await page.goto("/scan");
   await attendreManifeste(page);
-  await page
-    .getByLabel("Point de contrôle")
-    .selectOption({ label: `Poste ouvert ${SUFFIXE} — ${CODE_ZONE}` });
 
   // Un premier scan en ligne : la file doit se vider d'elle-même.
   await scannerManuellement(page, participants[0]!.publicId);
@@ -178,11 +206,12 @@ test("rend son verdict sans réseau, met le scan en file et le remonte au retour
   await horsLigne.click();
   await expect(page.getByTestId("en-file")).toHaveText("1 en attente");
 
-  // Second passage au même poste, toujours hors ligne : l'anti-double-scan
-  // doit fonctionner sans serveur, sinon la règle disparaît quand elle sert.
+  // Second passage du jour, toujours hors ligne : la règle « un badgeage par
+  // jour » doit tenir sans serveur, sinon elle disparaît quand elle sert.
   await scannerManuellement(page, participants[1]!.publicId);
   await expect(page.getByTestId("verdict")).toHaveAttribute("data-couleur", "ORANGE");
-  await expect(page.getByTestId("verdict")).toContainText("Déjà scanné ici");
+  await expect(page.getByTestId("verdict")).toContainText("Déjà badgé aujourd'hui");
+  await expect(page.getByTestId("verdict")).toContainText("Premier passage :");
   await page.getByTestId("verdict").click();
   await expect(page.getByTestId("en-file")).toHaveText("2 en attente");
 
@@ -196,7 +225,7 @@ test("rend son verdict sans réseau, met le scan en file et le remonte au retour
   // par le test précédent, et une attente globale dépendrait de l'ordre.
   const remontes = await prisma.scanLog.findMany({
     where: {
-      checkpointId: checkpointOuvertId,
+      checkpointId: checkpointEntreeId,
       participant: { publicId: participants[1]!.publicId },
     },
     select: { clientScanId: true, result: true },

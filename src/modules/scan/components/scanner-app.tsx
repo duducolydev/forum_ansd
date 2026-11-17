@@ -18,16 +18,17 @@ const PERIODE_ENVOI_MS = 30 * 1000;
 const PERIODE_DECODAGE_MS = 120;
 
 /**
- * Zone retenue par défaut à l'ouverture du scanner.
+ * Zone du point de contrôle utilisé par le scanner.
  *
- * Le gros du travail se fait à l'entrée : c'est là que tout le monde passe, et
- * que les appareils sont les plus nombreux. Prendre le premier point de la
- * liste, classée par nom, désignait un point de salle au hasard de
- * l'alphabet — un agent d'accueil enregistrait alors ses passages sur la
- * mauvaise porte sans rien remarquer.
+ * On badge **une fois par jour, à l'entrée** (décision du comité, 17 novembre
+ * 2026) : les portes de salle ne sont plus tenues, et le sélecteur de point de
+ * contrôle a disparu de cet écran. L'appareil se rattache donc tout seul au
+ * point de cette zone, sans que l'agent ait rien à choisir — un choix de moins
+ * devant une file, et une mauvaise porte de moins dans les comptages.
  *
  * Ce code est celui du seed, et il est stable (`prisma/seed.ts`). S'il venait à
- * disparaître d'une édition, la sélection retombe sur le premier point.
+ * disparaître d'une édition, la sélection retombe sur le premier point connu,
+ * faute de quoi rien ne serait enregistré.
  */
 const ZONE_PAR_DEFAUT = "ENTREE";
 
@@ -126,18 +127,17 @@ export function ScannerApp({ nomAgent }: { nomAgent: string }) {
    * l'agent doit savoir que l'appareil n'enregistrera rien **avant** d'avoir
    * laissé passer quelqu'un, et non après.
    *
-   * Les deux cas appellent des gestes différents. Une liste vide se règle dans
-   * le BackOffice et se termine par une synchronisation ; une liste garnie mais
-   * sans sélection se règle sur place, dans le sélecteur juste au-dessus.
+   * Un seul cas subsiste depuis que le point se choisit tout seul : l'édition
+   * n'en a aucun. Cela se règle dans le BackOffice et se termine par une
+   * synchronisation — le bandeau le dit, parce qu'un agent devant une file n'a
+   * pas à deviner où aller.
    *
    * Conditionné à `meta` : tant que le manifeste n'est pas lu, l'absence de
    * point ne veut rien dire et le bandeau clignoterait au démarrage.
    */
   const sansPoint =
     meta && !point
-      ? meta.checkpoints.length === 0
-        ? "Aucun point de contrôle actif. Créez-en un dans le BackOffice, page des zones d'accès, puis appuyez sur Synchroniser."
-        : "Choisissez un point de contrôle ci-dessus : aucun passage ne sera enregistré tant qu'il n'est pas défini."
+      ? "Aucun point de contrôle actif. Créez-en un dans le BackOffice, page des zones d'accès, puis appuyez sur Synchroniser."
       : null;
 
   const rafraichirCompteurs = useCallback(async () => {
@@ -159,14 +159,18 @@ export function ScannerApp({ nomAgent }: { nomAgent: string }) {
       if (!vivant) return;
       setMeta(chargee);
 
-      // Le choix de l'agent prime — il a posé son appareil à une porte précise
-      // et n'a pas à le redire à chaque ouverture. À défaut, l'entrée.
-      const memorise = localStorage.getItem("scan.checkpoint");
-      const valide = chargee?.checkpoints.some((candidat) => candidat.id === memorise);
+      /*
+       * Le point est déduit, plus choisi. Le choix mémorisé par les versions
+       * précédentes est **ignoré** et effacé : un appareil posé jadis sur
+       * « Porte Plénière » aurait continué d'y rattacher ses passages, sur un
+       * écran qui ne le montre plus — exactement l'erreur invisible que le
+       * retrait du sélecteur doit faire disparaître.
+       */
+      localStorage.removeItem("scan.checkpoint");
       const parDefaut =
         chargee?.checkpoints.find((candidat) => candidat.zoneCode === ZONE_PAR_DEFAUT) ??
         chargee?.checkpoints[0];
-      setCheckpointId(valide && memorise ? memorise : (parDefaut?.id ?? ""));
+      setCheckpointId(parDefaut?.id ?? "");
       setEnFile(await compterFile());
     }
 
@@ -193,10 +197,6 @@ export function ScannerApp({ nomAgent }: { nomAgent: string }) {
       clearInterval(timerEnvoi);
     };
   }, []);
-
-  useEffect(() => {
-    if (checkpointId) localStorage.setItem("scan.checkpoint", checkpointId);
-  }, [checkpointId]);
 
   // --- Traitement d'un badge ----------------------------------------------
   const scanner = useCallback(
@@ -371,22 +371,16 @@ export function ScannerApp({ nomAgent }: { nomAgent: string }) {
       */}
       <header className="border-b border-white/10 px-4 py-3">
         <div className="flex items-center gap-2.5">
-          <label htmlFor="point" className="sr-only">
-            Point de contrôle
-          </label>
-          <select
-            id="point"
-            value={checkpointId}
-            onChange={(evenement) => setCheckpointId(evenement.target.value)}
-            className="min-w-0 flex-1 rounded-lg border border-white/20 bg-[#132436] px-3 py-2 text-sm"
-          >
-            {(meta?.checkpoints ?? []).length === 0 && <option value="">Aucun point actif</option>}
-            {meta?.checkpoints.map((candidat) => (
-              <option key={candidat.id} value={candidat.id}>
-                {candidat.name} — {candidat.zoneCode}
-              </option>
-            ))}
-          </select>
+          {/*
+            Le sélecteur de point de contrôle a été retiré le 17 novembre 2026 :
+            on badge une fois par jour à l'entrée, et l'appareil s'y rattache
+            seul. Reste le nom de l'édition, qui dit à l'agent sur quelle
+            manifestation l'appareil est synchronisé — l'information qu'il
+            vérifie réellement d'un coup d'œil.
+          */}
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+            {meta?.edition ?? "Synchronisation…"}
+          </span>
           <span
             data-testid="etat-reseau"
             className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
