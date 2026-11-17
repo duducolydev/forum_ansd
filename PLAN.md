@@ -4181,6 +4181,15 @@ pendant les trois jours du Forum. C'est le risque d'exploitation le plus sérieu
 à ce jour ; il est porté en tête de la liste de contrôle du guide, avec une
 échéance au 13 novembre pour garder dix jours de marge.
 
+> **Levé (constaté le 16 novembre 2026).** La DSI a renouvelé le joker le
+> 29 octobre 2026 : le certificat en service court jusqu'au **16 mai 2027**. Le
+> risque décrit ci-dessus n'existe plus. Il a disparu sans que personne le note,
+> et ce plan comme le guide ont continué trois semaines à annoncer une échéance
+> dépassée — ce qui vaut pour les deux sens de la surveillance : une date qu'on
+> ne relit pas à la source se périme aussi quand elle s'améliore. Relevé par
+> `openssl x509 -noout -dates -in docker/certs/fullchainansd.crt`, et c'est
+> désormais cette commande qui fait foi, pas le tableau du §5.1.
+
 **Certbot passe sous profil plutôt qu'en commentaire.** La DSI l'avait commenté
 sur le serveur. Un service commenté se périme en silence, au fil des versions
 d'image et des options qui changent ; sous profil `tls`, il ne démarre pas avec
@@ -4283,3 +4292,106 @@ succès avec.
 
 Noter aussi que `restart` ne suffit pas — il relance le processus avec les
 variables qu'il avait déjà. Il faut recréer le conteneur.
+
+### 28.7 nginx servait un certificat qu'il avait en mémoire
+
+En voulant vérifier l'export depuis le serveur, `curl` a refusé la connexion :
+`unable to get local issuer certificate`. Avec `-k`, réponse normale ; et nginx
+ne présentait **qu'un certificat** là où il en faut deux.
+
+La première conclusion — « le fichier ne contient que la feuille » — était
+fausse, et elle a coûté une tentative de réparation inutile. Le fichier était
+complet depuis le 9 novembre, feuille puis intermédiaire dans le bon ordre.
+C'est **nginx** qui servait l'ancien contenu : il lit ses certificats au
+démarrage, le conteneur tournait depuis avant le dépôt, et il a continué une
+semaine à présenter la version précédente. Un `nginx -s reload` a tout réglé.
+
+C'est le même piège que la configuration nginx non rechargée au déploiement, et
+il se formule une fois pour toutes : **remplacer un fichier que nginx a déjà lu
+ne change rien tant que nginx ne l'a pas relu.** `deployer.sh` ne recrée nginx
+que si sa _configuration_ diffère du dépôt ; un certificat déposé à la main ne
+déclenche donc rien.
+
+Ce qui a rendu le défaut invisible une semaine : un navigateur rattrape un
+intermédiaire manquant seul, par l'extension AIA ou par une visite antérieure.
+Un client HTTP non. Les visiteurs ne voyaient rien, et le portail aurait refusé
+toute intégration programmatique — l'indexeur de l'assistant en premier, mais
+aussi n'importe quel script ou robot de supervision. Un chantier d'API a ainsi
+découvert un défaut de la mise en service HTTPS, resté sept jours sans témoin.
+
+Deux erreurs de méthode, consignées parce qu'elles valent plus que l'incident :
+
+1. **avoir conclu sur un symptôme au lieu de lire la source.** « nginx présente
+   un certificat » ne dit pas « le fichier en contient un » ; une commande
+   (`openssl crl2pkcs7 … | openssl pkcs7 -print_certs`) séparait les deux, et
+   elle n'a été passée qu'au troisième aller-retour ;
+2. **avoir écrit une procédure dont les étapes ne se bloquent pas.** La
+   vérification venait _après_ l'assemblage : collé sans que le téléchargement
+   ait eu lieu, le bloc a réécrit la feuille seule sans que rien le signale. Le
+   §5.11 est désormais enchaîné de `&&`.
+
+Procédure et diagnostic dans `docs/DEPLOIEMENT.md` §5.11, qui part du symptôme
+réel — nginx n'a pas relu — et ne traite le fichier incomplet qu'en second.
+
+Au passage, la vérification du certificat a montré que l'échéance du 20 novembre
+était levée depuis le 29 octobre (§27) : le joker court jusqu'au 16 mai 2027.
+
+## 29. Les variables des courriels automatiques (17 novembre 2026)
+
+Le comité retouche les modèles d'e-mail dans le BackOffice. En ajoutant
+`{{programme}}` au rappel J-7 portugais, l'écran a répondu « Variables utilisées
+mais non déclarées : {{programme}} », et l'aperçu a affiché `{{programme}}` tel
+quel. Les deux étaient faux : la variable est bien remplie à l'envoi. En les
+vérifiant, deux courriels partaient en revanche réellement avec des `{{...}}`
+non remplacés.
+
+### 29.1 Une liste figée en base, que personne ne pouvait corriger
+
+Les variables déclarées vivaient dans `NotificationTemplate.variables`, écrite
+au premier `seed` puis rattrapée par migrations. Or une migration de données ne
+**remplit** que ce qui est resté d'origine : un modèle déjà retouché dans le
+BackOffice garde la liste de ses débuts. `reminder_j7` en était resté à
+`prenom, lien_espace` alors que le code lui fournit bien davantage. Et le
+BackOffice n'offre aucun moyen de modifier cette colonne : l'avertissement
+désignait un défaut que son lecteur ne pouvait pas réparer.
+
+Ce qu'un modèle reçoit est décidé par le code qui l'envoie, jamais par une ligne
+en base. La liste est donc passée dans `modules/notifications/catalogue.ts`, qui
+suit le code qui la dément ; la colonne reste lue en repli pour un modèle ajouté
+en base sans passer par là. Le catalogue dit aussi **quand** chaque message part
+— phrase reprise sur la liste des modèles et en tête de l'écran d'édition : le
+comité relisait vingt-quatre modèles sans savoir lequel se déclenche à quoi.
+
+Deux listes et non une : ce que l'écran propose, et ce qui sera réellement
+remplacé. La seconde ajoute `{{programme}}` et `{{mes_panels}}`, résolues dans
+n'importe quel modèle (§ récapitulatif du programme) — les signaler comme non
+déclarées était un faux reproche. Elles sont désormais annoncées sous le champ,
+« aussi disponibles, remplies à l'envoi », plutôt que découvertes par un
+avertissement.
+
+### 29.2 Deux courriels partaient avec des variables en clair
+
+L'aperçu mentait dans l'autre sens aussi : les valeurs d'exemple ne couvraient
+que neuf variables sur trente-trois. Toute variable du catalogue en a maintenant
+une, et `catalogue.test.ts` échoue s'il en manque.
+
+Surtout, la vérification a montré que l'oubli d'une variable était **silencieux**
+— `interpolate` laisse intacte une variable inconnue, ce qui est juste pour une
+faute de frappe mais invisible pour un émetteur distrait :
+
+- `reminders.ts` ne fournissait que `{{prenom}}`. Les rappels J-7 et J-1
+  partaient donc avec « Téléchargez-le dans votre espace : {{lien_espace}} » ;
+- les trois émetteurs de `session_promoted` ne passaient que `{{session}}` :
+  « Bonjour {{prenom}} » et « votre espace : {{lien_espace}} » à quelqu'un qui
+  vient d'obtenir sa place.
+
+Corriger les trois appels aurait laissé le piège en place pour le quatrième. Les
+variables communes — prénom, nom, identifiant, les deux liens vers l'espace —
+sont donc remplies par `sendTemplatedEmail` dès que l'envoi est rattaché à un
+participant, et dans la même lecture que celle qui servait déjà à choisir la
+langue. L'appelant garde le dernier mot : le lien signé d'une confirmation ou
+d'un badge l'emporte sur l'adresse générique.
+
+Au passage, `session_promoted` annonçait le titre français de la séance à tout
+le monde, objet du message compris, alors que le reste du courriel était traduit.
+`annuler()` rend maintenant le titre dans la langue du promu.

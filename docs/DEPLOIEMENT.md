@@ -582,7 +582,15 @@ Importer) : colonne `seances` = numéro de la séance, par exemple `4` ou `4; 7`
 `GET /api/v1/corpus` livre le contenu public du portail à l'assistant de
 recherche interne (`docs/ASSISTANT-RECHERCHE.md`). Sans `CORPUS_TOKEN`, la route
 est **ouverte** : le contenu qu'elle sert est déjà public page par page, mais un
-export d'un bloc invite à l'aspiration automatique. Pour la fermer :
+export d'un bloc invite à l'aspiration automatique.
+
+> **Au premier déploiement, écrire le jeton dans `.env` _avant_ de lancer
+> `./scripts/deployer.sh`** : son `forum up -d app` recrée le conteneur et
+> reprend la variable au passage. Tout se fait alors en une passe, et la
+> recréation manuelle ci-dessous ne sert qu'à ajouter ou changer le jeton sur un
+> portail déjà en service.
+
+Pour fermer la route :
 
 ```bash
 cd /opt/forum-ansd
@@ -603,10 +611,34 @@ Vérifier que la route est bien fermée, puis ouverte avec le jeton — le premi
 appel doit répondre `404`, le second `200` :
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1/api/v1/corpus
-curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $JETON" \
-  http://127.0.0.1/api/v1/corpus
+BASE="$(grep '^PUBLIC_BASE_URL=' .env | cut -d'"' -f2)"
+HOTE="$(printf '%s' "$BASE" | sed -E 's|^https?://||; s|[:/].*$||')"
+echo "$BASE / $HOTE"   # adresse publique du portail, et son seul nom d'hôte
+
+curl -s -o /dev/null -w '%{http_code}\n' --max-time 10 \
+  --resolve "$HOTE:443:127.0.0.1" "$BASE/api/v1/corpus"
+curl -s -o /dev/null -w '%{http_code}\n' --max-time 10 \
+  --resolve "$HOTE:443:127.0.0.1" -H "Authorization: Bearer $JETON" \
+  "$BASE/api/v1/corpus"
 ```
+
+Trois précautions, chacune pour une erreur constatée le 16 novembre 2026 :
+
+- **`--resolve` n'est pas optionnel.** Depuis le serveur, le nom public du
+  portail ne mène pas au serveur : il résout vers le Fortinet, qui porte le
+  chemin d'entrée des visiteurs et ne renvoie pas la connexion à l'intérieur. La
+  commande **reste suspendue** jusqu'au délai, sans rien dire. `--resolve` fait
+  parler nginx directement, sur la même origine HTTPS que verra un visiteur.
+- **`--max-time`**, pour que ce cas-là rende un `000` en dix secondes au lieu
+  d'un terminal figé qu'on finit par interrompre — ce qui ne prouve rien.
+- **L'adresse est lue dans le `.env`**, jamais écrite en dur. `http://127.0.0.1/`
+  tomberait sur le `server` du port 80, qui ne fait que rediriger
+  (`301 https://forum2026.ansd.sn…` — `docker/nginx.conf`) : un `301` ne dit rien
+  du jeton et envoie chercher la panne là où elle n'est pas.
+
+Ce contrôle prouve que nginx et la route s'accordent. Il ne prouve pas le chemin
+qu'emprunteront les clients : le refaire **depuis un poste du réseau de l'ANSD**,
+sans `--resolve`, et attendre le même `404` puis le même `200`.
 
 Transmettre le jeton par un canal séparé de l'adresse, et jamais dans le même
 message que la documentation.
@@ -649,13 +681,25 @@ deux jours plus tard. Ce n'est pas un certificat propre au portail : c'est le
 autres services de la maison. Il est reconnu par tous les navigateurs, ce qui
 règle la question de l'ouverture au public.
 
-| Élément              | Valeur                                        |
-| -------------------- | --------------------------------------------- |
-| Nom couvert          | `*.ansd.sn`, donc `forum2026.ansd.sn`         |
-| Autorité             | GlobalSign GCC R3 DV TLS CA 2020              |
-| Emplacement          | `/opt/forum-ansd/docker/certs/ansd.{crt,key}` |
-| Monté dans nginx sur | `/etc/nginx/certs`, en lecture seule          |
-| Expiration           | **20 novembre 2026, 15h15 UTC**               |
+Relevé sur le certificat en service le 16 novembre 2026 — et non recopié d'une
+commande passée : c'est ainsi que ce tableau a vieilli de trois semaines sans
+que personne s'en aperçoive.
+
+| Élément              | Valeur                                                                             |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| Nom couvert          | `*.ansd.sn`, donc `forum2026.ansd.sn`                                              |
+| Autorité             | GlobalSign GCC R46 DV TLS CA 2025                                                  |
+| Emplacement          | `/opt/forum-ansd/docker/certs/fullchainansd.crt` + `ansd.key`                      |
+| Monté dans nginx sur | `/etc/nginx/certs`, en lecture seule                                               |
+| Émis le              | 29 octobre 2026, 14h32 UTC                                                         |
+| Expiration           | **16 mai 2027, 14h32 UTC**                                                         |
+| Chaîne               | complète : feuille + intermédiaire GlobalSign (vérifié le 16 novembre 2026, §5.11) |
+
+Pour le relire à tout moment :
+
+```bash
+openssl x509 -noout -subject -issuer -dates -in docker/certs/fullchainansd.crt
+```
 
 Le dossier `docker/certs` est **exclu du dépôt** : il porte la clé privée du
 domaine, et pas seulement celle du portail. Une clé divulguée ne se corrige pas,
@@ -664,27 +708,39 @@ elle se révoque, et la révocation touche tous les services qui s'en servent.
 Let's Encrypt n'est donc plus dans la boucle. Le service `certbot` dort sous le
 profil `tls` de `docker-compose.prod.yml` (§5.9).
 
-### 5.2 La date à surveiller, et pourquoi elle est un problème
+### 5.2 La date à surveiller — levée le 29 octobre 2026
 
-**Le certificat expire le 20 novembre 2026. Le Forum ouvre le 23.** Il manque
-trois jours.
+> **Résolu.** Le certificat en service a été renouvelé et court jusqu'au
+> **16 mai 2027**. L'échéance du 20 novembre 2026, qui tombait trois jours avant
+> l'ouverture du Forum et constituait le risque d'exploitation le plus sérieux du
+> projet, n'existe plus. Vérifié le 16 novembre 2026 :
+>
+> ```bash
+> openssl x509 -noout -subject -issuer -dates -in docker/certs/fullchainansd.crt
+> # subject=CN=*.ansd.sn
+> # issuer=C=BE, O=GlobalSign nv-sa, CN=GlobalSign GCC R46 DV TLS CA 2025
+> # notBefore=Oct 29 14:32:28 2026 GMT
+> # notAfter=May 16 14:32:28 2027 GMT
+> ```
+>
+> Ce certificat porte bien sa chaîne. nginx, lui, ne l'avait pas relue pendant
+> une semaine : voir §5.11, à lire avant tout dépôt de certificat.
+> **Prochaine échéance à porter dans un agenda partagé : le 16 mai 2027.**
 
-Sans remplacement, le portail affichera à chaque visiteur un avertissement de
-sécurité en pleine page, pendant les trois jours de l'événement, sur le site où
-l'on vient justement chercher son badge. C'est le risque le plus sérieux qui
-pèse aujourd'hui sur l'exploitation.
+Ce qui suit reste la raison d'être de cette surveillance, et vaudra à la
+prochaine expiration.
 
+Sans remplacement, le portail affiche à chaque visiteur un avertissement de
+sécurité en pleine page, sur le site où l'on vient justement chercher son badge.
 Le renouvellement n'est pas à notre main : le joker appartient au parc, et c'est
 la DSI qui le commande. Le message à lui passer tient en une phrase, et il vaut
-mieux le passer tôt : « le certificat `*.ansd.sn` expire le 20 novembre, or le
-Forum international sur les données se tient du 23 au 25 ; pouvez-vous nous
-remettre le certificat renouvelé avant le 13 novembre ? »
+mieux le passer tôt — **dix jours avant**, et non la veille : ce délai laisse le
+temps de découvrir un problème et de le résoudre.
 
-Le 13 novembre, et non le 20 : dix jours de marge laissent le temps de
-découvrir un problème et de le résoudre, ce qu'une bascule la veille interdit.
-
-**Porter cette date dans un agenda partagé, pas seulement ici.** Un fichier de
-procédure ne réveille personne.
+**Porter la date dans un agenda partagé, pas seulement ici.** Un fichier de
+procédure ne réveille personne — et c'est bien ce qui s'est produit dans l'autre
+sens : le certificat a été renouvelé le 29 octobre sans que ce guide l'apprenne,
+et il a continué trois semaines à annoncer une échéance dépassée.
 
 ### 5.3 Remplacer le certificat
 
@@ -810,6 +866,130 @@ Ce que cela change pour le portail :
   `default.conf`. Passée, elle laisserait donc le port 443 ouvert, sur SISEP
   seul : un visiteur du portail en HTTPS tomberait sur SISEP.
 
+### 5.11 nginx servait un certificat qu'il avait en mémoire (16 novembre 2026)
+
+**Le symptôme.** Depuis le serveur, `curl` refuse la connexion au portail, alors
+qu'un navigateur l'ouvre sans rien signaler :
+
+```
+curl: (60) SSL certificate OpenSSL verify result:
+      unable to get local issuer certificate (20)
+```
+
+Le même appel avec `-k` répond normalement, et nginx ne présente **qu'un seul
+certificat** :
+
+```bash
+echo | openssl s_client -connect 127.0.0.1:443 -servername forum2026.ansd.sn   -showcerts 2>/dev/null | grep -c "BEGIN CERTIFICATE"
+```
+
+**La cause, et ce n'est pas celle qu'on croit.** Le fichier sur le disque était
+**déjà complet** — feuille puis intermédiaire, dans le bon ordre :
+
+```bash
+openssl crl2pkcs7 -nocrl -certfile docker/certs/fullchainansd.crt   | openssl pkcs7 -print_certs -noout
+```
+
+C'est **nginx** qui servait l'ancien contenu. Il lit ses certificats au
+démarrage et les garde en mémoire : le certificat renouvelé a été déposé le
+9 novembre, le conteneur tournait depuis plus longtemps, et il a continué une
+semaine à présenter la version précédente — à un seul certificat. Un
+`nginx -s reload` a tout réglé.
+
+C'est le même piège qu'au §5.7, et il mérite d'être énoncé une fois pour toutes :
+
+> **Remplacer un fichier que nginx a déjà lu ne change rien tant que nginx ne
+> l'a pas relu.** Vrai pour `default.conf`, vrai pour les certificats.
+> `./scripts/deployer.sh` ne recrée nginx que si sa **configuration** diffère de
+> celle du dépôt : un certificat déposé à la main ne déclenche donc rien.
+
+```bash
+cd /opt/forum-ansd
+docker compose -f docker-compose.prod.yml exec nginx nginx -t
+docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
+# Si le rechargement ne suffit pas, recréer :
+docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps nginx
+```
+
+**Pourquoi personne ne l'avait vu pendant une semaine.** Un navigateur rattrape
+un intermédiaire manquant tout seul — il le tient d'une visite précédente, ou va
+le chercher par l'extension AIA du certificat. Les visiteurs ne voyaient donc
+rien. **Un client HTTP, non** : `curl`, un script, un indexeur, un robot de
+supervision échouent tous à la vérification et concluent que le portail est en
+panne. Le défaut n'a été découvert qu'en branchant une API — celle de l'export du
+corpus (§4.4).
+
+**Vérifier**, sans `-k` :
+
+```bash
+cd /opt/forum-ansd
+curl -sS -o /dev/null -w 'portail : %{http_code}
+' --max-time 10   --resolve forum2026.ansd.sn:443:127.0.0.1 https://forum2026.ansd.sn/
+echo | openssl s_client -connect 127.0.0.1:443 -servername forum2026.ansd.sn   -showcerts 2>/dev/null | grep -c "BEGIN CERTIFICATE"
+```
+
+Attendu : une réponse sans erreur TLS, et `2` certificats présentés.
+
+Recréer nginx touche aussi **SISEP**, servi par le même conteneur (§5.10) :
+contrôler les deux noms.
+
+```bash
+curl -sS -o /dev/null -w 'SISEP : %{http_code}
+' --max-time 10   --resolve sisephasaoc.ansd.sn:443:127.0.0.1 https://sisephasaoc.ansd.sn/
+```
+
+#### Si le fichier est réellement incomplet
+
+Le cas ne s'est pas présenté ici, mais il se traite ainsi. L'émetteur est une
+autorité **publique** et le certificat porte l'adresse de son émetteur dans son
+extension AIA : l'intermédiaire se récupère seul, sans passer par la DSI.
+
+```bash
+cd /opt/forum-ansd
+URL="$(openssl x509 -noout -text -in docker/certs/fullchainansd.crt   | sed -n 's|.*CA Issuers - URI:||p' | head -1)"
+echo "$URL"        # http://secure.globalsign.com/cacert/… attendu
+
+curl -fsS --max-time 20 -o /tmp/inter.brut "$URL"
+# Le fichier arrive en DER ou en PEM selon l'autorité : on tente les deux.
+openssl x509 -inform DER -in /tmp/inter.brut -out /tmp/inter.pem 2>/dev/null   || cp /tmp/inter.brut /tmp/inter.pem
+openssl x509 -noout -subject -issuer -in /tmp/inter.pem
+```
+
+Le `subject` de l'intermédiaire doit être **exactement** l'`issuer` du
+certificat du portail. Sans accès sortant depuis le serveur, faire ces commandes
+depuis un poste et déposer `inter.pem` : c'est un certificat public, il n'y a
+rien à protéger.
+
+L'assemblage se fait **feuille d'abord, intermédiaires ensuite** — l'ordre
+qu'exige `ssl_certificate` — et par un bloc **enchaîné de `&&`**, chaque étape
+conditionnant la suivante :
+
+```bash
+cd /opt/forum-ansd
+test -s /tmp/inter.pem   && openssl verify -untrusted /tmp/inter.pem docker/certs/fullchainansd.crt   && sudo cp -a docker/certs/fullchainansd.crt "docker/certs/fullchainansd.crt.bak-$(date +%F)"   && cat docker/certs/fullchainansd.crt /tmp/inter.pem > /tmp/chaine.pem   && sudo cp /tmp/chaine.pem docker/certs/fullchainansd.crt   && echo "chaîne posée"
+```
+
+Quatre détails, chacun pour une erreur commise le 16 novembre 2026 :
+
+- **l'enchaînement par `&&` n'est pas du zèle.** Le bloc d'origine vérifiait
+  _après_ avoir assemblé : collé sans que le téléchargement ait eu lieu, le `cat`
+  a écrit la feuille seule et le `mv` l'a reposée en place, sans que rien le
+  signale. Une étape qui ne peut pas bloquer la suivante ne vérifie rien ;
+- **`sudo`** : le fichier appartient à `root`, et le dossier est écrivable par
+  l'exploitant — on peut donc y créer une sauvegarde sans pouvoir remplacer le
+  certificat, ce qui donne un `Permission denied` à la dernière étape seulement ;
+- **l'assemblage passe par `/tmp`**, jamais sur le fichier en service : une
+  redirection `>` vide sa cible avant de la lire, et `cat fullchain… >
+fullchain…` ne laisserait rien ;
+- **`cp` et non `mv`** : `cp` écrit _dans_ le fichier existant et lui garde son
+  propriétaire et ses droits, là où `mv` lui impose ceux du fichier temporaire —
+  et demande à confirmer un changement de mode, question à laquelle on répond
+  sans la lire.
+
+Puis recharger nginx, comme ci-dessus. `docker/certs` est monté comme **dossier**
+— le fichier remplacé est vu immédiatement dans le conteneur —, mais cela ne
+dispense pas du rechargement : c'est tout l'objet de cette section.
+
 ---
 
 ## 6. Avant l'ouverture au public — liste de contrôle
@@ -817,10 +997,14 @@ Ce que cela change pour le portail :
 - [x] HTTPS en place (§5), redirection depuis HTTP vérifiée — 24 septembre 2026
 - [x] certificat **reconnu publiquement** : joker `*.ansd.sn` signé GlobalSign,
       et non l'autorité interne de l'ANSD, qui n'est connue que du parc (§5.1)
-- [ ] **certificat renouvelé avant le 13 novembre 2026** : celui en service
-      expire le 20 novembre, trois jours avant l'ouverture du Forum (§5.2)
-- [ ] date d'expiration portée dans un agenda partagé, et non dans ce seul
-      fichier, tant que le renouvellement automatique n'est pas rétabli (§5.2)
+- [x] **certificat renouvelé** : renouvelé par la DSI le 29 octobre 2026, valide
+      jusqu'au 16 mai 2027 — l'échéance du 20 novembre n'existe plus (§5.2)
+- [x] **chaîne du certificat servie en entier** : nginx présentait la feuille
+      seule — un fichier pourtant complet, mais qu'il n'avait pas relu depuis le
+      dépôt du 9 novembre. Corrigé par un rechargement le 16 novembre 2026 ;
+      vérifier après tout dépôt de certificat (§5.11)
+- [ ] date d'expiration (16 mai 2027) portée dans un agenda partagé, et non dans
+      ce seul fichier, tant que le renouvellement automatique n'est pas rétabli (§5.2)
 - [ ] clé privée en `chmod 600` — déposée en `rw-rw-r--` (§5.4)
 - [ ] alias `forum` ramené au seul fichier de production, sans quoi un
       `forum up -d` remet le portail en clair sans le signaler (§5.7)

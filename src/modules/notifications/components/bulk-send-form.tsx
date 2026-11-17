@@ -87,9 +87,13 @@ export function BulkSendForm({ templates, categories, statuses, countries }: Pro
           Chaque destinataire reçoit le message dans sa langue (`Participant.locale`). Les variables
           <code className="bg-bg-3 mx-1 rounded px-1 py-0.5 text-xs">prenom</code>,
           <code className="bg-bg-3 mx-1 rounded px-1 py-0.5 text-xs">nom</code>,
-          <code className="bg-bg-3 mx-1 rounded px-1 py-0.5 text-xs">identifiant</code> et
-          <code className="bg-bg-3 mx-1 rounded px-1 py-0.5 text-xs">lien_espace</code> sont
-          renseignées automatiquement.
+          <code className="bg-bg-3 mx-1 rounded px-1 py-0.5 text-xs">identifiant</code>,
+          <code className="bg-bg-3 mx-1 rounded px-1 py-0.5 text-xs">lien_espace</code> et
+          <code className="bg-bg-3 mx-1 rounded px-1 py-0.5 text-xs">lien_badge</code> sont
+          renseignées automatiquement, ainsi que
+          <code className="bg-bg-3 mx-1 rounded px-1 py-0.5 text-xs">programme</code> et
+          <code className="bg-bg-3 mx-1 rounded px-1 py-0.5 text-xs">mes_panels</code>, calculées au
+          moment de l&apos;envoi.
         </p>
 
         {state.error && <p className="text-danger-text text-sm">{state.error}</p>}

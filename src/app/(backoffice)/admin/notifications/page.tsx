@@ -11,6 +11,7 @@ import {
   templateVariables,
   undeclaredVariables,
 } from "@/modules/notifications/service";
+import { declenchement, variablesResolues } from "@/modules/notifications/catalogue";
 import { LogStatusBadge } from "@/modules/notifications/components/log-status-badge";
 import { apercu } from "@/modules/notifications/reminders";
 import { ReminderPlanner } from "@/modules/notifications/components/reminder-planner";
@@ -104,8 +105,11 @@ export default async function NotificationsPage() {
             subjectFr: template.subjectFr,
             subjectEn: template.subjectEn,
             subjectPt: template.subjectPt,
-            declared,
+            // Les variables du programme s'ajoutent : résolues à l'envoi dans
+            // n'importe quel modèle, les signaler aurait été un faux reproche.
+            declared: variablesResolues(template.key, declared),
           });
+          const quandPart = declenchement(template.key);
           return (
             <Link
               key={template.id}
@@ -115,6 +119,7 @@ export default async function NotificationsPage() {
               <span>
                 <b className="text-heading block text-sm">{template.key}</b>
                 <span className="text-text-3 text-sm">{template.subjectFr}</span>
+                {quandPart && <span className="text-text-3 block text-xs">{quandPart}</span>}
               </span>
               <span className="flex flex-wrap items-center gap-1.5">
                 {declared.map((name) => (

@@ -17,6 +17,13 @@ interface Props {
   bodyEn: string;
   bodyPt: string;
   declared: string[];
+  /**
+   * Variables réellement remplacées à l'envoi — `declared`, plus celles du
+   * programme, résolues dans n'importe quel modèle. L'avertissement s'appuie
+   * sur cette liste : reprocher `{{programme}}`, qui part bien rempli, aurait
+   * envoyé l'éditeur corriger un modèle juste.
+   */
+  resolues: string[];
   /** Valeurs d'exemple pour la prévisualisation, par variable. */
   sampleVariables: Record<string, string>;
 }
@@ -30,6 +37,7 @@ export function TemplateForm({
   bodyEn,
   bodyPt,
   declared,
+  resolues,
   sampleVariables,
 }: Props) {
   const action = updateTemplateAction.bind(null, templateKey);
@@ -70,8 +78,8 @@ export function TemplateForm({
     for (const text of Object.values(values)) {
       for (const match of text.matchAll(/\{\{(\w+)\}\}/g)) used.add(match[1]!);
     }
-    return [...used].filter((name) => !declared.includes(name)).sort();
-  }, [values, declared]);
+    return [...used].filter((name) => !resolues.includes(name)).sort();
+  }, [values, resolues]);
 
   return (
     <form action={formAction} className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -140,6 +148,23 @@ export function TemplateForm({
             </code>
           ))}
         </div>
+
+        {/* Le programme se glisse dans n'importe quel modèle : le dire ici
+            évite d'avoir à le deviner, ou à le découvrir par l'avertissement. */}
+        {resolues.some((name) => !declared.includes(name)) && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-text-3 text-sm">
+              Aussi disponibles, remplies à l&apos;envoi :
+            </span>
+            {resolues
+              .filter((name) => !declared.includes(name))
+              .map((name) => (
+                <code key={name} className="bg-bg-3 text-text-2 rounded px-1.5 py-0.5 text-xs">
+                  {`{{${name}}}`}
+                </code>
+              ))}
+          </div>
+        )}
 
         {undeclared.length > 0 && (
           <p className="bg-warn-soft text-warn-text rounded-lg px-3 py-2 text-sm">

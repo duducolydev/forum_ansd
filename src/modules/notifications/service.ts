@@ -5,6 +5,7 @@ import { sendMail } from "@/lib/mail";
 import { audit } from "@/lib/audit";
 import type { Actor } from "@/modules/participants/service";
 import { resoudreVariablesProgramme, variablesProgrammeUtilisees } from "./recap-programme";
+import { variablesDeclarees } from "./catalogue";
 import type { TemplateInput } from "./schema";
 
 export type Locale = Langue;
@@ -149,9 +150,17 @@ export async function sendTemplatedEmail(options: {
     throw new Error(`Modèle de notification introuvable : "${options.templateKey}" (EMAIL).`);
   }
 
-  const locale = options.locale ?? (await resolveLocale(options.participantId));
+  const contexte = await contexteParticipant(options.participantId);
+  const locale = options.locale ?? contexte.locale;
   const picked = pickLocalised(template, locale);
-  const variables = await avecVariablesProgramme(picked, { ...options, locale });
+  // L'appelant a le dernier mot : un lien signé de confirmation ou de badge
+  // doit l'emporter sur l'adresse générique des variables communes.
+  const fournies = { ...contexte.variables, ...options.variables };
+  const variables = await avecVariablesProgramme(picked, {
+    ...options,
+    locale,
+    variables: fournies,
+  });
   const subject = interpolate(picked.subject, variables);
   const body = interpolate(picked.body, variables);
 
@@ -210,13 +219,42 @@ export async function sendTemplatedEmail(options: {
   }
 }
 
-async function resolveLocale(participantId?: string): Promise<Locale> {
-  if (!participantId) return "fr";
+/**
+ * Langue **et** variables communes du destinataire, en une seule lecture.
+ *
+ * Pourquoi des variables communes : ce que chaque modèle reçoit dépendait du
+ * seul appelant, et l'oubli était silencieux. `reminders.ts` ne fournissait que
+ * `{{prenom}}` ; les rappels J-7 et J-1 partaient donc avec « Téléchargez-le
+ * dans votre espace : {{lien_espace}} », `interpolate` laissant intacte toute
+ * variable inconnue. Même défaut pour `session_promoted`, dont les trois
+ * émetteurs ne passaient que `{{session}}` (17 novembre 2026).
+ *
+ * Tout destinataire rattaché à un participant reçoit donc d'office son prénom,
+ * son nom, son identifiant et les deux liens vers son espace — un émetteur
+ * n'ayant plus à y penser, et gardant la main pour les remplacer.
+ */
+async function contexteParticipant(
+  participantId?: string,
+): Promise<{ locale: Locale; variables: TemplateVariables }> {
+  if (!participantId) return { locale: "fr", variables: {} };
+
   const participant = await prisma.participant.findUnique({
     where: { id: participantId },
-    select: { locale: true },
+    select: { locale: true, firstName: true, lastName: true, publicId: true },
   });
-  return lireLangue(participant?.locale);
+  if (!participant) return { locale: "fr", variables: {} };
+
+  const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
+  return {
+    locale: lireLangue(participant.locale),
+    variables: {
+      prenom: participant.firstName,
+      nom: participant.lastName,
+      identifiant: participant.publicId,
+      lien_espace: `${baseUrl}/mon-espace`,
+      lien_badge: `${baseUrl}/mon-espace`,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -273,9 +311,21 @@ export async function updateTemplate(
   return updated;
 }
 
-/** Variables déclarées sur le modèle (colonne `variables`), pour l'aide à la saisie. */
-export function templateVariables(template: NotificationTemplate): string[] {
-  return Array.isArray(template.variables) ? template.variables.map(String) : [];
+/**
+ * Variables déclarées d'un modèle, pour l'aide à la saisie.
+ *
+ * Le catalogue (`catalogue.ts`) fait foi : il suit le code qui envoie, alors
+ * que la colonne `variables` est figée depuis le premier `seed` — une migration
+ * ne rattrape que les modèles jamais retouchés, si bien qu'un modèle corrigé
+ * dans le BackOffice se voyait reprocher des variables pourtant remplies. La
+ * colonne reste lue en repli, pour un modèle ajouté en base sans passer par le
+ * code.
+ */
+export function templateVariables(
+  template: Pick<NotificationTemplate, "key" | "variables">,
+): string[] {
+  const repli = Array.isArray(template.variables) ? template.variables.map(String) : [];
+  return variablesDeclarees(template.key, repli);
 }
 
 /**

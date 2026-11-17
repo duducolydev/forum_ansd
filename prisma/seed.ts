@@ -462,6 +462,12 @@ async function seedReference() {
 
   // ---------------------------------------------------------------------
   // Modèles de notifications — clés du périmètre Lot 1 (PLAN.md §3.8)
+  //
+  // Les listes `variables` ci-dessous ne servent plus qu'au premier
+  // enregistrement : depuis le 17 novembre 2026, l'aide à la saisie du
+  // BackOffice lit `src/modules/notifications/catalogue.ts`, qui suit le code
+  // qui envoie. La colonne, elle, reste figée à sa valeur de création — une
+  // migration ne rattrape que les modèles jamais retouchés.
   // ---------------------------------------------------------------------
   const notificationTemplatesData = [
     {

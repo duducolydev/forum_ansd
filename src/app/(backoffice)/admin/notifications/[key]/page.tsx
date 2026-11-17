@@ -4,22 +4,10 @@ import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
 import { getTemplate, templateVariables } from "@/modules/notifications/service";
+import { declenchement, EXEMPLES, variablesResolues } from "@/modules/notifications/catalogue";
 import { TemplateForm } from "@/modules/notifications/components/template-form";
 
 export const dynamic = "force-dynamic";
-
-/** Valeurs d'exemple de la prévisualisation — jamais de données réelles ici. */
-const SAMPLE: Record<string, string> = {
-  prenom: "Aminata",
-  nom: "Sow",
-  identifiant: "FID26-7K3M2P",
-  lien_connexion: "https://forum2026.ansd.sn/mon-espace/lien/xxxxx",
-  lien_inscription: "https://forum2026.ansd.sn/inscription?inv=xxxxx",
-  lien_espace: "https://forum2026.ansd.sn/mon-espace",
-  lien_badge: "https://forum2026.ansd.sn/mon-espace",
-  code6: "123456",
-  date_limite: "15 octobre 2026",
-};
 
 export default async function TemplatePage({ params }: { params: Promise<{ key: string }> }) {
   const session = await auth();
@@ -33,6 +21,7 @@ export default async function TemplatePage({ params }: { params: Promise<{ key: 
   if (!template) notFound();
 
   const declared = templateVariables(template);
+  const quandPart = declenchement(template.key);
 
   return (
     <div>
@@ -41,6 +30,7 @@ export default async function TemplatePage({ params }: { params: Promise<{ key: 
           ← Notifications
         </Link>
         <h2 className="mt-1 text-2xl">{template.key}</h2>
+        {quandPart && <p className="text-text-3 mt-1 text-sm">{quandPart}</p>}
       </div>
 
       <TemplateForm
@@ -52,7 +42,10 @@ export default async function TemplatePage({ params }: { params: Promise<{ key: 
         bodyEn={template.bodyEn}
         bodyPt={template.bodyPt ?? ""}
         declared={declared}
-        sampleVariables={SAMPLE}
+        // Ce qui sera réellement remplacé à l'envoi : le programme s'y ajoute,
+        // utilisable dans n'importe quel modèle.
+        resolues={variablesResolues(template.key, declared)}
+        sampleVariables={EXEMPLES}
       />
     </div>
   );

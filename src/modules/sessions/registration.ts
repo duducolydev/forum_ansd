@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
+import { lireLangue, traduire } from "@/lib/langue";
 
 /**
  * Réservation des panels (brief §5.5).
@@ -263,7 +264,13 @@ async function ecrire(
 }
 
 export interface ResultatAnnulation {
-  /** Participant promu depuis la liste d'attente, s'il y en avait un. */
+  /**
+   * Participant promu depuis la liste d'attente, s'il y en avait un.
+   *
+   * `sessionTitre` est déjà dans **sa** langue : le titre français partait
+   * jusqu'ici vers tout le monde, objet du message compris, alors que le reste
+   * du courriel était traduit (17 novembre 2026).
+   */
   promu: { participantId: string; email: string; sessionTitre: string } | null;
 }
 
@@ -319,15 +326,23 @@ export async function annuler(
 
       const promu = await tx.participant.findUniqueOrThrow({
         where: { id: premier.participantId },
-        select: { id: true, email: true },
+        select: { id: true, email: true, locale: true },
       });
       const session = await tx.session.findUniqueOrThrow({
         where: { id: sessionId },
-        select: { titleFr: true },
+        select: { titleFr: true, titleEn: true, titlePt: true },
       });
 
       return {
-        promu: { participantId: promu.id, email: promu.email, sessionTitre: session.titleFr },
+        promu: {
+          participantId: promu.id,
+          email: promu.email,
+          sessionTitre: traduire(lireLangue(promu.locale), {
+            fr: session.titleFr,
+            en: session.titleEn,
+            pt: session.titlePt,
+          }),
+        },
       };
     },
     { timeout: 20_000, maxWait: 20_000 },
