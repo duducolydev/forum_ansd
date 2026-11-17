@@ -17,6 +17,8 @@ export const bulkSendSchema = z.object({
   status: z.string().optional().or(z.literal("")),
   categoryId: z.string().optional().or(z.literal("")),
   country: z.string().optional().or(z.literal("")),
+  /** Reprise d'une campagne interrompue : ne pas servir deux fois (17 nov. 2026). */
+  exclureDejaRecu: z.coerce.boolean().optional(),
 });
 
 export type BulkSendInput = z.infer<typeof bulkSendSchema>;

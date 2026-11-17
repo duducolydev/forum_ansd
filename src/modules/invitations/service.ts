@@ -4,6 +4,7 @@ import type { Invitation } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { jobQueue } from "@/lib/queue";
+import { dureeCampagneMinutes, ENVOIS_PAR_MINUTE, momentEnvoi } from "@/lib/cadence-envoi";
 import { sendTemplatedEmail } from "@/modules/notifications/service";
 import * as repo from "./repository";
 import {
@@ -20,34 +21,18 @@ export interface Actor {
 
 const MAX_REMINDERS = 3;
 
-/**
- * Cadence d'envoi (PLAN.md §22).
+/*
+ * Cadence d'envoi : déplacée dans `lib/cadence-envoi.ts` le 17 novembre 2026.
  *
- * Une campagne d'invitations met un message en file **par destinataire**. Sans
- * cadence, mille invitations partent en quelques secondes : une boîte d'envoi
- * ordinaire — celle du Forum est un compte Gmail — coupe alors le robinet, et
- * les messages suivants sont refusés en bloc, sans qu'on sache lesquels sont
- * passés. Les envois sont donc programmés à intervalle régulier.
+ * Elle était née ici, d'un incident sur les invitations. L'envoi groupé de
+ * notifications, écrit plus tard, ne l'avait jamais reprise — et a rejoué le
+ * même incident, en pire. Une règle apprise dans un module ne protège pas le
+ * module voisin tant qu'elle n'est pas à un endroit que les deux importent.
  *
- * Vingt par minute : assez lent pour ne pas ressembler à une rafale, assez
- * rapide pour écouler un millier d'invitations en moins d'une heure.
+ * Réexportée pour les appelants existants (l'écran des invitations lit
+ * `service.ENVOIS_PAR_MINUTE`) : le déplacement ne casse rien.
  */
-export const ENVOIS_PAR_MINUTE = 20;
-
-/**
- * Moment d'envoi du n-ième message d'une campagne.
- *
- * Fonction pure, et exportée pour cela : c'est l'étalement qui protège la boîte
- * d'envoi, et il se vérifie sans file ni base.
- */
-export function momentEnvoi(index: number, depart: Date): Date {
-  return new Date(depart.getTime() + Math.round((index * 60_000) / ENVOIS_PAR_MINUTE));
-}
-
-/** Durée d'écoulement d'une campagne, en minutes, arrondie au supérieur. */
-export function dureeCampagneMinutes(nombre: number): number {
-  return nombre <= 1 ? 0 : Math.ceil((nombre - 1) / ENVOIS_PAR_MINUTE);
-}
+export { ENVOIS_PAR_MINUTE, momentEnvoi, dureeCampagneMinutes } from "@/lib/cadence-envoi";
 
 export function generateInvitationToken(): string {
   return randomBytes(24).toString("base64url");

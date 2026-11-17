@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import type { Permission } from "@/lib/permissions";
 import { getActiveEdition } from "@/lib/edition";
+import { dureeCampagneMinutes } from "@/lib/cadence-envoi";
 import { enqueueBulk } from "./jobs";
 import { previewBulk, updateTemplate } from "./service";
 import { bulkSendSchema, templateSchema } from "./schema";
@@ -18,7 +19,7 @@ export interface NotificationActionState {
     sample: string[];
     templateKey: string;
     /** Filtre exact qui a produit ce décompte, rejoué tel quel à la confirmation. */
-    filter: { status: string; categoryId: string; country: string };
+    filter: { status: string; categoryId: string; country: string; exclureDejaRecu: boolean };
   };
 }
 
@@ -78,6 +79,7 @@ export async function sendBulkAction(
       status: formData.get("status") ?? "",
       categoryId: formData.get("categoryId") ?? "",
       country: formData.get("country") ?? "",
+      exclureDejaRecu: formData.get("exclureDejaRecu") === "1",
     });
     const edition = await getActiveEdition();
     const filter = {
@@ -96,6 +98,7 @@ export async function sendBulkAction(
             status: input.status ?? "",
             categoryId: input.categoryId ?? "",
             country: input.country ?? "",
+            exclureDejaRecu: input.exclureDejaRecu ?? false,
           },
           sample: preview.sample.map(
             (p) => `${p.firstName} ${p.lastName} <${p.email}> (${p.locale})`,
@@ -108,11 +111,15 @@ export async function sendBulkAction(
       editionId: edition.id,
       templateKey: input.templateKey,
       filter,
+      exclureDejaRecu: input.exclureDejaRecu,
       actor,
     });
     revalidatePath("/admin/notifications");
     return {
-      success: `${result.queued} message(s) mis en file (campagne ${result.campaignId.slice(0, 8)}).`,
+      success:
+        `${result.queued} message(s) mis en file (campagne ${result.campaignId.slice(0, 8)}), ` +
+        `étalés sur ~${dureeCampagneMinutes(result.queued)} min.` +
+        (result.exclus > 0 ? ` ${result.exclus} déjà servi(s), écarté(s).` : ""),
     };
   } catch (error) {
     return { error: firstFieldError(error) };

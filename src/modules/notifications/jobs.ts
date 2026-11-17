@@ -1,4 +1,5 @@
 import { lireLangue, type Langue } from "@/lib/langue";
+import { ENVOIS_PAR_MINUTE, momentEnvoi } from "@/lib/cadence-envoi";
 import { jobQueue } from "@/lib/queue";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
@@ -91,12 +92,22 @@ export async function enqueueBulk(options: {
   variables?: Record<string, string>;
   /** Variables propres à la langue du destinataire (titre et chapô d'une newsletter…). */
   variablesParLangue?: Partial<Record<string, Record<string, string>>>;
+  /**
+   * Écarte les participants à qui ce modèle a **déjà** été envoyé avec succès.
+   *
+   * Sert à reprendre une campagne interrompue sans servir deux fois ceux
+   * qu'elle avait atteints — le cas du 17 novembre 2026, où 80 des 273 rappels
+   * J-7 étaient partis avant que la boîte d'envoi ne coupe. Hors reprise, on
+   * laisse à faux : une relance délibérée vers les mêmes personnes reste
+   * légitime, et ce n'est pas au code d'en décider.
+   */
+  exclureDejaRecu?: boolean;
   actor: Actor;
-}): Promise<{ campaignId: string; queued: number }> {
+}): Promise<{ campaignId: string; queued: number; exclus: number }> {
   const campaignId = crypto.randomUUID();
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
 
-  const recipients = await prisma.participant.findMany({
+  const tous = await prisma.participant.findMany({
     where: bulkWhere(options.editionId, options.filter),
     select: {
       id: true,
@@ -108,9 +119,33 @@ export async function enqueueBulk(options: {
     },
   });
 
-  for (const recipient of recipients) {
-    await enqueueNotification(
-      {
+  let dejaServis = new Set<string>();
+  if (options.exclureDejaRecu) {
+    const lignes = await prisma.notificationLog.findMany({
+      where: { templateKey: options.templateKey, status: "SENT", participantId: { not: null } },
+      distinct: ["participantId"],
+      select: { participantId: true },
+    });
+    dejaServis = new Set(lignes.map((ligne) => ligne.participantId!));
+  }
+
+  const recipients = tous.filter((candidat) => !dejaServis.has(candidat.id));
+
+  /*
+   * Les envois sont **étalés** (`lib/cadence-envoi.ts`), et mis en file en une
+   * seule écriture.
+   *
+   * Sans cadence, 273 rappels sont partis d'un coup le 17 novembre 2026 :
+   * Gmail en a accepté 80 puis a refusé les autres. La règle existait pour les
+   * invitations depuis septembre ; elle n'avait jamais été reprise ici. Le
+   * transport SMTP est mutualisé par ailleurs (`lib/mail.ts`) — c'étaient les
+   * connexions que Google comptait, pas les messages, et les deux correctifs
+   * vont ensemble.
+   */
+  const depart = new Date();
+  await enqueueNotifications(
+    recipients.map((recipient, index) => ({
+      payload: {
         editionId: options.editionId,
         templateKey: options.templateKey,
         to: recipient.email,
@@ -125,9 +160,10 @@ export async function enqueueBulk(options: {
           ...options.variablesParLangue?.[lireLangue(recipient.locale)],
         },
       },
-      `bulk-${campaignId}-${recipient.id}`,
-    );
-  }
+      idempotencyKey: `bulk-${campaignId}-${recipient.id}`,
+      runAt: momentEnvoi(index, depart),
+    })),
+  );
 
   await audit.log({
     actorType: options.actor.type,
@@ -140,8 +176,14 @@ export async function enqueueBulk(options: {
       templateKey: options.templateKey,
       filter: options.filter,
       recipients: recipients.length,
+      exclus: tous.length - recipients.length,
+      cadence: ENVOIS_PAR_MINUTE,
     },
   });
 
-  return { campaignId, queued: recipients.length };
+  return {
+    campaignId,
+    queued: recipients.length,
+    exclus: tous.length - recipients.length,
+  };
 }

@@ -31,6 +31,8 @@ export function BulkSendForm({ templates, categories, statuses, countries }: Pro
     country: "",
   });
 
+  const [exclureDejaRecu, setExclureDejaRecu] = useState(false);
+
   function set(name: keyof typeof filters) {
     return (value: string) => setFilters((current) => ({ ...current, [name]: value }));
   }
@@ -82,6 +84,31 @@ export function BulkSendForm({ templates, categories, statuses, countries }: Pro
             onChange={set("country")}
           />
         </div>
+
+        {/*
+          Reprise d'une campagne interrompue (17 novembre 2026). Décoché par
+          défaut : une relance délibérée vers les mêmes personnes reste
+          légitime, et le code n'a pas à en décider à la place du comité.
+        */}
+        <label className="flex items-start gap-2.5 text-sm">
+          <input
+            type="checkbox"
+            name="exclureDejaRecu"
+            value="1"
+            checked={exclureDejaRecu}
+            onChange={(evenement) => setExclureDejaRecu(evenement.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            <span className="text-heading font-medium">
+              Ne pas renvoyer à ceux qui ont déjà reçu ce modèle
+            </span>
+            <span className="text-text-3 block text-xs">
+              À cocher pour reprendre une campagne interrompue : les personnes déjà servies sont
+              écartées du décompte et de l&apos;envoi.
+            </span>
+          </span>
+        </label>
 
         <p className="text-text-3 text-sm">
           Chaque destinataire reçoit le message dans sa langue (`Participant.locale`). Les variables
@@ -173,6 +200,11 @@ function ConfirmForm({ preview }: { preview: NonNullable<NotificationActionState
       <input type="hidden" name="status" value={preview.filter.status} />
       <input type="hidden" name="categoryId" value={preview.filter.categoryId} />
       <input type="hidden" name="country" value={preview.filter.country} />
+      <input
+        type="hidden"
+        name="exclureDejaRecu"
+        value={preview.filter.exclureDejaRecu ? "1" : ""}
+      />
       <Bouton
         ton="principal"
         icone={Send}
