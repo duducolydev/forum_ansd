@@ -1,7 +1,7 @@
 import { lireLangue, traduire, type Langue } from "@/lib/langue";
 import type { NotificationTemplate, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { sendMail } from "@/lib/mail";
+import { sendMail, type BoiteEnvoi } from "@/lib/mail";
 import { audit } from "@/lib/audit";
 import type { Actor } from "@/modules/participants/service";
 import { resoudreVariablesProgramme, variablesProgrammeUtilisees } from "./recap-programme";
@@ -144,6 +144,12 @@ export async function sendTemplatedEmail(options: {
   appendHtml?: string;
   /** Adresse de réponse (formulaire de contact). */
   replyTo?: string;
+  /**
+   * Boîte d'envoi (`lib/mail.ts`). Par défaut `transactionnel` : c'est aux
+   * quelques points d'entrée qui envoient **en nombre** de se déclarer, pas à
+   * la centaine d'envois unitaires de penser à le faire.
+   */
+  boite?: BoiteEnvoi;
 }): Promise<void> {
   const template = await getTemplate(options.editionId, options.templateKey);
   if (!template) {
@@ -189,6 +195,7 @@ export async function sendTemplatedEmail(options: {
       html,
       text: body,
       replyTo: options.replyTo,
+      boite: options.boite,
     });
 
     // Le serveur SMTP a accepté la connexion mais refusé ce destinataire :

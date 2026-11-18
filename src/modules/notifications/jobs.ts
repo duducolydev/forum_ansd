@@ -1,5 +1,6 @@
 import { lireLangue, type Langue } from "@/lib/langue";
 import { ENVOIS_PAR_MINUTE, momentEnvoi } from "@/lib/cadence-envoi";
+import { estRefusQuota, type BoiteEnvoi } from "@/lib/mail";
 import { jobQueue } from "@/lib/queue";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
@@ -20,6 +21,67 @@ export interface NotificationJobPayload {
   locale?: Langue;
   /** Adresse de réponse (formulaire de contact). */
   replyTo?: string;
+  /**
+   * Boîte d'envoi (`lib/mail.ts`). Absente, c'est `transactionnel` : seuls les
+   * points d'entrée qui envoient en nombre se déclarent `campagne`.
+   */
+  boite?: BoiteEnvoi;
+  /**
+   * Nombre de reports déjà subis pour cause de quota. Interne à la file —
+   * aucun appelant ne le renseigne.
+   */
+  reports?: number;
+}
+
+/** Au-delà, on cesse de reporter : quatre reports de six heures couvrent la
+ * fenêtre glissante de vingt-quatre heures d'un quota journalier Gmail. */
+const REPORTS_MAX = 4;
+
+/**
+ * Délai avant nouvelle tentative, selon la nature du refus.
+ *
+ * Un quota journalier ne se libère qu'au fil de la fenêtre glissante : six
+ * heures. Un bridage temporaire (`4.7.0`) retombe en quelques minutes.
+ */
+function delaiReport(error: unknown): number {
+  const message = error instanceof Error ? error.message : String(error);
+  const journalier = /\b5\.4\.5\b/.test(message) || /daily (user )?sending limit/i.test(message);
+  return journalier ? 6 * 3600_000 : 15 * 60_000;
+}
+
+/**
+ * Remet en file un envoi refusé faute de quota, plus tard.
+ *
+ * ## Pourquoi ne pas laisser la file réessayer
+ *
+ * Elle réessaie déjà — trois fois, à cinq puis dix secondes
+ * (`lib/queue/bullmq-queue.ts`). Contre une panne passagère, c'est la bonne
+ * réponse. Contre un quota journalier, les trois tentatives tombent en quinze
+ * secondes, échouent toutes les trois, **consomment du quota à chaque fois**,
+ * et le job meurt. Le 18 novembre 2026 : 764 lignes en échec pour environ
+ * 250 messages réels, et rien pour les renvoyer.
+ *
+ * Reporter plutôt que s'acharner. Le job d'origine se termine normalement — il
+ * n'a pas échoué, il a été déplacé — et un nouveau est posé à l'heure où la
+ * boîte aura repris son souffle.
+ *
+ * Retourne `false` quand le quota ne se libère décidément pas : l'erreur
+ * reprend alors son cours, le journal la consigne, et le bouton « Renvoyer les
+ * échecs » de l'historique prend le relais.
+ */
+async function differer(payload: NotificationJobPayload, error: unknown): Promise<boolean> {
+  const reports = (payload.reports ?? 0) + 1;
+  if (reports > REPORTS_MAX) return false;
+
+  await jobQueue.enqueue(
+    "notification.send",
+    { ...payload, reports },
+    {
+      idempotencyKey: `report-${reports}-${payload.templateKey}-${payload.participantId ?? payload.to}`,
+      runAt: new Date(Date.now() + delaiReport(error)),
+    },
+  );
+  return true;
 }
 
 let registered = false;
@@ -34,7 +96,11 @@ export function registerNotificationJobs(): void {
   registered = true;
 
   jobQueue.process<NotificationJobPayload>("notification.send", async (payload) => {
-    await sendTemplatedEmail(payload);
+    try {
+      await sendTemplatedEmail(payload);
+    } catch (error) {
+      if (!estRefusQuota(error) || !(await differer(payload, error))) throw error;
+    }
   });
 }
 
@@ -150,6 +216,9 @@ export async function enqueueBulk(options: {
         templateKey: options.templateKey,
         to: recipient.email,
         participantId: recipient.id,
+        // Envoi en nombre : la boîte de campagne, dont le quota est étanche de
+        // celui des codes de connexion et des confirmations (`lib/mail.ts`).
+        boite: "campagne",
         variables: {
           prenom: recipient.firstName,
           nom: recipient.lastName,

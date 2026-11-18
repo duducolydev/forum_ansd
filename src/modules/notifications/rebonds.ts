@@ -1,5 +1,6 @@
 import { ImapFlow, type FetchMessageObject, type MessageStructureObject } from "imapflow";
 import { prisma } from "@/lib/db";
+import { configBoite } from "@/lib/mail";
 import { analyserAvis, motifRebond, type AvisRebond } from "./avis-rebond";
 
 /**
@@ -36,6 +37,41 @@ export function configImap(
   const pass = env.IMAP_PASSWORD || env.SMTP_PASSWORD || "";
   if (!host || !user || !pass) return null;
   return { host, port: Number(env.IMAP_PORT || 993), user, pass };
+}
+
+/**
+ * **Toutes** les boîtes à relever (18 novembre 2026).
+ *
+ * Depuis que les envois en nombre partent d'un second compte (`lib/mail.ts`),
+ * les avis de non-distribution d'une campagne arrivent dans la boîte de
+ * campagne — que personne ne consulte. Les relever là aussi, sans quoi un
+ * rappel J-1 adressé à une adresse morte resterait « Envoyé » au journal.
+ *
+ * Dédoublonnées : sans `SMTP_CAMPAGNE_*`, les deux voies désignent le même
+ * compte, et il serait relu deux fois à chaque passage.
+ */
+export function configsImap(env: Record<string, string | undefined> = process.env): ConfigImap[] {
+  const campagne = configBoite("campagne", env);
+  const candidats = [
+    configImap(env),
+    campagne.host === "smtp.gmail.com" && campagne.user && campagne.pass
+      ? {
+          host: "imap.gmail.com",
+          port: Number(env.IMAP_PORT || 993),
+          user: campagne.user,
+          pass: campagne.pass,
+        }
+      : null,
+  ];
+
+  const vues = new Set<string>();
+  return candidats.filter((config): config is ConfigImap => {
+    if (!config) return false;
+    const cle = `${config.host}:${config.user}`;
+    if (vues.has(cle)) return false;
+    vues.add(cle);
+    return true;
+  });
 }
 
 /** Fenêtre relue à chaque passage : couvre les invitations de la campagne en cours. */
@@ -202,11 +238,39 @@ async function dossierALire(client: ImapFlow): Promise<string> {
   return dossiers.find((dossier) => dossier.specialUse === "\\All")?.path ?? "INBOX";
 }
 
-export async function releverRebonds(config = configImap()): Promise<BilanReleve> {
-  if (!config) {
+/**
+ * Relève les avis de **toutes** les boîtes d'envoi, et additionne les bilans.
+ *
+ * Une boîte injoignable n'interrompt pas les autres : mieux vaut les rebonds
+ * de la boîte transactionnelle seuls que pas de rebonds du tout.
+ */
+export async function releverRebonds(configs = configsImap()): Promise<BilanReleve> {
+  if (configs.length === 0) {
     throw new Error("Relevé des rebonds non configuré (IMAP_HOST ou SMTP Gmail attendu).");
   }
 
+  const bilan: BilanReleve = { avisLus: 0, nouveaux: 0, dejaConnus: 0 };
+  let derniereErreur: unknown = null;
+
+  for (const config of configs) {
+    try {
+      const partiel = await releverBoite(config);
+      bilan.avisLus += partiel.avisLus;
+      bilan.nouveaux += partiel.nouveaux;
+      bilan.dejaConnus += partiel.dejaConnus;
+    } catch (error) {
+      derniereErreur = error;
+      console.error(`[rebonds] boîte ${config.user} injoignable :`, error);
+    }
+  }
+
+  // Toutes en échec : l'appelant doit le savoir, le bouton du BackOffice
+  // afficherait sinon « 0 rebond » pour une panne de connexion.
+  if (derniereErreur && bilan.avisLus === 0 && bilan.dejaConnus === 0) throw derniereErreur;
+  return bilan;
+}
+
+async function releverBoite(config: ConfigImap): Promise<BilanReleve> {
   const client = new ImapFlow({
     host: config.host,
     port: config.port,
@@ -306,7 +370,7 @@ export function releverRebondsUneFois(): Promise<BilanReleve> {
  * configuré — développement avec Mailpit, tests —, ne fait rien.
  */
 export function demarrerReleveRebonds(): void {
-  if (demarre || !configImap() || process.env.NODE_ENV === "test") return;
+  if (demarre || configsImap().length === 0 || process.env.NODE_ENV === "test") return;
   demarre = true;
 
   const passer = () => {

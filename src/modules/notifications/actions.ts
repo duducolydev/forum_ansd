@@ -159,6 +159,35 @@ export async function planifierRappelsAction(): Promise<
   }
 }
 
+/**
+ * Renvoi des envois restés en échec (bouton de l'historique d'envoi).
+ *
+ * Le rattrapage du 18 novembre 2026 : ~250 confirmations et badges refusés
+ * faute de quota, sans moyen de les réémettre autrement qu'un par un.
+ */
+export async function renvoyerEchecsAction(): Promise<NotificationActionState> {
+  try {
+    const actor = await requireStaff("notifications.manage");
+    const edition = await getActiveEdition();
+    const { renvoyerEchecs } = await import("./renvoi");
+    const bilan = await renvoyerEchecs(edition.id, actor);
+
+    revalidatePath("/admin/notifications");
+    revalidatePath("/admin/notifications/historique");
+
+    if (bilan.remis === 0) {
+      return { success: "Aucun envoi en échec à reprendre." };
+    }
+    const minutes = dureeCampagneMinutes(bilan.remis);
+    const parties = [`${bilan.remis} envoi(s) remis en file`];
+    if (minutes > 0) parties.push(`étalés sur ~${minutes} min`);
+    if (bilan.ignores > 0) parties.push(`${bilan.ignores} non renvoyable(s)`);
+    return { success: `${parties.join(" · ")}.` };
+  } catch (error) {
+    return { error: firstFieldError(error) };
+  }
+}
+
 /** Relevé immédiat des rebonds différés (bouton de l'historique d'envoi). */
 export async function releverRebondsAction(): Promise<NotificationActionState> {
   try {

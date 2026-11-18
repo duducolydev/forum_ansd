@@ -392,6 +392,10 @@ export function registerInvitationJobs(): void {
       templateKey: invitation.remindersCount > 0 ? "invitation_reminder" : "invitation",
       to: invitation.email,
       invitationId: invitation.id,
+      // Une campagne d'invitations vise le millier (PLAN.md §22) : boîte de
+      // campagne, pour qu'elle ne puisse pas assécher le quota des codes de
+      // connexion ni des confirmations (`lib/mail.ts`).
+      boite: "campagne",
       variables: {
         prenom: invitation.firstName,
         lien_inscription: `${baseUrl}/inscription?inv=${invitation.token}`,

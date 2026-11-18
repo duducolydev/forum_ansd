@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyserAvis, decoderMotsEncodes, lireRapport, motifRebond } from "./avis-rebond";
-import { configImap } from "./rebonds";
+import { configImap, configsImap } from "./rebonds";
 
 /** Avis Gmail pour une adresse Yahoo inexistante, tel qu'il arrive dans la boîte du Forum. */
 const EN_TETES = [
@@ -137,5 +137,36 @@ describe("configImap", () => {
 
   it("reste inactif sans IMAP ni Gmail (Mailpit en développement)", () => {
     expect(configImap({ SMTP_HOST: "localhost", SMTP_USER: "", SMTP_PASSWORD: "" })).toBeNull();
+  });
+});
+
+describe("configsImap", () => {
+  const GMAIL = {
+    SMTP_HOST: "smtp.gmail.com",
+    SMTP_USER: "forumansd@gmail.com",
+    SMTP_PASSWORD: "secret",
+  };
+
+  it("relève les deux boîtes quand les campagnes ont la leur", () => {
+    // Sans cela, un rappel J-1 adressé à une adresse morte resterait « Envoyé »
+    // au journal : l'avis arrive dans la boîte de campagne, que personne ne lit.
+    const configs = configsImap({
+      ...GMAIL,
+      SMTP_CAMPAGNE_USER: "forumansd.envois@gmail.com",
+      SMTP_CAMPAGNE_PASSWORD: "secret-campagne",
+    });
+    expect(configs.map((config) => config.user)).toEqual([
+      "forumansd@gmail.com",
+      "forumansd.envois@gmail.com",
+    ]);
+  });
+
+  it("ne relève qu'une fois la boîte unique", () => {
+    // Sans `SMTP_CAMPAGNE_*`, les deux voies désignent le même compte.
+    expect(configsImap(GMAIL)).toHaveLength(1);
+  });
+
+  it("reste vide sans IMAP ni Gmail", () => {
+    expect(configsImap({ SMTP_HOST: "localhost", SMTP_USER: "", SMTP_PASSWORD: "" })).toEqual([]);
   });
 });

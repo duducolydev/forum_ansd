@@ -20,6 +20,13 @@ services:
       SMTP_USER: ${SMTP_USER}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM: ${SMTP_FROM}
+      # Seconde boîte, pour les envois en nombre (rappels, invitations, envois
+      # groupés). Vides, les campagnes repartent sur la boîte ci-dessus.
+      SMTP_CAMPAGNE_HOST: ${SMTP_CAMPAGNE_HOST:-}
+      SMTP_CAMPAGNE_PORT: ${SMTP_CAMPAGNE_PORT:-}
+      SMTP_CAMPAGNE_USER: ${SMTP_CAMPAGNE_USER:-}
+      SMTP_CAMPAGNE_PASSWORD: ${SMTP_CAMPAGNE_PASSWORD:-}
+      SMTP_CAMPAGNE_FROM: ${SMTP_CAMPAGNE_FROM:-}
       # Relevé des rebonds : vides, ils sont déduits du SMTP Gmail (README).
       IMAP_HOST: ${IMAP_HOST:-}
       IMAP_PORT: ${IMAP_PORT:-}
@@ -139,6 +146,23 @@ services:
       MAGIC_LINK_SECRET: ${MAGIC_LINK_SECRET}
       BADGE_HMAC_SECRET: ${BADGE_HMAC_SECRET}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      # Boîtes d'envoi : `pnpm boites:verifier` les authentifie avant qu'une
+      # campagne ne compte dessus. Sans elles ici, le script ne verrait qu'une
+      # configuration vide et conclurait à tort.
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_CAMPAGNE_HOST: ${SMTP_CAMPAGNE_HOST:-}
+      SMTP_CAMPAGNE_PORT: ${SMTP_CAMPAGNE_PORT:-}
+      SMTP_CAMPAGNE_USER: ${SMTP_CAMPAGNE_USER:-}
+      SMTP_CAMPAGNE_PASSWORD: ${SMTP_CAMPAGNE_PASSWORD:-}
+      SMTP_CAMPAGNE_FROM: ${SMTP_CAMPAGNE_FROM:-}
+      IMAP_HOST: ${IMAP_HOST:-}
+      IMAP_PORT: ${IMAP_PORT:-}
+      IMAP_USER: ${IMAP_USER:-}
+      IMAP_PASSWORD: ${IMAP_PASSWORD:-}
     volumes:
       - storage_data:/app/storage
     depends_on:

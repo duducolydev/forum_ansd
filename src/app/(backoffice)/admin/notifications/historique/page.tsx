@@ -14,7 +14,9 @@ import { FiltresHistorique } from "@/modules/notifications/components/filtres-hi
 import { LogStatusBadge } from "@/modules/notifications/components/log-status-badge";
 import { Pagination } from "@/modules/participants/components/pagination";
 import { BoutonRebonds } from "@/modules/notifications/components/bouton-rebonds";
-import { configImap } from "@/modules/notifications/rebonds";
+import { BoutonRenvoyerEchecs } from "@/modules/notifications/components/bouton-renvoyer-echecs";
+import { compterEchecsARenvoyer } from "@/modules/notifications/renvoi";
+import { configsImap } from "@/modules/notifications/rebonds";
 
 export const metadata = { title: "Historique d'envoi" };
 export const dynamic = "force-dynamic";
@@ -47,9 +49,10 @@ export default async function HistoriqueEnvoisPage({
   const search = historiqueSearchSchema.parse(sp);
   const edition = await getActiveEdition();
 
-  const [{ items, total }, modeles] = await Promise.all([
+  const [{ items, total }, modeles, echecsRenvoyables] = await Promise.all([
     listerEnvois(edition.id, search),
     modelesJournalises(),
+    compterEchecsARenvoyer(edition.id),
   ]);
   const voirFiche = can(session, "participants.read");
   const corrigerInvitation = can(session, "invitations.write");
@@ -69,7 +72,10 @@ export default async function HistoriqueEnvoisPage({
             {total} e-mail{total > 1 ? "s" : ""} · heures de Dakar
           </span>
         </div>
-        {configImap() && <BoutonRebonds />}
+        <div className="flex flex-wrap items-center gap-2">
+          <BoutonRenvoyerEchecs enAttente={echecsRenvoyables} />
+          {configsImap().length > 0 && <BoutonRebonds />}
+        </div>
       </div>
 
       <p className="text-text-3 mb-4 text-xs">

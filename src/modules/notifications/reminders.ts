@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
+import { momentEnvoi } from "@/lib/cadence-envoi";
 import { enqueueNotification } from "./jobs";
 import { VARIABLES_PROGRAMME } from "./recap-programme";
 
@@ -167,11 +168,20 @@ export async function planifier(
       ).map((ligne) => ligne.participantId),
     );
 
-    for (const participant of attendus) {
-      if (dejaRecu.has(participant.id)) {
-        ignores++;
-        continue;
-      }
+    /*
+     * Les rappels sont **étalés** à partir de l'heure d'échéance.
+     *
+     * Ils portaient tous le même `runAt` : trois cents messages à la même
+     * seconde. Le plafond du transport (`lib/mail.ts`) les écoulait sans
+     * rafale de connexions, mais ils restaient une vague qui occupe la boîte
+     * d'envoi pendant un quart d'heure. La même règle que les envois groupés
+     * s'applique ici — c'est le même geste, et `cadence-envoi.ts` existe pour
+     * que les deux modules la partagent.
+     */
+    const aEnvoyer = attendus.filter((participant) => !dejaRecu.has(participant.id));
+    ignores += attendus.length - aEnvoyer.length;
+
+    for (const [index, participant] of aEnvoyer.entries()) {
       await enqueueNotification(
         {
           editionId,
@@ -179,9 +189,15 @@ export async function planifier(
           to: participant.email,
           participantId: participant.id,
           variables: { prenom: participant.firstName },
+          // Envoi en nombre : boîte de campagne (`lib/mail.ts`). Le 18 novembre
+          // 2026, les rappels J-7 avaient épuisé à eux seuls le quota
+          // journalier du compte, et les confirmations d'inscription, les
+          // badges et les codes de connexion du BackOffice étaient refusés
+          // derrière eux.
+          boite: "campagne",
         },
         cleIdempotence(editionId, echeance.cle, participant.id),
-        envoiLe,
+        momentEnvoi(index, envoiLe),
       );
       programmes++;
     }

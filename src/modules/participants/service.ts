@@ -194,7 +194,17 @@ export class AccreditationReserveeError extends Error {
  */
 export async function envoyerConfirmation(
   participantId: string,
-  options: { importe?: boolean } = {},
+  options: {
+    importe?: boolean;
+    /**
+     * Remplace la clé d'idempotence `confirmation-<id>`.
+     *
+     * Un renvoi après échec en a besoin : BullMQ garde les jobs échoués, et
+     * remettre en file la **même** clé serait ignoré en silence — précisément
+     * pour les messages qu'on cherche à rattraper (`notifications/renvoi.ts`).
+     */
+    cleIdempotence?: string;
+  } = {},
 ): Promise<void> {
   const participant = await prisma.participant.findUniqueOrThrow({
     where: { id: participantId },
@@ -229,7 +239,7 @@ export async function envoyerConfirmation(
           : blocReferent(participant.delegation?.referent ?? null, lireLangue(participant.locale)),
       },
     },
-    `confirmation-${participant.id}`,
+    options.cleIdempotence ?? `confirmation-${participant.id}`,
   );
 }
 

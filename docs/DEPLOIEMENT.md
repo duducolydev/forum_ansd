@@ -177,6 +177,11 @@ SMTP_PORT="587"
 SMTP_USER="forumansd@gmail.com"
 SMTP_PASSWORD="à-coller-ici"
 SMTP_FROM="Forum international sur les données <forumansd@gmail.com>"
+# Seconde boîte, réservée aux envois en nombre (rappels J-7/J-1, invitations,
+# envois groupés). Un second compte Gmail suffit : même hôte, autre
+# identifiant, autre mot de passe d'application.
+SMTP_CAMPAGNE_USER="forumansd.envois@gmail.com"
+SMTP_CAMPAGNE_PASSWORD="à-coller-ici"
 
 # --- Stockage des fichiers ------------------------------------------------
 STORAGE_DRIVER="local"
@@ -216,6 +221,42 @@ timeout 5 bash -c 'cat < /dev/null > /dev/tcp/smtp.gmail.com/587' && echo "SMTP 
 
 Sans SMTP, **aucun administrateur ne peut se connecter** : le second facteur
 passe par la boîte mail (PLAN.md §23).
+
+#### Pourquoi deux boîtes
+
+Un compte Gmail ordinaire plafonne à **cinq cents destinataires par vingt-quatre
+heures glissantes**. Le 18 novembre 2026, les rappels J-7 partis dans la nuit —
+un peu moins de trois cents — ont consommé ce quota à eux seuls : les
+confirmations d'inscription et les badges de la matinée ont été refusés
+(`550-5.4.5 Daily user sending limit exceeded`), et les codes de connexion du
+BackOffice allaient suivre.
+
+`SMTP_CAMPAGNE_*` déclare une seconde boîte, à laquelle vont les envois en
+nombre. Les quotas deviennent **étanches** : une campagne ne peut plus, par
+construction, empêcher un code de connexion de partir. Laissées vides, ces
+variables font repartir les campagnes sur la boîte principale — c'est le
+comportement d'avant, et celui du développement.
+
+Les deux comptes ont besoin chacun de leur **mot de passe d'application**, et
+tous deux doivent avoir l'IMAP activé : le relevé des rebonds lit les deux
+boîtes (`src/modules/notifications/rebonds.ts`).
+
+**Vérifier les deux boîtes**, une fois le `.env` en place :
+
+```bash
+forum run --rm outils pnpm boites:verifier
+forum run --rm outils pnpm boites:verifier moi@ansd.sn   # + messages d'essai
+```
+
+Le script authentifie chaque compte en SMTP et en IMAP, affiche l'expéditeur
+annoncé et l'adresse de réponse, et n'écrit jamais de mot de passe. Il lit les
+variables **du conteneur** : c'est donc lui qui attrape le cas où le `.env` a
+été modifié sans que le conteneur ait été recréé.
+
+À faire **avant le dimanche des rappels J-1** plutôt qu'après : un compte Gmail
+neuf est surveillé par Google, et trois cents messages d'un coup depuis une
+adresse qui n'a jamais rien envoyé est précisément le profil qui se fait
+brider. Une petite campagne de test lui donne une histoire.
 
 ### 2.3 Construire et démarrer
 

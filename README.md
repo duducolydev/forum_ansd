@@ -180,11 +180,55 @@ seules ces cinq variables changent d'un environnement à l'autre.
   dans Mailpit : **les tests E2E, qui lisent Mailpit, échouent tant que Gmail est actif**.
   À remettre sur Mailpit après l'essai.
 
-**Limites d'un compte Gmail gratuit**, à connaître avant la campagne d'invitations :
-environ 500 destinataires par jour, et des envois en rafale que Google peut refuser (le
-portail met un message en file par destinataire, sans cadence). Pour plus de 500
-participants, il faut le SMTP de l'ANSD ou un service d'envoi (Brevo, Mailjet, Amazon SES)
-configuré sur le domaine `ansd.sn` — mêmes cinq variables.
+**Limites d'un compte Gmail gratuit** : environ 500 destinataires par tranche de
+24 heures **glissantes**. Pour plus de 500 participants, il faut le SMTP de l'ANSD ou un
+service d'envoi (Brevo, Mailjet, Amazon SES) configuré sur le domaine `ansd.sn` — mêmes
+cinq variables.
+
+### Deux boîtes d'envoi
+
+Les courriels ne partent pas tous du même compte (`src/lib/mail.ts`) :
+
+| Voie             | Ce qui y passe                                                | Variables         |
+| ---------------- | ------------------------------------------------------------- | ----------------- |
+| `transactionnel` | Codes de connexion, confirmations, badges, accusés de contact | `SMTP_*`          |
+| `campagne`       | Rappels J-7/J-1, invitations, envois groupés du BackOffice    | `SMTP_CAMPAGNE_*` |
+
+**Pourquoi.** Le 18 novembre 2026, les rappels J-7 partis dans la nuit ont consommé à eux
+seuls le quota journalier du compte. Au matin, les confirmations d'inscription et les
+badges étaient refusés — `550-5.4.5 Daily user sending limit exceeded` — et les codes de
+connexion du BackOffice allaient suivre : **plus personne n'aurait pu s'y connecter**. Deux
+comptes rendent les quotas étanches ; une campagne ne peut plus assécher le reste.
+
+Un envoi refusé faute de quota n'est plus réessayé dans la seconde — les trois tentatives
+de la file tombaient en quinze secondes et consommaient du quota à chaque fois. Il est
+**reporté** de six heures, jusqu'à quatre fois.
+
+`SMTP_CAMPAGNE_*` laissées vides, les campagnes repartent sur la boîte principale : c'est
+le comportement du développement (Mailpit) et d'un déploiement pas encore migré. Avec un
+second compte Gmail, `SMTP_CAMPAGNE_USER` et `SMTP_CAMPAGNE_PASSWORD` suffisent — l'hôte
+est repris, le nom affiché aussi, et les réponses sont renvoyées vers la boîte principale,
+la seule que l'équipe relève.
+
+**Vérifier les deux boîtes** avant de compter dessus — authentification SMTP, IMAP, et un
+message d'essai depuis chacune :
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm outils pnpm boites:verifier
+docker compose -f docker-compose.prod.yml run --rm outils pnpm boites:verifier moi@ansd.sn
+```
+
+Le script n'affiche aucun mot de passe. Il signale aussi le cas où
+`SMTP_CAMPAGNE_*` est absente du **conteneur** alors qu'elle est bien dans le `.env` —
+le piège de Compose décrit dans le guide de déploiement.
+
+### Reprendre les envois en échec
+
+BackOffice → Notifications → Historique, bouton **« Renvoyer les échecs »** : remet en
+file les messages restés en échec, une fois par personne et par modèle. Les destinataires
+qui ont finalement reçu le message et les adresses qui ont rebondi sont écartés, les
+envois sont étalés, et les liens signés (badge, confirmation) sont **refabriqués** — le
+journal ne les conserve pas. Les codes de connexion ne sont jamais renvoyés.
 
 ### Rebonds différés (« Adresse introuvable »)
 
@@ -197,7 +241,9 @@ pour corriger l'adresse d'une invitation. Un bouton « Relever les rebonds » la
 lecture tout de suite.
 
 - **Rien à configurer avec Gmail** : `smtp.gmail.com` entraîne `imap.gmail.com:993`,
-  avec le même compte et le même mot de passe d'application. Pour un autre fournisseur :
+  avec le même compte et le même mot de passe d'application. Les **deux** boîtes sont
+  relevées : les avis d'une campagne arrivent dans la boîte de campagne, que personne
+  ne consulte. Pour un autre fournisseur :
   `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASSWORD`. Sans IMAP (Mailpit), le relevé
   ne tourne pas.
 - **Lecture seule** : aucun message n'est déplacé, marqué lu ni supprimé.
