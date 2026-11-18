@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { BoutonExportZip } from "./bouton-export-zip";
 
 const champ = "border-border bg-bg text-text rounded-lg border px-3 py-2 text-sm";
 
@@ -120,20 +121,16 @@ export function FiltresBadges({
       </span>
 
       <div className="flex basis-full flex-wrap gap-3">
-        <a
+        <BoutonExportZip
           href={lienExport("delegation")}
-          title={`Un dossier par délégation — ${total} badge(s) du filtre.`}
-          className="border-border text-heading rounded-lg border px-4 py-2 text-sm font-semibold no-underline"
-        >
-          Export ZIP par délégation
-        </a>
-        <a
+          libelle="Export ZIP par délégation"
+          titre={`Un dossier par délégation — ${total} badge(s) du filtre.`}
+        />
+        <BoutonExportZip
           href={lienExport("plat")}
-          title={`Tous les PDF côte à côte, sans dossiers — ${total} badge(s) du filtre.`}
-          className="border-border text-heading rounded-lg border px-4 py-2 text-sm font-semibold no-underline"
-        >
-          Export ZIP à plat
-        </a>
+          libelle="Export ZIP à plat"
+          titre={`Tous les PDF côte à côte, sans dossiers — ${total} badge(s) du filtre.`}
+        />
         <a
           href={lienPlanche}
           target="_blank"

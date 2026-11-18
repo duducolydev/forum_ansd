@@ -44,6 +44,12 @@ export async function GET(request: Request): Promise<NextResponse> {
     headers: {
       "Content-Type": "application/zip",
       "Content-Disposition": `attachment; filename="${archive.nom}"`,
+      /*
+       * Posé explicitement : c'est de cette valeur que l'écran tire le
+       * pourcentage d'avancement (`bouton-export-zip.tsx`). Sans elle, la
+       * réponse part en « chunked » et la barre ne peut rien mesurer.
+       */
+      "Content-Length": String(archive.fichier.byteLength),
       "X-Badges-Inclus": String(archive.inclus),
       "X-Badges-Manquants": String(archive.manquants),
       "Cache-Control": "private, no-store",
