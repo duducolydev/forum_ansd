@@ -103,6 +103,30 @@ export interface BilanRenvoi {
   remis: number;
   /** Modèles non renvoyables (codes de connexion, invitations) rencontrés en chemin. */
   ignores: number;
+  /** Adresses que le serveur distant déclare inexistantes : à corriger, pas à renvoyer. */
+  adressesMortes: number;
+}
+
+/**
+ * Le serveur distant a-t-il refusé l'**adresse**, et non l'envoi ?
+ *
+ * `5.1.1` veut dire « ce compte n'existe pas ». Le renvoyer échouera à
+ * l'identique et consommera du quota pour rien. Relevé le 18 novembre 2026
+ * dans l'historique, parmi les refus de quota : une inscription saisie avec une
+ * adresse fautive produit la même ligne « Échec » qu'une panne d'envoi, alors
+ * que seule la première demande une correction humaine.
+ *
+ * À distinguer du rebond différé (`BOUNCED`), où Gmail accepte puis le serveur
+ * du destinataire refuse après coup : celui-là est déjà écarté par `servis`.
+ */
+export function adresseMorte(erreur: string | null): boolean {
+  if (!erreur) return false;
+  return (
+    /\b5\.1\.1\b/.test(erreur) ||
+    /\b5\.1\.3\b/.test(erreur) ||
+    /nosuchuser/i.test(erreur) ||
+    /user unknown|recipient (address )?rejected|does not exist/i.test(erreur)
+  );
 }
 
 /**
@@ -119,7 +143,9 @@ export interface BilanRenvoi {
  *   destinataire qui refuse l'adresse. Renvoyer n'y changera rien ; il faut
  *   corriger l'adresse, ce que l'historique propose déjà.
  */
-export async function echecsARenvoyer(editionId: string): Promise<CandidatRenvoi[]> {
+export async function echecsARenvoyer(
+  editionId: string,
+): Promise<{ candidats: CandidatRenvoi[]; adressesMortes: number }> {
   const lignes = await prisma.notificationLog.findMany({
     where: {
       status: "FAILED",
@@ -128,9 +154,9 @@ export async function echecsARenvoyer(editionId: string): Promise<CandidatRenvoi
       participant: { editionId, deletedAt: null },
     },
     orderBy: { createdAt: "desc" },
-    select: { participantId: true, templateKey: true, to: true },
+    select: { participantId: true, templateKey: true, to: true, error: true },
   });
-  if (lignes.length === 0) return [];
+  if (lignes.length === 0) return { candidats: [], adressesMortes: 0 };
 
   // Les couples déjà servis — ou dont l'adresse est morte — sont écartés en une
   // seule lecture plutôt qu'une par candidat.
@@ -145,22 +171,30 @@ export async function echecsARenvoyer(editionId: string): Promise<CandidatRenvoi
 
   const vus = new Set<string>();
   const candidats: CandidatRenvoi[] = [];
+  let adressesMortes = 0;
   for (const ligne of lignes) {
     const cle = `${ligne.participantId}:${ligne.templateKey}`;
     if (servis.has(cle) || vus.has(cle)) continue;
     vus.add(cle);
+    // La ligne la plus récente fait foi : c'est elle qui porte la dernière
+    // raison connue, et les tentatives d'un même envoi échouent toutes pour
+    // le même motif.
+    if (adresseMorte(ligne.error)) {
+      adressesMortes += 1;
+      continue;
+    }
     candidats.push({
       participantId: ligne.participantId!,
       templateKey: ligne.templateKey,
       to: ligne.to,
     });
   }
-  return candidats;
+  return { candidats, adressesMortes };
 }
 
 /** Combien d'envois le bouton de l'historique remettrait en file. */
 export async function compterEchecsARenvoyer(editionId: string): Promise<number> {
-  const candidats = await echecsARenvoyer(editionId);
+  const { candidats } = await echecsARenvoyer(editionId);
   return candidats.filter((candidat) => estRenvoyable(candidat.templateKey)).length;
 }
 
@@ -172,14 +206,27 @@ export async function compterEchecsARenvoyer(editionId: string): Promise<number>
  * et rien ne serait plus absurde que de rouvrir le quota en le refermant
  * aussitôt.
  *
- * Boîte **transactionnelle** : ce sont des messages que quelqu'un attend —
- * c'est la définition de cette voie — et le rattrapage ne doit pas entrer en
- * concurrence avec les rappels J-1 déjà programmés.
+ * ## Boîte de campagne, et non transactionnelle
+ *
+ * Ce module routait d'abord le rattrapage vers la boîte transactionnelle, au
+ * motif que ce sont des messages que quelqu'un attend. L'incident du
+ * 18 novembre 2026 a montré que le raisonnement était faux.
+ *
+ * Ce qui distingue les deux voies n'est pas l'impatience du destinataire mais
+ * le **volume** : la boîte transactionnelle doit rester libre pour le trafic
+ * vivant — une inscription qui arrive à l'instant, un code de connexion
+ * demandé là, maintenant. Un rattrapage de deux cent cinquante messages est un
+ * envoi en nombre, et le faire passer par la voie transactionnelle revient à
+ * écraser les inscriptions du jour sous les échecs de la veille — exactement
+ * le défaut que la séparation des boîtes était censée fermer.
+ *
+ * Le rattrapage part donc de la boîte de campagne, étalé à la cadence des
+ * campagnes (`lib/cadence-envoi.ts`).
  */
 export async function renvoyerEchecs(editionId: string, actor: Actor): Promise<BilanRenvoi> {
-  const candidats = await echecsARenvoyer(editionId);
+  const { candidats, adressesMortes } = await echecsARenvoyer(editionId);
   const depart = new Date();
-  const bilan: BilanRenvoi = { remis: 0, ignores: 0 };
+  const bilan: BilanRenvoi = { remis: 0, ignores: 0, adressesMortes };
   // Horodatage commun à toutes les clés d'idempotence de ce rattrapage : deux
   // clics successifs ne doublent pas les messages dans la minute, alors qu'un
   // rattrapage décidé plus tard reste possible.
@@ -200,6 +247,7 @@ export async function renvoyerEchecs(editionId: string, actor: Actor): Promise<B
       await envoyerConfirmation(candidat.participantId, {
         importe: confirmation.importe,
         cleIdempotence: cle,
+        boite: "campagne",
       });
     } else if (candidat.templateKey === "badge_ready") {
       const { lien_espace: lienBadge } = await variablesAccesDirect(candidat.participantId, {
@@ -212,6 +260,7 @@ export async function renvoyerEchecs(editionId: string, actor: Actor): Promise<B
           to: candidat.to,
           participantId: candidat.participantId,
           variables: { lien_badge: lienBadge },
+          boite: "campagne",
         },
         cle,
         quand,
@@ -226,6 +275,7 @@ export async function renvoyerEchecs(editionId: string, actor: Actor): Promise<B
           to: candidat.to,
           participantId: candidat.participantId,
           variables: {},
+          boite: "campagne",
         },
         cle,
         quand,

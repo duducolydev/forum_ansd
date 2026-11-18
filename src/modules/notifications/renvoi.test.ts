@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CATALOGUE } from "./catalogue";
-import { estRenvoyable } from "./renvoi";
+import { adresseMorte, estRenvoyable } from "./renvoi";
 
 /**
  * Ce qui est vérifié ici n'est pas le renvoi lui-même, mais le **tri** : quels
@@ -55,5 +55,37 @@ describe("tri des modèles renvoyables", () => {
         expect(estRenvoyable(cle), `${cle} porte ${propres.join(", ")}`).toBe(false);
       }
     }
+  });
+});
+
+/**
+ * Le tri entre « l'envoi a échoué » et « l'adresse n'existe pas ». Les deux
+ * laissent la même ligne « Échec » au journal, et seule la seconde demande une
+ * correction humaine : la renvoyer échouerait à l'identique, en consommant du
+ * quota.
+ */
+describe("adresses inexistantes", () => {
+  it("reconnaît le refus de destinataire de Gmail", () => {
+    // Relevé le 18 novembre 2026 dans l'historique, au milieu des refus de quota.
+    expect(
+      adresseMorte(
+        "Data command failed: 550-5.1.1 The email account that you tried to reach " +
+          "does not exist. Please try double-checking the recipient's email address " +
+          "for typos. 550 5.1.1 https://support.google.com/mail/?p=NoSuchUser",
+      ),
+    ).toBe(true);
+  });
+
+  it("ne confond pas un refus de quota avec une adresse morte", () => {
+    // Celui-ci se renvoie, et c'est tout l'intérêt du bouton.
+    expect(adresseMorte("Data command failed: 550-5.4.5 Daily user sending limit exceeded")).toBe(
+      false,
+    );
+  });
+
+  it("ne confond pas une panne d'envoi avec une adresse morte", () => {
+    expect(adresseMorte("connect ECONNREFUSED 127.0.0.1:587")).toBe(false);
+    expect(adresseMorte("454-4.7.0 Too many login attempts")).toBe(false);
+    expect(adresseMorte(null)).toBe(false);
   });
 });

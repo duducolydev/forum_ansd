@@ -176,12 +176,22 @@ export async function renvoyerEchecsAction(): Promise<NotificationActionState> {
     revalidatePath("/admin/notifications/historique");
 
     if (bilan.remis === 0) {
-      return { success: "Aucun envoi en échec à reprendre." };
+      return {
+        success:
+          bilan.adressesMortes > 0
+            ? `Aucun envoi à reprendre · ${bilan.adressesMortes} adresse(s) inexistante(s) à corriger.`
+            : "Aucun envoi en échec à reprendre.",
+      };
     }
     const minutes = dureeCampagneMinutes(bilan.remis);
     const parties = [`${bilan.remis} envoi(s) remis en file`];
     if (minutes > 0) parties.push(`étalés sur ~${minutes} min`);
     if (bilan.ignores > 0) parties.push(`${bilan.ignores} non renvoyable(s)`);
+    // Une adresse inexistante ne se renvoie pas, elle se corrige : le dire ici
+    // est le seul endroit où quelqu'un le verra.
+    if (bilan.adressesMortes > 0) {
+      parties.push(`${bilan.adressesMortes} adresse(s) inexistante(s) à corriger`);
+    }
     return { success: `${parties.join(" · ")}.` };
   } catch (error) {
     return { error: firstFieldError(error) };

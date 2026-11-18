@@ -3,6 +3,7 @@ import type { Participant, ParticipantStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { jobQueue } from "@/lib/queue";
+import type { BoiteEnvoi } from "@/lib/mail";
 import { reconcileByEmail } from "@/modules/invitations/service";
 import { alerterNouveauMembre } from "@/modules/referents/notifications";
 import {
@@ -204,6 +205,12 @@ export async function envoyerConfirmation(
      * pour les messages qu'on cherche à rattraper (`notifications/renvoi.ts`).
      */
     cleIdempotence?: string;
+    /**
+     * Boîte d'envoi (`lib/mail.ts`). Par défaut la transactionnelle — une
+     * confirmation part à l'instant où le comité valide. Le rattrapage en masse
+     * des envois ratés, lui, passe par la campagne (`notifications/renvoi.ts`).
+     */
+    boite?: BoiteEnvoi;
   } = {},
 ): Promise<void> {
   const participant = await prisma.participant.findUniqueOrThrow({
@@ -238,6 +245,7 @@ export async function envoyerConfirmation(
           ? ""
           : blocReferent(participant.delegation?.referent ?? null, lireLangue(participant.locale)),
       },
+      boite: options.boite,
     },
     options.cleIdempotence ?? `confirmation-${participant.id}`,
   );
