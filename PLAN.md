@@ -1003,7 +1003,7 @@ parcours complet d'un inconnu jusqu'au badge imprimable.
 ### 4.8 Impression de badges en masse — **fait**
 
 - [x] Écran `/admin/badges` : filtres catégorie / délégation / état du badge, génération en lot du périmètre, compteur d'impressions.
-- [x] **Export ZIP rangé par délégation** — un dossier par délégation, plus « Sans délégation ».
+- [x] **Export ZIP, deux rangements** — un dossier par délégation (plus « Sans délégation ») pour la distribution du jour J ; ou tous les PDF à plat, la délégation passant dans le nom du fichier, pour imprimer ou transmettre le lot d'un bloc. Même périmètre dans les deux cas, celui du filtre.
 - [x] **Planche d'impression** au format carte (85,6 × 54 mm), un badge par page.
 - [x] **Actions de masse sur deux périmètres** — tout le filtre, ou les seules lignes cochées : génération, reprise des badges déjà émis, passage à la maquette en vigueur, révocation (motif commun obligatoire).
 

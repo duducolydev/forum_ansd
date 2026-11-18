@@ -7,7 +7,12 @@ import { exporterZip, type FiltreBadges } from "@/modules/badges/bulk";
 export const dynamic = "force-dynamic";
 
 /**
- * Archive ZIP des badges, rangée par délégation (brief §5.4).
+ * Archive ZIP des badges (brief §5.4).
+ *
+ * `?rangement=plat` donne tous les PDF côte à côte plutôt qu'un dossier par
+ * délégation. Le paramètre vit dans l'URL comme les filtres, et pour la même
+ * raison : le lien d'export doit porter en entier ce qu'il va produire, et
+ * rester collable.
  *
  * Le nombre de badges manquants voyage dans un en-tête plutôt que dans le
  * corps : le corps est l'archive elle-même, et l'utilisateur doit pouvoir
@@ -28,7 +33,12 @@ export async function GET(request: Request): Promise<NextResponse> {
   };
 
   const edition = await getActiveEdition();
-  const archive = await exporterZip(edition.id, filtre, session?.user?.id);
+  const archive = await exporterZip(
+    edition.id,
+    filtre,
+    session?.user?.id,
+    parametres.get("rangement") === "plat" ? "plat" : "delegation",
+  );
 
   return new NextResponse(new Uint8Array(archive.fichier), {
     headers: {

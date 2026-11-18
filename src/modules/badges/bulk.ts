@@ -177,11 +177,29 @@ export interface ArchiveBadges {
 }
 
 /**
- * Archive ZIP des PDF, rangés **par délégation** (brief §5.4).
+ * Comment les PDF sont rangés dans l'archive.
  *
- * Un dossier par délégation, plus un dossier « Sans délégation » : c'est ainsi
- * que les badges sont distribués le jour J, un paquet par chef de délégation.
- * Une archive à plat obligerait à retrier trois cents fichiers à la main.
+ * `delegation` sert la distribution du jour J : un dossier par chef de
+ * délégation. `plat` sert tout le reste — imprimer d'une traite, déposer le
+ * lot chez un prestataire, archiver — où la hiérarchie oblige à rouvrir
+ * quarante dossiers pour atteindre trois cents fichiers.
+ */
+export type RangementArchive = "delegation" | "plat";
+
+/**
+ * Archive ZIP des PDF du périmètre filtré (brief §5.4).
+ *
+ * Par défaut, un dossier par délégation plus un dossier « Sans délégation » :
+ * c'est ainsi que les badges sont distribués le jour J, un paquet par chef de
+ * délégation, et une archive à plat obligerait à retrier trois cents fichiers
+ * à la main.
+ *
+ * Ce rangement dessert en revanche l'autre usage, apparu à l'approche du
+ * Forum (18 novembre 2026) : prendre **tous** les badges d'un coup pour les
+ * imprimer ou les confier à un prestataire. `rangement: "plat"` met alors les
+ * PDF côte à côte, dans une archive qu'on sélectionne d'un Ctrl+A. Le nom de
+ * fichier porte toujours le nom du participant, précédé de sa délégation :
+ * l'information du dossier n'est pas perdue, elle devient triable.
  *
  * Les badges non encore rendus sont **comptés et signalés**, pas ignorés en
  * silence : une archive de 180 fichiers là où on en attendait 200 doit se voir.
@@ -190,6 +208,7 @@ export async function exporterZip(
   editionId: string,
   filtre: FiltreBadges,
   actorUserId: string | undefined,
+  rangement: RangementArchive = "delegation",
 ): Promise<ArchiveBadges> {
   const participants = await prisma.participant.findMany({
     where: perimetreFiltre(editionId, filtre),
@@ -232,7 +251,13 @@ export async function exporterZip(
     const nom = nomSur(
       `${participant.lastName.toUpperCase()}-${participant.firstName}-${participant.publicId}`,
     );
-    entrees.push({ nom: `${dossier}/${nom}.pdf`, contenu });
+    entrees.push({
+      // À plat, le séparateur est entouré d'espaces : les deux moitiés portent
+      // déjà des tirets (« NDIAYE-Awa-FID26-2 »), et un tiret de plus collé
+      // aux autres rendrait la frontière illisible.
+      nom: rangement === "plat" ? `${dossier} - ${nom}.pdf` : `${dossier}/${nom}.pdf`,
+      contenu,
+    });
   }
 
   await audit.log({
@@ -241,12 +266,15 @@ export async function exporterZip(
     action: "badge.bulk_export",
     entity: "Edition",
     entityId: editionId,
-    after: { inclus: entrees.length, manquants, filtre },
+    after: { inclus: entrees.length, manquants, filtre, rangement },
   });
 
   return {
     fichier: creerZip(entrees),
-    nom: `badges-${new Date().toISOString().slice(0, 10)}.zip`,
+    nom:
+      rangement === "plat"
+        ? `badges-tous-${new Date().toISOString().slice(0, 10)}.zip`
+        : `badges-${new Date().toISOString().slice(0, 10)}.zip`,
     inclus: entrees.length,
     manquants,
   };

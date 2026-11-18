@@ -38,8 +38,25 @@ export function FiltresBadges({
   }
 
   const requete = parametres.toString();
-  const lienExport = `/api/v1/badges/export${requete ? `?${requete}` : ""}`;
   const lienPlanche = `/admin/badges/planche${requete ? `?${requete}` : ""}`;
+
+  /*
+   * Deux rangements pour le même périmètre.
+   *
+   * Les deux liens exportent exactement ce que le filtre désigne — les 305
+   * participants affichés, si aucun filtre n'est posé. Ils ne diffèrent que
+   * par la forme de l'archive : un dossier par délégation pour distribuer le
+   * jour J, tous les PDF côte à côte pour imprimer ou transmettre d'un bloc.
+   *
+   * `rangement` est posé sur une copie des paramètres plutôt que concaténé à
+   * la chaîne : un filtre vide donnait sinon « ?&rangement=plat ».
+   */
+  function lienExport(rangement: "delegation" | "plat"): string {
+    const suite = new URLSearchParams(requete);
+    if (rangement === "plat") suite.set("rangement", "plat");
+    else suite.delete("rangement");
+    return `/api/v1/badges/export${suite.toString() ? `?${suite}` : ""}`;
+  }
 
   return (
     <div className="flex flex-wrap items-end gap-3">
@@ -104,10 +121,18 @@ export function FiltresBadges({
 
       <div className="flex basis-full flex-wrap gap-3">
         <a
-          href={lienExport}
+          href={lienExport("delegation")}
+          title={`Un dossier par délégation — ${total} badge(s) du filtre.`}
           className="border-border text-heading rounded-lg border px-4 py-2 text-sm font-semibold no-underline"
         >
           Export ZIP par délégation
+        </a>
+        <a
+          href={lienExport("plat")}
+          title={`Tous les PDF côte à côte, sans dossiers — ${total} badge(s) du filtre.`}
+          className="border-border text-heading rounded-lg border px-4 py-2 text-sm font-semibold no-underline"
+        >
+          Export ZIP à plat
         </a>
         <a
           href={lienPlanche}
