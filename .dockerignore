@@ -1,9 +1,46 @@
+# Ce qui ne doit jamais entrer dans le contexte de construction.
+#
+# Le contexte est lu et transféré **en entier** à chaque `docker build`, puis
+# le `COPY . .` du Dockerfile le grave dans une couche d'image. Tout ce qui
+# traîne ici se paie trois fois : à la lecture, à l'export des couches, et au
+# dépaquetage.
+
+# Dépendances et artefacts de construction : refaits dans l'image.
 node_modules
 .next
+
+# Historique Git : inutile au build, et volumineux.
 .git
+
+# Volume de stockage (photos, documents, badges) : monté au runtime.
 storage
+
+# ---------------------------------------------------------------------------
+# Sauvegardes (18 novembre 2026)
+# ---------------------------------------------------------------------------
+#
+# `scripts/backup.sh` écrit dans `./backups` un dump SQL **et une archive
+# complète du stockage**, avec trente jours de rétention et un cron quotidien.
+# Le dossier atteint donc plusieurs gigaoctets en service normal.
+#
+# Il manquait ici, et le défaut s'aggravait tout seul : `deployer.sh` fait une
+# sauvegarde *avant* de construire, si bien que chaque déploiement grossissait
+# le contexte du déploiement suivant. Relevé le 18 novembre 2026 en production,
+# sur un contexte de **17,46 Go** et une construction de vingt-sept minutes —
+# dont 202 s à transférer le contexte et 858 s à exporter les couches.
+backups
+*.sql.gz
+*.tar.gz
+
+# Rapports de test : produits localement, jamais nécessaires à l'image.
+test-results
+playwright-report
+
+# Journaux et secrets. `.env.example` est conservé : il documente les variables.
 *.log
 .env
 .env.*
 !.env.example
+
+# Documentation : lue dans le dépôt, pas dans l'image.
 docs
