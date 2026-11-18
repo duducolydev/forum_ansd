@@ -32,7 +32,8 @@
     "icones": "tsx scripts/icones.ts",
     "corpus:apercu": "tsx scripts/corpus-apercu.ts",
     "boites:verifier": "tsx scripts/verifier-boites.ts",
-    "organisation:harmoniser": "tsx scripts/harmoniser-organisation.ts"
+    "organisation:harmoniser": "tsx scripts/harmoniser-organisation.ts",
+    "envois:projection": "tsx scripts/projection-envois.ts"
   },
   "//browserslist": "Cibles modernes : sans cela, le build transpile pour des navigateurs qu'aucun visiteur du Forum n'utilisera et embarque des polyfills inutiles (11 Kio signalés par Lighthouse).",
   "browserslist": [

@@ -124,6 +124,36 @@ async function principal(): Promise<void> {
 
   console.log("Relevé des rebonds (IMAP)\n");
   const imaps = configsImap();
+
+  /*
+   * Dire **quelle boîte n'est pas relevée**, et non pas seulement lister celles
+   * qui le sont.
+   *
+   * Le relevé ne déduit l'IMAP que des fournisseurs qu'il connaît. Une boîte
+   * servie par un fournisseur qu'il ne reconnaît pas disparaissait donc
+   * silencieusement de la liste : ses avis de non-distribution cessaient
+   * d'alimenter l'historique sans que rien ne le signale — un réglage faux que
+   * rien ne dit, exactement ce qu'on cherche à éviter partout ailleurs.
+   *
+   * Le cas se présente avec Microsoft 365 (18 novembre 2026) : l'envoi par
+   * SMTP AUTH y fonctionne avec un mot de passe, mais l'IMAP non — Microsoft a
+   * retiré l'authentification basique de l'IMAP en 2022, et n'accepte plus que
+   * OAuth 2.0. Les avis arrivent bien dans la boîte ; c'est leur relevé
+   * automatique qui n'est pas possible.
+   */
+  const releves = new Set(imaps.map((imap) => imap.user));
+  for (const voie of VOIES) {
+    if (voie.boite === "campagne" && partagees) continue;
+    const config = configBoite(voie.boite);
+    if (!config.user || releves.has(config.user)) continue;
+    console.log(`  ${config.user} — PAS DE RELEVÉ AUTOMATIQUE`);
+    console.log("      Les avis « adresse introuvable » de cette boîte n'alimenteront pas");
+    console.log("      l'historique d'envoi. Ils y arrivent quand même : les consulter");
+    console.log("      directement dans la boîte (Outlook, webmail).");
+    console.log("      Microsoft 365 : l'IMAP par mot de passe n'existe plus (OAuth seulement).");
+    console.log("");
+  }
+
   if (imaps.length === 0) {
     console.log("  Aucune boîte lisible : les rebonds différés ne seront pas reportés.\n");
   }
