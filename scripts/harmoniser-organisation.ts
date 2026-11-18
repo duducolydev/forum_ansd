@@ -36,7 +36,9 @@ import { prisma } from "../src/lib/db";
  *
  * Le nom complet écrit dans une casse ou une accentuation différente est traité
  * comme « à harmoniser » : c'est la même maison, et l'uniformité des badges en
- * dépend.
+ * dépend. Le nom complet **privé du sigle** l'est aussi — c'est ce qu'une
+ * harmonisation précédente a pu écrire, et ce qu'une passe suivante doit
+ * reprendre plutôt que laisser de côté (voir `formesAcceptees`).
  *
  * ## Trois collections
  *
@@ -53,7 +55,18 @@ import { prisma } from "../src/lib/db";
  */
 
 const SIGLE_DEFAUT = "ANSD";
-const NOM_DEFAUT = "Agence Nationale de la Statistique et de la Démographie";
+
+/**
+ * Le sigle reste **dans** la valeur écrite.
+ *
+ * Le tableau de bord tronque les noms longs : « Répartition par institution »
+ * affichait deux lignes « Agence Nationale … », l'une à 184 et l'autre à 63,
+ * impossibles à distinguer l'une de l'autre (18 novembre 2026). Le sigle entre
+ * parenthèses ne sert pas la fiche, qui se lit en entier — il sert les écrans
+ * qui coupent, et les listes triées par ordre alphabétique où toutes les
+ * agences nationales se suivent.
+ */
+const NOM_DEFAUT = "Agence Nationale de la Statistique et de la Démographie (ANSD)";
 
 function option(nom: string): string | undefined {
   const index = process.argv.indexOf(`--${nom}`);
@@ -91,6 +104,32 @@ function normaliser(valeur: string): string {
     .replace(/[.,;:_/\\()[\]-]/g, " ")
     .replace(/\s+/g, "")
     .toUpperCase();
+}
+
+/**
+ * Les écritures tenues pour équivalentes à la valeur cible.
+ *
+ * Ajouter « (ANSD) » au nom complet a un effet qu'on ne voit pas d'emblée :
+ * les fiches harmonisées la veille portent le nom **sans** le sigle, et ce nom
+ * n'est plus ni la cible (il lui manque le sigle), ni une valeur douteuse (il
+ * ne contient pas la chaîne « ANSD »). Sans ce qui suit, elles sortaient des
+ * deux listes à la fois — ni corrigées, ni signalées, et le tableau de bord
+ * gardait ses deux lignes indistinctes pour de bon.
+ *
+ * Le raisonnement se tient sur les formes normalisées, sans toucher aux
+ * parenthèses : si la cible se termine (ou commence) par le sigle, le nom privé
+ * de ce sigle est accepté lui aussi ; sinon, c'est le nom suivi du sigle qui
+ * l'est. Les deux sens fonctionnent donc, qu'on ajoute le sigle à une base qui
+ * ne l'avait pas ou qu'on le retire d'une base qui le portait.
+ */
+function formesAcceptees(cibleSigle: string, cibleNom: string): Set<string> {
+  const formes = new Set([cibleSigle, cibleNom]);
+  if (cibleNom.length > cibleSigle.length) {
+    if (cibleNom.endsWith(cibleSigle)) formes.add(cibleNom.slice(0, -cibleSigle.length));
+    else if (cibleNom.startsWith(cibleSigle)) formes.add(cibleNom.slice(cibleSigle.length));
+    else formes.add(cibleNom + cibleSigle);
+  }
+  return formes;
 }
 
 interface Fiche {
@@ -201,8 +240,14 @@ interface Tri {
   examinees: number;
 }
 
-function trier(fiches: Fiche[], cibleSigle: string, cibleNom: string): Tri {
+function trier(fiches: Fiche[], formes: Set<string>): Tri {
   const tri: Tri = { aHarmoniser: [], aVerifier: [], dejaBon: 0, examinees: fiches.length };
+
+  // Une valeur qui contient l'une des formes acceptées sans lui être égale dit
+  // quelque chose de plus — « ANSD Thiès », « Agence … Démographie / DSDS ».
+  // Chercher le nom complet et pas seulement le sigle fait entrer dans cette
+  // liste les variantes nées de la première harmonisation.
+  const fragments = [...formes];
 
   for (const fiche of fiches) {
     if (!fiche.valeur.trim()) continue;
@@ -211,8 +256,8 @@ function trier(fiches: Fiche[], cibleSigle: string, cibleNom: string): Tri {
       continue;
     }
     const forme = normaliser(fiche.valeur);
-    if (forme === cibleSigle || forme === cibleNom) tri.aHarmoniser.push(fiche);
-    else if (forme.includes(cibleSigle)) tri.aVerifier.push(fiche);
+    if (formes.has(forme)) tri.aHarmoniser.push(fiche);
+    else if (fragments.some((fragment) => forme.includes(fragment))) tri.aVerifier.push(fiche);
   }
   return tri;
 }
@@ -227,8 +272,7 @@ function parValeur(fiches: Fiche[]): { valeur: string; nombre: number }[] {
 }
 
 async function principal(): Promise<void> {
-  const cibleSigle = normaliser(sigle);
-  const cibleNom = normaliser(nomComplet);
+  const formes = formesAcceptees(normaliser(sigle), normaliser(nomComplet));
 
   const inconnues = [...seulement].filter(
     (cle) => !COLLECTIONS.some((collection) => collection.cle === cle),
@@ -255,7 +299,7 @@ async function principal(): Promise<void> {
   let totalAVerifier = 0;
 
   for (const collection of retenues) {
-    const tri = trier(await collection.lire(), cibleSigle, cibleNom);
+    const tri = trier(await collection.lire(), formes);
     const forcees = tri.aVerifier.filter((fiche) => inclure.has(fiche.id));
     const restantAVerifier = tri.aVerifier.filter((fiche) => !inclure.has(fiche.id));
     const aEcrire = [...tri.aHarmoniser, ...forcees];
