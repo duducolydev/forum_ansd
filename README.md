@@ -268,21 +268,23 @@ Spécification à remettre à l'équipe qui construit l'assistant :
 
 ## Scripts
 
-| Commande                       | Effet                                                              |
-| ------------------------------ | ------------------------------------------------------------------ |
-| `pnpm dev`                     | Serveur de développement Next.js                                   |
-| `pnpm build`                   | Build de production                                                |
-| `pnpm lint`                    | ESLint                                                             |
-| `pnpm format` / `format:check` | Prettier (écrit / vérifie)                                         |
-| `pnpm typecheck`               | Vérification TypeScript (`tsc --noEmit`)                           |
-| `pnpm test`                    | Tests Vitest (unitaires + intégration DB)                          |
-| `pnpm prisma:migrate`          | Nouvelle migration Prisma (dev)                                    |
-| `pnpm prisma:generate`         | Régénère le client Prisma                                          |
-| `pnpm db:seed`                 | Initialise une base vide (`SEED_DEMO=1` : + démonstration)         |
-| `pnpm demo:purger`             | Inventorie les données de démonstration ; `--appliquer` les retire |
-| `pnpm migrations:verifier`     | Refuse une migration qui supprimerait ou réécrirait des données    |
-| `pnpm corpus:apercu`           | Compte le corpus public et nomme les documents sans texte          |
-| `./scripts/deployer.sh`        | Mise à jour en production, sans toucher aux données                |
+| Commande                       | Effet                                                                                                          |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                     | Serveur de développement Next.js                                                                               |
+| `pnpm build`                   | Build de production                                                                                            |
+| `pnpm lint`                    | ESLint                                                                                                         |
+| `pnpm format` / `format:check` | Prettier (écrit / vérifie)                                                                                     |
+| `pnpm typecheck`               | Vérification TypeScript (`tsc --noEmit`)                                                                       |
+| `pnpm test`                    | Tests Vitest (unitaires + intégration DB)                                                                      |
+| `pnpm prisma:migrate`          | Nouvelle migration Prisma (dev)                                                                                |
+| `pnpm prisma:generate`         | Régénère le client Prisma                                                                                      |
+| `pnpm db:seed`                 | Initialise une base vide (`SEED_DEMO=1` : + démonstration)                                                     |
+| `pnpm demo:purger`             | Inventorie les données de démonstration ; `--appliquer` les retire                                             |
+| `pnpm migrations:verifier`     | Refuse une migration qui supprimerait ou réécrirait des données                                                |
+| `pnpm corpus:apercu`           | Compte le corpus public et nomme les documents sans texte                                                      |
+| `pnpm boites:verifier`         | Authentifie les deux boîtes d'envoi (SMTP + IMAP)                                                              |
+| `pnpm organisation:harmoniser` | Inventorie les saisies d'une organisation (participants, intervenants, invitations) ; `--appliquer` les unifie |
+| `./scripts/deployer.sh`        | Mise à jour en production, sans toucher aux données                                                            |
 
 Un hook Husky `pre-commit` lance `lint-staged` (ESLint + Prettier sur les fichiers modifiés).
 
