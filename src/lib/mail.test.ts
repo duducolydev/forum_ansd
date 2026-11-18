@@ -53,6 +53,28 @@ describe("configBoite", () => {
     expect(config.replyTo).toBe("forumansd@gmail.com");
   });
 
+  it("ne prend pas une variable vide pour un port (le défaut du 18 novembre 2026)", () => {
+    // Compose écrit `${SMTP_CAMPAGNE_PORT:-}` : la variable arrive **vide**,
+    // pas absente. `??` la laissait passer et `Number("")` donnait 0 — relevé
+    // en production, où la boîte de campagne s'annonçait « smtp.gmail.com:0 ».
+    const config = configBoite("campagne", {
+      ...BASE,
+      SMTP_CAMPAGNE_USER: "forum20.ansd@gmail.com",
+      SMTP_CAMPAGNE_PORT: "",
+      SMTP_CAMPAGNE_HOST: "",
+      SMTP_CAMPAGNE_FROM: "",
+    });
+    expect(config.port).toBe(587);
+    expect(config.host).toBe("smtp.gmail.com");
+    expect(config.from).toBe("Forum international sur les données <forum20.ansd@gmail.com>");
+  });
+
+  it("retombe sur 587 quand aucun port n'est renseigné nulle part", () => {
+    expect(configBoite("transactionnel", { SMTP_HOST: "smtp.gmail.com", SMTP_PORT: "" }).port).toBe(
+      587,
+    );
+  });
+
   it("accepte un fournisseur différent pour les campagnes", () => {
     const config = configBoite("campagne", {
       ...BASE,

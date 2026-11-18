@@ -60,6 +60,31 @@ export interface ConfigBoite {
   replyTo?: string;
 }
 
+/**
+ * Premier port réellement renseigné, sinon 587.
+ *
+ * ## Pourquoi pas `Number(env.SMTP_CAMPAGNE_PORT ?? env.SMTP_PORT ?? 587)`
+ *
+ * Parce que `??` ne rattrape que `null` et `undefined`, et qu'une variable non
+ * renseignée n'arrive pas absente : `docker-compose.prod.yml` l'écrit
+ * `${SMTP_CAMPAGNE_PORT:-}`, c'est-à-dire une chaîne **vide**. `??` la laisse
+ * donc passer, et `Number("")` vaut **zéro**.
+ *
+ * Constaté le 18 novembre 2026 en production, où `boites:verifier` affichait
+ * « smtp.gmail.com:0 » pour la boîte de campagne. L'envoi marchait quand même —
+ * nodemailer voit un port falsy et retombe sur son propre défaut — ce qui est
+ * le pire des cas : un réglage faux que rien ne signale, et qui aurait mordu le
+ * jour où la boîte de campagne aurait eu besoin d'un autre port que 587.
+ */
+function portOuDefaut(...valeurs: (string | undefined)[]): number {
+  for (const valeur of valeurs) {
+    if (!valeur?.trim()) continue;
+    const nombre = Number(valeur);
+    if (Number.isInteger(nombre) && nombre > 0) return nombre;
+  }
+  return 587;
+}
+
 /** Nom affiché d'un en-tête `From` (`Forum <forum@…>` → `Forum`). */
 function nomAffiche(from: string | undefined): string {
   const avant = from?.split("<")[0]?.trim() ?? "";
@@ -84,7 +109,7 @@ export function configBoite(
 ): ConfigBoite {
   const transactionnel: ConfigBoite = {
     host: env.SMTP_HOST ?? "",
-    port: Number(env.SMTP_PORT ?? 587),
+    port: portOuDefaut(env.SMTP_PORT),
     user: env.SMTP_USER || undefined,
     pass: env.SMTP_PASSWORD || undefined,
     from: env.SMTP_FROM,
@@ -108,7 +133,7 @@ export function configBoite(
 
   return {
     host,
-    port: Number(env.SMTP_CAMPAGNE_PORT ?? env.SMTP_PORT ?? 587),
+    port: portOuDefaut(env.SMTP_CAMPAGNE_PORT, env.SMTP_PORT),
     user,
     pass: env.SMTP_CAMPAGNE_PASSWORD || undefined,
     from,
