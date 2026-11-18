@@ -27,6 +27,19 @@ services:
       SMTP_CAMPAGNE_USER: ${SMTP_CAMPAGNE_USER:-}
       SMTP_CAMPAGNE_PASSWORD: ${SMTP_CAMPAGNE_PASSWORD:-}
       SMTP_CAMPAGNE_FROM: ${SMTP_CAMPAGNE_FROM:-}
+      # Autorité de certification supplémentaire (18 novembre 2026).
+      #
+      # Le FortiGate de l'ANSD **inspecte le SSL** : il intercepte la connexion
+      # vers le relais SMTP interne et la re-signe avec sa propre autorité
+      # (`issuer=O=Fortinet, CN=FG181FTK21900836`). Node refuse cette autorité
+      # qu'il ne connaît pas — `unable to verify the first certificate`.
+      #
+      # Déposer le certificat du Fortinet dans `certs/`, puis pointer cette
+      # variable dessus. La connexion reste alors **chiffrée et vérifiée** :
+      # c'est une autorité de plus, pas une vérification désactivée.
+      #
+      # Vide, Node l'ignore : rien ne change tant que le fichier n'est pas là.
+      NODE_EXTRA_CA_CERTS: ${NODE_EXTRA_CA_CERTS:-}
       # Relevé des rebonds : vides, ils sont déduits du SMTP Gmail (README).
       IMAP_HOST: ${IMAP_HOST:-}
       IMAP_PORT: ${IMAP_PORT:-}
@@ -52,6 +65,16 @@ services:
       CORPUS_TOKEN: ${CORPUS_TOKEN:-}
     volumes:
       - storage_data:/app/storage
+      # Autorités supplémentaires, en lecture seule. Le dossier peut rester
+      # vide : seule `NODE_EXTRA_CA_CERTS` décide si un fichier est lu.
+      - ./certs:/app/certs:ro
+    # Le certificat présenté par le relais couvre `*.ansd.sn`, jamais une
+    # adresse IP : s'y connecter par `10.7.0.32` échouerait sur le nom, même
+    # l'autorité reconnue. On garde donc le nom et on corrige la résolution —
+    # le DNS renvoie l'adresse publique, injoignable depuis l'intérieur du
+    # réseau (retour en épingle).
+    extra_hosts:
+      - "mail.ansd.sn:10.7.0.32"
     depends_on:
       mysql:
         condition: service_healthy
@@ -159,12 +182,35 @@ services:
       SMTP_CAMPAGNE_USER: ${SMTP_CAMPAGNE_USER:-}
       SMTP_CAMPAGNE_PASSWORD: ${SMTP_CAMPAGNE_PASSWORD:-}
       SMTP_CAMPAGNE_FROM: ${SMTP_CAMPAGNE_FROM:-}
+      # Autorité de certification supplémentaire (18 novembre 2026).
+      #
+      # Le FortiGate de l'ANSD **inspecte le SSL** : il intercepte la connexion
+      # vers le relais SMTP interne et la re-signe avec sa propre autorité
+      # (`issuer=O=Fortinet, CN=FG181FTK21900836`). Node refuse cette autorité
+      # qu'il ne connaît pas — `unable to verify the first certificate`.
+      #
+      # Déposer le certificat du Fortinet dans `certs/`, puis pointer cette
+      # variable dessus. La connexion reste alors **chiffrée et vérifiée** :
+      # c'est une autorité de plus, pas une vérification désactivée.
+      #
+      # Vide, Node l'ignore : rien ne change tant que le fichier n'est pas là.
+      NODE_EXTRA_CA_CERTS: ${NODE_EXTRA_CA_CERTS:-}
       IMAP_HOST: ${IMAP_HOST:-}
       IMAP_PORT: ${IMAP_PORT:-}
       IMAP_USER: ${IMAP_USER:-}
       IMAP_PASSWORD: ${IMAP_PASSWORD:-}
     volumes:
       - storage_data:/app/storage
+      # Autorités supplémentaires, en lecture seule. Le dossier peut rester
+      # vide : seule `NODE_EXTRA_CA_CERTS` décide si un fichier est lu.
+      - ./certs:/app/certs:ro
+    # Le certificat présenté par le relais couvre `*.ansd.sn`, jamais une
+    # adresse IP : s'y connecter par `10.7.0.32` échouerait sur le nom, même
+    # l'autorité reconnue. On garde donc le nom et on corrige la résolution —
+    # le DNS renvoie l'adresse publique, injoignable depuis l'intérieur du
+    # réseau (retour en épingle).
+    extra_hosts:
+      - "mail.ansd.sn:10.7.0.32"
     depends_on:
       mysql:
         condition: service_healthy

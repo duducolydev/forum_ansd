@@ -80,3 +80,11 @@ next-env.d.ts
 # classe d'incident que le dump de base du 22 septembre 2026, en pire : une
 # clé divulguée se révoque, elle ne se change pas d'un `sed`.
 /docker/certs/
+
+# Autorités de certification supplémentaires déposées sur le serveur
+# (`certs/`, monté en lecture seule sur `app` et `outils`, lu par
+# `NODE_EXTRA_CA_CERTS`). Le dossier est suivi pour exister après un clone ;
+# son contenu, jamais — même un certificat d'autorité décrit la topologie
+# interne du réseau, et rien n'oblige à le publier.
+/certs/*
+!/certs/.gitkeep
