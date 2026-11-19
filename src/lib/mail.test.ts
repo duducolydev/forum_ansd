@@ -117,4 +117,85 @@ describe("estRefusQuota", () => {
       false,
     );
   });
+
+  // -------------------------------------------------------------------------
+  // Bascule Mailjet (19 novembre 2026) : la détection ne peut plus être
+  // gmail-centrée, sans quoi un refus de quota passerait pour une panne.
+  // -------------------------------------------------------------------------
+
+  it("reconnaît un plafond annoncé par un autre relais que Gmail", () => {
+    expect(
+      estRefusQuota(new Error("550 5.7.1 Daily sending limit exceeded for this account")),
+    ).toBe(true);
+    expect(estRefusQuota(new Error("450 4.2.1 Peak SMTP relay limit exceeded for customer"))).toBe(
+      true,
+    );
+    expect(
+      estRefusQuota(new Error("421 Monthly limit reached, upgrade your plan to continue")),
+    ).toBe(true);
+  });
+
+  it("reconnaît un bridage de cadence", () => {
+    expect(estRefusQuota(new Error("451 4.7.1 Message temporarily deferred: throttled"))).toBe(
+      true,
+    );
+    expect(estRefusQuota(new Error("421 4.3.2 Service not available, closing channel"))).toBe(true);
+  });
+
+  it("ne prend pas la boîte pleine du destinataire pour notre quota", () => {
+    // Le piège de l'élargissement : « over quota » désigne aussi la boîte du
+    // destinataire. Différer six heures serait faux — ce n'est pas notre
+    // plafond, et le message doit suivre le cours ordinaire d'un rebond.
+    expect(estRefusQuota(new Error("552 5.2.2 Over quota: recipient mailbox is full"))).toBe(false);
+    expect(estRefusQuota(new Error("550 5.1.10 Recipient user unknown"))).toBe(false);
+  });
+});
+
+describe("adresse de réponse", () => {
+  it("applique SMTP_REPLY_TO à la voie transactionnelle", () => {
+    // Avec Mailjet, le `From` annonce forum@ansd.sn : encore faut-il que
+    // quelqu'un relève cette boîte. En attendant, les réponses sont renvoyées
+    // vers une adresse réellement lue, sans toucher au `From`.
+    const config = configBoite("transactionnel", { ...BASE, SMTP_REPLY_TO: "forumansd@gmail.com" });
+    expect(config.replyTo).toBe("forumansd@gmail.com");
+    expect(config.from).toBe(BASE.SMTP_FROM);
+  });
+
+  it("laisse la voie transactionnelle sans adresse de réponse par défaut", () => {
+    expect(configBoite("transactionnel", BASE).replyTo).toBeUndefined();
+  });
+
+  it("fait passer SMTP_REPLY_TO avant la déduction de la campagne", () => {
+    const config = configBoite("campagne", {
+      ...BASE,
+      SMTP_CAMPAGNE_USER: "forumansd.envois@gmail.com",
+      SMTP_REPLY_TO: "contact@ansd.sn",
+    });
+    expect(config.replyTo).toBe("contact@ansd.sn");
+  });
+});
+
+describe("configBoite — Mailjet", () => {
+  const MAILJET = {
+    SMTP_HOST: "in-v3.mailjet.com",
+    SMTP_PORT: "587",
+    SMTP_USER: "cle-api-mailjet",
+    SMTP_PASSWORD: "cle-secrete-mailjet",
+    SMTP_FROM: "Forum international sur les données <forum@ansd.sn>",
+  };
+
+  it("garde l'adresse du domaine validé, sans la réécrire sur l'identifiant", () => {
+    // La différence avec Gmail : l'identifiant est une clé d'API, pas une
+    // adresse. Annoncer la clé en expéditeur n'aurait aucun sens.
+    const config = configBoite("transactionnel", MAILJET);
+    expect(config.host).toBe("in-v3.mailjet.com");
+    expect(config.port).toBe(587);
+    expect(config.from).toBe("Forum international sur les données <forum@ansd.sn>");
+  });
+
+  it("fait tenir les deux voies sur un seul compte", () => {
+    // Le réglage normal depuis la bascule : pas de SMTP_CAMPAGNE_*, un seul
+    // plan souscrit, et le pool partagé évite de rouvrir deux connexions.
+    expect(configBoite("campagne", MAILJET)).toEqual(configBoite("transactionnel", MAILJET));
+  });
 });

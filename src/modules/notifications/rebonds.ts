@@ -28,6 +28,20 @@ export interface ConfigImap {
  * compte et le même mot de passe d'application ouvrent `imap.gmail.com`. Rien
  * à ajouter au `.env` du serveur. `IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD`
  * et `IMAP_PORT` remplacent cette déduction si l'envoi change de fournisseur.
+ *
+ * ## Depuis la bascule sur Mailjet (19 novembre 2026)
+ *
+ * La déduction ne donne plus rien, et **c'est le bon comportement**. Un relais
+ * comme Mailjet traite les avis de non-distribution chez lui : ils n'arrivent
+ * dans aucune boîte aux lettres, et il n'y a donc rien à relever en IMAP. La
+ * fonction rend `null`, `configsImap()` rend une liste vide, et le bouton
+ * « Relever les rebonds » disparaît de l'historique
+ * (`admin/notifications/historique/page.tsx`) plutôt que d'échouer à chaque
+ * clic. Le suivi des rebonds Mailjet demanderait son API ou ses webhooks —
+ * chantier distinct, hors de la bascule.
+ *
+ * Renseigner `IMAP_*` sur l'ancienne boîte Gmail reste utile un moment : les
+ * messages partis **avant** la bascule y rebondissent encore.
  */
 export function configImap(
   env: Record<string, string | undefined> = process.env,

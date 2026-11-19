@@ -20,8 +20,13 @@ services:
       SMTP_USER: ${SMTP_USER}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM: ${SMTP_FROM}
+      # Adresse de réponse. Vide, les réponses vont à celle de SMTP_FROM.
+      SMTP_REPLY_TO: ${SMTP_REPLY_TO:-}
+      # Plafond du plan souscrit, pour `pnpm envois:projection` seulement.
+      SMTP_PLAFOND_QUOTIDIEN: ${SMTP_PLAFOND_QUOTIDIEN:-}
       # Seconde boîte, pour les envois en nombre (rappels, invitations, envois
-      # groupés). Vides, les campagnes repartent sur la boîte ci-dessus.
+      # groupés). Vides, les campagnes repartent sur la boîte ci-dessus —
+      # le réglage normal depuis la bascule sur Mailjet (un seul plan).
       SMTP_CAMPAGNE_HOST: ${SMTP_CAMPAGNE_HOST:-}
       SMTP_CAMPAGNE_PORT: ${SMTP_CAMPAGNE_PORT:-}
       SMTP_CAMPAGNE_USER: ${SMTP_CAMPAGNE_USER:-}
@@ -41,6 +46,9 @@ services:
       # Vide, Node l'ignore : rien ne change tant que le fichier n'est pas là.
       NODE_EXTRA_CA_CERTS: ${NODE_EXTRA_CA_CERTS:-}
       # Relevé des rebonds : vides, ils sont déduits du SMTP Gmail (README).
+      # Mailjet traite ses rebonds chez lui — rien n'arrive en IMAP. Pointer ces
+      # variables sur l'ancienne boîte Gmail recueille encore les avis des
+      # messages partis avant la bascule du 19 novembre 2026.
       IMAP_HOST: ${IMAP_HOST:-}
       IMAP_PORT: ${IMAP_PORT:-}
       IMAP_USER: ${IMAP_USER:-}
@@ -177,6 +185,8 @@ services:
       SMTP_USER: ${SMTP_USER}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM: ${SMTP_FROM}
+      SMTP_REPLY_TO: ${SMTP_REPLY_TO:-}
+      SMTP_PLAFOND_QUOTIDIEN: ${SMTP_PLAFOND_QUOTIDIEN:-}
       SMTP_CAMPAGNE_HOST: ${SMTP_CAMPAGNE_HOST:-}
       SMTP_CAMPAGNE_PORT: ${SMTP_CAMPAGNE_PORT:-}
       SMTP_CAMPAGNE_USER: ${SMTP_CAMPAGNE_USER:-}

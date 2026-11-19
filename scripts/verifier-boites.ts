@@ -28,6 +28,23 @@ import { configsImap } from "../src/modules/notifications/rebonds";
  * c'est la seule façon de voir ce que le destinataire verra, nom affiché et
  * adresse de réponse compris.
  *
+ * ## Depuis la bascule sur Mailjet (19 novembre 2026)
+ *
+ * Le script ne connaît aucun fournisseur : il lit `configBoite` et ouvre ce
+ * qu'on lui a déclaré. Trois nuances pour lire sa sortie :
+ *
+ * - la première surprise ci-dessus disparaît (l'identifiant est une clé d'API),
+ *   la troisième reste entière — c'est même la plus probable un jour de
+ *   bascule ;
+ * - **« IMAP non configuré » n'est plus une anomalie** : Mailjet traite ses
+ *   rebonds chez lui, et il n'y a rien à relever (`notifications/rebonds.ts`) ;
+ * - une seule boîte au lieu de deux est le réglage attendu, un seul plan
+ *   portant les deux voies.
+ *
+ * C'est aussi l'outil de l'essai mail-tester : lui passer l'adresse jetable de
+ * <https://www.mail-tester.com> envoie depuis l'IP réelle du serveur, seule
+ * façon de noter SPF, DKIM et réputation (README, « Noter la délivrabilité »).
+ *
  * ## Ce que ce script n'affiche jamais
  *
  * Aucun mot de passe, pas même tronqué. Il dit si l'authentification passe,

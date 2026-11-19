@@ -157,33 +157,44 @@ réelle en dépend.
 Notifications, alertes, invitations et liens magiques passent tous par `src/lib/mail.ts` :
 seules ces cinq variables changent d'un environnement à l'autre.
 
-| Variable        | En local (défaut)       | Compte Gmail du Forum                                       |
+| Variable        | En local (défaut)       | Mailjet (production, depuis le 19/11/2026)                  |
 | --------------- | ----------------------- | ----------------------------------------------------------- |
-| `SMTP_HOST`     | `forum-ansd-mailpit`    | `smtp.gmail.com`                                            |
+| `SMTP_HOST`     | `forum-ansd-mailpit`    | `in-v3.mailjet.com`                                         |
 | `SMTP_PORT`     | `1025`                  | `587`                                                       |
-| `SMTP_USER`     | _(absent : pas d'auth)_ | `forumansd@gmail.com`                                       |
-| `SMTP_PASSWORD` | _(absent)_              | mot de passe **d'application** Google (16 caractères)       |
-| `SMTP_FROM`     | `… <forum@ansd.sn>`     | `Forum international sur les données <forumansd@gmail.com>` |
+| `SMTP_USER`     | _(absent : pas d'auth)_ | **API Key** Mailjet (une clé, pas une adresse)              |
+| `SMTP_PASSWORD` | _(absent)_              | **Secret Key** Mailjet                                      |
+| `SMTP_FROM`     | `… <forum@ansd.sn>`     | `Forum international sur les données <forum@ansd.sn>`       |
+| `SMTP_REPLY_TO` | _(vide)_                | adresse réellement relevée, si ce n'est pas `forum@ansd.sn` |
 
-- **Mot de passe d'application obligatoire** : Google refuse le mot de passe du compte en
-  SMTP. Il faut activer la validation en deux étapes, puis créer un mot de passe
-  d'application (Compte Google → Sécurité). Il ne va **que** dans `.env.docker` (local) ou
-  dans le `.env` du serveur, tous deux hors dépôt.
-- **L'adresse de `SMTP_FROM` doit être celle du compte** : Gmail réécrit sinon
-  l'expéditeur, et le message part avec une adresse différente de celle annoncée.
+- **L'identifiant est une clé d'API**, pas une boîte aux lettres : il n'y a plus de mot de
+  passe d'application à créer, et rien à activer côté compte Google.
+- **`SMTP_FROM` doit appartenir au domaine validé** (`ansd.sn`, statut _Active_ dans
+  Mailjet). Contrairement à Gmail, Mailjet **ne réécrit pas** l'expéditeur : les
+  participants lisent enfin `forum@ansd.sn` et non une adresse `gmail.com`. C'est le gain
+  le plus visible de la bascule.
+- **`SMTP_REPLY_TO` si personne ne relève `forum@ansd.sn`** : les réponses sont alors
+  renvoyées vers une adresse lue, sans rien changer à l'expéditeur affiché.
 - **Port 587 seulement** : `mail.ts` ouvre la connexion en clair puis passe en TLS
   (STARTTLS). Le port 465, chiffré d'emblée, demanderait une variable `SMTP_SECURE`.
-- **Basculer en local** : décommenter le bloc Gmail de `.env.docker`, commenter les lignes
-  Mailpit, puis **`./scripts/stack.sh --recreer`**. L'option est indispensable : sans elle,
-  le script laisse tourner le conteneur existant, qui garde les anciennes variables — une
-  image à jour lui suffit. Les messages partent alors pour de vrai et ne s'affichent plus
-  dans Mailpit : **les tests E2E, qui lisent Mailpit, échouent tant que Gmail est actif**.
-  À remettre sur Mailpit après l'essai.
+- **Les clés ne vont que** dans `.env.docker` (local) ou dans le `.env` du serveur, tous
+  deux hors dépôt. Rien de tout cela n'est commité.
+- **Basculer en local** : décommenter le bloc Mailjet de `.env.docker`, commenter les
+  lignes Mailpit, puis **`./scripts/stack.sh --recreer`**. L'option est indispensable :
+  sans elle, le script laisse tourner le conteneur existant, qui garde les anciennes
+  variables — une image à jour lui suffit. Les messages partent alors pour de vrai et ne
+  s'affichent plus dans Mailpit : **les tests E2E, qui lisent Mailpit, échouent tant que
+  Mailjet est actif**. À remettre sur Mailpit après l'essai.
 
-**Limites d'un compte Gmail gratuit** : environ 500 destinataires par tranche de
-24 heures **glissantes**. Pour plus de 500 participants, il faut le SMTP de l'ANSD ou un
-service d'envoi (Brevo, Mailjet, Amazon SES) configuré sur le domaine `ansd.sn` — mêmes
-cinq variables.
+**Authentification du domaine.** Le SPF de `ansd.sn` inclut `spf.mailjet.com`. Le DKIM
+Mailjet est en cours de pose par la DSI : son absence ne bloque pas l'envoi, mais elle
+coûte des points de réputation — c'est précisément ce que mesure l'essai mail-tester
+ci-dessous.
+
+**Limites.** Le plafond n'est plus celui d'une boîte aux lettres (≈500/24 h glissantes
+pour un Gmail ordinaire) mais celui du **plan Mailjet souscrit**. Le déclarer dans
+`SMTP_PLAFOND_QUOTIDIEN` pour que `pnpm envois:projection` calcule juste : sans lui, la
+projection retombe sur 500 et se trompe dans les deux sens. Pour mémoire, l'édition compte
+plus de 1 100 inscrits, et une validation en lot envoie **deux** messages par personne.
 
 ### Deux boîtes d'envoi
 
@@ -210,6 +221,13 @@ second compte Gmail, `SMTP_CAMPAGNE_USER` et `SMTP_CAMPAGNE_PASSWORD` suffisent 
 est repris, le nom affiché aussi, et les réponses sont renvoyées vers la boîte principale,
 la seule que l'équipe relève.
 
+**Depuis Mailjet, les laisser vides est le réglage normal.** Les deux boîtes séparées
+répondaient à un problème propre à Gmail : rendre étanches deux quotas de **boîtes aux
+lettres**. Un plan souscrit n'a qu'un compteur, que deux comptes ne cloisonneraient pas ;
+et le transport mutualisé fait que les deux voies partagent une seule connexion. La
+distinction `transactionnel`/`campagne` reste en place dans le code — elle ne coûte rien,
+et elle redevient utile le jour où les campagnes repartent d'un autre fournisseur.
+
 **Vérifier les deux boîtes** avant de compter dessus — authentification SMTP, IMAP, et un
 message d'essai depuis chacune :
 
@@ -221,6 +239,39 @@ docker compose -f docker-compose.prod.yml run --rm outils pnpm boites:verifier m
 Le script n'affiche aucun mot de passe. Il signale aussi le cas où
 `SMTP_CAMPAGNE_*` est absente du **conteneur** alors qu'elle est bien dans le `.env` —
 le piège de Compose décrit dans le guide de déploiement.
+
+### Noter la délivrabilité (mail-tester)
+
+`boites:verifier` prouve que le message **part**. Il ne dit rien de ce qu'en pensera le
+serveur d'en face : SPF, DKIM, réputation de l'adresse IP, équilibre texte/HTML. C'est ce
+que note mail-tester, et cela vaut d'être fait avant d'envoyer mille rappels.
+
+1. Ouvrir <https://www.mail-tester.com> et copier l'adresse jetable affichée
+   (`test-xxxxxxx@srv1.mail-tester.com`). Elle expire : ne pas la garder d'un jour sur
+   l'autre.
+2. Envoyer un message d'essai **depuis le serveur**, pour partir de la vraie adresse IP :
+
+   ```bash
+   docker compose -f docker-compose.prod.yml run --rm outils \
+     pnpm boites:verifier test-xxxxxxx@srv1.mail-tester.com
+   ```
+
+3. Revenir sur mail-tester et cliquer **« Vérifier le score »**. Attendre quelques
+   secondes : le message n'est analysé qu'une fois arrivé.
+4. Lire dans cet ordre, le reste est secondaire :
+   - **SPF** doit passer. Il échouerait si `SMTP_FROM` sortait du domaine `ansd.sn`.
+   - **DKIM** est le point attendu, la DSI étant en train de le poser. Tant qu'il manque,
+     le score plafonne autour de 7/10 sans que rien ne soit cassé.
+   - **Liste noire** : une IP mutualisée de Mailjet peut y figurer. C'est à signaler à
+     Mailjet, pas à corriger ici.
+   - **Contenu** : un message sans version texte perd des points. Les modèles du portail
+     en produisent une (`renderHtml` dans `modules/notifications/service.ts`).
+5. Refaire l'essai **après** la pose du DKIM, pour confirmer le gain.
+
+Un essai sur un modèle réel plutôt que sur le message du script : BackOffice →
+Notifications → Modèles, prévisualiser, puis utiliser l'envoi groupé en se limitant à
+l'adresse mail-tester. L'envoi passe alors par toute la chaîne — file, journal, rendu —
+et pas seulement par le transport.
 
 ### Reprendre les envois en échec
 
@@ -240,12 +291,20 @@ Le serveur relit ces avis **toutes les quinze minutes** par IMAP
 pour corriger l'adresse d'une invitation. Un bouton « Relever les rebonds » lance la
 lecture tout de suite.
 
+- **Ce relevé ne couvre pas les envois Mailjet** (19 novembre 2026). Mailjet traite les
+  avis de non-distribution chez lui : ils n'arrivent dans **aucune** boîte aux lettres, et
+  il n'y a rien à lire en IMAP. Le bouton « Relever les rebonds » disparaît donc de
+  l'historique tant qu'aucun `IMAP_*` n'est renseigné — c'est voulu, et préférable à un
+  bouton qui échoue à chaque clic. Récupérer ces rebonds demanderait l'API ou les webhooks
+  Mailjet : **chantier distinct, non fait**. En attendant, un envoi qui rebondit reste
+  affiché « Envoyé » dans l'historique.
+- **Garder l'ancienne boîte Gmail un moment** : les messages partis **avant** la bascule
+  y rebondissent encore. Renseigner `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`,
+  `IMAP_PASSWORD` dessus suffit à continuer de les recueillir.
 - **Rien à configurer avec Gmail** : `smtp.gmail.com` entraîne `imap.gmail.com:993`,
   avec le même compte et le même mot de passe d'application. Les **deux** boîtes sont
   relevées : les avis d'une campagne arrivent dans la boîte de campagne, que personne
-  ne consulte. Pour un autre fournisseur :
-  `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASSWORD`. Sans IMAP (Mailpit), le relevé
-  ne tourne pas.
+  ne consulte. Sans IMAP (Mailpit), le relevé ne tourne pas.
 - **Lecture seule** : aucun message n'est déplacé, marqué lu ni supprimé.
 - **Le port 993 doit être ouvert en sortie** sur le serveur :
   `timeout 5 bash -c 'cat < /dev/null > /dev/tcp/imap.gmail.com/993' && echo "IMAP joignable"`.

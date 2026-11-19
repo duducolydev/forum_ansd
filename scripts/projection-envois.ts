@@ -33,8 +33,20 @@ import { dureeCampagneMinutes } from "../src/lib/cadence-envoi";
  *    théorique remis à zéro.
  */
 
-/** Plafond d'un compte Gmail ordinaire, par tranche de 24 h glissantes. */
-const PLAFOND_GMAIL = 500;
+/**
+ * Plafond quotidien d'une boîte.
+ *
+ * Valait 500 en dur : le plafond d'un compte Gmail ordinaire par tranche de
+ * 24 h glissantes. Depuis la bascule sur Mailjet (19 novembre 2026), le plafond
+ * n'est plus celui d'une boîte aux lettres mais celui du **plan souscrit** —
+ * une projection calculée sur 500 serait fausse dans les deux sens : alarmiste
+ * sur un plan large, rassurante à tort sur un plan étroit.
+ *
+ * `SMTP_PLAFOND_QUOTIDIEN` le déclare. Absent, on garde 500 : c'est ce que
+ * valait la projection jusqu'ici, et une valeur connue vaut mieux qu'un script
+ * qui refuse de répondre.
+ */
+const PLAFOND_PAR_BOITE = Number(process.env.SMTP_PLAFOND_QUOTIDIEN) || 500;
 
 /** Les modèles qui partent par la voie « campagne » (`lib/mail.ts`). */
 const MODELES_CAMPAGNE = new Set([
@@ -127,22 +139,25 @@ async function principal(): Promise<void> {
 
   titre("Capacité des boîtes (24 h glissantes)");
   ligne(`Transactionnelle — ${boiteT.user ?? "?"}`, `${transactionnel} envoyés`);
-  ligne("  reste estimé", Math.max(0, PLAFOND_GMAIL - transactionnel));
+  ligne("  reste estimé", Math.max(0, PLAFOND_PAR_BOITE - transactionnel));
 
   if (separees) {
     ligne(`Campagne — ${boiteC.user ?? "?"}`, `${campagne} envoyés`);
-    ligne("  reste estimé", Math.max(0, PLAFOND_GMAIL - campagne));
-    ligne("CAPACITÉ TOTALE PAR JOUR", PLAFOND_GMAIL * 2);
+    ligne("  reste estimé", Math.max(0, PLAFOND_PAR_BOITE - campagne));
+    ligne("CAPACITÉ TOTALE PAR JOUR", PLAFOND_PAR_BOITE * 2);
   } else {
-    console.log("\n  ! Une seule boîte configurée : les deux voies partagent 500 envois/jour.");
-    ligne("CAPACITÉ TOTALE PAR JOUR", PLAFOND_GMAIL);
+    // Ce n'était qu'une anomalie du temps de Gmail, où deux comptes rendaient
+    // les quotas étanches. Avec un relais à plan souscrit, une boîte unique est
+    // le réglage attendu : le message informe, il n'alerte plus.
+    console.log(`\n  Une seule boîte : les deux voies partagent ${PLAFOND_PAR_BOITE} envois/jour.`);
+    ligne("CAPACITÉ TOTALE PAR JOUR", PLAFOND_PAR_BOITE);
   }
 
   // -------------------------------------------------------------------------
   // Le verdict
   // -------------------------------------------------------------------------
 
-  const capacite = separees ? PLAFOND_GMAIL * 2 : PLAFOND_GMAIL;
+  const capacite = separees ? PLAFOND_PAR_BOITE * 2 : PLAFOND_PAR_BOITE;
   const picCampagne = Math.max(resteJ1, total);
   const picTransactionnel = enAttente * 2;
 
@@ -152,16 +167,16 @@ async function principal(): Promise<void> {
   console.log(`  Capacité quotidienne .............. ${capacite} messages\n`);
 
   const alertes: string[] = [];
-  if (picCampagne > PLAFOND_GMAIL) {
+  if (picCampagne > PLAFOND_PAR_BOITE) {
     alertes.push(
       `La campagne la plus lourde (${picCampagne}) dépasse le plafond d'une boîte ` +
-        `(${PLAFOND_GMAIL}). Elle débordera sur le lendemain.`,
+        `(${PLAFOND_PAR_BOITE}). Elle débordera sur le lendemain.`,
     );
   }
-  if (picTransactionnel > PLAFOND_GMAIL) {
+  if (picTransactionnel > PLAFOND_PAR_BOITE) {
     alertes.push(
       `Une validation en lot (${picTransactionnel} messages) dépasse le plafond de la ` +
-        `boîte transactionnelle. Valider par tranches de ${Math.floor(PLAFOND_GMAIL / 2)}.`,
+        `boîte transactionnelle. Valider par tranches de ${Math.floor(PLAFOND_PAR_BOITE / 2)}.`,
     );
   }
   if (picCampagne + picTransactionnel > capacite) {

@@ -4,6 +4,33 @@ import { ENVOIS_PAR_MINUTE } from "./cadence-envoi";
 /**
  * Deux boîtes d'envoi, une par nature de courrier (18 novembre 2026).
  *
+ * ## Bascule sur Mailjet (19 novembre 2026)
+ *
+ * Les deux boîtes partaient de comptes **Gmail ordinaires**. Tout ce qui suit a
+ * été écrit contre leurs limites, et reste vrai — mais l'envoi passe désormais
+ * par **Mailjet** (`in-v3.mailjet.com:587`), avec le domaine `ansd.sn` validé
+ * et son SPF mis à jour.
+ *
+ * Trois choses changent, et une seule compte vraiment :
+ *
+ * 1. **L'expéditeur est enfin le bon.** Gmail réécrivait le `From` avec
+ *    l'adresse authentifiée : les participants lisaient `forumansd@gmail.com`
+ *    sur un courrier de l'ANSD. Mailjet, domaine validé, laisse passer
+ *    `forum@ansd.sn`. C'est le gain, et il est visible par tout le monde.
+ * 2. **Le plafond n'est plus celui d'une boîte aux lettres** mais celui du plan
+ *    souscrit. Les deux voies peuvent donc tenir sur un seul compte ; sans
+ *    `SMTP_CAMPAGNE_*`, elles le font déjà (voir `configBoite`).
+ * 3. **Les refus de quota ne se présentent plus pareil** — voir
+ *    `estRefusQuota` en fin de module, qui ne pouvait pas rester gmail-centré.
+ *
+ * Ce qui ne change pas : la cadence, le transport mutualisé, le report plutôt
+ * que l'acharnement. Ces règles sont nées d'incidents Gmail, mais aucune n'est
+ * propre à Gmail — un relais qu'on ménage est un relais qui accepte.
+ *
+ * Les rebonds, eux, ne se relèvent plus en IMAP pour les envois Mailjet : ils
+ * sont traités chez le fournisseur et n'arrivent dans aucune boîte aux lettres
+ * (`modules/notifications/rebonds.ts`).
+ *
  * ## Le défaut que cela ferme
  *
  * Le 18 novembre au matin, les confirmations d'inscription et les badges
@@ -56,6 +83,12 @@ export interface ConfigBoite {
    * La boîte de campagne n'est relevée par personne : une réponse à un rappel
    * J-1 y serait perdue. Elle est donc renvoyée vers la boîte historique, que
    * l'équipe consulte déjà.
+   *
+   * `SMTP_REPLY_TO` passe avant cette déduction, et vaut maintenant pour les
+   * **deux** voies (19 novembre 2026). Avec Mailjet, l'expéditeur annoncé est
+   * `forum@ansd.sn` : encore faut-il que quelqu'un relève cette boîte-là. Tant
+   * que ce n'est pas le cas, cette variable renvoie les réponses vers une
+   * adresse réellement lue, sans toucher au `From` que voient les participants.
    */
   replyTo?: string;
 }
@@ -113,6 +146,7 @@ export function configBoite(
     user: env.SMTP_USER || undefined,
     pass: env.SMTP_PASSWORD || undefined,
     from: env.SMTP_FROM,
+    replyTo: env.SMTP_REPLY_TO || undefined,
   };
 
   if (boite === "transactionnel") return transactionnel;
@@ -120,6 +154,12 @@ export function configBoite(
   // Une seule variable suffit à déclarer la seconde boîte : l'hôte, s'il
   // diffère, ou l'identifiant seul quand c'est le même fournisseur — le cas
   // d'un second compte Gmail.
+  //
+  // Depuis Mailjet, le cas courant est l'inverse : **aucune** `SMTP_CAMPAGNE_*`,
+  // parce qu'un seul compte porte les deux voies. Le repli ci-dessous n'est
+  // donc plus un défaut de configuration mais le réglage normal, et le pool
+  // partagé (`transport`) fait que les deux voies ne rouvrent pas deux fois la
+  // même connexion.
   const host = env.SMTP_CAMPAGNE_HOST || (env.SMTP_CAMPAGNE_USER ? env.SMTP_HOST : "");
   if (!host) return transactionnel;
 
@@ -128,6 +168,10 @@ export function configBoite(
   // alias vérifié : annoncer l'adresse historique depuis le compte de campagne
   // donnerait un expéditeur incohérent. Le nom affiché, lui, est repris — les
   // participants doivent voir le même « Forum international sur les données ».
+  //
+  // Un relais à domaine validé (Mailjet) ne réécrit rien : l'identifiant y est
+  // une clé d'API, pas une adresse. D'où `SMTP_CAMPAGNE_FROM` en premier — une
+  // seconde boîte Mailjet doit annoncer `forum@ansd.sn`, pas sa clé d'API.
   const from =
     env.SMTP_CAMPAGNE_FROM || (user ? `${nomAffiche(env.SMTP_FROM)} <${user}>`.trim() : undefined);
 
@@ -137,7 +181,7 @@ export function configBoite(
     user,
     pass: env.SMTP_CAMPAGNE_PASSWORD || undefined,
     from,
-    replyTo: adresseSeule(env.SMTP_FROM) || undefined,
+    replyTo: env.SMTP_REPLY_TO || adresseSeule(env.SMTP_FROM) || undefined,
   };
 }
 
@@ -243,13 +287,61 @@ export async function sendMail(input: SendMailInput) {
  * - `550-5.4.5 Daily user sending limit exceeded` — quota journalier atteint ;
  * - `454-4.7.0 Too many login attempts` — quota de connexions ;
  * - `421-4.7.0 Try again later` — bridage temporaire.
+ *
+ * ## Pourquoi des motifs, et non plus une liste de codes (19 novembre 2026)
+ *
+ * La version précédente ne connaissait que Gmail, parce que c'était la seule
+ * boîte. Depuis la bascule sur Mailjet, elle serait **aveugle** : un refus de
+ * quota passerait pour une panne ordinaire, la file brûlerait ses trois
+ * tentatives en quinze secondes, et le job mourrait. C'est exactement le défaut
+ * du 18 novembre, reconstitué par le changement de fournisseur.
+ *
+ * Mailjet ne publie pas la liste de ses réponses SMTP de dépassement. Plutôt
+ * que d'inventer des codes invérifiables, on reconnaît ce qui est commun à tous
+ * les relais : les codes **temporaires** de politique d'envoi, et le
+ * vocabulaire du plafond.
+ *
+ * ## Le piège de l'élargissement
+ *
+ * « Over quota » désigne aussi, chez beaucoup de serveurs, la boîte **pleine du
+ * destinataire** (`552 5.2.2`). Différer six heures pour cela serait faux : ce
+ * n'est pas notre quota, et le message doit suivre le cours ordinaire d'un
+ * rebond. Les refus qui visent le destinataire sont donc écartés **d'abord** —
+ * l'ordre des deux tests est la pièce qui porte la distinction.
+ *
+ * Même raison pour `4.2.1`, écarté bien qu'il apparaisse chez certains relais
+ * sur un dépassement : il sert aussi à dire « boîte du destinataire
+ * temporairement désactivée ». Le vocabulaire (« relay limit exceeded ») suffit
+ * à rattraper le cas qui nous concerne, sans l'ambiguïté du code nu.
  */
+
+/** Refus qui visent le **destinataire**, jamais notre capacité à envoyer. */
+const REFUS_DESTINATAIRE = /\b5\.1\.\d\b|\b5\.2\.2\b|mailbox (is )?full|user unknown/i;
+
+/** Refus qui visent notre **capacité à envoyer** : quota, cadence, bridage. */
+const QUOTA_EXPEDITEUR = new RegExp(
+  [
+    // Gmail, tels que relevés les 17 et 18 novembre 2026.
+    "\\b5\\.4\\.5\\b",
+    "daily (user )?sending limit",
+    // Codes temporaires de politique d'envoi. `4.7.x` couvre le `454-4.7.0` et
+    // le `421-4.7.0` de Gmail ; `4.3.2` est le « système n'accepte plus de
+    // messages » que renvoie un relais saturé.
+    "\\b4\\.7\\.\\d+\\b",
+    "\\b4\\.3\\.2\\b",
+    // Vocabulaire du plafond, quel que soit le relais.
+    "(sending|relay|rate|daily|monthly) limit",
+    "quota exceeded",
+    "over quota",
+    "too many (login attempts|active sessions|messages|emails|recipients)",
+    "throttl",
+    "upgrade your plan",
+  ].join("|"),
+  "i",
+);
+
 export function estRefusQuota(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return (
-    /\b5\.4\.5\b/.test(message) ||
-    /\b4\.7\.0\b/.test(message) ||
-    /daily (user )?sending limit/i.test(message) ||
-    /too many login attempts/i.test(message)
-  );
+  if (REFUS_DESTINATAIRE.test(message)) return false;
+  return QUOTA_EXPEDITEUR.test(message);
 }
