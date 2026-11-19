@@ -153,7 +153,7 @@ describe("estRefusQuota", () => {
 
 describe("adresse de réponse", () => {
   it("applique SMTP_REPLY_TO à la voie transactionnelle", () => {
-    // Avec Mailjet, le `From` annonce forum@ansd.sn : encore faut-il que
+    // Avec Mailjet, le `From` annonce forum26@ansd.sn : encore faut-il que
     // quelqu'un relève cette boîte. En attendant, les réponses sont renvoyées
     // vers une adresse réellement lue, sans toucher au `From`.
     const config = configBoite("transactionnel", { ...BASE, SMTP_REPLY_TO: "forumansd@gmail.com" });
@@ -181,7 +181,7 @@ describe("configBoite — Mailjet", () => {
     SMTP_PORT: "587",
     SMTP_USER: "cle-api-mailjet",
     SMTP_PASSWORD: "cle-secrete-mailjet",
-    SMTP_FROM: "Forum international sur les données <forum@ansd.sn>",
+    SMTP_FROM: "Forum international sur les données <forum26@ansd.sn>",
   };
 
   it("garde l'adresse du domaine validé, sans la réécrire sur l'identifiant", () => {
@@ -190,7 +190,7 @@ describe("configBoite — Mailjet", () => {
     const config = configBoite("transactionnel", MAILJET);
     expect(config.host).toBe("in-v3.mailjet.com");
     expect(config.port).toBe(587);
-    expect(config.from).toBe("Forum international sur les données <forum@ansd.sn>");
+    expect(config.from).toBe("Forum international sur les données <forum26@ansd.sn>");
   });
 
   it("fait tenir les deux voies sur un seul compte", () => {

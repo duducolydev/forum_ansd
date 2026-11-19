@@ -16,7 +16,7 @@ import { ENVOIS_PAR_MINUTE } from "./cadence-envoi";
  * 1. **L'expéditeur est enfin le bon.** Gmail réécrivait le `From` avec
  *    l'adresse authentifiée : les participants lisaient `forumansd@gmail.com`
  *    sur un courrier de l'ANSD. Mailjet, domaine validé, laisse passer
- *    `forum@ansd.sn`. C'est le gain, et il est visible par tout le monde.
+ *    `forum26@ansd.sn`. C'est le gain, et il est visible par tout le monde.
  * 2. **Le plafond n'est plus celui d'une boîte aux lettres** mais celui du plan
  *    souscrit. Les deux voies peuvent donc tenir sur un seul compte ; sans
  *    `SMTP_CAMPAGNE_*`, elles le font déjà (voir `configBoite`).
@@ -86,7 +86,7 @@ export interface ConfigBoite {
    *
    * `SMTP_REPLY_TO` passe avant cette déduction, et vaut maintenant pour les
    * **deux** voies (19 novembre 2026). Avec Mailjet, l'expéditeur annoncé est
-   * `forum@ansd.sn` : encore faut-il que quelqu'un relève cette boîte-là. Tant
+   * `forum26@ansd.sn` : encore faut-il que quelqu'un relève cette boîte-là. Tant
    * que ce n'est pas le cas, cette variable renvoie les réponses vers une
    * adresse réellement lue, sans toucher au `From` que voient les participants.
    */
@@ -171,7 +171,7 @@ export function configBoite(
   //
   // Un relais à domaine validé (Mailjet) ne réécrit rien : l'identifiant y est
   // une clé d'API, pas une adresse. D'où `SMTP_CAMPAGNE_FROM` en premier — une
-  // seconde boîte Mailjet doit annoncer `forum@ansd.sn`, pas sa clé d'API.
+  // seconde boîte Mailjet doit annoncer `forum26@ansd.sn`, pas sa clé d'API.
   const from =
     env.SMTP_CAMPAGNE_FROM || (user ? `${nomAffiche(env.SMTP_FROM)} <${user}>`.trim() : undefined);
 

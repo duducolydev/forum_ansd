@@ -17,7 +17,7 @@ services:
       REDIS_URL: redis://redis:6379
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
-      SMTP_FROM: "Forum international sur les données <forum@ansd.sn>"
+      SMTP_FROM: "Forum international sur les données <forum26@ansd.sn>"
       STORAGE_DRIVER: local
       STORAGE_LOCAL_PATH: /app/storage
       AUTH_URL: http://localhost:3000

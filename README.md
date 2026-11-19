@@ -157,23 +157,27 @@ réelle en dépend.
 Notifications, alertes, invitations et liens magiques passent tous par `src/lib/mail.ts` :
 seules ces cinq variables changent d'un environnement à l'autre.
 
-| Variable        | En local (défaut)       | Mailjet (production, depuis le 19/11/2026)                  |
-| --------------- | ----------------------- | ----------------------------------------------------------- |
-| `SMTP_HOST`     | `forum-ansd-mailpit`    | `in-v3.mailjet.com`                                         |
-| `SMTP_PORT`     | `1025`                  | `587`                                                       |
-| `SMTP_USER`     | _(absent : pas d'auth)_ | **API Key** Mailjet (une clé, pas une adresse)              |
-| `SMTP_PASSWORD` | _(absent)_              | **Secret Key** Mailjet                                      |
-| `SMTP_FROM`     | `… <forum@ansd.sn>`     | `Forum international sur les données <forum@ansd.sn>`       |
-| `SMTP_REPLY_TO` | _(vide)_                | adresse réellement relevée, si ce n'est pas `forum@ansd.sn` |
+| Variable        | En local (défaut)       | Mailjet (production, depuis le 19/11/2026)              |
+| --------------- | ----------------------- | ------------------------------------------------------- |
+| `SMTP_HOST`     | `forum-ansd-mailpit`    | `in-v3.mailjet.com`                                     |
+| `SMTP_PORT`     | `1025`                  | `587`                                                   |
+| `SMTP_USER`     | _(absent : pas d'auth)_ | **API Key** Mailjet (une clé, pas une adresse)          |
+| `SMTP_PASSWORD` | _(absent)_              | **Secret Key** Mailjet                                  |
+| `SMTP_FROM`     | `… <forum26@ansd.sn>`   | `Forum international sur les données <forum26@ansd.sn>` |
+| `SMTP_REPLY_TO` | _(vide)_                | _(vide)_ — l'expéditeur est déjà une boîte relevée      |
 
 - **L'identifiant est une clé d'API**, pas une boîte aux lettres : il n'y a plus de mot de
   passe d'application à créer, et rien à activer côté compte Google.
 - **`SMTP_FROM` doit appartenir au domaine validé** (`ansd.sn`, statut _Active_ dans
   Mailjet). Contrairement à Gmail, Mailjet **ne réécrit pas** l'expéditeur : les
-  participants lisent enfin `forum@ansd.sn` et non une adresse `gmail.com`. C'est le gain
+  participants lisent enfin `forum26@ansd.sn` et non une adresse `gmail.com`. C'est le gain
   le plus visible de la bascule.
-- **`SMTP_REPLY_TO` si personne ne relève `forum@ansd.sn`** : les réponses sont alors
-  renvoyées vers une adresse lue, sans rien changer à l'expéditeur affiché.
+- **`SMTP_REPLY_TO` reste vide tant que l'expéditeur est une boîte relevée.** Un `Reply-To`
+  identique au `From` n'apporte rien et brouille l'affichage chez certains clients de
+  messagerie. La variable sert au cas inverse — un expéditeur que personne ne consulte :
+  elle renvoie alors les réponses vers une adresse lue, sans toucher au `From`. Elle vaut
+  aussi pour les **campagnes**, qui partent d'un autre compte : sans elle, leurs réponses
+  sont déjà renvoyées vers l'adresse de `SMTP_FROM`, ce qui est le comportement voulu.
 - **Port 587 seulement** : `mail.ts` ouvre la connexion en clair puis passe en TLS
   (STARTTLS). Le port 465, chiffré d'emblée, demanderait une variable `SMTP_SECURE`.
 - **Les clés ne vont que** dans `.env.docker` (local) ou dans le `.env` du serveur, tous
