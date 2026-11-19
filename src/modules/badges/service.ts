@@ -301,7 +301,25 @@ export async function generateBadge(
   const { pdfPath, pngPath } = await renderAndStore(badge);
   const updated = await prisma.badge.update({
     where: { id: badge.id },
-    data: { pdfPath, pngPath, generatedAt: new Date(), generatedById: actor.userId ?? null },
+    data: {
+      pdfPath,
+      pngPath,
+      generatedAt: new Date(),
+      generatedById: actor.userId ?? null,
+      /*
+       * Un rendu neuf **annule l'envoi à l'impression** (19 novembre 2026).
+       *
+       * Refaire un badge réécrit son PDF sans changer de version ni de ligne :
+       * la carte déjà partie chez l'imprimeur ne correspond donc plus au
+       * fichier. Garder la marque ferait disparaître ce badge des « pas encore
+       * exportés », et la personne recevrait la carte portant l'ancien nom —
+       * le cas même qui motive un « Refaire ».
+       *
+       * `exportCount` n'est pas remis à zéro : il compte l'histoire des
+       * envois, qui a bien eu lieu.
+       */
+      exportedAt: null,
+    },
   });
 
   await audit.log({

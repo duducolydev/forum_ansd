@@ -125,6 +125,29 @@ describe.skipIf(!resolveBrowserPath())("badges (brief §5.4)", () => {
     expect(await compterAncienGabarit(editionId, {})).toBe(avant);
   }, 60_000);
 
+  /*
+   * Le cas qui ferait imprimer un badge périmé : on corrige une fiche, on
+   * refait le badge, et la carte déjà partie chez l'imprimeur porte encore
+   * l'ancien nom. Si la marque d'export survivait au rendu, ce badge
+   * disparaîtrait des « pas encore exportés » et ne serait jamais réimprimé.
+   */
+  it("refaire un badge annule son envoi à l'impression", async () => {
+    const participant = await makeConfirmedParticipant();
+    const badge = await generateBadge(participant.id, ACTOR);
+
+    await prisma.badge.update({
+      where: { id: badge.id },
+      data: { exportedAt: new Date(), exportCount: 1 },
+    });
+
+    const refait = await generateBadge(participant.id, ACTOR, { notifier: false });
+
+    expect(refait.id).toBe(badge.id);
+    expect(refait.exportedAt).toBeNull();
+    // L'historique des envois reste : il a bien eu lieu.
+    expect(refait.exportCount).toBe(1);
+  }, 60_000);
+
   it("valide le QR émis et refuse un jeton falsifié", async () => {
     const participant = await makeConfirmedParticipant();
     await generateBadge(participant.id, ACTOR);
