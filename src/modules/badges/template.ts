@@ -37,6 +37,14 @@ export interface BadgeTemplateData {
   publicId: string;
   qrDataUrl: string;
   photoDataUrl: string | null;
+  /**
+   * Ce qui s'affiche à la place de la photo quand les initiales seraient vides.
+   *
+   * Un badge anonyme n'a pas de nom : `initials("", "")` rendrait un cadre
+   * blanc, impossible à distinguer d'un autre sur une table de cinquante. Le
+   * numéro de la carte y prend place (19 novembre 2026).
+   */
+  initialesDeSecours?: string | null;
 }
 
 const VERT_PAR_DEFAUT = "#3dbb6e";
@@ -204,9 +212,10 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
   const largeur = `${FORMAT_BADGE.largeurMm}mm`;
   const hauteur = `${FORMAT_BADGE.hauteurMm}mm`;
 
+  const marque = initials(data.firstName, data.lastName) || (data.initialesDeSecours ?? "");
   const photo = data.photoDataUrl
     ? `<div class="photo"><img src="${data.photoDataUrl}" alt="" /></div>`
-    : `<div class="photo initiales">${escapeHtml(initials(data.firstName, data.lastName))}</div>`;
+    : `<div class="photo initiales">${escapeHtml(marque)}</div>`;
 
   const entete = data.logoDataUrl
     ? `<img class="logo" src="${data.logoDataUrl}" alt="" />`

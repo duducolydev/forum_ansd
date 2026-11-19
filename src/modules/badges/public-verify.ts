@@ -36,6 +36,24 @@ export type PublicVerification =
       version: number;
       checkedIn: boolean;
     }
+  /**
+   * Badge anonyme valide — une carte du stock de secours, remise sur place.
+   *
+   * Statut **distinct** de `VALID`, et non un `VALID` au porteur vide : l'agent
+   * doit savoir qu'aucun nom n'est attaché à ce badge, pour le confronter à la
+   * personne qui le présente. Un « valide » suivi d'un cadre vide se lirait
+   * comme un défaut d'affichage, et c'est précisément le cas où il ne faut pas
+   * hésiter.
+   */
+  | {
+      status: "VALID_ANONYME";
+      assurance: VerificationAssurance;
+      categoryLabel: string;
+      /** Numéro imprimé sur la carte, à confronter au registre de remise. */
+      numero: number | null;
+      reference: string;
+      version: number;
+    }
   | { status: "REVOKED"; assurance: VerificationAssurance; reason: string | null }
   | { status: "CANCELLED"; assurance: VerificationAssurance }
   | { status: "NOT_BADGED" }
@@ -43,6 +61,7 @@ export type PublicVerification =
   | { status: "RATE_LIMITED"; retryAfterSeconds: number };
 
 const badgeInclude = {
+  anonymousCategory: { select: { labelFr: true } },
   participant: {
     select: {
       civility: true,
@@ -62,15 +81,40 @@ type BadgeWithParticipant = Awaited<
   ReturnType<typeof prisma.badge.findFirst<{ include: typeof badgeInclude }>>
 >;
 
-function present(
+/**
+ * Le verdict rendu à l'agent, à partir d'un badge déjà retrouvé.
+ *
+ * Exporté pour être éprouvé seul : c'est la fonction qui décide si quelqu'un
+ * entre, et elle ne doit pas n'être atteignable qu'au travers d'une base de
+ * données. L'ordre de ses contrôles est significatif — voir les commentaires.
+ */
+export function verdictDuBadge(
   badge: NonNullable<BadgeWithParticipant>,
   assurance: VerificationAssurance,
 ): PublicVerification {
-  if (badge.participant.deletedAt) return { status: "UNKNOWN" };
-
+  /*
+   * La révocation passe **avant** le tri entre badge nominatif et badge
+   * anonyme : un badge retiré doit s'annoncer retiré dans les deux cas, et
+   * l'ordre des contrôles de cette fonction est significatif (cf. `evaluerAcces`).
+   */
   if (badge.revokedAt) {
     return { status: "REVOKED", assurance, reason: badge.revokeReason };
   }
+
+  if (!badge.participant) {
+    // Badge anonyme : il n'a de sens que porté par sa catégorie et son numéro.
+    if (!badge.anonymousCategory || !badge.anonymousRef) return { status: "UNKNOWN" };
+    return {
+      status: "VALID_ANONYME",
+      assurance,
+      categoryLabel: badge.anonymousCategory.labelFr,
+      numero: badge.anonymousSeq,
+      reference: badge.anonymousRef,
+      version: badge.version,
+    };
+  }
+
+  if (badge.participant.deletedAt) return { status: "UNKNOWN" };
 
   // Un badge non révoqué mais dont la participation a été annulée ne donne
   // aucun droit d'accès : le dire explicitement plutôt que d'afficher « valide ».
@@ -120,10 +164,23 @@ export async function verifyBadgePublicly(input: string, ip: string): Promise<Pu
     });
     if (!badge) return { status: "UNKNOWN" };
     if (!verifyBadgeSignature(value, badge.version)) return { status: "UNKNOWN" };
-    return present(badge, "SIGNED");
+    return verdictDuBadge(badge, "SIGNED");
   }
 
-  // 2. Secours : identifiant imprimé seul, sans signature à vérifier.
+  /*
+   * 2. Secours : identifiant imprimé seul, sans signature à vérifier.
+   *
+   * Un badge anonyme porte sa propre référence et pas un `publicId` de
+   * participant : la chercher d'abord évite qu'un QR abîmé sur une carte de
+   * secours — le support le plus manipulé de la journée — ne réponde
+   * « inconnu » à l'agent.
+   */
+  const anonyme = await prisma.badge.findUnique({
+    where: { anonymousRef: value },
+    include: badgeInclude,
+  });
+  if (anonyme) return verdictDuBadge(anonyme, "IDENTIFIER");
+
   const participant = await prisma.participant.findUnique({
     where: { publicId: value },
     select: { id: true, deletedAt: true },
@@ -137,5 +194,5 @@ export async function verifyBadgePublicly(input: string, ip: string): Promise<Pu
   });
   if (!badge) return { status: "NOT_BADGED" };
 
-  return present(badge, "IDENTIFIER");
+  return verdictDuBadge(badge, "IDENTIFIER");
 }

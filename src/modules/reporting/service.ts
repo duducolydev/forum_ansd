@@ -312,7 +312,9 @@ const badges: Rapport = {
   ],
   async lignes(editionId) {
     const lignes = await prisma.badge.findMany({
-      where: { participant: { editionId, deletedAt: null } },
+      where: {
+        OR: [{ participant: { editionId, deletedAt: null } }, { anonymousCategory: { editionId } }],
+      },
       orderBy: [{ participant: { lastName: "asc" } }, { version: "asc" }],
       select: {
         version: true,
@@ -320,6 +322,7 @@ const badges: Rapport = {
         revokedAt: true,
         revokeReason: true,
         printedCount: true,
+        anonymousRef: true,
         participant: {
           select: {
             publicId: true,
@@ -332,11 +335,18 @@ const badges: Rapport = {
       },
     });
 
+    /*
+     * Les cartes anonymes figurent dans l'export, sous leur référence et sans
+     * nom : les omettre donnerait un état des badges qui ne se réconcilie pas
+     * avec le stock réellement imprimé.
+     */
     return lignes.map((ligne) => [
-      ligne.participant.publicId,
-      `${ligne.participant.lastName.toUpperCase()} ${ligne.participant.firstName}`,
-      ligne.participant.category.labelFr,
-      ligne.participant.delegation?.name ?? "",
+      ligne.participant?.publicId ?? ligne.anonymousRef ?? "",
+      ligne.participant
+        ? `${ligne.participant.lastName.toUpperCase()} ${ligne.participant.firstName}`
+        : "(badge anonyme)",
+      ligne.participant?.category.labelFr ?? "",
+      ligne.participant?.delegation?.name ?? "",
       ligne.version,
       ligne.generatedAt ? heureCourte.format(ligne.generatedAt) : "",
       ligne.revokedAt ? "Oui" : "Non",

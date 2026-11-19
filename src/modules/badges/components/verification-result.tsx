@@ -68,6 +68,45 @@ export function VerificationResult({ result, eventLabel }: Props) {
     );
   }
 
+  /*
+   * Carte anonyme : panneau à part, et volontairement en « attention » même
+   * quand la signature est bonne.
+   *
+   * Le badge est authentique, mais il ne dit rien de qui le porte — c'est son
+   * objet. L'afficher en vert à côté d'un cadre « Participant » vide se
+   * lirait comme un défaut d'affichage, dans le seul cas où l'agent doit
+   * justement regarder la personne plutôt que l'écran.
+   */
+  if (result.status === "VALID_ANONYME") {
+    return (
+      <Panel tone="warn" icon="!" title="Carte anonyme valide">
+        <dl className="grid grid-cols-[110px_1fr] gap-y-2 text-sm sm:grid-cols-[130px_1fr]">
+          <dt className="text-text-3">Porteur</dt>
+          <dd className="text-heading font-semibold">Non enregistré</dd>
+
+          <dt className="text-text-3">Catégorie</dt>
+          <dd className="text-heading">{result.categoryLabel}</dd>
+
+          <dt className="text-text-3">Numéro</dt>
+          <dd className="text-heading tracking-wider">{result.numero ?? "—"}</dd>
+
+          <dt className="text-text-3">Référence</dt>
+          <dd className="text-heading tracking-wider">{result.reference}</dd>
+
+          <dt className="text-text-3">Évènement</dt>
+          <dd className="text-heading">{eventLabel}</dd>
+        </dl>
+
+        <p className="text-text-2 mt-3 text-sm">
+          Carte remise sur place. Vérifiez le numéro au registre d&apos;accueil, et le nom inscrit à
+          la main sur la carte.
+        </p>
+
+        <Assurance assurance={result.assurance} />
+      </Panel>
+    );
+  }
+
   const { participant } = result;
   return (
     <Panel

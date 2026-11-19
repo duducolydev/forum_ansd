@@ -7,6 +7,11 @@ export interface BadgeGenerateJobPayload {
   silencieux?: boolean;
 }
 
+/** Rendu d'une carte anonyme : elle n'a pas de porteur, donc pas de participant. */
+export interface BadgeAnonymeJobPayload {
+  badgeId: string;
+}
+
 let registered = false;
 
 /**
@@ -26,6 +31,30 @@ export function registerBadgeJobs(): void {
       const { generateBadge } = await import("./service");
       await generateBadge(participantId, { type: "SYSTEM" }, { notifier: !silencieux });
     },
+  );
+
+  jobQueue.process<BadgeAnonymeJobPayload>("badge.generate_anonymous", async ({ badgeId }) => {
+    const { genererBadgeAnonyme } = await import("./service");
+    await genererBadgeAnonyme(badgeId);
+  });
+}
+
+/**
+ * Met en file le rendu d'un lot de cartes anonymes, en un seul aller-retour.
+ *
+ * Clé fixe par badge : relancer la création ne doit pas empiler deux rendus de
+ * la même carte.
+ */
+export async function enqueueBadgesAnonymes(badgeIds: string[]): Promise<void> {
+  if (badgeIds.length === 0) return;
+
+  registerBadgeJobs();
+  await jobQueue.enqueueMany<BadgeAnonymeJobPayload>(
+    "badge.generate_anonymous",
+    badgeIds.map((badgeId) => ({
+      payload: { badgeId },
+      options: { idempotencyKey: `badge-anonyme:${badgeId}` },
+    })),
   );
 }
 

@@ -85,6 +85,38 @@ export async function marquerExportesAction(filtre: FiltreBadges): Promise<Marqu
   }
 }
 
+/**
+ * Crée un stock de cartes anonymes pour une catégorie, et met leur rendu en
+ * file (`anonymes.ts`).
+ *
+ * Même permission que la génération ordinaire : ces cartes ouvrent les mêmes
+ * portes, et rien ne justifierait qu'elles soient plus faciles à produire.
+ */
+export async function creerBadgesAnonymesAction(
+  categoryId: string,
+  nombre: number,
+): Promise<MarquageState & { references?: string[] }> {
+  const session = await auth();
+  if (!can(session, "badges.generate")) return { error: "Permission refusée." };
+
+  try {
+    const edition = await getActiveEdition();
+    const { creerBadgesAnonymes } = await import("./anonymes");
+    const { enqueueBadgesAnonymes } = await import("./jobs");
+    const { ids, references } = await creerBadgesAnonymes(edition.id, categoryId, nombre, {
+      type: "USER",
+      userId: session?.user?.id,
+    });
+
+    await enqueueBadgesAnonymes(ids);
+
+    revalidatePath("/admin/badges");
+    return { marques: ids.length, references };
+  } catch (error) {
+    return { error: premierMessage(error) };
+  }
+}
+
 /** Révocation du périmètre : tout le filtre, ou les lignes cochées. */
 export async function revoquerEnLotAction(
   perimetre: PerimetreLot,

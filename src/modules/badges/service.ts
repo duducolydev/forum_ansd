@@ -63,10 +63,78 @@ function storageKey(publicId: string, version: number, extension: string): strin
 }
 
 /**
+ * Rendu d'un **badge anonyme** : même maquette, sans porteur.
+ *
+ * Les deux lignes du nom partent vides, et c'est exactement ce qu'on veut —
+ * l'agent d'accueil y écrit le nom au marqueur au moment de la remise. La
+ * couleur de la catégorie reste le seul repère imprimé, conformément à la
+ * décision du 12 novembre 2026 : le libellé ne revient pas, même ici.
+ *
+ * Sans nom, les initiales qui tiennent lieu de photo seraient vides : le
+ * numéro de la carte prend leur place, de sorte qu'une carte posée sur une
+ * table se reconnaisse sans la retourner.
+ */
+async function renderAnonymeAndStore(badge: Badge): Promise<{ pdfPath: string; pngPath: string }> {
+  const ligne = await prisma.badge.findUniqueOrThrow({
+    where: { id: badge.id },
+    select: {
+      anonymousRef: true,
+      anonymousSeq: true,
+      anonymousCategory: {
+        select: {
+          color: true,
+          edition: { select: { title: true, startDate: true, endDate: true } },
+        },
+      },
+    },
+  });
+  if (!ligne.anonymousRef || !ligne.anonymousCategory) {
+    throw new Error("Badge sans porteur et sans catégorie anonyme : rien à imprimer.");
+  }
+
+  const edition = ligne.anonymousCategory.edition;
+  const token = buildBadgeToken(ligne.anonymousRef, badge.version);
+  const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
+
+  const html = renderBadgeHtml({
+    editionName: edition.title,
+    logoDataUrl: await logoBadgeDataUrl(),
+    policesCss: await policesBadgeCss(),
+    eventDates: datesDuForum(edition.startDate, edition.endDate),
+    civility: null,
+    // Vides à dessein : la ligne du nom reste blanche, à remplir à la main.
+    firstName: "",
+    lastName: "",
+    jobTitle: null,
+    organization: null,
+    categoryColor: ligne.anonymousCategory.color,
+    publicId: ligne.anonymousRef,
+    qrDataUrl: await generateQrDataUrl(`${baseUrl}/v/${token}`),
+    photoDataUrl: null,
+    initialesDeSecours: ligne.anonymousSeq != null ? String(ligne.anonymousSeq) : "?",
+  });
+
+  const { pdf, png } = await renderHtmlToPdfAndPng(
+    html,
+    { taille: { largeurMm: FORMAT_BADGE.largeurMm, hauteurMm: FORMAT_BADGE.hauteurMm } },
+    { width: FORMAT_BADGE.largeurPng },
+  );
+
+  const pdfPath = storageKey(ligne.anonymousRef, badge.version, "pdf");
+  const pngPath = storageKey(ligne.anonymousRef, badge.version, "png");
+  await fileStorage.put(pdfPath, pdf, "application/pdf");
+  await fileStorage.put(pngPath, png, "image/png");
+
+  return { pdfPath, pngPath };
+}
+
+/**
  * Rend le badge et écrit les fichiers. Ne touche ni au statut du participant
  * ni aux notifications : c'est `generateBadge` qui orchestre.
  */
 async function renderAndStore(badge: Badge): Promise<{ pdfPath: string; pngPath: string }> {
+  if (!badge.participantId) return renderAnonymeAndStore(badge);
+
   const participant = await prisma.participant.findUniqueOrThrow({
     where: { id: badge.participantId },
     select: participantForBadge,
@@ -113,6 +181,44 @@ async function renderAndStore(badge: Badge): Promise<{ pdfPath: string; pngPath:
   await fileStorage.put(pngPath, png, "image/png");
 
   return { pdfPath, pngPath };
+}
+
+/**
+ * Rend un badge anonyme déjà créé (`anonymes.ts`).
+ *
+ * Volontairement séparé de `generateBadge` : celui-ci parle de statut de
+ * participant, d'e-mail « badge prêt » et de transition vers BADGED, dont
+ * aucun n'a de sens ici. Les fondre produirait une fonction à moitié
+ * applicable, où chaque branche demanderait « et si le porteur est nul ? ».
+ */
+export async function genererBadgeAnonyme(
+  badgeId: string,
+  actor: Actor = { type: "SYSTEM" },
+): Promise<Badge> {
+  const badge = await prisma.badge.findUniqueOrThrow({ where: { id: badgeId } });
+  if (badge.participantId) {
+    throw new Error("Ce badge a un porteur : passer par la génération ordinaire.");
+  }
+  if (badge.revokedAt) {
+    throw new Error("Ce badge anonyme a été révoqué : il ne se rend plus.");
+  }
+
+  const { pdfPath, pngPath } = await renderAndStore(badge);
+  const updated = await prisma.badge.update({
+    where: { id: badge.id },
+    data: { pdfPath, pngPath, generatedAt: new Date(), generatedById: actor.userId ?? null },
+  });
+
+  await audit.log({
+    actorType: actor.type,
+    actorUserId: actor.userId,
+    action: "badge.anonymous_generated",
+    entity: "Badge",
+    entityId: updated.id,
+    after: { reference: updated.anonymousRef, numero: updated.anonymousSeq },
+  });
+
+  return updated;
 }
 
 export async function getCurrentBadge(participantId: string): Promise<Badge | null> {
@@ -418,7 +524,14 @@ export async function verifyBadgeToken(token: string): Promise<BadgeVerification
     },
   });
 
-  if (!badge || badge.participant.deletedAt) return { status: "UNKNOWN" };
+  /*
+   * Un badge sans porteur sort ici : cette fonction décrit un participant, et
+   * n'a rien à dire d'une carte anonyme. Le contrôle qui les reconnaît est
+   * `verifyBadgePublicly` (`public-verify.ts`), celui que sert la page /v/.
+   */
+  if (!badge || !badge.participant || badge.participant.deletedAt) {
+    return { status: "UNKNOWN" };
+  }
   if (!verifyBadgeSignature(token, badge.version)) return { status: "UNKNOWN" };
   if (badge.revokedAt) return { status: "REVOKED", reason: badge.revokeReason };
 

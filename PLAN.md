@@ -1006,6 +1006,7 @@ parcours complet d'un inconnu jusqu'au badge imprimable.
 - [x] **Export ZIP, deux rangements** — un dossier par délégation (plus « Sans délégation ») pour la distribution du jour J ; ou tous les PDF à plat, la délégation passant dans le nom du fichier, pour imprimer ou transmettre le lot d'un bloc. Même périmètre dans les deux cas, celui du filtre.
 - [x] **Filtre « envoi à l'impression »** — chaque badge emporté par un export est marqué (`Badge.exportedAt`), ce qui permet de ne confier à l'imprimeur que le complément d'un envoi précédent. Le marquage est coché, donc déclinable pour un export de contrôle, et une action déclare un envoi passé que la base n'a pas vu — le journal n'en gardait que le nombre.
 - [x] **Planche d'impression** au format carte (85,6 × 54 mm), un badge par page.
+- [x] **Cartes anonymes** — un stock numéroté par catégorie, imprimé d'avance, remis le jour J à qui se présente sans inscription (garde du corps, protocole, visiteur de passage). QR valide, scannable et révocable ; sans nom, que l'accueil écrit à la main. `Badge.participantId` est nullable : un participant fictif entrerait dans les envois d'e-mails et dans les vingt-huit agrégats qui comptent les inscrits.
 - [x] **Actions de masse sur deux périmètres** — tout le filtre, ou les seules lignes cochées : génération, reprise des badges déjà émis, passage à la maquette en vigueur, révocation (motif commun obligatoire).
 
 **Les mises en file partent d'un bloc** (19 novembre 2026). Un `enqueue` par cible faisait un

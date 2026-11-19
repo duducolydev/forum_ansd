@@ -36,6 +36,7 @@ export async function GET(
       pdfPath: true,
       pngPath: true,
       revokedAt: true,
+      anonymousRef: true,
       participant: { select: { publicId: true } },
     },
   });
@@ -73,7 +74,10 @@ export async function GET(
     await recordDownload(badge.id);
   }
 
-  const filename = `badge-${badge.participant.publicId}-v${badge.version}.${format}`;
+  // Une carte anonyme n'a pas de porteur : sa référence imprimée tient lieu
+  // d'identifiant dans le nom du fichier.
+  const reference = badge.participant?.publicId ?? badge.anonymousRef ?? badge.id;
+  const filename = `badge-${reference}-v${badge.version}.${format}`;
   return new NextResponse(new Uint8Array(file), {
     headers: {
       "Content-Type": contentType,

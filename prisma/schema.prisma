@@ -317,10 +317,11 @@ model ParticipantCategory {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  edition       Edition        @relation(fields: [editionId], references: [id], onDelete: Cascade)
-  participants  Participant[]
-  invitations   Invitation[]
-  categoryZones CategoryZone[]
+  edition        Edition        @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  participants   Participant[]
+  invitations    Invitation[]
+  categoryZones  CategoryZone[]
+  badgesAnonymes Badge[]        @relation("BadgesAnonymes")
 
   @@unique([editionId, code])
 }
@@ -491,33 +492,53 @@ model Referent {
 // ---------------------------------------------------------------------------
 
 model Badge {
-  id            String    @id @default(cuid())
-  participantId String
-  version       Int       @default(1)
-  qrToken       String    @unique // hash du token QR
-  generatedAt   DateTime?
-  generatedById String?
-  pdfPath       String?
-  pngPath       String?
-  downloadedAt  DateTime?
-  emailedAt     DateTime?
-  printedAt     DateTime?
-  printedCount  Int       @default(0)
+  id                  String    @id @default(cuid())
+  /// Nul pour un **badge anonyme** : une carte du stock de secours, remise le
+  /// jour J à qui se présente sans inscription — garde du corps, protocole,
+  /// visiteur de passage. Elle porte un QR valide et se scanne comme les
+  /// autres ; elle n'a simplement pas de porteur en base.
+  ///
+  /// Pourquoi pas un participant fictif : il entrerait dans les envois
+  /// d'e-mails, qui sélectionnent par statut sans notion de « faux », et dans
+  /// les vingt-huit agrégats qui comptent les inscrits. Cinquante cartes de
+  /// courtoisie fausseraient des chiffres officiels et brûleraient du quota
+  /// Gmail en rebonds (19 novembre 2026).
+  participantId       String?
+  /// Identifiant imprimé d'un badge anonyme (« FID26-ANON-014 »), qui tient la
+  /// place du `publicId` dans le token du QR.
+  anonymousRef        String?   @unique
+  /// Numéro de la carte dans son stock, imprimé et annoncé à la remise.
+  anonymousSeq        Int?
+  /// Catégorie d'un badge anonyme : elle n'en donne que la couleur, seul
+  /// repère imprimé depuis le 12 novembre 2026.
+  anonymousCategoryId String?
+  version             Int       @default(1)
+  qrToken             String    @unique // hash du token QR
+  generatedAt         DateTime?
+  generatedById       String?
+  pdfPath             String?
+  pngPath             String?
+  downloadedAt        DateTime?
+  emailedAt           DateTime?
+  printedAt           DateTime?
+  printedCount        Int       @default(0)
   /// Dernier export ZIP qui a emporté ce badge — distinct de `printedAt`, qui
   /// compte les impressions déclarées une à une depuis la fiche. Un badge parti
   /// chez l'imprimeur n'est pas encore imprimé, et l'écart compte le jour J.
-  exportedAt    DateTime?
-  exportCount   Int       @default(0)
-  revokedAt     DateTime?
-  revokeReason  String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  exportedAt          DateTime?
+  exportCount         Int       @default(0)
+  revokedAt           DateTime?
+  revokeReason        String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
-  generatedBy User?       @relation("BadgeGeneratedBy", fields: [generatedById], references: [id])
-  scanLogs    ScanLog[]
+  participant       Participant?         @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  anonymousCategory ParticipantCategory? @relation("BadgesAnonymes", fields: [anonymousCategoryId], references: [id])
+  generatedBy       User?                @relation("BadgeGeneratedBy", fields: [generatedById], references: [id])
+  scanLogs          ScanLog[]
 
   @@index([participantId])
+  @@index([anonymousCategoryId])
 }
 
 // ---------------------------------------------------------------------------

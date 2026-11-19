@@ -5,7 +5,9 @@ import { can } from "@/lib/rbac";
 import { prisma } from "@/lib/db";
 import { getActiveEdition } from "@/lib/edition";
 import { compter, compterAncienGabarit, lister, type FiltreBadges } from "@/modules/badges/bulk";
+import { inventaireAnonymes } from "@/modules/badges/anonymes";
 import { GestionBadges } from "@/modules/badges/components/gestion-badges";
+import { StockAnonymeBadges } from "@/modules/badges/components/stock-anonyme";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,10 @@ function lireFiltre(parametres: Record<string, string | undefined>): FiltreBadge
     categoryId: parametres.categoryId || undefined,
     delegationId: parametres.delegationId || undefined,
     etat: etat === "SANS" || etat === "AVEC" || etat === "REVOQUE" ? etat : undefined,
+    export:
+      parametres.export === "JAMAIS" || parametres.export === "DEJA"
+        ? parametres.export
+        : undefined,
   };
 }
 
@@ -74,6 +80,8 @@ export default async function BadgesPage({
       }),
     ]);
 
+  const stocks = await inventaireAnonymes(edition.id);
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -94,6 +102,12 @@ export default async function BadgesPage({
           peutRevoquer={can(session, "badges.revoke")}
         />
       </Suspense>
+
+      <StockAnonymeBadges
+        stocks={stocks}
+        categories={categories}
+        peutGenerer={can(session, "badges.generate")}
+      />
     </div>
   );
 }

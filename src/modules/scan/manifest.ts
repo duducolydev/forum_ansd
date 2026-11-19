@@ -49,6 +49,13 @@ export interface EntreeManifeste {
   revoque: boolean;
   /** Une photo existe et peut être demandée à la volée. */
   photo: boolean;
+  /**
+   * Carte anonyme du stock de secours : aucun porteur en base.
+   *
+   * Le scanner l'annonce comme telle pour que l'agent confronte le numéro au
+   * registre d'accueil, au lieu de chercher un nom qui n'existe pas.
+   */
+  anonyme?: boolean;
 }
 
 export interface Manifeste {
@@ -75,7 +82,7 @@ const STATUTS_EMBARQUES: ParticipantStatus[] = [
 ];
 
 export async function buildManifeste(editionId: string, editionCode: string): Promise<Manifeste> {
-  const [zones, checkpoints, participants] = await Promise.all([
+  const [zones, checkpoints, participants, anonymes] = await Promise.all([
     prisma.zone.findMany({
       where: { editionId },
       orderBy: { code: "asc" },
@@ -116,6 +123,29 @@ export async function buildManifeste(editionId: string, editionCode: string): Pr
         },
       },
     }),
+    /*
+     * Les cartes anonymes voyagent dans le même manifeste que les autres.
+     *
+     * Les embarquer ailleurs — ou pas du tout — ferait répondre « badge
+     * inconnu » à un agent hors ligne devant une carte parfaitement valide,
+     * c'est-à-dire exactement la situation que ce stock existe pour éviter.
+     */
+    prisma.badge.findMany({
+      where: { anonymousCategory: { editionId } },
+      select: {
+        qrToken: true,
+        revokedAt: true,
+        anonymousRef: true,
+        anonymousSeq: true,
+        anonymousCategory: {
+          select: {
+            labelFr: true,
+            alertOnScan: true,
+            categoryZones: { select: { zone: { select: { code: true } } } },
+          },
+        },
+      },
+    }),
   ]);
 
   const entrees: EntreeManifeste[] = [];
@@ -143,6 +173,34 @@ export async function buildManifeste(editionId: string, editionCode: string): Pr
         photo: participant.photoPath !== null,
       });
     }
+  }
+
+  for (const carte of anonymes) {
+    if (!carte.anonymousCategory || !carte.anonymousRef) continue;
+    entrees.push({
+      h: carte.qrToken,
+      publicId: carte.anonymousRef,
+      // Le nom porte le numéro : l'agent lit ce qu'il doit confronter au
+      // registre, sans que le client du scanner ait à connaître ce cas.
+      nom: `Carte anonyme n° ${carte.anonymousSeq ?? "?"}`,
+      organisation: null,
+      categorie: carte.anonymousCategory.labelFr,
+      zones: resoudreZones(
+        carte.anonymousCategory.categoryZones.map((lien) => lien.zone.code),
+        [],
+      ),
+      /*
+       * `BADGED` décrit l'état de la **carte**, pas celui d'un participant
+       * inventé : elle est émise et admise aux contrôles (`STATUTS_ADMIS`).
+       * Elle ne passera jamais à `CHECKED_IN`, faute de fiche à faire
+       * progresser — et `marquerPresences` écarte déjà les scans sans porteur.
+       */
+      statut: "BADGED",
+      alerte: carte.anonymousCategory.alertOnScan,
+      revoque: carte.revokedAt !== null,
+      photo: false,
+      anonyme: true,
+    });
   }
 
   entrees.sort((a, b) => a.h.localeCompare(b.h));
