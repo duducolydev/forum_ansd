@@ -20,6 +20,26 @@ export interface FiltreBadges {
   delegationId?: string;
   /** `SANS` : pas encore de badge ; `AVEC` : badge valide ; `REVOQUE` : à réémettre. */
   etat?: "SANS" | "AVEC" | "REVOQUE";
+  /**
+   * `JAMAIS` : badge encore jamais emporté par un export ZIP ; `DEJA` : au
+   * moins une fois. C'est ce qui permet de ne confier à l'imprimeur que le
+   * complément d'un envoi précédent (19 novembre 2026).
+   */
+  export?: "JAMAIS" | "DEJA";
+}
+
+/**
+ * Condition d'export, à combiner au badge que la branche d'`etat` désigne.
+ *
+ * Elle porte sur **le badge**, pas sur le participant : un badge refait en
+ * version suivante est un autre badge, qui n'est pas parti à l'impression même
+ * si son prédécesseur l'était. C'est précisément le cas qu'on ne veut pas
+ * manquer le jour J.
+ */
+function conditionExport(filtre: FiltreBadges): Prisma.BadgeWhereInput {
+  if (filtre.export === "JAMAIS") return { exportedAt: null };
+  if (filtre.export === "DEJA") return { exportedAt: { not: null } };
+  return {};
 }
 
 /** Seuls ces statuts ont droit à un badge (brief §5.4). */
@@ -53,18 +73,51 @@ export function perimetreFiltre(
      * génère pas. Les trois états forment ainsi une partition, et l'écran ne
      * peut plus annoncer « 6 sans badge » en face d'un bouton « Générer 0 ».
      */
+    const jamaisRendu = {
+      none: { OR: [{ revokedAt: { not: null } }, { generatedAt: { not: null } }] },
+    };
+    /*
+     * Croisé avec « déjà exporté », ce filtre ne désigne personne : on ne peut
+     * pas avoir envoyé à l'imprimeur un badge qui n'existe pas. Les deux
+     * clauses coexistent dans le même filtre de relation — `none` et `some` se
+     * cumulent — et se contredisent, ce qui est exactement voulu. Omettre le
+     * croisement laisserait le filtre « sans badge » répondre « 893 » à une
+     * question dont la réponse est zéro.
+     */
     return {
       ...base,
-      badges: { none: { OR: [{ revokedAt: { not: null } }, { generatedAt: { not: null } }] } },
+      badges:
+        filtre.export === "DEJA"
+          ? { ...jamaisRendu, some: { exportedAt: { not: null } } }
+          : jamaisRendu,
     };
   }
+  const exporte = conditionExport(filtre);
+
   if (filtre.etat === "AVEC") {
-    return { ...base, badges: { some: { revokedAt: null, generatedAt: { not: null } } } };
+    return {
+      ...base,
+      badges: { some: { revokedAt: null, generatedAt: { not: null }, ...exporte } },
+    };
   }
   if (filtre.etat === "REVOQUE") {
     return {
       ...base,
-      badges: { some: { revokedAt: { not: null } }, none: { revokedAt: null } },
+      badges: { some: { revokedAt: { not: null }, ...exporte }, none: { revokedAt: null } },
+    };
+  }
+
+  /*
+   * « Tous » avec une condition d'export se restreint aux porteurs d'un badge
+   * valide, et c'est la seule lecture utile : un participant sans badge n'a
+   * rien à envoyer à l'imprimeur, et le faire figurer parmi « jamais exportés »
+   * gonflerait le compte de lignes que l'export compterait ensuite comme
+   * manquantes.
+   */
+  if (filtre.export) {
+    return {
+      ...base,
+      badges: { some: { revokedAt: null, generatedAt: { not: null }, ...exporte } },
     };
   }
   return base;
@@ -83,6 +136,8 @@ export interface LigneBadge {
   /** Badge valide rendu avec un gabarit antérieur, donc à refaire (`format.ts`). */
   ancienGabarit: boolean;
   impressions: number;
+  /** Badge déjà emporté par un export ZIP — donc déjà chez l'imprimeur. */
+  exporte: boolean;
 }
 
 export async function lister(
@@ -111,6 +166,7 @@ export async function lister(
           revokedAt: true,
           printedCount: true,
           pngPath: true,
+          exportedAt: true,
         },
       },
     },
@@ -133,12 +189,70 @@ export async function lister(
         badge?.revokedAt == null &&
         !auGabaritCourant(badge?.pngPath ?? null),
       impressions: badge?.printedCount ?? 0,
+      exporte: badge?.exportedAt != null,
     };
   });
 }
 
 export async function compter(editionId: string, filtre: FiltreBadges): Promise<number> {
   return prisma.participant.count({ where: perimetreFiltre(editionId, filtre) });
+}
+
+/**
+ * Déclare le périmètre courant comme **déjà parti à l'impression**, sans
+ * produire d'archive.
+ *
+ * Les exports antérieurs au 19 novembre 2026 n'ont rien laissé d'exploitable :
+ * le journal d'audit en retient le nombre, jamais la liste. Les 394 badges
+ * confiés à l'imprimeur ce jour-là sont donc invisibles au nouveau filtre, et
+ * repartiraient dans l'envoi suivant.
+ *
+ * Plutôt que de deviner — « tout ce qui existait avant telle heure » serait une
+ * affirmation que personne ne peut vérifier —, l'opérateur **reproduit le
+ * filtre** de l'envoi passé et le déclare. Il sait ce qu'il a imprimé ; la base
+ * ne le sait pas.
+ *
+ * Ne touche que les badges valides et rendus : déclarer exporté un badge qui
+ * n'a pas de PDF le ferait disparaître de la liste « à envoyer » sans que rien
+ * ne soit jamais parti.
+ */
+export async function marquerExportes(
+  editionId: string,
+  filtre: FiltreBadges,
+  actorUserId: string | undefined,
+): Promise<number> {
+  const participants = await prisma.participant.findMany({
+    where: perimetreFiltre(editionId, filtre),
+    select: {
+      badges: {
+        where: { revokedAt: null, generatedAt: { not: null }, pdfPath: { not: null } },
+        orderBy: { version: "desc" },
+        take: 1,
+        select: { id: true },
+      },
+    },
+  });
+
+  const ids = participants
+    .map((participant) => participant.badges[0]?.id)
+    .filter((id): id is string => id !== undefined);
+  if (ids.length === 0) return 0;
+
+  const { count } = await prisma.badge.updateMany({
+    where: { id: { in: ids } },
+    data: { exportedAt: new Date(), exportCount: { increment: 1 } },
+  });
+
+  await audit.log({
+    actorType: "USER",
+    actorUserId,
+    action: "badge.marked_exported",
+    entity: "Edition",
+    entityId: editionId,
+    after: { marques: count, filtre },
+  });
+
+  return count;
 }
 
 /**
@@ -209,6 +323,7 @@ export async function exporterZip(
   filtre: FiltreBadges,
   actorUserId: string | undefined,
   rangement: RangementArchive = "delegation",
+  marquer = true,
 ): Promise<ArchiveBadges> {
   const participants = await prisma.participant.findMany({
     where: perimetreFiltre(editionId, filtre),
@@ -222,12 +337,13 @@ export async function exporterZip(
         where: { revokedAt: null, pdfPath: { not: null } },
         orderBy: { version: "desc" },
         take: 1,
-        select: { pdfPath: true, version: true },
+        select: { id: true, pdfPath: true, version: true },
       },
     },
   });
 
   const entrees: EntreeZip[] = [];
+  const emportes: string[] = [];
   let manquants = 0;
 
   for (const participant of participants) {
@@ -258,6 +374,21 @@ export async function exporterZip(
       nom: rangement === "plat" ? `${dossier} - ${nom}.pdf` : `${dossier}/${nom}.pdf`,
       contenu,
     });
+    emportes.push(badge.id);
+  }
+
+  /*
+   * Le marquage suit l'archive, et seulement elle : un badge compté comme
+   * manquant n'y figure pas, donc n'est pas marqué. `marquer: false` existe
+   * pour les exports de vérification — sans quoi une simple curiosité
+   * retirerait des badges de la liste « à envoyer », et personne ne s'en
+   * apercevrait avant la table d'accueil.
+   */
+  if (marquer && emportes.length > 0) {
+    await prisma.badge.updateMany({
+      where: { id: { in: emportes } },
+      data: { exportedAt: new Date(), exportCount: { increment: 1 } },
+    });
   }
 
   await audit.log({
@@ -266,7 +397,7 @@ export async function exporterZip(
     action: "badge.bulk_export",
     entity: "Edition",
     entityId: editionId,
-    after: { inclus: entrees.length, manquants, filtre, rangement },
+    after: { inclus: entrees.length, manquants, filtre, rangement, marquer },
   });
 
   return {

@@ -149,6 +149,14 @@ export function BadgesTable({
                           Ancienne maquette
                         </span>
                       )}
+                      {/* Dit à la ligne près ce que le filtre « pas encore
+                          exportés » promet en gros : sans cette pastille, rien
+                          ne permet de vérifier qu'un badge précis est parti. */}
+                      {ligne.exporte && (
+                        <span className="bg-accent-soft text-accent-text rounded-md px-2 py-0.5 text-xs font-semibold">
+                          Envoyé à l&apos;impression
+                        </span>
+                      )}
                     </span>
                   ) : (
                     <span className="text-text-3 text-xs">À générer</span>

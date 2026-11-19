@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { genererEnLotAction, revoquerEnLotAction } from "../bulk-actions";
+import { confirmer } from "@/components/ui/confirmer";
+import { genererEnLotAction, marquerExportesAction, revoquerEnLotAction } from "../bulk-actions";
 import type { FiltreBadges, LigneBadge } from "../bulk";
 import type { ModeGeneration, PerimetreLot, ResultatLotBadges } from "../lot";
 import { ActionsBadges, type CompteursLot } from "./actions-badges";
@@ -75,10 +76,12 @@ export function GestionBadges({
   // Le filtre part vers le serveur tel qu'il est écrit dans l'URL : un `etat`
   // inconnu y est écarté ici plutôt que renvoyé en erreur de validation.
   const etat = parametres.get("etat");
+  const exporte = parametres.get("export");
   const filtre: FiltreBadges = {
     categoryId: parametres.get("categoryId") || undefined,
     delegationId: parametres.get("delegationId") || undefined,
     etat: etat === "SANS" || etat === "AVEC" || etat === "REVOQUE" ? etat : undefined,
+    export: exporte === "JAMAIS" || exporte === "DEJA" ? exporte : undefined,
   };
 
   // Sélection effective : ce qui est coché **et** encore affiché. Après un
@@ -157,6 +160,37 @@ export function GestionBadges({
     });
   }
 
+  /**
+   * Déclare le filtre courant comme déjà parti à l'impression.
+   *
+   * Porte sur le **filtre** et jamais sur les lignes cochées : on rattrape un
+   * envoi passé, qui portait sur un périmètre entier.
+   */
+  function marquerExportes() {
+    setBilan(null);
+    void confirmer({
+      titre: `Déclarer ${compteurs.existants} badge(s) comme déjà envoyés ?`,
+      texte:
+        "Aucune archive n'est produite. Ces badges sortiront des « pas encore exportés » : à n'utiliser que pour un envoi réellement parti à l'impression.",
+      confirmer: `Déclarer ${compteurs.existants} badge(s)`,
+      ton: "neutre",
+    }).then((accepte) => {
+      if (!accepte) return;
+      startTransition(async () => {
+        const reponse = await marquerExportesAction(filtre);
+        if (reponse.error || reponse.marques === undefined) {
+          setBilan({ ton: "alerte", lignes: [reponse.error ?? "La déclaration a échoué."] });
+          return;
+        }
+        setBilan({
+          ton: "ok",
+          lignes: [`${reponse.marques} badge(s) déclaré(s) comme envoyés à l'impression.`],
+        });
+        router.refresh();
+      });
+    });
+  }
+
   function revoquer(motif: string) {
     setBilan(null);
     startTransition(async () => {
@@ -208,6 +242,7 @@ export function GestionBadges({
             enCours={enCours}
             onGenerer={generer}
             onRevoquer={revoquer}
+            onMarquerExportes={surSelection ? undefined : marquerExportes}
             onToutDeselectionner={() => setCoches(new Set())}
           />
 

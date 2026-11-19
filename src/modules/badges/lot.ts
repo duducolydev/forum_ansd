@@ -2,10 +2,14 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { enqueueBadgeGeneration, type Actor } from "@/modules/participants/service";
+import type { Actor } from "@/modules/participants/service";
 import { aRefaireAuGabarit, perimetreFiltre, type FiltreBadges } from "./bulk";
 import { GABARIT_BADGE } from "./format";
-import { enqueueBadgeReissueRender, enqueueBadgeRefresh } from "./jobs";
+import {
+  enqueueBadgeGenerationMany,
+  enqueueBadgeRefreshMany,
+  enqueueBadgeReissueRender,
+} from "./jobs";
 import { prepareReissue, revokeBadge } from "./service";
 
 /**
@@ -20,7 +24,7 @@ import { prepareReissue, revokeBadge } from "./service";
  * révoqué) ne puisse pas valoir d'un côté et pas de l'autre.
  *
  * Chaque badge passe par **la fonction de la fiche** — `revokeBadge`,
- * `enqueueBadgeGeneration`, `enqueueBadgeRefresh` — et donc par les mêmes
+ * `enqueueBadgeGenerationMany`, `enqueueBadgeRefreshMany` — et donc par les mêmes
  * règles, les mêmes e-mails et la même trace d'audit. Une cible refusée
  * n'arrête pas le lot : elle est mise de côté avec sa raison.
  */
@@ -195,6 +199,23 @@ export async function mettreEnFileEnLot(
   const ignores: { nom: string; raison: string }[] = [];
   let traites = 0;
 
+  /*
+   * Les mises en file sont **rassemblées puis envoyées d'un bloc**
+   * (19 novembre 2026).
+   *
+   * Un `enqueue` par cible faisait un aller-retour Redis par badge, précédé
+   * d'une lecture en base pour retrouver un badge que la requête de périmètre
+   * venait déjà de lire. Trois cents badges valaient six cents allers-retours
+   * dans le temps d'une requête HTTP, et le contrat de `JobQueue` donne la
+   * mesure : plus de trente secondes pour un millier. L'action rendait la main
+   * trop tard, quand elle la rendait.
+   *
+   * La réémission garde sa boucle : chacune crée une version en base, ce qui
+   * ne se groupe pas. Seules ses mises en file le sont.
+   */
+  const aRafraichir: string[] = [];
+  const aGenerer: string[] = [];
+
   for (const cible of lignes) {
     // Un badge révoqué ne se **régénère** pas : sa version est morte avec lui,
     // il faut en émettre une nouvelle. C'est le mode `reemission`, pas les
@@ -208,32 +229,58 @@ export async function mettreEnFileEnLot(
       continue;
     }
 
-    try {
-      if (mode === "reemission") {
-        /*
-         * La version suivante est créée ici, le rendu part en file : deux
-         * cents rendus dans la requête tiendraient la minute et demie. Le
-         * motif de la ligne révoquée reste le sien — on ne révoque rien de
-         * plus, on émet la suite.
-         */
-        const badge = await prepareReissue(cible.participantId, "", actor);
-        await enqueueBadgeReissueRender(cible.participantId, badge.version);
-        traites += 1;
-      } else if (mode === "manquants") {
-        await enqueueBadgeGeneration(cible.participantId);
-        traites += 1;
-      } else if (await enqueueBadgeRefresh(cible.participantId, { silencieux: true })) {
+    if (mode === "manquants") {
+      aGenerer.push(cible.participantId);
+      traites += 1;
+      continue;
+    }
+
+    if (mode !== "reemission") {
+      /*
+       * `badgeGenere` vient de la requête de périmètre, à quelques
+       * millisecondes d'ici : c'est la même vérification que faisait
+       * `enqueueBadgeRefresh`, sans la relire une fois par cible.
+       */
+      if (cible.badgeGenere) {
+        aRafraichir.push(cible.participantId);
         traites += 1;
       } else {
-        // Le badge a été révoqué ou supprimé entre la liste et le clic.
         ignores.push({ nom: cible.nom, raison: "plus de badge valide à refaire" });
       }
+      continue;
+    }
+
+    try {
+      /*
+       * La version suivante est créée ici, le rendu part en file : deux cents
+       * rendus dans la requête tiendraient la minute et demie. Le motif de la
+       * ligne révoquée reste le sien — on ne révoque rien de plus, on émet la
+       * suite.
+       */
+      const badge = await prepareReissue(cible.participantId, "", actor);
+      await enqueueBadgeReissueRender(cible.participantId, badge.version);
+      traites += 1;
     } catch (error) {
       ignores.push({
         nom: cible.nom,
         raison: error instanceof Error ? error.message : "erreur inattendue",
       });
     }
+  }
+
+  try {
+    await enqueueBadgeGenerationMany(aGenerer);
+    await enqueueBadgeRefreshMany(aRafraichir, { silencieux: true });
+  } catch (error) {
+    /*
+     * La file est tombée : aucun rendu n'est parti, et le dire est le seul
+     * service à rendre. Annoncer « 303 mis en file » sur une file muette
+     * enverrait chercher des badges qui ne viendront jamais.
+     */
+    throw new Error(
+      `La mise en file a échoué pour ${aGenerer.length + aRafraichir.length} badge(s) : ` +
+        (error instanceof Error ? error.message : "erreur inattendue"),
+    );
   }
 
   await audit.log({

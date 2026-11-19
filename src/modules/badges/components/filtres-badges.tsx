@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BoutonExportZip } from "./bouton-export-zip";
 
@@ -27,9 +28,18 @@ export function FiltresBadges({
   const parametres = useSearchParams();
   const router = useRouter();
 
+  /*
+   * Marquer ou non les badges emportés : un état local, pas un paramètre
+   * d'URL. Il décrit une intention du moment — « cet envoi part vraiment à
+   * l'impression » — et non le périmètre affiché, qui lui doit rester
+   * partageable et rechargeable à l'identique.
+   */
+  const [marquer, setMarquer] = useState(true);
+
   const categoryId = parametres.get("categoryId") ?? "";
   const delegationId = parametres.get("delegationId") ?? "";
   const etatBadge = parametres.get("etat") ?? "";
+  const dejaExporte = parametres.get("export") ?? "";
 
   function naviguer(cle: string, valeur: string) {
     const suite = new URLSearchParams(parametres.toString());
@@ -56,6 +66,7 @@ export function FiltresBadges({
     const suite = new URLSearchParams(requete);
     if (rangement === "plat") suite.set("rangement", "plat");
     else suite.delete("rangement");
+    if (marquer) suite.set("marquer", "1");
     return `/api/v1/badges/export${suite.toString() ? `?${suite}` : ""}`;
   }
 
@@ -116,6 +127,22 @@ export function FiltresBadges({
         </select>
       </div>
 
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="f-export" className="text-text-3 text-xs font-semibold">
+          Envoi à l&apos;impression
+        </label>
+        <select
+          id="f-export"
+          value={dejaExporte}
+          onChange={(evenement) => naviguer("export", evenement.target.value)}
+          className={`${champ} w-48`}
+        >
+          <option value="">Tous</option>
+          <option value="JAMAIS">Pas encore exportés</option>
+          <option value="DEJA">Déjà exportés</option>
+        </select>
+      </div>
+
       <span className="text-text-3 ml-auto text-sm">
         {total} participant(s) · {aGenerer} sans badge
       </span>
@@ -139,6 +166,22 @@ export function FiltresBadges({
         >
           Planche d&apos;impression
         </a>
+
+        {/*
+          Décocher sert à regarder une archive sans engager la suite : un export
+          de contrôle ne doit pas retirer des badges de la liste « à envoyer ».
+          Coché par défaut, parce que c'est le cas courant — on exporte pour
+          imprimer.
+        */}
+        <label className="text-text-2 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={marquer}
+            onChange={(evenement) => setMarquer(evenement.target.checked)}
+            className="size-4"
+          />
+          Marquer comme envoyés à l&apos;impression
+        </label>
       </div>
     </div>
   );

@@ -503,6 +503,11 @@ model Badge {
   emailedAt     DateTime?
   printedAt     DateTime?
   printedCount  Int       @default(0)
+  /// Dernier export ZIP qui a emporté ce badge — distinct de `printedAt`, qui
+  /// compte les impressions déclarées une à une depuis la fiche. Un badge parti
+  /// chez l'imprimeur n'est pas encore imprimé, et l'écart compte le jour J.
+  exportedAt    DateTime?
+  exportCount   Int       @default(0)
   revokedAt     DateTime?
   revokeReason  String?
   createdAt     DateTime  @default(now())

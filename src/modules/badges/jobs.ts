@@ -67,6 +67,60 @@ export function textesDuBadgeModifies(avant: TextesDuBadge, apres: TextesDuBadge
  * La clé d'idempotence est horodatée : contrairement à la première
  * génération, deux changements successifs doivent produire deux rendus.
  */
+/**
+ * Même chose pour tout un lot, **en un seul aller-retour** (19 novembre 2026).
+ *
+ * `enqueueBadgeRefresh` appelé en boucle faisait deux allers-retours par
+ * participant — une lecture pour retrouver le badge, une écriture Redis — soit
+ * six cents pour trois cents badges, dans le temps d'une requête HTTP. La
+ * mesure inscrite au contrat de `JobQueue` est sans appel : au-delà de trente
+ * secondes pour un millier de mises en file une par une.
+ *
+ * La lecture n'est pas reprise ici : l'appelant (`lot.ts`) vient d'interroger
+ * la base pour établir son périmètre et sait déjà quels badges sont valides et
+ * rendus. La refaire, c'est poser deux fois la même question à une seconde
+ * d'intervalle.
+ *
+ * L'horodatage de la clé est commun au lot : il distingue ce lot des rendus
+ * précédents, et la clé reste unique par participant à l'intérieur.
+ */
+export async function enqueueBadgeRefreshMany(
+  participantIds: string[],
+  options: { silencieux?: boolean } = {},
+): Promise<void> {
+  if (participantIds.length === 0) return;
+
+  registerBadgeJobs();
+  const lot = Date.now();
+  await jobQueue.enqueueMany<BadgeGenerateJobPayload>(
+    "badge.generate",
+    participantIds.map((participantId) => ({
+      payload: { participantId, silencieux: options.silencieux ?? false },
+      options: { idempotencyKey: `badge-refresh:${participantId}:${lot}` },
+    })),
+  );
+}
+
+/**
+ * Première génération pour tout un lot, en un seul aller-retour.
+ *
+ * Clé fixe par participant, comme `enqueueBadgeGeneration` dont c'est la forme
+ * groupée : deux transitions successives ne doivent pas empiler deux rendus
+ * identiques.
+ */
+export async function enqueueBadgeGenerationMany(participantIds: string[]): Promise<void> {
+  if (participantIds.length === 0) return;
+
+  registerBadgeJobs();
+  await jobQueue.enqueueMany<BadgeGenerateJobPayload>(
+    "badge.generate",
+    participantIds.map((participantId) => ({
+      payload: { participantId },
+      options: { idempotencyKey: `badge-generate:${participantId}` },
+    })),
+  );
+}
+
 export async function enqueueBadgeRefresh(
   participantId: string,
   options: { silencieux?: boolean } = {},

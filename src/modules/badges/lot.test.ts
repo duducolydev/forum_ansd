@@ -5,7 +5,8 @@ const {
   revokeBadge,
   prepareReissue,
   enqueueBadgeGeneration,
-  enqueueBadgeRefresh,
+  enqueueBadgeGenerationMany,
+  enqueueBadgeRefreshMany,
   enqueueBadgeReissueRender,
   log,
 } = vi.hoisted(() => ({
@@ -13,14 +14,19 @@ const {
   revokeBadge: vi.fn(),
   prepareReissue: vi.fn(),
   enqueueBadgeGeneration: vi.fn(),
-  enqueueBadgeRefresh: vi.fn(),
+  enqueueBadgeGenerationMany: vi.fn(),
+  enqueueBadgeRefreshMany: vi.fn(),
   enqueueBadgeReissueRender: vi.fn(),
   log: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({ prisma: { participant: { findMany } } }));
 vi.mock("@/modules/badges/service", () => ({ revokeBadge, prepareReissue }));
-vi.mock("@/modules/badges/jobs", () => ({ enqueueBadgeRefresh, enqueueBadgeReissueRender }));
+vi.mock("@/modules/badges/jobs", () => ({
+  enqueueBadgeGenerationMany,
+  enqueueBadgeRefreshMany,
+  enqueueBadgeReissueRender,
+}));
 vi.mock("@/modules/participants/service", () => ({ enqueueBadgeGeneration }));
 vi.mock("@/lib/audit", () => ({ audit: { log } }));
 
@@ -55,7 +61,8 @@ describe("périmètre d'un lot de badges", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     revokeBadge.mockResolvedValue({});
-    enqueueBadgeRefresh.mockResolvedValue(true);
+    enqueueBadgeRefreshMany.mockResolvedValue(undefined);
+    enqueueBadgeGenerationMany.mockResolvedValue(undefined);
     findMany.mockResolvedValue([]);
   });
 
@@ -146,29 +153,47 @@ describe("révocation de badges en lot", () => {
 describe("mise en file de la génération en lot", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    enqueueBadgeRefresh.mockResolvedValue(true);
+    enqueueBadgeRefreshMany.mockResolvedValue(undefined);
+    enqueueBadgeGenerationMany.mockResolvedValue(undefined);
     findMany.mockResolvedValue([]);
   });
 
-  it("génère les badges manquants par la file, jamais dans la requête", async () => {
+  /*
+   * Une seule mise en file pour tout le lot, et non une par badge : c'est ce
+   * qui fait tenir « Refaire 303 badges » dans le temps d'une requête
+   * (19 novembre 2026).
+   */
+  it("génère les badges manquants par la file, en un seul appel groupé", async () => {
     findMany.mockResolvedValue([ligne("p1", null), ligne("p2", null)]);
 
     const resultat = await mettreEnFileEnLot("e1", FILTRE, "manquants", acteur);
 
-    expect(enqueueBadgeGeneration).toHaveBeenCalledTimes(2);
-    expect(enqueueBadgeGeneration).toHaveBeenCalledWith("p1");
-    expect(enqueueBadgeRefresh).not.toHaveBeenCalled();
+    expect(enqueueBadgeGenerationMany).toHaveBeenCalledTimes(1);
+    expect(enqueueBadgeGenerationMany).toHaveBeenCalledWith(["p1", "p2"]);
+    expect(enqueueBadgeRefreshMany).toHaveBeenCalledWith([], expect.anything());
     expect(resultat.traites).toBe(2);
   });
 
-  it("refait les badges déjà émis sans e-mail, à version constante", async () => {
-    findMany.mockResolvedValue([ligne("p1")]);
+  it("refait les badges déjà émis sans e-mail, à version constante et d'un bloc", async () => {
+    findMany.mockResolvedValue([ligne("p1"), ligne("p2")]);
 
     const resultat = await mettreEnFileEnLot("e1", FILTRE, "existants", acteur);
 
-    expect(enqueueBadgeRefresh).toHaveBeenCalledWith("p1", { silencieux: true });
-    expect(enqueueBadgeGeneration).not.toHaveBeenCalled();
-    expect(resultat.traites).toBe(1);
+    expect(enqueueBadgeRefreshMany).toHaveBeenCalledTimes(1);
+    expect(enqueueBadgeRefreshMany).toHaveBeenCalledWith(["p1", "p2"], { silencieux: true });
+    expect(enqueueBadgeGenerationMany).toHaveBeenCalledWith([]);
+    expect(resultat.traites).toBe(2);
+  });
+
+  it("remonte une file indisponible plutôt que d'annoncer un lot parti", async () => {
+    // Sans cela, l'écran annoncerait « 303 badges mis en file » sur une file
+    // muette, et personne ne chercherait les badges avant le jour J.
+    findMany.mockResolvedValue([ligne("p1")]);
+    enqueueBadgeRefreshMany.mockRejectedValue(new Error("Redis injoignable"));
+
+    await expect(mettreEnFileEnLot("e1", FILTRE, "existants", acteur)).rejects.toThrow(
+      /1 badge\(s\).*Redis injoignable/,
+    );
   });
 
   it("renvoie vers la réémission pour un badge révoqué, au lieu de le régénérer", async () => {
@@ -216,8 +241,9 @@ describe("mise en file de la génération en lot", () => {
   });
 
   it("signale le badge disparu entre la liste et le clic", async () => {
-    findMany.mockResolvedValue([ligne("p1")]);
-    enqueueBadgeRefresh.mockResolvedValue(false);
+    // Le badge existe mais n'a jamais été rendu : rien à refaire. L'état vient
+    // de la requête de périmètre, et non plus d'une seconde lecture par cible.
+    findMany.mockResolvedValue([ligne("p1", { id: "b-p1", generatedAt: null, revokedAt: null })]);
 
     const resultat = await mettreEnFileEnLot("e1", FILTRE, "ancien-gabarit", acteur);
 

@@ -1004,8 +1004,15 @@ parcours complet d'un inconnu jusqu'au badge imprimable.
 
 - [x] Écran `/admin/badges` : filtres catégorie / délégation / état du badge, génération en lot du périmètre, compteur d'impressions.
 - [x] **Export ZIP, deux rangements** — un dossier par délégation (plus « Sans délégation ») pour la distribution du jour J ; ou tous les PDF à plat, la délégation passant dans le nom du fichier, pour imprimer ou transmettre le lot d'un bloc. Même périmètre dans les deux cas, celui du filtre.
+- [x] **Filtre « envoi à l'impression »** — chaque badge emporté par un export est marqué (`Badge.exportedAt`), ce qui permet de ne confier à l'imprimeur que le complément d'un envoi précédent. Le marquage est coché, donc déclinable pour un export de contrôle, et une action déclare un envoi passé que la base n'a pas vu — le journal n'en gardait que le nombre.
 - [x] **Planche d'impression** au format carte (85,6 × 54 mm), un badge par page.
 - [x] **Actions de masse sur deux périmètres** — tout le filtre, ou les seules lignes cochées : génération, reprise des badges déjà émis, passage à la maquette en vigueur, révocation (motif commun obligatoire).
+
+**Les mises en file partent d'un bloc** (19 novembre 2026). Un `enqueue` par cible faisait un
+aller-retour Redis par badge, précédé d'une lecture en base pour retrouver un badge que la requête
+de périmètre venait de lire : trois cents badges valaient six cents allers-retours dans le temps
+d'une requête. `enqueueMany` n'en fait qu'un, et l'état du badge est repris du périmètre au lieu
+d'être redemandé. Seule la réémission garde sa boucle — chacune crée une version en base.
 
 **La génération passe par la file, pas par la requête.** Rendre 500 badges prend environ deux
 minutes ; aucune requête HTTP ne doit attendre cela. L'écran annonce donc une **mise en file**, et

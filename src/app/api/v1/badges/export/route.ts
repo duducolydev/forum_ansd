@@ -26,10 +26,12 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const parametres = new URL(request.url).searchParams;
   const etat = parametres.get("etat");
+  const exporte = parametres.get("export");
   const filtre: FiltreBadges = {
     categoryId: parametres.get("categoryId") || undefined,
     delegationId: parametres.get("delegationId") || undefined,
     etat: etat === "SANS" || etat === "AVEC" || etat === "REVOQUE" ? etat : undefined,
+    export: exporte === "JAMAIS" || exporte === "DEJA" ? exporte : undefined,
   };
 
   const edition = await getActiveEdition();
@@ -38,6 +40,13 @@ export async function GET(request: Request): Promise<NextResponse> {
     filtre,
     session?.user?.id,
     parametres.get("rangement") === "plat" ? "plat" : "delegation",
+    /*
+     * Le marquage est **demandé**, jamais supposé. Cette route reste une URL
+     * GET : une adresse rejouée depuis l'historique, un signet ou un
+     * préchargement ne doit pas déclarer trois cents badges partis à
+     * l'impression. L'écran pose le drapeau quand l'opérateur l'a coché.
+     */
+    parametres.get("marquer") === "1",
   );
 
   return new NextResponse(new Uint8Array(archive.fichier), {

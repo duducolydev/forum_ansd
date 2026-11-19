@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, RefreshCw, ShieldOff, Sparkles } from "lucide-react";
+import { BadgeCheck, PackageCheck, RefreshCw, ShieldOff, Sparkles } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 import { confirmer } from "@/components/ui/confirmer";
 import type { ModeGeneration } from "../lot";
@@ -44,6 +44,7 @@ export function ActionsBadges({
   enCours,
   onGenerer,
   onRevoquer,
+  onMarquerExportes,
   onToutDeselectionner,
 }: {
   /** Vrai dès qu'une ligne est cochée : le périmètre devient la sélection. */
@@ -55,6 +56,12 @@ export function ActionsBadges({
   enCours: boolean;
   onGenerer: (mode: ModeGeneration) => void;
   onRevoquer: (motif: string) => void;
+  /**
+   * Déclare le filtre courant comme déjà parti à l'impression. Absent dès
+   * qu'une sélection est active : on rattrape un envoi passé, qui portait sur
+   * un périmètre entier, pas sur trois lignes cochées à la main.
+   */
+  onMarquerExportes?: () => void;
   onToutDeselectionner: () => void;
 }) {
   const [revocationOuverte, setRevocationOuverte] = useState(false);
@@ -182,6 +189,19 @@ export function ActionsBadges({
               </Bouton>
             )}
           </>
+        )}
+
+        {onMarquerExportes && (
+          <Bouton
+            ton="secondaire"
+            icone={PackageCheck}
+            type="button"
+            disabled={enCours || compteurs.existants === 0}
+            titre="Aucune archive n'est produite : déclare un envoi déjà parti, pour que le prochain export ne le reprenne pas."
+            onClick={onMarquerExportes}
+          >
+            {`Déclarer ${compteurs.existants} badge(s) déjà envoyés à l'impression`}
+          </Bouton>
         )}
 
         {peutRevoquer && (

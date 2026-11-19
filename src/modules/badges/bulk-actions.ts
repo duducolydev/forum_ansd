@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
+import { marquerExportes, type FiltreBadges } from "./bulk";
 import {
   mettreEnFileEnLot,
   perimetreSchema,
@@ -16,6 +17,11 @@ import {
 export interface BulkState {
   error?: string;
   resultat?: ResultatLotBadges;
+}
+
+export interface MarquageState {
+  error?: string;
+  marques?: number;
 }
 
 function premierMessage(error: unknown): string {
@@ -50,6 +56,30 @@ export async function genererEnLotAction(
 
     revalidatePath("/admin/badges");
     return { resultat };
+  } catch (error) {
+    return { error: premierMessage(error) };
+  }
+}
+
+/**
+ * Déclare le filtre courant comme déjà parti à l'impression, sans produire
+ * d'archive (`bulk.ts`, `marquerExportes`).
+ *
+ * Sert à rattraper les envois antérieurs au 19 novembre 2026, dont la base n'a
+ * gardé aucune trace nominative. Volontairement limité au **filtre** et non à
+ * la sélection : on déclare un envoi passé, qui portait sur un périmètre, pas
+ * sur trois lignes cochées à la main.
+ */
+export async function marquerExportesAction(filtre: FiltreBadges): Promise<MarquageState> {
+  const session = await auth();
+  if (!can(session, "badges.print")) return { error: "Permission refusée." };
+
+  try {
+    const edition = await getActiveEdition();
+    const marques = await marquerExportes(edition.id, filtre, session?.user?.id);
+
+    revalidatePath("/admin/badges");
+    return { marques };
   } catch (error) {
     return { error: premierMessage(error) };
   }

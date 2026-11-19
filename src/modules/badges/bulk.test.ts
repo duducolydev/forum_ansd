@@ -1,16 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findMany, get, log } = vi.hoisted(() => ({
+const { findMany, updateMany, get, log } = vi.hoisted(() => ({
   findMany: vi.fn(),
+  updateMany: vi.fn(),
   get: vi.fn(),
   log: vi.fn(),
 }));
 
-vi.mock("@/lib/db", () => ({ prisma: { participant: { findMany } } }));
+vi.mock("@/lib/db", () => ({
+  prisma: { participant: { findMany }, badge: { updateMany } },
+}));
 vi.mock("@/lib/storage", () => ({ fileStorage: { get } }));
 vi.mock("@/lib/audit", () => ({ audit: { log } }));
 
-import { exporterZip } from "./bulk";
+import { exporterZip, marquerExportes, perimetreFiltre } from "./bulk";
 
 /** Une ligne telle que la requête d'export la renvoie. */
 function ligne(lastName: string, publicId: string, delegation: string | null) {
@@ -19,7 +22,7 @@ function ligne(lastName: string, publicId: string, delegation: string | null) {
     firstName: "Awa",
     lastName,
     delegation: delegation ? { name: delegation } : null,
-    badges: [{ pdfPath: `badges/${publicId}.pdf`, version: 1 }],
+    badges: [{ id: `b-${publicId}`, pdfPath: `badges/${publicId}.pdf`, version: 1 }],
   };
 }
 
@@ -39,6 +42,7 @@ function nomsDansArchive(archive: Buffer): string[] {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  updateMany.mockResolvedValue({ count: 2 });
   get.mockResolvedValue(Buffer.from("%PDF-1.4"));
   findMany.mockResolvedValue([
     ligne("diouf", "FID26-1", "Sénégal"),
@@ -115,5 +119,115 @@ describe("badges manquants", () => {
     expect(archive.manquants).toBe(1);
     expect(archive.inclus).toBe(1);
     expect(nomsDansArchive(archive.fichier)).toEqual(["Sans delegation - NDIAYE-Awa-FID26-2.pdf"]);
+  });
+});
+
+/**
+ * Le marqueur « parti à l'impression » décide de ce que le prochain envoi
+ * reprendra. Se tromper d'un côté fait réimprimer trois cents badges ; de
+ * l'autre, quelqu'un se présente à l'accueil sans badge.
+ */
+describe("marquage des badges exportés", () => {
+  it("marque les badges réellement emportés par l'archive", async () => {
+    await exporterZip("e1", {}, "u1");
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["b-FID26-1", "b-FID26-2"] } },
+      data: { exportedAt: expect.any(Date), exportCount: { increment: 1 } },
+    });
+  });
+
+  it("ne marque rien quand l'export est demandé sans marquage", async () => {
+    await exporterZip("e1", {}, "u1", "delegation", false);
+
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it("ne marque pas un badge compté comme manquant", async () => {
+    // Le PDF n'est pas sur le disque : il ne part pas, donc il reste à envoyer.
+    get.mockRejectedValueOnce(new Error("ENOENT"));
+
+    await exporterZip("e1", {}, "u1");
+
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: { in: ["b-FID26-2"] } } }),
+    );
+  });
+
+  it("n'écrit pas quand l'archive est vide", async () => {
+    findMany.mockResolvedValue([]);
+
+    const archive = await exporterZip("e1", {}, "u1");
+
+    expect(archive.inclus).toBe(0);
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * La déclaration rétroactive : elle ne produit aucune archive, et ne doit
+ * toucher que des badges qui existent vraiment.
+ */
+describe("déclaration d'un envoi passé", () => {
+  it("marque le badge courant de chaque participant du filtre", async () => {
+    const marques = await marquerExportes("e1", { delegationId: "d1" }, "u1");
+
+    expect(marques).toBe(2);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["b-FID26-1", "b-FID26-2"] } },
+      data: { exportedAt: expect.any(Date), exportCount: { increment: 1 } },
+    });
+    expect(log).toHaveBeenCalledWith(expect.objectContaining({ action: "badge.marked_exported" }));
+  });
+
+  it("n'écrit rien quand le filtre ne désigne aucun badge rendu", async () => {
+    findMany.mockResolvedValue([{ badges: [] }]);
+
+    expect(await marquerExportes("e1", {}, "u1")).toBe(0);
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(log).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Le filtre d'export se croise avec celui d'état, et un croisement mal posé
+ * répondrait à une question qu'on n'a pas posée.
+ */
+describe("filtre « envoi à l'impression »", () => {
+  it("ne retient que les badges valides jamais exportés", () => {
+    const ou = perimetreFiltre("e1", { export: "JAMAIS" });
+
+    expect(ou.badges).toEqual({
+      some: { revokedAt: null, generatedAt: { not: null }, exportedAt: null },
+    });
+  });
+
+  it("se combine à l'état « généré » sans l'écraser", () => {
+    const ou = perimetreFiltre("e1", { etat: "AVEC", export: "DEJA" });
+
+    expect(ou.badges).toEqual({
+      some: { revokedAt: null, generatedAt: { not: null }, exportedAt: { not: null } },
+    });
+  });
+
+  it("laisse le filtre entier intact quand aucun envoi n'est demandé", () => {
+    expect(perimetreFiltre("e1", {}).badges).toBeUndefined();
+  });
+
+  it("ne désigne personne pour « sans badge » et « déjà exporté »", () => {
+    // Un badge qui n'existe pas ne peut pas être parti chez l'imprimeur : les
+    // deux clauses se contredisent, et c'est exactement ce qu'on veut.
+    const ou = perimetreFiltre("e1", { etat: "SANS", export: "DEJA" });
+
+    expect(ou.badges).toMatchObject({
+      none: expect.any(Object),
+      some: { exportedAt: { not: null } },
+    });
+  });
+
+  it("garde « sans badge » tel quel pour « pas encore exporté »", () => {
+    const ou = perimetreFiltre("e1", { etat: "SANS", export: "JAMAIS" });
+
+    expect(ou.badges).not.toHaveProperty("some");
   });
 });
