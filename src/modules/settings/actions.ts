@@ -6,8 +6,10 @@ import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
 import * as service from "./service";
 import { harmoniserPays } from "./pays-service";
+import { lireLienVideo } from "@/modules/medias/video";
 import {
   categorieSchema,
+  directSchema,
   identiteSchema,
   inscriptionsSchema,
   languesSchema,
@@ -170,6 +172,74 @@ export async function enregistrerPiedDePageAction(
 
   rafraichirToutLePublic();
   return { avis: "Pied de page enregistré." };
+}
+
+/**
+ * Réglages du direct.
+ *
+ * Deux conversions se font ici, et nulle part ailleurs :
+ *
+ * - **Le lien collé devient un couple fournisseur/identifiant.** C'est la
+ *   règle de `modules/medias/video.ts` : on ne remet jamais dans un `iframe`
+ *   une adresse saisie telle quelle. Un champ vidé coupe le lecteur sans
+ *   dépublier la page — l'intermède prend le relais.
+ * - **Les messages se saisissent en trois zones de texte, une par langue, un
+ *   message par ligne.** Plus simple à réordonner qu'une liste de champs, et
+ *   c'est l'ordre des lignes qui apparie les traductions. Une langue laissée
+ *   plus courte retombe sur le français, comme partout sur le site.
+ */
+export async function enregistrerDirectAction(
+  _etat: EtatAction,
+  formData: FormData,
+): Promise<EtatAction> {
+  try {
+    const { acteur, editionId } = await exigerParametreur();
+
+    const lien = String(formData.get("lien") ?? "").trim();
+    const video = lien ? lireLienVideo(lien) : null;
+    if (lien && !video) {
+      return {
+        erreur:
+          "Lien non reconnu : collez l'adresse de la diffusion YouTube (youtube.com/live/…, youtu.be/…) ou Vimeo.",
+      };
+    }
+
+    const lignes = (champ: string): string[] =>
+      String(formData.get(champ) ?? "")
+        .split("\n")
+        .map((ligne) => ligne.trim())
+        .filter((ligne) => ligne.length > 0)
+        .slice(0, 12);
+
+    const fr = lignes("messagesFr");
+    const en = lignes("messagesEn");
+    const pt = lignes("messagesPt");
+    const messages = fr.map((texte, rang) => ({
+      fr: texte,
+      en: en[rang] ?? texte,
+      pt: pt[rang] ?? en[rang] ?? texte,
+    }));
+
+    const valeurs = directSchema.parse({
+      actif: formData.get("actif") === "on",
+      video,
+      mode: formData.get("mode"),
+      margeMinutes: formData.get("margeMinutes"),
+      fond: formData.get("fond"),
+      messages,
+      secondesParMessage: formData.get("secondesParMessage"),
+    });
+    await service.enregistrerDirect(editionId, valeurs, acteur);
+  } catch (erreur) {
+    return { erreur: messageErreur(erreur) };
+  }
+
+  revalidatePath("/admin/parametres/live");
+  revalidatePath("/direct");
+  // La page figure dans le menu dès qu'elle est publiée : l'en-tête est rendu
+  // par le gabarit public, qu'il faut donc rafraîchir lui aussi.
+  rafraichirToutLePublic();
+  return { avis: "Diffusion enregistrée." };
 }
 
 export async function enregistrerCategorieAction(

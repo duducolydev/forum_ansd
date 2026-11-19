@@ -179,6 +179,108 @@ export const piedDePageSchema = z.object({
   liens: z.array(lienPiedDePage).max(12).default([]),
 });
 
+/* ---------------------------------------------------------------------------
+   Diffusion en direct (19 novembre 2026)
+
+   Le Forum est retransmis sur YouTube pendant les trois jours. La page
+   publique `/direct` n'héberge rien : elle intègre le lecteur de la
+   plateforme, pour les mêmes raisons que la médiathèque (`modules/medias/
+   video.ts`) — ni bande passante ni transcodage ici, et le débit adaptatif
+   d'une plateforme vaut mieux qu'un fichier unique pour un public en 4G.
+
+   Trois décisions portées par ce schéma :
+
+   1. **Le lien se règle ici, jamais dans le code.** Il n'existe pas avant la
+      veille, et une coupure — réseau, courant, fin de diffusion — en fait
+      naître un nouveau. Un lien en dur transformerait chaque incident en
+      déploiement.
+   2. **On ne stocke que le fournisseur et l'identifiant**, jamais l'adresse
+      collée : règle de `video.ts`, qui interdit de réinjecter telle quelle
+      une saisie dans un `iframe`.
+   3. **L'antenne suit le programme.** Le navigateur ne peut pas savoir si le
+      flux émet vraiment : `connect-src 'self'` interdit d'interroger YouTube,
+      et aucune clé d'API n'est en jeu. L'état se déduit donc des horaires des
+      sessions publiées, avec une marge, et la régie garde deux interrupteurs
+      pour forcer l'un ou l'autre quand la journée dérape.
+--------------------------------------------------------------------------- */
+
+export const MODES_DIRECT = [
+  { cle: "auto", label: "Automatique — à l'antenne pendant les sessions" },
+  { cle: "antenne", label: "Forcer l'antenne — lecteur affiché en permanence" },
+  { cle: "intermede", label: "Forcer l'intermède — écran d'attente en permanence" },
+] as const;
+
+export const CLES_MODES_DIRECT = ["auto", "antenne", "intermede"] as const;
+
+export const FONDS_DIRECT = [
+  { cle: "reseau", label: "Réseau de données (le fond du site)" },
+  { cle: "ondes", label: "Ondes colorées" },
+  { cle: "chiffres", label: "Pluie de chiffres" },
+  { cle: "aucun", label: "Aucun — fond uni" },
+] as const;
+
+export const CLES_FONDS_DIRECT = ["reseau", "ondes", "chiffres", "aucun"] as const;
+
+/** Un message d'intermède, dans les trois langues. */
+const messageDirect = z.object({
+  fr: z.string().trim().max(200),
+  en: z.string().trim().max(200),
+  pt: z.string().trim().max(200),
+});
+
+/**
+ * Messages d'attente d'origine. Ils tournent à l'écran entre deux sessions :
+ * un écran noir laisserait croire à une panne, et le public qui suit de loin
+ * n'a aucun moyen de savoir si la diffusion a cessé ou si la salle est en
+ * pause.
+ */
+export const MESSAGES_DIRECT_PAR_DEFAUT: z.infer<typeof messageDirect>[] = [
+  {
+    fr: "Pause — la diffusion reprend dans un instant.",
+    en: "Break — the broadcast resumes shortly.",
+    pt: "Pausa — a transmissão recomeça dentro de momentos.",
+  },
+  {
+    fr: "Des données fiables pour des décisions qui comptent.",
+    en: "Reliable data for decisions that matter.",
+    pt: "Dados fiáveis para decisões que contam.",
+  },
+  {
+    fr: "Le programme complet des trois journées est en ligne.",
+    en: "The full three-day programme is online.",
+    pt: "O programa completo dos três dias está disponível.",
+  },
+  {
+    fr: "Merci de suivre le Forum international sur les données.",
+    en: "Thank you for following the International Data Forum.",
+    pt: "Obrigado por acompanhar o Fórum Internacional sobre Dados.",
+  },
+];
+
+export const directSchema = z.object({
+  /** Publie la page `/direct`. Fermée, l'adresse répond 404. */
+  actif: z.boolean().default(false),
+  /** Flux retransmis, reconnu à la saisie puis réduit à son identifiant. */
+  video: z
+    .object({
+      fournisseur: z.enum(["youtube", "vimeo"]),
+      identifiant: z.string().trim().max(40),
+    })
+    .nullable()
+    .default(null),
+  mode: z.enum(CLES_MODES_DIRECT).default("auto"),
+  /**
+   * Minutes de battement autour de l'horaire d'une session. Une séance
+   * commence rarement à la minute prévue : sans marge, le lecteur
+   * apparaîtrait après l'ouverture et disparaîtrait avant les questions.
+   */
+  margeMinutes: z.coerce.number().int().min(0).max(60).default(10),
+  fond: z.enum(CLES_FONDS_DIRECT).default("reseau"),
+  messages: z.array(messageDirect).max(12).default(MESSAGES_DIRECT_PAR_DEFAUT),
+  /** Durée d'affichage de chaque message, en secondes. */
+  secondesParMessage: z.coerce.number().int().min(4).max(60).default(9),
+});
+
 /*
  * Valeurs par défaut de chaque section, calculées une fois au chargement.
  * `.default({})` ne suffit pas en zod v4 : la valeur par défaut doit être
@@ -188,6 +290,7 @@ export const INSCRIPTIONS_PAR_DEFAUT = inscriptionsSchema.parse({});
 export const THEME_PAR_DEFAUT = themeSchema.parse({});
 export const PIED_DE_PAGE_PAR_DEFAUT = piedDePageSchema.parse({});
 export const LANGUES_PAR_DEFAUT = languesSchema.parse({});
+export const DIRECT_PAR_DEFAUT = directSchema.parse({});
 
 /**
  * Document complet. `.passthrough()` volontaire : le seed d'origine y avait posé
@@ -200,6 +303,7 @@ export const parametresSchema = z
     theme: themeSchema.default(THEME_PAR_DEFAUT),
     piedDePage: piedDePageSchema.default(PIED_DE_PAGE_PAR_DEFAUT),
     langues: languesSchema.default(LANGUES_PAR_DEFAUT),
+    direct: directSchema.default(DIRECT_PAR_DEFAUT),
   })
   .passthrough();
 
@@ -207,6 +311,8 @@ export type Inscriptions = z.infer<typeof inscriptionsSchema>;
 export type ThemeEdition = z.infer<typeof themeSchema>;
 export type PiedDePage = z.infer<typeof piedDePageSchema>;
 export type Langues = z.infer<typeof languesSchema>;
+export type Direct = z.infer<typeof directSchema>;
+export type MessageDirect = z.infer<typeof messageDirect>;
 export type Parametres = z.infer<typeof parametresSchema>;
 
 /** Identité de l'édition : ces champs sont des colonnes, pas du JSON. */

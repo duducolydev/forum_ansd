@@ -2662,3 +2662,52 @@ html[data-motion] [data-reveal]:not([data-vu]) .icone-dessinee * {
   text-transform: uppercase;
   white-space: nowrap;
 }
+
+/* ===========================================================================
+   Écran du direct (19 novembre 2026)
+
+   La page `/direct` alterne entre le lecteur de la diffusion et un écran
+   d'attente, pendant les pauses et les transitions. Les règles du fichier
+   s'appliquent telles quelles :
+
+   1. L'état de repos est **visible**. L'apparition d'un message ne joue que
+      sous `html[data-motion]` ; sans JavaScript, sous mouvement réduit ou
+      avec « Animations : aucune », le message est simplement là, immobile.
+      Les deux coupe-circuits plus haut dans ce fichier suffisent à l'arrêter.
+   2. On n'anime que `transform` et `opacity`.
+   3. Le décor (canvas) ne porte aucun texte : le message est posé sur sa
+      propre plaque, dont le contraste ne dépend d'aucune couche animée.
+   =========================================================================== */
+
+@keyframes direct-message-entree {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.8rem, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+html[data-motion] .direct-message {
+  animation: direct-message-entree 520ms var(--ease) both;
+}
+
+/* Pastille « à l'antenne » : battement lent, jamais clignotant — un point qui
+   clignote vite est un signal d'alerte, pas un état normal. */
+@keyframes direct-pouls {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+html[data-motion] .direct-pouls {
+  animation: direct-pouls 2.4s ease-in-out infinite;
+}

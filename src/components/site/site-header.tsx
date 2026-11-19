@@ -6,6 +6,7 @@ import { getServerTheme } from "@/lib/theme";
 import { languesProposees } from "@/i18n/locale";
 import { getActiveEdition } from "@/lib/edition";
 import { heureOuverture } from "@/lib/ouverture";
+import { parametresPourGabarit } from "@/modules/settings/service";
 import { MiniCountdown } from "@/components/home/MiniCountdown";
 import { ThemeToggle } from "./theme-toggle";
 import { LocaleSwitcher } from "./locale-switcher";
@@ -60,6 +61,22 @@ export async function SiteHeader() {
         }
       : { kind: "link", href: entry.href, label: t(entry.key) },
   );
+
+  /*
+   * « En direct » n'est pas dans `NAV_ENTRIES` : l'entrée n'a de sens que
+   * pendant la retransmission, et une adresse qui répond 404 n'a rien à faire
+   * dans un menu. Elle est posée juste avant « Partenaires », en vue directe —
+   * pendant les trois jours, c'est ce que le visiteur vient chercher.
+   */
+  const { direct } = await parametresPourGabarit();
+  if (direct.actif) {
+    const rang = entries.findIndex((entry) => entry.kind === "link" && entry.href === "/sponsors");
+    entries.splice(rang < 0 ? entries.length : rang, 0, {
+      kind: "link",
+      href: "/direct",
+      label: t("live"),
+    });
+  }
 
   return (
     <header className="entete-site fond-navbar sticky top-0 z-50 shadow-[0_1px_0_rgb(8_44_78/0.12)]">

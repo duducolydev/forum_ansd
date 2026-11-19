@@ -230,3 +230,82 @@ export function assombrirJusquAuSeuil(hex: string, seuil = CONTRASTE_MIN): strin
   }
   return "#000000";
 }
+
+// --- Diffusion en direct ----------------------------------------------------
+
+/**
+ * Un créneau de diffusion : une session publiée, réduite à ce dont l'écran du
+ * direct a besoin. Les bornes sont des horodatages ISO, parce que cette
+ * fonction tourne **dans le navigateur** : elle est réévaluée toutes les dix
+ * secondes pour basculer de l'intermède à l'antenne sans recharger la page.
+ */
+export interface CreneauDirect {
+  titre: string;
+  /** Début de la session, ISO 8601 (UTC = heure de Dakar). */
+  debut: string;
+  fin: string;
+}
+
+export type ModeDirect = "auto" | "antenne" | "intermede";
+
+export interface EtatDirect {
+  /** Vrai quand le lecteur doit être à l'écran. */
+  antenne: boolean;
+  /** Session en cours, marge comprise. */
+  courant: CreneauDirect | null;
+  /** Prochaine session, pour annoncer la reprise et la décompter. */
+  suivant: CreneauDirect | null;
+  /** Plus rien à diffuser : toutes les sessions connues sont passées. */
+  termine: boolean;
+}
+
+/**
+ * Décide de ce que montre la page `/direct` à un instant donné.
+ *
+ * Le navigateur **ne peut pas** savoir si le flux émet réellement : le CSP
+ * interdit tout appel sortant (`connect-src 'self'`), et interroger l'API de
+ * YouTube supposerait une clé et une dépendance de plus le jour J. L'état se
+ * déduit donc du programme, seule source dont le portail dispose — avec une
+ * marge, parce qu'une séance commence rarement à la minute prévue.
+ *
+ * Les deux modes forcés existent pour la journée où le programme ne décrit
+ * plus la réalité : une séance qui déborde d'une heure, une cérémonie ajoutée,
+ * une panne. La régie reprend alors la main sans toucher aux horaires
+ * annoncés aux inscrits.
+ *
+ * Fonction pure : aucune base, aucune horloge implicite. `maintenant` est
+ * toujours fourni, ce qui la rend testable minute par minute.
+ */
+export function etatDirect(
+  mode: ModeDirect,
+  margeMinutes: number,
+  creneaux: readonly CreneauDirect[],
+  maintenant: Date,
+): EtatDirect {
+  const instant = maintenant.getTime();
+  const marge = Math.max(0, margeMinutes) * 60_000;
+
+  const ordonnes = [...creneaux]
+    .filter((creneau) => Number.isFinite(Date.parse(creneau.debut)))
+    .sort((a, b) => Date.parse(a.debut) - Date.parse(b.debut));
+
+  const courant =
+    ordonnes.find((creneau) => {
+      const debut = Date.parse(creneau.debut) - marge;
+      const fin = Date.parse(creneau.fin) + marge;
+      return instant >= debut && instant <= fin;
+    }) ?? null;
+
+  const suivant = ordonnes.find((creneau) => Date.parse(creneau.debut) - marge > instant) ?? null;
+
+  /*
+   * « Terminé » n'est vrai que s'il y avait quelque chose à diffuser : sans
+   * programme publié, la page ne doit pas annoncer une fin qui n'a pas eu
+   * lieu — elle attend, ce que dit l'intermède sans compte à rebours.
+   */
+  const termine = ordonnes.length > 0 && !courant && !suivant;
+
+  const antenne = mode === "antenne" ? true : mode === "intermede" ? false : courant !== null;
+
+  return { antenne, courant, suivant, termine };
+}

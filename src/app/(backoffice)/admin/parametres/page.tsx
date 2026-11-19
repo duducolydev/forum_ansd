@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Globe2, KeyRound, LayoutTemplate, Tags } from "lucide-react";
+import { Globe2, KeyRound, LayoutTemplate, Radio, Tags } from "lucide-react";
 import { LienBouton } from "@/components/ui/bouton";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -56,6 +56,9 @@ export default async function ParametresPage() {
           </LienBouton>
           <LienBouton href="/admin/parametres/pays" icone={Globe2}>
             Pays
+          </LienBouton>
+          <LienBouton href="/admin/parametres/live" icone={Radio}>
+            Live
           </LienBouton>
         </div>
       </div>

@@ -237,6 +237,32 @@ export async function enregistrerLangues(
   );
 }
 
+/**
+ * Réglages de la diffusion en direct.
+ *
+ * Journalisé comme le reste : pendant les trois jours, le lien et le mode
+ * changeront plusieurs fois par jour, parfois dans l'urgence et pas toujours
+ * par la même personne. Savoir qui a coupé l'antenne et quand vaut mieux que
+ * de le reconstituer après coup.
+ */
+export async function enregistrerDirect(
+  editionId: string,
+  valeurs: Parametres["direct"],
+  acteur: Acteur,
+): Promise<void> {
+  const edition = await prisma.edition.findUniqueOrThrow({ where: { id: editionId } });
+  const parametres = lireParametres(edition);
+
+  await enregistrer(
+    editionId,
+    { ...parametres, direct: valeurs },
+    acteur,
+    "edition.live_updated",
+    parametres.direct,
+    valeurs,
+  );
+}
+
 export async function enregistrerIdentite(
   editionId: string,
   valeurs: Identite,
