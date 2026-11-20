@@ -9,6 +9,9 @@ import { getFluxRecent, getPresenceDuJour, listerJours } from "@/modules/attenda
 import { LiveFeed } from "@/modules/attendance/components/live-feed";
 import { ExportPanel } from "@/modules/attendance/components/export-panel";
 import { SelecteurJour } from "@/modules/attendance/components/selecteur-jour";
+import { audienceDuJour } from "@/modules/direct/audience-service";
+import { CourbeAudience } from "@/modules/direct/components/courbe-audience";
+import { lireParametres } from "@/modules/settings/service";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +19,12 @@ const dateLongue = new Intl.DateTimeFormat("fr-FR", {
   weekday: "long",
   day: "numeric",
   month: "long",
+  timeZone: "UTC",
+});
+
+const heureUtc = new Intl.DateTimeFormat("fr-FR", {
+  hour: "2-digit",
+  minute: "2-digit",
   timeZone: "UTC",
 });
 
@@ -76,7 +85,7 @@ export default async function PresencesPage({
   }
   const disponibles = [...raccourcis.values()].sort((a, b) => a.getTime() - b.getTime());
 
-  const [presence, flux, categories] = await Promise.all([
+  const [presence, flux, categories, audience] = await Promise.all([
     getPresenceDuJour(edition.id, choisi),
     getFluxRecent(edition.id),
     prisma.participantCategory.findMany({
@@ -84,7 +93,12 @@ export default async function PresencesPage({
       orderBy: { sortOrder: "asc" },
       select: { id: true, labelFr: true },
     }),
+    audienceDuJour(edition.id, choisi),
   ]);
+
+  // La carte du direct n'a de sens que si la retransmission existe : sur une
+  // édition sans diffusion, elle n'afficherait que des zéros.
+  const direct = lireParametres(edition).direct;
 
   return (
     <div className="flex flex-col gap-6">
@@ -135,6 +149,46 @@ export default async function PresencesPage({
           hint="Tous passages, dont refusés"
         />
       </div>
+
+      {direct.actif && (
+        <section className="border-border bg-surface rounded-xl border p-5">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="text-heading text-sm font-semibold">Diffusion en direct</h3>
+            <p className="text-text-3 text-xs">
+              Lecteurs ouverts sur le portail. Les spectateurs qui suivent depuis YouTube ne sont
+              pas comptés ici.
+            </p>
+          </div>
+
+          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
+            <StatTile
+              label="Pic de spectateurs"
+              value={audience.pic}
+              hint={
+                audience.picA
+                  ? `Lecteurs simultanés, à ${heureUtc.format(new Date(audience.picA))}`
+                  : "Lecteurs simultanés sur la journée"
+              }
+              emphasis
+            />
+            <StatTile
+              label="Spectateurs uniques"
+              value={audience.uniques}
+              hint="Lecteurs distincts ouverts dans la journée"
+              emphasis
+            />
+            {audience.maintenant !== null && (
+              <StatTile
+                label="En ce moment"
+                value={audience.maintenant}
+                hint="Lecteurs actifs à l’instant"
+              />
+            )}
+          </div>
+
+          <CourbeAudience points={audience.courbe} />
+        </section>
+      )}
 
       <ExportPanel
         jour={enIso(choisi)}

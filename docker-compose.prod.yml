@@ -32,6 +32,24 @@ services:
       SMTP_CAMPAGNE_USER: ${SMTP_CAMPAGNE_USER:-}
       SMTP_CAMPAGNE_PASSWORD: ${SMTP_CAMPAGNE_PASSWORD:-}
       SMTP_CAMPAGNE_FROM: ${SMTP_CAMPAGNE_FROM:-}
+      # Boîte « Accès » (badges, liens de connexion) — découpage du 20/11/2026, voir lib/mail.ts.
+      SMTP_ACCES_HOST: ${SMTP_ACCES_HOST:-}
+      SMTP_ACCES_PORT: ${SMTP_ACCES_PORT:-}
+      SMTP_ACCES_USER: ${SMTP_ACCES_USER:-}
+      SMTP_ACCES_PASSWORD: ${SMTP_ACCES_PASSWORD:-}
+      SMTP_ACCES_FROM: ${SMTP_ACCES_FROM:-}
+      # Boîte « Inscription » (accusés, imports, invitations) — découpage du 20/11/2026, voir lib/mail.ts.
+      SMTP_INSCRIPTION_HOST: ${SMTP_INSCRIPTION_HOST:-}
+      SMTP_INSCRIPTION_PORT: ${SMTP_INSCRIPTION_PORT:-}
+      SMTP_INSCRIPTION_USER: ${SMTP_INSCRIPTION_USER:-}
+      SMTP_INSCRIPTION_PASSWORD: ${SMTP_INSCRIPTION_PASSWORD:-}
+      SMTP_INSCRIPTION_FROM: ${SMTP_INSCRIPTION_FROM:-}
+      # Boîte « Participation » (confirmations du comité) — découpage du 20/11/2026, voir lib/mail.ts.
+      SMTP_PARTICIPATION_HOST: ${SMTP_PARTICIPATION_HOST:-}
+      SMTP_PARTICIPATION_PORT: ${SMTP_PARTICIPATION_PORT:-}
+      SMTP_PARTICIPATION_USER: ${SMTP_PARTICIPATION_USER:-}
+      SMTP_PARTICIPATION_PASSWORD: ${SMTP_PARTICIPATION_PASSWORD:-}
+      SMTP_PARTICIPATION_FROM: ${SMTP_PARTICIPATION_FROM:-}
       # Autorité de certification supplémentaire (18 novembre 2026).
       #
       # Le FortiGate de l'ANSD **inspecte le SSL** : il intercepte la connexion
@@ -192,6 +210,24 @@ services:
       SMTP_CAMPAGNE_USER: ${SMTP_CAMPAGNE_USER:-}
       SMTP_CAMPAGNE_PASSWORD: ${SMTP_CAMPAGNE_PASSWORD:-}
       SMTP_CAMPAGNE_FROM: ${SMTP_CAMPAGNE_FROM:-}
+      # Boîte « Accès » (badges, liens de connexion) — découpage du 20/11/2026, voir lib/mail.ts.
+      SMTP_ACCES_HOST: ${SMTP_ACCES_HOST:-}
+      SMTP_ACCES_PORT: ${SMTP_ACCES_PORT:-}
+      SMTP_ACCES_USER: ${SMTP_ACCES_USER:-}
+      SMTP_ACCES_PASSWORD: ${SMTP_ACCES_PASSWORD:-}
+      SMTP_ACCES_FROM: ${SMTP_ACCES_FROM:-}
+      # Boîte « Inscription » (accusés, imports, invitations) — découpage du 20/11/2026, voir lib/mail.ts.
+      SMTP_INSCRIPTION_HOST: ${SMTP_INSCRIPTION_HOST:-}
+      SMTP_INSCRIPTION_PORT: ${SMTP_INSCRIPTION_PORT:-}
+      SMTP_INSCRIPTION_USER: ${SMTP_INSCRIPTION_USER:-}
+      SMTP_INSCRIPTION_PASSWORD: ${SMTP_INSCRIPTION_PASSWORD:-}
+      SMTP_INSCRIPTION_FROM: ${SMTP_INSCRIPTION_FROM:-}
+      # Boîte « Participation » (confirmations du comité) — découpage du 20/11/2026, voir lib/mail.ts.
+      SMTP_PARTICIPATION_HOST: ${SMTP_PARTICIPATION_HOST:-}
+      SMTP_PARTICIPATION_PORT: ${SMTP_PARTICIPATION_PORT:-}
+      SMTP_PARTICIPATION_USER: ${SMTP_PARTICIPATION_USER:-}
+      SMTP_PARTICIPATION_PASSWORD: ${SMTP_PARTICIPATION_PASSWORD:-}
+      SMTP_PARTICIPATION_FROM: ${SMTP_PARTICIPATION_FROM:-}
       # Autorité de certification supplémentaire (18 novembre 2026).
       #
       # Le FortiGate de l'ANSD **inspecte le SSL** : il intercepte la connexion

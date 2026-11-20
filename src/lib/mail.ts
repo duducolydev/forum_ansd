@@ -58,17 +58,73 @@ import { ENVOIS_PAR_MINUTE } from "./cadence-envoi";
  * se connecte**. Le 23 novembre au matin, jour d'ouverture, cela voudrait dire
  * des agents d'accueil devant un écran de connexion muet.
  *
- * - `transactionnel` : tout ce qui part à une personne à la fois et qu'elle
- *   attend — codes de connexion, confirmations, badges, accusés de contact.
- *   C'est la boîte historique (`SMTP_*`), et le défaut.
- * - `campagne` : les envois en nombre — rappels J-7 et J-1, invitations,
- *   envois groupés du BackOffice (`SMTP_CAMPAGNE_*`).
+ * ## Cinq boîtes depuis le 20 novembre 2026
  *
- * Sans `SMTP_CAMPAGNE_*`, les deux voies retombent sur la boîte historique :
- * le développement (Mailpit) et un déploiement pas encore migré continuent de
- * fonctionner sans rien changer.
+ * Deux ne suffisaient pas : `registration_confirmed` et `badge_ready`, les deux
+ * familles les plus lourdes, partageaient le compteur de la transactionnelle et
+ * l'ont épuisé à 12:50 ce jour-là. Le détail des boîtes, de leurs préfixes
+ * d'environnement et de ce qu'elles portent est dans `BOITES` ci-dessous.
+ *
+ * **Qui va où n'est plus décidé ici, ni par l'appelant.** La carte
+ * `modèle → boîte` est dans `modules/notifications/boites.ts`, et
+ * `sendTemplatedEmail` l'applique. Un modèle ajouté au catalogue sans boîte
+ * fait échouer `boites.test.ts` : la question est posée à l'auteur plutôt
+ * qu'oubliée.
  */
-export type BoiteEnvoi = "transactionnel" | "campagne";
+export type BoiteEnvoi = "transactionnel" | "campagne" | "acces" | "inscription" | "participation";
+
+/**
+ * Les boîtes, leur préfixe d'environnement et ce qu'elles portent
+ * (20 novembre 2026).
+ *
+ * ## Pourquoi cinq et non deux
+ *
+ * Deux boîtes séparaient le **critique à faible volume** du **volumineux**.
+ * Cela a tenu une journée : le 20 novembre à 12:50, la boîte transactionnelle
+ * a épuisé ses cinq cents envois sur les confirmations et les badges, et les
+ * onze messages suivants sont tombés en `550-5.4.5`. La séparation était bonne,
+ * son grain était trop grossier — les deux familles les plus lourdes
+ * partageaient le même compteur.
+ *
+ * Cinq comptes, un par famille d'usage, rendent cinq quotas étanches. Ce n'est
+ * pas un découpage thématique : c'est une répartition de **volume**, et chaque
+ * ligne ci-dessous se lit « ce qui ne doit pas pouvoir assécher le reste ».
+ *
+ * ## Le préfixe, et le repli
+ *
+ * Chaque boîte lit `<PRÉFIXE>HOST`, `_PORT`, `_USER`, `_PASSWORD`, `_FROM`.
+ * Aucune de ces variables renseignée, la boîte **retombe sur la
+ * transactionnelle** : c'est ce qui fait tourner le développement (Mailpit) et
+ * un déploiement pas encore migré sans rien changer. Un compte qui n'existe pas
+ * encore ne casse donc rien — il n'est simplement pas étanche.
+ */
+export const BOITES: Record<BoiteEnvoi, { prefixe: string; libelle: string; sert: string }> = {
+  transactionnel: {
+    prefixe: "SMTP_",
+    libelle: "Transactionnelle",
+    sert: "codes du BackOffice, presse, contact, délégations",
+  },
+  campagne: {
+    prefixe: "SMTP_CAMPAGNE_",
+    libelle: "Campagne",
+    sert: "rappels, newsletters, annonces de programme",
+  },
+  acces: {
+    prefixe: "SMTP_ACCES_",
+    libelle: "Accès",
+    sert: "badges, liens de connexion, espace intervenant",
+  },
+  inscription: {
+    prefixe: "SMTP_INSCRIPTION_",
+    libelle: "Inscription",
+    sert: "accusés de réception, imports, invitations",
+  },
+  participation: {
+    prefixe: "SMTP_PARTICIPATION_",
+    libelle: "Participation",
+    sert: "confirmations de participation",
+  },
+};
 
 export interface ConfigBoite {
   host: string;
@@ -151,35 +207,37 @@ export function configBoite(
 
   if (boite === "transactionnel") return transactionnel;
 
-  // Une seule variable suffit à déclarer la seconde boîte : l'hôte, s'il
-  // diffère, ou l'identifiant seul quand c'est le même fournisseur — le cas
-  // d'un second compte Gmail.
+  const prefixe = BOITES[boite].prefixe;
+
+  // Une seule variable suffit à déclarer une boîte : l'hôte, s'il diffère, ou
+  // l'identifiant seul quand c'est le même fournisseur — le cas d'un second
+  // compte Gmail.
   //
-  // Depuis Mailjet, le cas courant est l'inverse : **aucune** `SMTP_CAMPAGNE_*`,
-  // parce qu'un seul compte porte les deux voies. Le repli ci-dessous n'est
-  // donc plus un défaut de configuration mais le réglage normal, et le pool
-  // partagé (`transport`) fait que les deux voies ne rouvrent pas deux fois la
-  // même connexion.
-  const host = env.SMTP_CAMPAGNE_HOST || (env.SMTP_CAMPAGNE_USER ? env.SMTP_HOST : "");
+  // Rien de renseigné, la boîte retombe sur la transactionnelle. C'est le
+  // réglage du développement (Mailpit) et celui d'un compte pas encore ouvert :
+  // le pool partagé (`transport`) fait alors que les deux voies ne rouvrent pas
+  // deux fois la même connexion.
+  const host = env[`${prefixe}HOST`] || (env[`${prefixe}USER`] ? env.SMTP_HOST : "");
   if (!host) return transactionnel;
 
-  const user = env.SMTP_CAMPAGNE_USER || undefined;
+  const user = env[`${prefixe}USER`] || undefined;
   // Gmail réécrit le `From` d'un message avec l'adresse authentifiée, sauf
-  // alias vérifié : annoncer l'adresse historique depuis le compte de campagne
+  // alias vérifié : annoncer l'adresse historique depuis une autre boîte
   // donnerait un expéditeur incohérent. Le nom affiché, lui, est repris — les
-  // participants doivent voir le même « Forum international sur les données ».
+  // participants doivent voir le même « Forum international sur les données »
+  // quelle que soit la boîte qui a porté le message.
   //
   // Un relais à domaine validé (Mailjet) ne réécrit rien : l'identifiant y est
-  // une clé d'API, pas une adresse. D'où `SMTP_CAMPAGNE_FROM` en premier — une
-  // seconde boîte Mailjet doit annoncer `forum26@ansd.sn`, pas sa clé d'API.
+  // une clé d'API, pas une adresse. D'où `<PRÉFIXE>FROM` en premier — une boîte
+  // Mailjet doit annoncer `forum26@ansd.sn`, pas sa clé d'API.
   const from =
-    env.SMTP_CAMPAGNE_FROM || (user ? `${nomAffiche(env.SMTP_FROM)} <${user}>`.trim() : undefined);
+    env[`${prefixe}FROM`] || (user ? `${nomAffiche(env.SMTP_FROM)} <${user}>`.trim() : undefined);
 
   return {
     host,
-    port: portOuDefaut(env.SMTP_CAMPAGNE_PORT, env.SMTP_PORT),
+    port: portOuDefaut(env[`${prefixe}PORT`], env.SMTP_PORT),
     user,
-    pass: env.SMTP_CAMPAGNE_PASSWORD || undefined,
+    pass: env[`${prefixe}PASSWORD`] || undefined,
     from,
     replyTo: env.SMTP_REPLY_TO || adresseSeule(env.SMTP_FROM) || undefined,
   };

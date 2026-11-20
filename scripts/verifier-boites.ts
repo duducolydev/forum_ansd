@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { ImapFlow } from "imapflow";
 import nodemailer from "nodemailer";
-import { configBoite, type BoiteEnvoi, type ConfigBoite } from "../src/lib/mail";
+import { BOITES, configBoite, type BoiteEnvoi, type ConfigBoite } from "../src/lib/mail";
 import { configsImap } from "../src/modules/notifications/rebonds";
 
 /**
@@ -53,14 +53,13 @@ import { configsImap } from "../src/modules/notifications/rebonds";
 
 const destinataire = process.argv[2];
 
-const VOIES: { boite: BoiteEnvoi; libelle: string; sert: string }[] = [
-  {
-    boite: "transactionnel",
-    libelle: "Transactionnelle",
-    sert: "codes de connexion, confirmations, badges",
-  },
-  { boite: "campagne", libelle: "Campagne", sert: "rappels, invitations, envois groupés" },
-];
+/**
+ * Les voies sont lues dans `BOITES` et non recopiées ici : depuis le découpage
+ * du 20 novembre 2026, une boîte ajoutée dans `lib/mail.ts` doit être vérifiée
+ * sans que personne ait à y penser. C'est la liste qu'on oublie de tenir à jour
+ * qui laisse passer un mot de passe d'application mal recopié.
+ */
+const VOIES = (Object.keys(BOITES) as BoiteEnvoi[]).map((boite) => ({ boite, ...BOITES[boite] }));
 
 function masquer(adresse: string | undefined): string {
   return adresse || "(non renseignée)";
@@ -109,8 +108,8 @@ async function principal(): Promise<void> {
   let echecs = 0;
 
   const transactionnel = configBoite("transactionnel");
-  const campagne = configBoite("campagne");
-  const partagees = transactionnel.user === campagne.user && transactionnel.host === campagne.host;
+  const repliee = (config: ConfigBoite): boolean =>
+    config.user === transactionnel.user && config.host === transactionnel.host;
 
   console.log("Boîtes d'envoi\n");
 
@@ -122,9 +121,9 @@ async function principal(): Promise<void> {
     console.log(`    expéditeur ${masquer(config.from)}`);
     if (config.replyTo) console.log(`    réponses  ${config.replyTo}`);
 
-    if (voie.boite === "campagne" && partagees) {
+    if (voie.boite !== "transactionnel" && repliee(config)) {
       console.log(
-        "    ! SMTP_CAMPAGNE_* absentes : les campagnes repartent sur la boîte\n" +
+        `    ! ${voie.prefixe}* absentes : cette voie repart sur la boîte\n` +
           "      transactionnelle. Les quotas ne sont pas étanches.",
       );
     }
@@ -160,7 +159,7 @@ async function principal(): Promise<void> {
    */
   const releves = new Set(imaps.map((imap) => imap.user));
   for (const voie of VOIES) {
-    if (voie.boite === "campagne" && partagees) continue;
+    if (voie.boite !== "transactionnel" && repliee(configBoite(voie.boite))) continue;
     const config = configBoite(voie.boite);
     if (!config.user || releves.has(config.user)) continue;
     console.log(`  ${config.user} — PAS DE RELEVÉ AUTOMATIQUE`);
@@ -199,7 +198,7 @@ async function principal(): Promise<void> {
   if (destinataire) {
     console.log(`Messages d'essai vers ${destinataire}\n`);
     for (const voie of VOIES) {
-      if (voie.boite === "campagne" && partagees) continue;
+      if (voie.boite !== "transactionnel" && repliee(configBoite(voie.boite))) continue;
       try {
         await envoyerEssai(configBoite(voie.boite), destinataire, voie.libelle);
         console.log(`  ${voie.libelle} — parti`);

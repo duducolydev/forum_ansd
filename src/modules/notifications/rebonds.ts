@@ -1,6 +1,6 @@
 import { ImapFlow, type FetchMessageObject, type MessageStructureObject } from "imapflow";
 import { prisma } from "@/lib/db";
-import { configBoite } from "@/lib/mail";
+import { BOITES, configBoite, type BoiteEnvoi } from "@/lib/mail";
 import { analyserAvis, motifRebond, type AvisRebond } from "./avis-rebond";
 
 /**
@@ -65,18 +65,26 @@ export function configImap(
  * compte, et il serait relu deux fois à chaque passage.
  */
 export function configsImap(env: Record<string, string | undefined> = process.env): ConfigImap[] {
-  const campagne = configBoite("campagne", env);
-  const candidats = [
-    configImap(env),
-    campagne.host === "smtp.gmail.com" && campagne.user && campagne.pass
-      ? {
-          host: "imap.gmail.com",
-          port: Number(env.IMAP_PORT || 993),
-          user: campagne.user,
-          pass: campagne.pass,
-        }
-      : null,
-  ];
+  // Toutes les boîtes déclarées, et non plus la seule campagne : depuis le
+  // découpage en cinq comptes (20 novembre 2026), un badge refusé rebondit
+  // dans `acces.forumansd@`, une confirmation dans celui de la participation.
+  // N'en relever que deux laisserait ces avis-là hors de l'historique, et une
+  // adresse morte resterait « Envoyé » au journal.
+  const parBoite = (Object.keys(BOITES) as BoiteEnvoi[])
+    .filter((boite) => boite !== "transactionnel")
+    .map((boite) => configBoite(boite, env))
+    .map((config) =>
+      config.host === "smtp.gmail.com" && config.user && config.pass
+        ? {
+            host: "imap.gmail.com",
+            port: Number(env.IMAP_PORT || 993),
+            user: config.user,
+            pass: config.pass,
+          }
+        : null,
+    );
+
+  const candidats = [configImap(env), ...parBoite];
 
   const vues = new Set<string>();
   return candidats.filter((config): config is ConfigImap => {

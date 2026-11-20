@@ -206,6 +206,54 @@ model Edition {
   contributions         Contribution[]
   mediaAlbums           MediaAlbum[]
   mediaItems            MediaItem[]
+  liveViewers           LiveViewer[]
+  liveAudienceSamples   LiveAudienceSample[]
+}
+
+/// Spectateur de la retransmission (20 novembre 2026).
+///
+/// Une ligne par **lecteur ouvert**, pas par personne : le jeton est tiré par
+/// le navigateur et ne vit que le temps de l'onglet. Aucun rattachement à un
+/// participant, aucun cookie, aucune adresse conservée — le portail mesure une
+/// affluence, il ne suit personne. Deux onglets comptent donc pour deux, et
+/// c'est assumé : le chiffre annoncé est un nombre de lecteurs.
+///
+/// La table est bornée par le nombre de spectateurs distincts, pas par le
+/// nombre de battements : chaque battement **met à jour** la ligne du jeton.
+/// Elle sert aussi de décompte des spectateurs uniques de la journée.
+model LiveViewer {
+  /// Jeton anonyme tiré par le navigateur : 32 caractères hexadécimaux.
+  id         String   @id @db.VarChar(32)
+  editionId  String
+  /// Journée du Forum, figée à la première apparition du jeton.
+  day        DateTime @db.Date
+  startedAt  DateTime @default(now())
+  lastSeenAt DateTime
+
+  edition Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+
+  @@index([editionId, day])
+  @@index([editionId, lastSeenAt])
+}
+
+/// Relevé périodique du nombre de spectateurs simultanés.
+///
+/// Sans ces relevés, on ne saurait dire après coup combien de personnes
+/// suivaient à un moment donné : la table des spectateurs ne porte que le
+/// dernier état. Un point toutes les cinq minutes suffit à dessiner la courbe
+/// d'une journée et à en tirer le pic, pour un volume dérisoire.
+model LiveAudienceSample {
+  id        String   @id @default(cuid())
+  editionId String
+  day       DateTime @db.Date
+  /// Début du créneau de cinq minutes relevé.
+  at        DateTime
+  viewers   Int
+
+  edition Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+
+  @@unique([editionId, at])
+  @@index([editionId, day])
 }
 
 model User {

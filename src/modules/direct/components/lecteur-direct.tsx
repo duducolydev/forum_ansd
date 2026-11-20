@@ -1,9 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PlayCircle } from "lucide-react";
 import { selon } from "@/lib/langue";
 import { NOM_FOURNISSEUR, urlLecteur, vignetteFournisseur } from "@/modules/medias/video";
+import { BATTEMENT_MS } from "../audience";
+
+/**
+ * Jeton anonyme de ce spectateur, tiré une fois par onglet.
+ *
+ * Dans `sessionStorage` et non dans un cookie : rien n'est envoyé au serveur
+ * à chaque requête, rien ne survit à la fermeture de l'onglet, et il n'y a
+ * donc aucun consentement à demander pour un nombre tiré au hasard qui ne
+ * désigne personne. La contrepartie est assumée : deux onglets comptent pour
+ * deux spectateurs.
+ */
+function jetonDeSession(): string | null {
+  try {
+    const existant = sessionStorage.getItem("direct-jeton");
+    if (existant) return existant;
+    const octets = new Uint8Array(16);
+    crypto.getRandomValues(octets);
+    const jeton = [...octets].map((octet) => octet.toString(16).padStart(2, "0")).join("");
+    sessionStorage.setItem("direct-jeton", jeton);
+    return jeton;
+  } catch {
+    // Navigation privée, stockage bloqué : on renonce à compter plutôt que de
+    // tirer un jeton neuf à chaque battement, qui gonflerait l'affluence.
+    return null;
+  }
+}
 
 /**
  * Lecteur de la diffusion en direct.
@@ -39,6 +65,43 @@ export function LecteurDirect({
   const [lance, setLance] = useState(false);
   const source = urlLecteur(fournisseur, identifiant);
   const affiche = vignetteFournisseur(fournisseur, identifiant);
+
+  /*
+   * Affluence : un battement par minute, **à partir du lancement** et pas
+   * avant. Compter l'ouverture de la page ferait passer pour des spectateurs
+   * tous ceux qui tombent sur l'écran d'attente pendant une pause.
+   *
+   * Le battement continue onglet masqué : une retransmission s'écoute aussi
+   * en arrière-plan, et s'arrêter là ferait disparaître de la courbe des gens
+   * qui suivent vraiment. Un onglet oublié compte donc lui aussi — c'est la
+   * limite du procédé, et le BackOffice annonce des « lecteurs ouverts ».
+   *
+   * Aucune erreur n'est remontée : une statistique perdue ne doit pas
+   * troubler la lecture.
+   */
+  useEffect(() => {
+    if (!lance) return;
+    const jeton = jetonDeSession();
+    if (!jeton) return;
+
+    const controleur = new AbortController();
+    const battre = () => {
+      void fetch("/api/v1/direct/presence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jeton }),
+        signal: controleur.signal,
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    battre();
+    const minuteur = setInterval(battre, BATTEMENT_MS);
+    return () => {
+      clearInterval(minuteur);
+      controleur.abort();
+    };
+  }, [lance]);
 
   /*
    * Couple illisible : ni `urlLecteur` ni le rendu ne doivent improviser. Le

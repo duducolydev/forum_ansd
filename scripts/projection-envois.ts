@@ -1,7 +1,8 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/db";
-import { configBoite } from "../src/lib/mail";
+import { BOITES, configBoite, type BoiteEnvoi } from "../src/lib/mail";
 import { CATALOGUE } from "../src/modules/notifications/catalogue";
+import { boitePourModele } from "../src/modules/notifications/boites";
 import { dureeCampagneMinutes } from "../src/lib/cadence-envoi";
 
 /**
@@ -48,13 +49,10 @@ import { dureeCampagneMinutes } from "../src/lib/cadence-envoi";
  */
 const PLAFOND_PAR_BOITE = Number(process.env.SMTP_PLAFOND_QUOTIDIEN) || 500;
 
-/** Les modèles qui partent par la voie « campagne » (`lib/mail.ts`). */
-const MODELES_CAMPAGNE = new Set([
-  "reminder_j7",
-  "reminder_j1",
-  "invitation",
-  "invitation_reminder",
-]);
+// La répartition des modèles entre les boîtes n'est plus recopiée ici : elle
+// est dans `modules/notifications/boites.ts`, avec les envois eux-mêmes. Une
+// liste tenue en double finit par mentir, et une projection qui ment sur la
+// boîte qui va déborder ne sert à rien.
 
 function titre(texte: string): void {
   console.log(`\n${texte}`);
@@ -126,64 +124,86 @@ async function principal(): Promise<void> {
     _count: { _all: true },
   });
 
-  let campagne = 0;
-  let transactionnel = 0;
+  const envoyes = new Map<BoiteEnvoi, number>();
   for (const { templateKey, _count } of envois) {
-    if (MODELES_CAMPAGNE.has(templateKey)) campagne += _count._all;
-    else transactionnel += _count._all;
+    const boite = boitePourModele(templateKey);
+    envoyes.set(boite, (envoyes.get(boite) ?? 0) + _count._all);
   }
 
-  const boiteT = configBoite("transactionnel");
-  const boiteC = configBoite("campagne");
-  const separees = boiteT.user !== boiteC.user;
+  /*
+   * Les **comptes**, et non les voies.
+   *
+   * Un quota appartient à une boîte aux lettres, pas à une catégorie de
+   * message : deux voies repliées sur le même compte — faute de
+   * `SMTP_<VOIE>_*`, le cas du développement — partagent un seul plafond. Les
+   * regrouper par `hôte:identifiant` évite de compter deux fois une capacité
+   * qui n'existe qu'une fois, ce qui était l'erreur à ne pas reproduire en
+   * passant de deux boîtes à cinq.
+   */
+  const comptes = new Map<string, { voies: string[]; envoyes: number; user?: string }>();
+  for (const boite of Object.keys(BOITES) as BoiteEnvoi[]) {
+    const config = configBoite(boite);
+    const cle = `${config.host}:${config.user ?? ""}`;
+    const entree = comptes.get(cle) ?? { voies: [], envoyes: 0, user: config.user };
+    entree.voies.push(BOITES[boite].libelle);
+    entree.envoyes += envoyes.get(boite) ?? 0;
+    comptes.set(cle, entree);
+  }
 
   titre("Capacité des boîtes (24 h glissantes)");
-  ligne(`Transactionnelle — ${boiteT.user ?? "?"}`, `${transactionnel} envoyés`);
-  ligne("  reste estimé", Math.max(0, PLAFOND_PAR_BOITE - transactionnel));
-
-  if (separees) {
-    ligne(`Campagne — ${boiteC.user ?? "?"}`, `${campagne} envoyés`);
-    ligne("  reste estimé", Math.max(0, PLAFOND_PAR_BOITE - campagne));
-    ligne("CAPACITÉ TOTALE PAR JOUR", PLAFOND_PAR_BOITE * 2);
-  } else {
-    // Ce n'était qu'une anomalie du temps de Gmail, où deux comptes rendaient
-    // les quotas étanches. Avec un relais à plan souscrit, une boîte unique est
-    // le réglage attendu : le message informe, il n'alerte plus.
-    console.log(`\n  Une seule boîte : les deux voies partagent ${PLAFOND_PAR_BOITE} envois/jour.`);
-    ligne("CAPACITÉ TOTALE PAR JOUR", PLAFOND_PAR_BOITE);
+  for (const compte of comptes.values()) {
+    ligne(`${compte.voies.join(" + ")} — ${compte.user ?? "?"}`, `${compte.envoyes} envoyés`);
+    ligne("  reste estimé", Math.max(0, PLAFOND_PAR_BOITE - compte.envoyes));
+  }
+  const capacite = PLAFOND_PAR_BOITE * comptes.size;
+  ligne("CAPACITÉ TOTALE PAR JOUR", capacite);
+  if (comptes.size < Object.keys(BOITES).length) {
+    console.log(
+      `\n  ${Object.keys(BOITES).length} voies pour ${comptes.size} compte(s) : ` +
+        "celles qui partagent une ligne ci-dessus partagent aussi un quota.",
+    );
   }
 
   // -------------------------------------------------------------------------
   // Le verdict
   // -------------------------------------------------------------------------
 
-  const capacite = separees ? PLAFOND_PAR_BOITE * 2 : PLAFOND_PAR_BOITE;
-  const picCampagne = Math.max(resteJ1, total);
-  const picTransactionnel = enAttente * 2;
+  /*
+   * Les pics attendus, voie par voie.
+   *
+   * Une validation en lot envoie deux messages par personne — la confirmation
+   * et le badge — mais depuis le 20 novembre 2026 ils partent de **deux
+   * comptes distincts** (`boites.ts`). Le pic d'une boîte est donc d'un
+   * message par personne, non de deux : c'est précisément ce que la séparation
+   * a acheté, et l'ancien `enAttente * 2` sur une seule boîte le masquait.
+   */
+  const pics: { voie: BoiteEnvoi; libelle: string; messages: number }[] = [
+    { voie: "campagne", libelle: "La campagne la plus lourde", messages: Math.max(resteJ1, total) },
+    { voie: "participation", libelle: "Les confirmations en attente", messages: enAttente },
+    { voie: "acces", libelle: "Les badges en attente", messages: enAttente },
+  ];
 
   titre("Verdict");
-  console.log(`  Plus grosse campagne prévue ....... ${picCampagne} messages`);
-  console.log(`  Plus gros pic transactionnel ...... ${picTransactionnel} messages`);
-  console.log(`  Capacité quotidienne .............. ${capacite} messages\n`);
+  for (const pic of pics) {
+    console.log(`  ${pic.libelle.padEnd(34, ".")} ${pic.messages} messages`);
+  }
+  console.log(`  ${"Capacité quotidienne".padEnd(34, ".")} ${capacite} messages\n`);
 
   const alertes: string[] = [];
-  if (picCampagne > PLAFOND_PAR_BOITE) {
+  for (const pic of pics) {
+    if (pic.messages <= PLAFOND_PAR_BOITE) continue;
+    const jours = Math.ceil(pic.messages / PLAFOND_PAR_BOITE);
     alertes.push(
-      `La campagne la plus lourde (${picCampagne}) dépasse le plafond d'une boîte ` +
-        `(${PLAFOND_PAR_BOITE}). Elle débordera sur le lendemain.`,
+      `${pic.libelle} (${pic.messages}) dépasse le plafond de la boîte « ` +
+        `${BOITES[pic.voie].libelle} » (${PLAFOND_PAR_BOITE}) : ${jours} jours d'écoulement, ` +
+        `ou des lots de ${PLAFOND_PAR_BOITE}.`,
     );
   }
-  if (picTransactionnel > PLAFOND_PAR_BOITE) {
+  const aEcouler = pics.reduce((somme, pic) => somme + pic.messages, 0);
+  if (aEcouler > capacite) {
     alertes.push(
-      `Une validation en lot (${picTransactionnel} messages) dépasse le plafond de la ` +
-        `boîte transactionnelle. Valider par tranches de ${Math.floor(PLAFOND_PAR_BOITE / 2)}.`,
-    );
-  }
-  if (picCampagne + picTransactionnel > capacite) {
-    alertes.push(
-      `Le total à écouler (${picCampagne + picTransactionnel}) dépasse la capacité ` +
-        `quotidienne (${capacite}) : il faut étaler sur plusieurs jours, ou une boîte ` +
-        `à plus fort plafond.`,
+      `Le total à écouler (${aEcouler}) dépasse la capacité quotidienne (${capacite}) : ` +
+        "il faut étaler sur plusieurs jours, ou un compte de plus.",
     );
   }
 

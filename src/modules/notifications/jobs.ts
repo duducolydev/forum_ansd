@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import type { Actor } from "@/modules/participants/service";
 import { bulkWhere, sendTemplatedEmail, type BulkFilter } from "./service";
+import { BOITE_PAR_MODELE } from "./boites";
 
 export interface NotificationJobPayload {
   editionId: string;
@@ -216,9 +217,15 @@ export async function enqueueBulk(options: {
         templateKey: options.templateKey,
         to: recipient.email,
         participantId: recipient.id,
-        // Envoi en nombre : la boîte de campagne, dont le quota est étanche de
-        // celui des codes de connexion et des confirmations (`lib/mail.ts`).
-        boite: "campagne",
+        // La boîte du modèle (`boites.ts`), et non plus la campagne pour tout
+        // ce qui part en nombre : un envoi groupé de badges doit sortir par le
+        // compte des badges, dont le quota est dimensionné pour.
+        //
+        // Le repli reste la campagne — et non le défaut transactionnel de
+        // `boitePourModele` : un modèle créé en base sans passer par le
+        // catalogue, envoyé **en nombre**, a toutes les propriétés d'une
+        // campagne et aucune de celles d'un code de connexion.
+        boite: BOITE_PAR_MODELE[options.templateKey] ?? "campagne",
         variables: {
           prenom: recipient.firstName,
           nom: recipient.lastName,

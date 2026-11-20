@@ -6,6 +6,7 @@ import { audit } from "@/lib/audit";
 import type { Actor } from "@/modules/participants/service";
 import { resoudreVariablesProgramme, variablesProgrammeUtilisees } from "./recap-programme";
 import { variablesDeclarees } from "./catalogue";
+import { boitePourModele } from "./boites";
 import {
   baliserLiens,
   corpsCourriel,
@@ -233,9 +234,13 @@ export async function sendTemplatedEmail(options: {
   /** Adresse de réponse (formulaire de contact). */
   replyTo?: string;
   /**
-   * Boîte d'envoi (`lib/mail.ts`). Par défaut `transactionnel` : c'est aux
-   * quelques points d'entrée qui envoient **en nombre** de se déclarer, pas à
-   * la centaine d'envois unitaires de penser à le faire.
+   * Boîte d'envoi (`lib/mail.ts`), forcée par l'appelant.
+   *
+   * À ne renseigner que pour contourner la carte : par défaut, la boîte est
+   * celle que `boites.ts` attache au modèle. L'ancien défaut — tout en
+   * transactionnel sauf aux rares appelants qui pensaient à se déclarer —
+   * mettait les badges et les confirmations sur le même quota qu'un code de
+   * connexion, et c'est ce quota qui est tombé le 20 novembre à 12:50.
    */
   boite?: BoiteEnvoi;
 }): Promise<void> {
@@ -288,7 +293,7 @@ export async function sendTemplatedEmail(options: {
       html,
       text: body,
       replyTo: options.replyTo,
-      boite: options.boite,
+      boite: options.boite ?? boitePourModele(options.templateKey),
     });
 
     // Le serveur SMTP a accepté la connexion mais refusé ce destinataire :
