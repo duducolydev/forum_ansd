@@ -1,4 +1,5 @@
-import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, type LucideIcon } from "lucide-react";
 
 /**
  * Tuile d'indicateur. Une valeur seule n'est pas un graphique : pas de barre à
@@ -34,6 +35,7 @@ export function StatTile({
   icone: Icone,
   ton = "neutre",
   rang = 0,
+  href,
 }: {
   label: string;
   value: string | number;
@@ -43,16 +45,19 @@ export function StatTile({
   ton?: TonTuile;
   /** Rang d'affichage : décale l'apparition pour donner un sens de lecture. */
   rang?: number;
+  /**
+   * Rend la tuile cliquable : le chiffre mène au détail qui le compose.
+   *
+   * Un `<a>` et non un `onClick` : on doit pouvoir l'ouvrir dans un onglet,
+   * la copier, l'atteindre au clavier. La flèche signale l'affordance — une
+   * tuile qui réagit au survol sans rien annoncer ne se découvre pas.
+   */
+  href?: string;
 }) {
   const tons = TONS[ton];
 
-  return (
-    <div
-      className="border-border bg-surface carte-relief apparait relative flex flex-col gap-1 overflow-hidden rounded-xl border p-4"
-      /* Le décalage est plafonné : au-delà de huit tuiles, l'attente devient
-         perceptible et l'effet se retourne contre la lisibilité. */
-      style={{ animationDelay: `${Math.min(rang, 8) * 45}ms` }}
-    >
+  const contenu = (
+    <>
       <span aria-hidden className={`absolute inset-x-0 top-0 h-[3px] ${tons.accent} opacity-70`} />
 
       <div className="flex items-start justify-between gap-2">
@@ -68,6 +73,35 @@ export function StatTile({
         {typeof value === "number" ? value.toLocaleString("fr-FR") : value}
       </span>
       {hint && <span className="text-text-3 text-xs">{hint}</span>}
+    </>
+  );
+
+  const habillage =
+    "border-border bg-surface carte-relief apparait relative flex flex-col gap-1 overflow-hidden rounded-xl border p-4";
+  /* Le décalage est plafonné : au-delà de huit tuiles, l'attente devient
+     perceptible et l'effet se retourne contre la lisibilité. */
+  const retard = { animationDelay: `${Math.min(rang, 8) * 45}ms` };
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        style={retard}
+        className={`${habillage} hover:border-primary focus-visible:outline-primary group transition-colors focus-visible:outline-2 focus-visible:outline-offset-2`}
+      >
+        {contenu}
+        <ArrowUpRight
+          aria-hidden
+          size={16}
+          className="text-text-3 group-hover:text-primary absolute right-3 bottom-3 transition-colors"
+        />
+      </Link>
+    );
+  }
+
+  return (
+    <div className={habillage} style={retard}>
+      {contenu}
     </div>
   );
 }

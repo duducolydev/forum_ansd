@@ -60,6 +60,9 @@ export async function GET(
         publicId: ligne.publicId,
         nom: ligne.nom,
         organisation: ligne.organisation,
+        // La feuille d'emargement d'une session n'affiche pas la fonction,
+        // et les inscriptions a une session ne la portent pas.
+        fonction: null,
         categorie: ligne.statut === "WAITLISTED" ? `${ligne.categorie} (attente)` : ligne.categorie,
         pays: ligne.pays,
         premierPassage: null,

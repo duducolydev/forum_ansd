@@ -65,8 +65,13 @@ export function MobileNav({
                 key={entry.href}
                 href={entry.href}
                 onClick={() => setOpen(false)}
-                className="text-text-2 hover:bg-blue-soft hover:text-blue-text transition-tout rounded-lg px-3 py-2 text-sm font-medium"
+                className={
+                  entry.enAvant
+                    ? "pastille-direct flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold"
+                    : "text-text-2 hover:bg-blue-soft hover:text-blue-text transition-tout rounded-lg px-3 py-2 text-sm font-medium"
+                }
               >
+                {entry.enAvant && <span aria-hidden className="direct-pouls point-direct" />}
                 {entry.label}
               </Link>
             ),

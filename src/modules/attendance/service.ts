@@ -220,6 +220,8 @@ export interface LigneListe {
   publicId: string;
   nom: string;
   organisation: string | null;
+  /** Fonction declaree a l'inscription : utile a la liste consultable. */
+  fonction: string | null;
   categorie: string;
   pays: string;
   /** Heure du premier passage autorisé du jour, ou `null` si absent. */
@@ -281,6 +283,7 @@ export async function getListePresence(
       firstName: true,
       lastName: true,
       organization: true,
+      jobTitle: true,
       country: true,
       category: { select: { labelFr: true } },
       scanLogs: {
@@ -301,6 +304,7 @@ export async function getListePresence(
     publicId: participant.publicId,
     nom: `${participant.lastName.toUpperCase()} ${participant.firstName}`,
     organisation: participant.organization,
+    fonction: participant.jobTitle,
     categorie: participant.category.labelFr,
     pays: participant.country,
     premierPassage: participant.scanLogs[0]?.scannedAt ?? null,

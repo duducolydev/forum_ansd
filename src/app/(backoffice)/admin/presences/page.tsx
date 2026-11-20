@@ -133,8 +133,9 @@ export default async function PresencesPage({
         <StatTile
           label="Présents"
           value={presence.kpis.presents}
-          hint="Personnes distinctes entrées ce jour"
+          hint="Personnes distinctes entrées ce jour — voir la liste"
           emphasis
+          href={`/admin/presences/liste?jour=${enIso(choisi)}`}
         />
         <StatTile
           label="Taux de présence"

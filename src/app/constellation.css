@@ -2711,3 +2711,45 @@ html[data-motion] .direct-message {
 html[data-motion] .direct-pouls {
   animation: direct-pouls 2.4s ease-in-out infinite;
 }
+
+/* ---------------------------------------------------------------------------
+   « En direct » dans le menu (20 novembre 2026)
+
+   L'entrée n'apparaît que pendant la retransmission, et elle doit se voir :
+   c'est, ces trois jours-là, ce que le visiteur vient chercher. Une pastille
+   pleine plutôt qu'un simple gras — le menu en compte déjà plusieurs, et un
+   gras de plus ne se serait pas distingué.
+
+   Contrastes mesurés : le rouge #c62f2a tient 5,47:1 sous texte blanc (le
+   #d64541 de la palette n'atteint que 4,39:1, sous le seuil AA) et 4,44:1
+   contre le bleu clair de la barre, au-dessus des 3:1 exigés d'un élément
+   d'interface. Le point qui bat ne porte aucun texte et ne compte donc dans
+   aucune mesure ; il s'arrête avec les autres animations sous mouvement
+   réduit et sous « Animations : aucune ».
+--------------------------------------------------------------------------- */
+
+.site-public .pastille-direct {
+  background: #c62f2a;
+  color: #ffffff;
+  transition:
+    background-color 160ms var(--ease),
+    transform 160ms var(--ease);
+}
+
+.site-public .pastille-direct:hover {
+  background: #a11c17;
+  transform: translateY(-1px);
+}
+
+.site-public .pastille-direct:focus-visible {
+  outline: 2px solid #081a33;
+  outline-offset: 2px;
+}
+
+.site-public .point-direct {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #ffffff;
+  flex: none;
+}

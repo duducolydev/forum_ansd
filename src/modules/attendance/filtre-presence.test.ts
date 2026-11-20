@@ -9,6 +9,7 @@ function ligne(nom: string, premierPassage: Date | null): LigneListe {
     publicId: nom,
     nom,
     organisation: null,
+    fonction: null,
     categorie: "Délégué",
     pays: "Sénégal",
     premierPassage,

@@ -225,6 +225,7 @@ describe("présences (brief §5.6)", () => {
             publicId: "X",
             nom: "<script>alert(1)</script>",
             organisation: null,
+            fonction: null,
             categorie: "c",
             pays: "p",
             premierPassage: null,

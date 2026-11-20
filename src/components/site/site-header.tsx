@@ -16,7 +16,8 @@ import { NavDropdown } from "./nav-dropdown";
 import { NAV_ENTRIES, isGroup } from "./nav-items";
 
 export type ResolvedNavEntry =
-  | { kind: "link"; href: string; label: string }
+  /** `enAvant` : entree mise en surbrillance, reservee a la retransmission. */
+  | { kind: "link"; href: string; label: string; enAvant?: boolean }
   | { kind: "group"; label: string; children: { href: string; label: string }[] };
 
 /**
@@ -75,6 +76,7 @@ export async function SiteHeader() {
       kind: "link",
       href: "/direct",
       label: t("live"),
+      enAvant: true,
     });
   }
 
@@ -132,8 +134,13 @@ export async function SiteHeader() {
               <Link
                 key={entry.href}
                 href={entry.href}
-                className={`${SUR_ENTETE} lien-menu rounded-lg px-2 py-2 text-sm font-medium whitespace-nowrap`}
+                className={
+                  entry.enAvant
+                    ? "pastille-direct ml-1 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-bold whitespace-nowrap"
+                    : `${SUR_ENTETE} lien-menu rounded-lg px-2 py-2 text-sm font-medium whitespace-nowrap`
+                }
               >
+                {entry.enAvant && <span aria-hidden className="direct-pouls point-direct" />}
                 {entry.label}
               </Link>
             ),
