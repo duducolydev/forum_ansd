@@ -61,6 +61,14 @@ export const VARIABLES_PARTICIPANT = [
   "identifiant",
   "lien_espace",
   "lien_badge",
+  /*
+   * Deux adresses publiques, fixes (20 novembre 2026). Elles ne dépendent de
+   * personne, mais elles sont ici plutôt qu'à la charge de chaque émetteur :
+   * un envoi groupé depuis le BackOffice ne passe aucune variable en propre,
+   * et « suivez le direct : {{lien_direct}} » serait parti tel quel.
+   */
+  "lien_direct",
+  "lien_programme",
 ] as const;
 
 export const CATALOGUE: Record<string, EntreeCatalogue> = {
@@ -206,6 +214,25 @@ export const CATALOGUE: Record<string, EntreeCatalogue> = {
     destinataire: "participant",
     variables: [],
   },
+  /*
+   * Retransmission (20 novembre 2026).
+   *
+   * Destiné aux inscrits que le comité ne retiendra pas en salle : la jauge du
+   * King Fahd Palace est finie, les demandes ne le sont pas. Leur dire qu'ils
+   * peuvent suivre à distance transforme une attente sans réponse en une
+   * invitation — et c'est ce qui donnera son public à la page du direct.
+   *
+   * Aucun envoi automatique : ce message part depuis « Envoi groupé », avec le
+   * filtre de statut, quand le comité le décide. Un courriel déclenché par un
+   * effet de bord enverrait « suivez-nous en ligne » à quelqu'un dont le
+   * dossier est encore à l'étude.
+   */
+  live_announcement: {
+    declenchement:
+      "Aucun envoi automatique : depuis « Envoi groupé », filtré sur le statut (inscrits non encore validés).",
+    destinataire: "participant",
+    variables: ["lien_direct", "lien_programme"],
+  },
   contact_message: {
     declenchement:
       "À chaque message du formulaire « Nous écrire » ; part vers l'adresse de contact du comité.",
@@ -289,6 +316,7 @@ export const EXEMPLES: Record<string, string> = {
   lien_validation: "https://forum2026.ansd.sn/connexion/valider/xxxxx",
   lien_session: "https://forum2026.ansd.sn/programme/panel-donnees-ouvertes",
   lien_programme: "https://forum2026.ansd.sn/programme",
+  lien_direct: "https://forum2026.ansd.sn/direct",
   lien_newsletter: "https://forum2026.ansd.sn/newsletters/lettre-no3",
   date_limite: "15 octobre 2026",
   referent_bloc:

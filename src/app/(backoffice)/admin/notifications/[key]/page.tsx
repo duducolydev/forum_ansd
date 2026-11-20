@@ -3,7 +3,14 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
-import { getTemplate, templateVariables } from "@/modules/notifications/service";
+import { LANGUES } from "@/lib/langue";
+import {
+  adresseDuSite,
+  getTemplate,
+  piedDeCourriel,
+  templateVariables,
+} from "@/modules/notifications/service";
+import type { PiedCourriel } from "@/modules/notifications/courriel";
 import { declenchement, EXEMPLES, variablesResolues } from "@/modules/notifications/catalogue";
 import { TemplateForm } from "@/modules/notifications/components/template-form";
 
@@ -22,6 +29,17 @@ export default async function TemplatePage({ params }: { params: Promise<{ key: 
 
   const declared = templateVariables(template);
   const quandPart = declenchement(template.key);
+
+  /*
+   * Signature du gabarit, dans les trois langues : l'aperçu bascule de l'une à
+   * l'autre sans repasser par le serveur, et doit montrer le message tel
+   * qu'il partira — pied compris.
+   */
+  const pieds = Object.fromEntries(
+    await Promise.all(
+      LANGUES.map(async (langue) => [langue, await piedDeCourriel(edition.id, langue)] as const),
+    ),
+  ) as Record<(typeof LANGUES)[number], PiedCourriel>;
 
   return (
     <div>
@@ -46,6 +64,8 @@ export default async function TemplatePage({ params }: { params: Promise<{ key: 
         // utilisable dans n'importe quel modèle.
         resolues={variablesResolues(template.key, declared)}
         sampleVariables={EXEMPLES}
+        pieds={pieds}
+        baseUrl={adresseDuSite()}
       />
     </div>
   );

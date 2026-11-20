@@ -5,6 +5,13 @@ import { useActionState, useMemo, useState } from "react";
 import { updateTemplateAction, type NotificationActionState } from "../actions";
 import { Save } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import {
+  baliserLiens,
+  corpsCourriel,
+  gabaritCourriel,
+  resumeCourriel,
+  type PiedCourriel,
+} from "../courriel";
 
 const initialState: NotificationActionState = {};
 
@@ -26,6 +33,9 @@ interface Props {
   resolues: string[];
   /** Valeurs d'exemple pour la prévisualisation, par variable. */
   sampleVariables: Record<string, string>;
+  /** Signature du gabarit, par langue — lue en base côté serveur. */
+  pieds: Record<Langue, PiedCourriel>;
+  baseUrl: string;
 }
 
 export function TemplateForm({
@@ -39,6 +49,8 @@ export function TemplateForm({
   declared,
   resolues,
   sampleVariables,
+  pieds,
+  baseUrl,
 }: Props) {
   const action = updateTemplateAction.bind(null, templateKey);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -68,10 +80,32 @@ export function TemplateForm({
    * telle quelle), pour que l'aperçu ne mente pas.
    */
   const preview = useMemo(() => {
-    const substitute = (text: string) =>
-      text.replace(/\{\{(\w+)\}\}/g, (match, name: string) => sampleVariables[name] ?? match);
-    return { subject: substitute(subject), body: substitute(body) };
-  }, [subject, body, sampleVariables]);
+    const substitute = (text: string, variables: Record<string, string>) =>
+      text.replace(/\{\{(\w+)\}\}/g, (match, name: string) => variables[name] ?? match);
+
+    /*
+     * Le message **tel qu'il partira**, construit avec les mêmes fonctions que
+     * l'envoi (`courriel.ts`), qui sont pures et tournent donc aussi bien
+     * ici. Un aperçu en texte nu laissait deviner le résultat : on ne voyait
+     * ni les boutons, ni les logos, ni la signature — c'est-à-dire presque
+     * tout ce qu'un relecteur doit valider.
+     */
+    const html = gabaritCourriel({
+      corps: corpsCourriel(substitute(body, baliserLiens(sampleVariables, locale))),
+      langue: locale,
+      baseUrl,
+      pied: pieds[locale],
+      // Déduit du corps, comme à l'envoi : l'aperçu doit montrer ce que la
+      // boîte de réception affichera, pas une approximation.
+      preheader: resumeCourriel(substitute(body, sampleVariables)),
+    });
+
+    return {
+      subject: substitute(subject, sampleVariables),
+      body: substitute(body, sampleVariables),
+      html,
+    };
+  }, [subject, body, sampleVariables, locale, pieds, baseUrl]);
 
   const undeclared = useMemo(() => {
     const used = new Set<string>();
@@ -140,6 +174,33 @@ export function TemplateForm({
           );
         })}
 
+        {/*
+          Mise en forme (20 novembre 2026). Le corps reste du texte — c'est ce
+          qui permet de le relire sans connaître HTML —, mais l'envoi
+          l'enveloppe désormais dans le gabarit du Forum. Le dire ici : sans
+          cette note, personne ne devinerait qu'une adresse en fin de ligne
+          devient un bouton.
+        */}
+        <div className="border-border text-text-3 rounded-lg border border-dashed px-3 py-2.5 text-xs">
+          <p className="text-text-2 mb-1 font-semibold">Liens et boutons</p>
+          <p>
+            Une adresse <b>en fin de ligne</b> devient un bouton ; la phrase qui la précède reste
+            au-dessus. Au milieu d&apos;une phrase, elle reste un lien souligné.
+          </p>
+          <p className="mt-1">
+            Pour choisir le texte du bouton, écrivez{" "}
+            <code className="bg-bg-3 text-text-2 rounded px-1 py-0.5">
+              [Réserver ma place](https://…)
+            </code>
+            . Les variables de lien ({`{{lien_espace}}`}, {`{{lien_badge}}`}, {`{{lien_direct}}`}…)
+            sont nommées automatiquement.
+          </p>
+          <p className="mt-1">
+            Le premier bouton est plein, les suivants au trait : un message n&apos;a qu&apos;une
+            action principale. Logos, couleurs et signature sont ajoutés à l&apos;envoi.
+          </p>
+        </div>
+
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-text-3 text-sm">Variables :</span>
           {declared.map((name) => (
@@ -195,12 +256,33 @@ export function TemplateForm({
         </h3>
         <p className="text-text-3 mb-1 text-xs">Objet</p>
         <p className="text-heading mb-4 font-semibold">{preview.subject || "—"}</p>
-        <p className="text-text-3 mb-1 text-xs">Corps</p>
-        <div className="text-text-2 flex flex-col gap-2 text-sm">
-          {preview.body.split("\n").map((line, index) => (
-            <p key={index}>{line || " "}</p>
-          ))}
-        </div>
+        <p className="text-text-3 mb-1 text-xs">Message</p>
+        {/*
+          Rendu dans un `iframe` et non dans la page : le courriel porte ses
+          propres styles en ligne, et le BackOffice les siens. Posés dans le
+          même document, les deux se mélangeraient et l'aperçu mentirait.
+
+          `sandbox` vide : aucun script, aucune navigation. Le corps vient du
+          BackOffice, mais un aperçu n'a aucune raison de pouvoir s'exécuter,
+          et les liens ne doivent pas emmener le relecteur ailleurs.
+        */}
+        <iframe
+          title={`Aperçu du courriel (${locale.toUpperCase()})`}
+          srcDoc={preview.html}
+          sandbox=""
+          className="border-border h-[560px] w-full rounded-lg border bg-white"
+        />
+
+        <details className="mt-3">
+          <summary className="text-text-3 cursor-pointer text-xs">
+            Version texte (clients sans HTML)
+          </summary>
+          <div className="text-text-2 mt-2 flex flex-col gap-2 text-sm">
+            {preview.body.split("\n").map((line, index) => (
+              <p key={index}>{line || " "}</p>
+            ))}
+          </div>
+        </details>
       </div>
     </form>
   );

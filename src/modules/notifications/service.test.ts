@@ -1,14 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db";
 import { createParticipant } from "@/modules/participants/service";
-import {
-  bulkWhere,
-  interpolate,
-  pickLocalised,
-  previewBulk,
-  renderHtml,
-  undeclaredVariables,
-} from "./service";
+import { bulkWhere, interpolate, pickLocalised, previewBulk, undeclaredVariables } from "./service";
+import { corpsCourriel } from "./courriel";
 
 describe("interpolation des modèles", () => {
   it("remplace les variables connues", () => {
@@ -22,7 +16,7 @@ describe("interpolation des modèles", () => {
   });
 
   it("échappe le HTML du contenu injecté", () => {
-    const html = renderHtml(interpolate("Bonjour {{prenom}}", { prenom: "<script>x</script>" }));
+    const html = corpsCourriel(interpolate("Bonjour {{prenom}}", { prenom: "<script>x</script>" }));
     expect(html).not.toContain("<script>");
     expect(html).toContain("&lt;script&gt;");
   });
@@ -30,10 +24,12 @@ describe("interpolation des modèles", () => {
   it("garde l'indentation du récapitulatif, que HTML réduirait à une espace", () => {
     // Le programme aligne les intervenants sous leur session : sans espaces
     // insécables, les deux lignes se confondent à l'arrivée.
-    const html = renderHtml("Mardi 24 novembre\n  09:00 - 10:30 · Panel\n    Modération : A. BA");
-    expect(html).toContain("<p>Mardi 24 novembre</p>");
-    expect(html).toContain("<p>&nbsp;&nbsp;09:00 - 10:30 · Panel</p>");
-    expect(html).toContain("<p>&nbsp;&nbsp;&nbsp;&nbsp;Modération : A. BA</p>");
+    const html = corpsCourriel(
+      "Mardi 24 novembre\n  09:00 - 10:30 · Panel\n    Modération : A. BA",
+    );
+    expect(html).toContain(">Mardi 24 novembre</p>");
+    expect(html).toContain(">&nbsp;&nbsp;09:00 - 10:30 · Panel</p>");
+    expect(html).toContain(">&nbsp;&nbsp;&nbsp;&nbsp;Modération : A. BA</p>");
   });
 });
 

@@ -6,9 +6,89 @@ import { audit } from "@/lib/audit";
 import type { Actor } from "@/modules/participants/service";
 import { resoudreVariablesProgramme, variablesProgrammeUtilisees } from "./recap-programme";
 import { variablesDeclarees } from "./catalogue";
+import {
+  baliserLiens,
+  corpsCourriel,
+  gabaritCourriel,
+  resumeCourriel,
+  type PiedCourriel,
+} from "./courriel";
 import type { TemplateInput } from "./schema";
 
 export type Locale = Langue;
+
+/** Adresse publique du portail, racine de tous les liens d'un message. */
+export function adresseDuSite(): string {
+  return process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
+}
+
+/*
+ * Signature du message, lue une fois par édition et gardée cinq minutes.
+ *
+ * Sans ce cache, une campagne de mille messages ajouterait mille lectures pour
+ * un intitulé et deux dates qui ne bougent pas. Avec une péremption courte
+ * plutôt qu'aucune : un worker vit des jours, et un lieu corrigé en BackOffice
+ * doit finir par apparaître au bas des courriels.
+ */
+const PEREMPTION_PIED_MS = 5 * 60_000;
+const piedsEnCache = new Map<string, { expire: number; edition: PiedCourriel }>();
+
+export async function piedDeCourriel(editionId: string, langue: Locale): Promise<PiedCourriel> {
+  const cle = `${editionId}:${langue}`;
+  const connu = piedsEnCache.get(cle);
+  if (connu && connu.expire > Date.now()) return connu.edition;
+
+  const edition = await prisma.edition.findUnique({
+    where: { id: editionId },
+    select: {
+      title: true,
+      titleEn: true,
+      titlePt: true,
+      startDate: true,
+      endDate: true,
+      venue: true,
+      city: true,
+    },
+  });
+
+  const pied: PiedCourriel = edition
+    ? {
+        organisation: traduire(langue, {
+          fr: "Agence nationale de la Statistique et de la Démographie (ANSD)",
+          en: "National Agency for Statistics and Demography (ANSD)",
+          pt: "Agência Nacional de Estatística e Demografia (ANSD)",
+        }),
+        edition: traduire(langue, {
+          fr: edition.title,
+          en: edition.titleEn,
+          pt: edition.titlePt,
+        }),
+        quand: `${periode(edition.startDate, edition.endDate, langue)} · ${edition.venue}, ${edition.city}`,
+      }
+    : // Une édition introuvable ne doit pas empêcher un message de partir : le
+      // pied se réduit, le corps reste intact.
+      { organisation: "ANSD", edition: "", quand: "" };
+
+  piedsEnCache.set(cle, { expire: Date.now() + PEREMPTION_PIED_MS, edition: pied });
+  return pied;
+}
+
+/** « 23–25 novembre 2026 », en UTC — l'heure de Dakar toute l'année. */
+function periode(debut: Date, fin: Date, langue: Locale): string {
+  const locale = langue === "fr" ? "fr-FR" : langue === "pt" ? "pt-PT" : "en-GB";
+  const jour = new Intl.DateTimeFormat(locale, { day: "numeric", timeZone: "UTC" });
+  const complet = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  const memeMois =
+    debut.getUTCFullYear() === fin.getUTCFullYear() && debut.getUTCMonth() === fin.getUTCMonth();
+  return memeMois
+    ? `${jour.format(debut)}–${complet.format(fin)}`
+    : `${complet.format(debut)} – ${complet.format(fin)}`;
+}
 
 /** Variables communes injectées dans tous les modèles, sans que l'appelant ait à les fournir. */
 export interface TemplateVariables {
@@ -46,34 +126,37 @@ export function pickLocalised(
 }
 
 /**
- * Corps en HTML, une ligne par paragraphe.
+ * Message complet, corps mis en forme et enveloppe du Forum.
  *
- * L'indentation de tête est convertie en espaces insécables : HTML réduit
- * plusieurs espaces à une seule, et le récapitulatif du programme — qui aligne
- * les intervenants sous leur session — perdait sa structure à l'envoi. Les
- * listes déjà indentées (composition d'une délégation, panels réservés) y
- * gagnent aussi.
+ * Deux interpolations et non une : la version **texte** garde les adresses
+ * nues — c'est elle que lisent les clients en mode texte — tandis que la
+ * version **HTML** reçoit les liens nommés (`baliserLiens`), ce qui donne des
+ * boutons intitulés sur les modèles déjà en base, sans les réécrire.
  */
-export function renderHtml(text: string): string {
-  return text
-    .split("\n")
-    .map((line) => (line.trim() ? `<p>${indenter(escapeHtml(line))}</p>` : "<p>&nbsp;</p>"))
-    .join("\n");
+async function composer(options: {
+  editionId: string;
+  corpsTexte: string;
+  variables: TemplateVariables;
+  locale: Locale;
+  appendHtml?: string;
+}): Promise<{ text: string; html: string }> {
+  const text = interpolate(options.corpsTexte, options.variables);
+  const pourHtml = interpolate(options.corpsTexte, baliserLiens(options.variables, options.locale));
+
+  return {
+    text,
+    html: gabaritCourriel({
+      corps: corpsCourriel(pourHtml),
+      langue: options.locale,
+      baseUrl: adresseDuSite(),
+      pied: await piedDeCourriel(options.editionId, options.locale),
+      preheader: resumeCourriel(text),
+      appendHtml: options.appendHtml,
+    }),
+  };
 }
 
-function indenter(line: string): string {
-  return line.replace(/^ +/, (espaces) => "&nbsp;".repeat(espaces.length));
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
-
-/** Rendu d'un modèle sans envoi — utilisé par la prévisualisation du BackOffice. */
+/** Rendu d'un modèle sans envoi — prévisualisation et vérification du gabarit. */
 export async function renderTemplate(options: {
   editionId: string;
   templateKey: string;
@@ -87,8 +170,13 @@ export async function renderTemplate(options: {
   const picked = pickLocalised(template, options.locale);
   const variables = await avecVariablesProgramme(picked, options);
   const subject = interpolate(picked.subject, variables);
-  const body = interpolate(picked.body, variables);
-  return { subject, body, html: renderHtml(body) };
+  const { text, html } = await composer({
+    editionId: options.editionId,
+    corpsTexte: picked.body,
+    variables,
+    locale: options.locale,
+  });
+  return { subject, body: text, html };
 }
 
 /**
@@ -168,7 +256,13 @@ export async function sendTemplatedEmail(options: {
     variables: fournies,
   });
   const subject = interpolate(picked.subject, variables);
-  const body = interpolate(picked.body, variables);
+  const { text: body, html } = await composer({
+    editionId: options.editionId,
+    corpsTexte: picked.body,
+    variables,
+    locale,
+    appendHtml: options.appendHtml,
+  });
 
   let log: { id: string } | undefined;
   // Seuls les envois rattachés à quelqu'un sont consignés : le formulaire de
@@ -188,7 +282,6 @@ export async function sendTemplatedEmail(options: {
   }
 
   try {
-    const html = renderHtml(body) + (options.appendHtml ?? "");
     const result = await sendMail({
       to: options.to,
       subject,
@@ -251,7 +344,7 @@ async function contexteParticipant(
   });
   if (!participant) return { locale: "fr", variables: {} };
 
-  const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const baseUrl = adresseDuSite();
   return {
     locale: lireLangue(participant.locale),
     variables: {
@@ -260,6 +353,11 @@ async function contexteParticipant(
       identifiant: participant.publicId,
       lien_espace: `${baseUrl}/mon-espace`,
       lien_badge: `${baseUrl}/mon-espace`,
+      // Adresses publiques fixes (20 novembre 2026) : fournies d'office, pour
+      // qu'un envoi groupé depuis le BackOffice — qui ne passe aucune variable
+      // en propre — puisse les employer dans n'importe quel modèle.
+      lien_direct: `${baseUrl}/direct`,
+      lien_programme: `${baseUrl}/programme`,
     },
   };
 }

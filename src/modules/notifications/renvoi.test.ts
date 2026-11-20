@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CATALOGUE } from "./catalogue";
+import { CATALOGUE, VARIABLES_PARTICIPANT } from "./catalogue";
 import { adresseMorte, estRenvoyable } from "./renvoi";
 
 /**
@@ -46,7 +46,10 @@ describe("tri des modèles renvoyables", () => {
       "registration_imported",
       "accreditation_granted",
     ]);
-    const communes = new Set(["prenom", "nom", "identifiant", "lien_espace", "lien_badge"]);
+    // Lues à la source, et non recopiées : la liste en double a vieilli dès
+    // que les variables communes ont gagné un membre (20 novembre 2026), et ce
+    // test accusait alors un modèle parfaitement renvoyable.
+    const communes = new Set<string>(VARIABLES_PARTICIPANT);
 
     for (const [cle, entree] of Object.entries(CATALOGUE)) {
       if (prisEnCharge.has(cle)) continue;

@@ -703,6 +703,27 @@ async function seedReference() {
       variables: ["prenom"],
     },
     /*
+     * Retransmission (20 novembre 2026).
+     *
+     * Pour les inscrits que le comité ne retiendra pas en salle : la jauge est
+     * finie, les demandes ne le sont pas. Sans ce message, leur demande reste
+     * sans réponse ; avec lui, elle en reçoit une, et une invitation à suivre
+     * à distance.
+     *
+     * Jamais automatique : il part de « Envoi groupé », filtré sur le statut,
+     * quand le comité le décide.
+     */
+    {
+      key: "live_announcement",
+      subjectFr: "Suivez le Forum international sur les données en direct",
+      subjectEn: "Follow the International Data Forum live",
+      bodyFr:
+        "Bonjour {{prenom}},\n\nNous avons bien reçu votre demande d'inscription au Forum international sur les données, et nous vous en remercions.\n\nLes places en salle sont en nombre limité et nous ne pouvons malheureusement pas répondre favorablement à toutes les demandes. Nous tenons cependant à ce que vous puissiez suivre les travaux : les trois journées sont retransmises en direct sur le portail du Forum, en accès libre et sans inscription.\n\n{{lien_direct}}\n\nLe programme détaillé des sessions est consultable ici : {{lien_programme}}\n\nLa page du direct affiche la session en cours et celle qui suit ; entre deux séances, elle annonce l'heure de reprise.\n\nMerci de l'intérêt que vous portez au Forum,\nLe comité d'organisation",
+      bodyEn:
+        "Hello {{prenom}},\n\nWe have received your registration request for the International Data Forum, and we thank you for it.\n\nSeating is limited and we are unfortunately unable to accept every request. We do, however, want you to be able to follow the proceedings: all three days are streamed live on the Forum portal, freely and without registration.\n\n{{lien_direct}}\n\nThe detailed programme of the sessions is available here: {{lien_programme}}\n\nThe live page shows the current session and the one coming up; between sessions, it announces the time of the next one.\n\nThank you for your interest in the Forum,\nThe organising committee",
+      variables: ["prenom", "lien_direct", "lien_programme"],
+    },
+    /*
      * Annonce d'une newsletter (§34).
      *
      * Une **annonce avec lien**, jamais le texte intégral : les messageries
