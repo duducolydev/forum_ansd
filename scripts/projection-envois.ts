@@ -49,6 +49,24 @@ import { dureeCampagneMinutes } from "../src/lib/cadence-envoi";
  */
 const PLAFOND_PAR_BOITE = Number(process.env.SMTP_PLAFOND_QUOTIDIEN) || 500;
 
+/**
+ * Le plafond d'une boîte donnée, `<PRÉFIXE>PLAFOND_QUOTIDIEN`.
+ *
+ * Un plafond unique a cessé d'être vrai le 20 novembre 2026 : les cinq voies
+ * ne sont plus chez le même fournisseur. Mailjet plafonne à deux cents envois
+ * sur son palier gratuit, un compte Gmail ordinaire à cinq cents — projeter
+ * 5 × 200 serait alarmiste sur les quatre comptes Gmail, 5 × 500 rassurant à
+ * tort sur Mailjet. Les deux erreurs se paient au même endroit : la décision
+ * de valider ou non les inscrits en lot ce soir.
+ *
+ * Le préfixe de la transactionnelle étant `SMTP_`, son plafond reste
+ * `SMTP_PLAFOND_QUOTIDIEN` — la variable existante, qui sert aussi de défaut
+ * aux voies qui ne déclarent rien.
+ */
+function plafond(boite: BoiteEnvoi): number {
+  return Number(process.env[`${BOITES[boite].prefixe}PLAFOND_QUOTIDIEN`]) || PLAFOND_PAR_BOITE;
+}
+
 // La répartition des modèles entre les boîtes n'est plus recopiée ici : elle
 // est dans `modules/notifications/boites.ts`, avec les envois eux-mêmes. Une
 // liste tenue en double finit par mentir, et une projection qui ment sur la
@@ -140,22 +158,36 @@ async function principal(): Promise<void> {
    * qui n'existe qu'une fois, ce qui était l'erreur à ne pas reproduire en
    * passant de deux boîtes à cinq.
    */
-  const comptes = new Map<string, { voies: string[]; envoyes: number; user?: string }>();
+  const comptes = new Map<
+    string,
+    { voies: string[]; envoyes: number; user?: string; plafond: number }
+  >();
   for (const boite of Object.keys(BOITES) as BoiteEnvoi[]) {
     const config = configBoite(boite);
     const cle = `${config.host}:${config.user ?? ""}`;
-    const entree = comptes.get(cle) ?? { voies: [], envoyes: 0, user: config.user };
+    const entree = comptes.get(cle) ?? {
+      voies: [],
+      envoyes: 0,
+      user: config.user,
+      plafond: Infinity,
+    };
     entree.voies.push(BOITES[boite].libelle);
     entree.envoyes += envoyes.get(boite) ?? 0;
+    // Deux voies sur un même compte ne cumulent pas leurs plafonds : elles se
+    // partagent le plus bas des deux, qui est celui du compte réel.
+    entree.plafond = Math.min(entree.plafond, plafond(boite));
     comptes.set(cle, entree);
   }
 
   titre("Capacité des boîtes (24 h glissantes)");
   for (const compte of comptes.values()) {
-    ligne(`${compte.voies.join(" + ")} — ${compte.user ?? "?"}`, `${compte.envoyes} envoyés`);
-    ligne("  reste estimé", Math.max(0, PLAFOND_PAR_BOITE - compte.envoyes));
+    ligne(
+      `${compte.voies.join(" + ")} — ${compte.user ?? "?"}`,
+      `${compte.envoyes} envoyés / ${compte.plafond}`,
+    );
+    ligne("  reste estimé", Math.max(0, compte.plafond - compte.envoyes));
   }
-  const capacite = PLAFOND_PAR_BOITE * comptes.size;
+  const capacite = [...comptes.values()].reduce((somme, compte) => somme + compte.plafond, 0);
   ligne("CAPACITÉ TOTALE PAR JOUR", capacite);
   if (comptes.size < Object.keys(BOITES).length) {
     console.log(
@@ -191,12 +223,13 @@ async function principal(): Promise<void> {
 
   const alertes: string[] = [];
   for (const pic of pics) {
-    if (pic.messages <= PLAFOND_PAR_BOITE) continue;
-    const jours = Math.ceil(pic.messages / PLAFOND_PAR_BOITE);
+    const limite = plafond(pic.voie);
+    if (pic.messages <= limite) continue;
+    const jours = Math.ceil(pic.messages / limite);
     alertes.push(
       `${pic.libelle} (${pic.messages}) dépasse le plafond de la boîte « ` +
-        `${BOITES[pic.voie].libelle} » (${PLAFOND_PAR_BOITE}) : ${jours} jours d'écoulement, ` +
-        `ou des lots de ${PLAFOND_PAR_BOITE}.`,
+        `${BOITES[pic.voie].libelle} » (${limite}) : ${jours} jours d'écoulement, ` +
+        `ou des lots de ${limite}.`,
     );
   }
   const aEcouler = pics.reduce((somme, pic) => somme + pic.messages, 0);
