@@ -37,7 +37,9 @@ export const inscriptionsSchema = z.object({
     .string()
     .trim()
     .max(600)
-    .default("Les inscriptions ne sont pas ouvertes pour le moment."),
+    .default(
+      "Les inscriptions sont clôturées. Merci de votre intérêt pour le Forum international sur les données. Vous pourrez suivre les sessions en direct sur la page /direct du site le jour J. Un mail vous sera envoyé au début de la transmission, avec un lien vers le lecteur et le programme complet.",
+    ),
   messageFermeEn: z.string().trim().max(600).default("Registration is not open at the moment."),
   messageFermePt: z.string().trim().max(600).default("As inscrições não estão abertas de momento."),
 });
