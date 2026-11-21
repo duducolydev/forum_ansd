@@ -231,8 +231,8 @@ ${roles}
 
 ESPACES SANS MOT DE PASSE
 
-  Deux espaces ne s'ouvrent pas par mot de passe mais par un lien à usage unique
-  reçu par courriel, valable 30 minutes. En développement, les messages
+  Deux espaces ne s'ouvrent pas par mot de passe mais par un lien reçu par
+  courriel, valable 24 heures et réutilisable jusque-là. En développement, les messages
   n'arrivent pas dans une vraie boîte : ouvrez Mailpit sur http://localhost:8025
   pour lire le lien.
 

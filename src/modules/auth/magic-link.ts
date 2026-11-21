@@ -5,7 +5,25 @@ import { rateLimit } from "@/lib/rate-limit";
 import { enqueueNotification } from "@/modules/notifications/jobs";
 import { accesEspace, type MotifRefusAcces } from "./acces-espace";
 
-const LINK_TTL_MINUTES = 30;
+/**
+ * Validité d'un lien demandé : **24 heures** (21 novembre 2026).
+ *
+ * Trente minutes, jusqu'ici. Mais le courriel ne part pas à la seconde où il
+ * est demandé : il passe par la file, qui l'étale à vingt par minute
+ * (`lib/cadence-envoi.ts`) et qui, lorsque la boîte d'envoi refuse faute de
+ * quota, le **reporte de quinze minutes à six heures**
+ * (`modules/notifications/jobs.ts`). Les 18 et 20 novembre, les boîtes ont
+ * atteint leur plafond : un lien parti ainsi arrivait périmé, son code avec
+ * lui, et la personne lisait « lien expiré » sans avoir rien fait de travers.
+ *
+ * Vingt-quatre heures couvrent le report le plus long. Ce qui borne la force
+ * brute n'est pas la durée de vie mais le **nombre d'essais** — cinq par code,
+ * dix codes par jour et par adresse (voir plus bas) : allonger la validité ne
+ * déplace donc pas le risque. Et le lien d'accès des courriels de confirmation
+ * vit déjà quatorze jours dans la même boîte aux lettres (`acces-direct.ts`) :
+ * de ces deux liens, celui-ci reste le plus court.
+ */
+const VALIDITE_LIEN_HEURES = 24;
 const REQUEST_LIMIT = 3;
 const REQUEST_WINDOW_SECONDS = 60;
 /** Le code à 6 chiffres est court : sans limite, il serait cassable par force brute. */
@@ -39,17 +57,28 @@ const VERIFY_WINDOW_SECONDS = 60;
  * donc comparés — le dernier demandé et le dernier de secours — et le second
  * ne se régénère pas depuis le formulaire : cinq erreurs l'annulent pour de
  * bon. Le risque reste du même ordre (environ 0,01 % par jour).
+ *
+ * Exception (21 novembre 2026) : le lien et le code **ne se consomment plus**
+ * à l'usage, ils valent jusqu'à leur expiration ou leur annulation. Voir
+ * `consumeMagicLink`. Cela ne change rien au calcul ci-dessus, qui compte des
+ * essais **ratés** : cinq par code, et le code tombe.
  */
 const MAX_ECHECS_CODE = 5;
 const DEMANDES_PAR_JOUR = 10;
 const UN_JOUR_EN_SECONDES = 24 * 60 * 60;
 
 /**
- * Un code de secours vit des jours, un lien demandé 30 minutes : la durée de
- * vie suffit à les distinguer, sans colonne de plus.
+ * Un code de secours vit une semaine, un lien demandé un jour : la durée de vie
+ * suffit à les distinguer, sans colonne de plus.
+ *
+ * Le seuil est à **deux jours** et non à un : le lien demandé en vaut
+ * exactement un depuis le 21 novembre 2026, et un seuil posé sur sa propre
+ * durée se jouerait à la milliseconde.
  */
+const SEUIL_CODE_SECOURS_MS = 2 * UN_JOUR_EN_SECONDES * 1000;
+
 function estCodeSecours(lien: { createdAt: Date; expiresAt: Date }): boolean {
-  return lien.expiresAt.getTime() - lien.createdAt.getTime() > UN_JOUR_EN_SECONDES * 1000;
+  return lien.expiresAt.getTime() - lien.createdAt.getTime() > SEUIL_CODE_SECOURS_MS;
 }
 
 /** Limites de demande de lien : par minute, puis par jour. */
@@ -68,15 +97,20 @@ async function limiterDemandes(
 }
 
 /**
- * Consomme un lien **atomiquement** : relire puis écrire laissait deux requêtes
- * simultanées utiliser le même lien. Vrai seulement pour celle qui l'a marqué.
+ * Annule un lien : il ne vaudra plus, ni par son jeton ni par son code.
+ *
+ * `usedAt` ne marque plus un usage depuis le 21 novembre 2026 — un lien
+ * s'utilise autant de fois qu'il le faut (cf. `consumeMagicLink`) — mais une
+ * **annulation** : une nouvelle demande, ou cinq codes erronés.
+ *
+ * L'écriture reste conditionnelle (`usedAt: null`) : deux annulations
+ * concurrentes ne s'écrasent pas, et la première date est celle qui compte.
  */
-async function marquerUtilise(lienId: string): Promise<boolean> {
-  const { count } = await prisma.magicLink.updateMany({
+async function annuler(lienId: string): Promise<void> {
+  await prisma.magicLink.updateMany({
     where: { id: lienId, usedAt: null },
     data: { usedAt: new Date() },
   });
-  return count === 1;
 }
 
 function codesEgaux(attendu: string, saisi: string): boolean {
@@ -149,15 +183,32 @@ export async function requestMagicLink(
 
   const token = randomBytes(32).toString("base64url");
   const code6 = String(randomInt(0, 1_000_000)).padStart(6, "0");
-  const expiresAt = new Date(Date.now() + LINK_TTL_MINUTES * 60 * 1000);
+  const expiresAt = new Date(Date.now() + VALIDITE_LIEN_HEURES * 3_600 * 1000);
 
-  // Un seul lien demandé valide à la fois : le dernier envoyé. Les liens
-  // demandés avant expirent tous avant celui-ci ; le code de secours, valable
-  // des jours, n'est pas touché.
-  await prisma.magicLink.updateMany({
-    where: { participantId: participant.id, usedAt: null, expiresAt: { lte: expiresAt } },
-    data: { usedAt: new Date() },
+  /*
+   * Un seul lien demandé valide à la fois : le dernier envoyé. Les codes de
+   * secours, eux, survivent — c'est tout l'objet de l'exception du 3 novembre.
+   *
+   * Le tri se fait ici et non dans un `where` : la comparaison portait sur
+   * l'échéance (`expiresAt <= celle du nouveau lien`), ce qui tenait tant qu'un
+   * lien demandé valait trente minutes. À vingt-quatre heures, un code de
+   * secours entamé — moins d'un jour restant sur ses sept — serait tombé dans
+   * la fourchette et aurait été annulé par une simple demande de lien, faisant
+   * échouer le code du courriel de confirmation. La nature d'un lien se lit à
+   * sa durée (`estCodeSecours`), pas à sa date de fin.
+   */
+  const valides = await prisma.magicLink.findMany({
+    where: { participantId: participant.id, usedAt: null, expiresAt: { gt: new Date() } },
+    select: { id: true, createdAt: true, expiresAt: true },
   });
+  const aAnnuler = valides.filter((lien) => !estCodeSecours(lien)).map((lien) => lien.id);
+  if (aAnnuler.length > 0) {
+    await prisma.magicLink.updateMany({
+      where: { id: { in: aAnnuler } },
+      data: { usedAt: new Date() },
+    });
+  }
+
   await prisma.magicLink.create({
     data: { participantId: participant.id, tokenHash: hashToken(token), code6, expiresAt },
   });
@@ -211,7 +262,30 @@ export async function creerCodeSecours(participantId: string, jours: number): Pr
   return code6;
 }
 
-/** Consommation du lien : le jeton est à usage unique. */
+/**
+ * Ouverture de l'espace par le jeton du courriel.
+ *
+ * ## Le lien ne se consomme plus (21 novembre 2026)
+ *
+ * Il était à usage unique. Trois usages ordinaires le brûlaient sans que
+ * personne ne se soit connecté :
+ *
+ * - **les passerelles de messagerie d'entreprise** ouvrent les liens d'un
+ *   message pour les analyser avant le destinataire (Defender, Proofpoint). Le
+ *   lien était consommé par l'antivirus, et la personne cliquait sur un lien
+ *   déjà mort. C'est l'argument qui avait déjà rendu réutilisable le lien
+ *   d'accès des courriels de confirmation (`acces-direct.ts`) ; il valait tout
+ *   autant ici, et n'y avait pas été repris ;
+ * - **le code puis le lien**, ou l'inverse : le courriel propose les deux, et
+ *   les deux vivent sur la même ligne. Saisir le code sur son téléphone rendait
+ *   le lien du courriel inopérant sur l'ordinateur ;
+ * - **un rechargement**, un second onglet, un retour en arrière.
+ *
+ * Le lien vaut donc jusqu'à son expiration (vingt-quatre heures) ou son
+ * annulation. Ce que cela expose : rien de plus que le courriel qui le porte —
+ * qui accède à la boîte peut de toute façon demander un lien. Et le jeton tient
+ * dans trente-deux octets aléatoires dont seule l'empreinte est stockée.
+ */
 export async function consumeMagicLink(token: string): Promise<MagicLinkConsumeResult> {
   const magicLink = await prisma.magicLink.findUnique({
     where: { tokenHash: hashToken(token) },
@@ -248,8 +322,6 @@ export async function consumeMagicLink(token: string): Promise<MagicLinkConsumeR
   if (!participant) return { status: "INVALID" };
   const acces = accesEspace(participant);
   if (!acces.autorise) return { status: "ACCES_REFUSE", motif: acces.motif };
-
-  if (!(await marquerUtilise(magicLink.id))) return { status: "INVALID" };
 
   await audit.log({
     actorType: "PARTICIPANT",
@@ -322,14 +394,18 @@ export async function consumeCode(
       });
       if (apres.failedAttempts >= MAX_ECHECS_CODE) {
         // Lien annulé : le prochain essai demande un nouvel envoi.
-        await marquerUtilise(lien.id);
+        await annuler(lien.id);
       }
     }
     return { status: "INVALID" };
   }
 
-  if (!(await marquerUtilise(magicLink.id))) return { status: "INVALID" };
-
+  /*
+   * Le code juste n'annule rien (21 novembre 2026) : il vaut jusqu'à son
+   * expiration, comme le lien de la même ligne. Le consommer empêchait de
+   * rouvrir son espace depuis un second appareil, et rendait inopérant le lien
+   * du même courriel — un « lien expiré » sur un lien jamais ouvert.
+   */
   await audit.log({
     actorType: "PARTICIPANT",
     actorParticipantId: participant.id,
@@ -397,9 +473,10 @@ export async function requestSpeakerLink(
 
   const token = randomBytes(32).toString("base64url");
   const code6 = String(randomInt(0, 1_000_000)).padStart(6, "0");
-  const expiresAt = new Date(Date.now() + LINK_TTL_MINUTES * 60 * 1000);
+  const expiresAt = new Date(Date.now() + VALIDITE_LIEN_HEURES * 3_600 * 1000);
 
   // Même règle que pour les participants : seul le dernier lien envoyé vaut.
+  // Aucun code de secours n'existe pour un intervenant : rien à épargner ici.
   await prisma.magicLink.updateMany({
     where: { speakerId: speaker.id, usedAt: null },
     data: { usedAt: new Date() },
@@ -444,8 +521,10 @@ export async function consumeSpeakerLink(token: string): Promise<SpeakerLinkCons
   }
   const speakerId = magicLink.speakerId;
 
-  if (!(await marquerUtilise(magicLink.id))) return { status: "INVALID" };
-
+  // Réutilisable jusqu'à son expiration, pour les mêmes raisons que le lien
+  // participant (cf. `consumeMagicLink`) : les intervenants lisent leur
+  // courrier sur des messageries institutionnelles, celles qui ouvrent les
+  // liens avant eux.
   await audit.log({
     actorType: "SYSTEM",
     action: "speaker_link.consumed",

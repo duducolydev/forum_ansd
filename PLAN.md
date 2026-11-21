@@ -4469,3 +4469,158 @@ lignes est un risque sans contrepartie.
 Le rapport « Présences » perdait deux colonnes à répéter « Accueil / Entrée
 principale » sur chaque ligne : elles sont retirées. La donnée reste en base, et
 le rapport se lit pour compter des personnes.
+
+## 30. « Code expiré / lien expiré » sur « Mon espace » (21 novembre 2026)
+
+La connexion sans mot de passe échouait **par intermittence** : lien d'accès ou
+code à six chiffres refusés comme expirés, sur des courriels reçus le jour même.
+Le correctif du 16 novembre avait traité un autre défaut — le lien envoyé à un
+dossier non validé — et il tenait ; celui-ci est ailleurs, et il a trois causes
+qui produisent le même message.
+
+### 30.1 Le courriel arrive après la péremption du lien
+
+Un lien demandé valait **trente minutes**. Mais un courriel ne part pas à la
+seconde où il est demandé : il passe par la file, qui l'étale à vingt par minute
+(`lib/cadence-envoi.ts`) et qui, lorsque la boîte d'envoi refuse faute de quota,
+le **reporte de quinze minutes à six heures** (`modules/notifications/jobs.ts`,
+`differer`). Les 18 et 20 novembre, les boîtes ont atteint leur plafond ; les
+liens de connexion partagent la boîte `acces` avec les badges, la famille la
+plus lourde du lot. Un lien reporté de six heures arrivait **périmé depuis cinq
+heures et demie**, son code avec lui.
+
+La validité passe donc à **vingt-quatre heures**. Ce n'est pas un relâchement :
+ce qui borne la force brute du code à six chiffres n'est pas sa durée de vie
+mais le **nombre d'essais** — cinq codes erronés annulent le lien, dix demandes
+par jour et par adresse au plus, soit cinquante essais par jour contre un seul
+code valide à la fois. Le calcul de PLAN.md §18 est inchangé. Et le lien d'accès
+des courriels de confirmation vit déjà quatorze jours dans la même boîte aux
+lettres (`acces-direct.ts`) : des deux, celui-ci reste le plus court.
+
+### 30.2 Le lien était consommé par autre chose que son destinataire
+
+Le jeton était à **usage unique**. Trois usages ordinaires le brûlaient sans que
+personne ne se soit connecté :
+
+- **les passerelles de messagerie d'entreprise** ouvrent les liens d'un message
+  pour les analyser avant le destinataire (Defender, Proofpoint). Le lien était
+  consommé par l'antivirus, et la personne cliquait sur un lien déjà mort. Cet
+  argument avait déjà rendu réutilisable le lien d'accès des courriels de
+  confirmation, en septembre (`acces-direct.ts`) — il valait tout autant ici, et
+  n'y avait pas été repris. Les participants du Forum lisent très majoritairement
+  leur courrier sur des messageries institutionnelles : c'est ce qui explique le
+  « parfois » ;
+- **le code puis le lien**, ou l'inverse. Le courriel propose les deux, et les
+  deux vivent sur la même ligne de `MagicLink` : saisir le code sur son téléphone
+  rendait inopérant le lien du même message sur l'ordinateur ;
+- **un rechargement**, un second onglet, un retour en arrière.
+
+Le lien et le code valent désormais **jusqu'à leur expiration**, autant de fois
+qu'il le faut. `usedAt` ne marque plus un usage mais une **annulation** : une
+nouvelle demande, ou cinq codes erronés. Ce que cela expose : rien de plus que
+le courriel qui le porte — qui accède à la boîte peut de toute façon demander un
+lien —, et le jeton tient dans trente-deux octets aléatoires dont seule
+l'empreinte est en base.
+
+La même correction est appliquée au lien des **intervenants**, qui partage le
+mécanisme et la table.
+
+### 30.3 Un piège ouvert par le changement de durée
+
+« Un seul lien demandé valide à la fois » annulait les liens dont l'échéance
+tombait avant celle du nouveau. La comparaison portait sur la **date de fin** :
+à trente minutes de validité, un code de secours de sept jours n'entrait jamais
+dans la fourchette. À vingt-quatre heures, un code de secours entamé — moins
+d'une journée restante sur ses sept — y serait tombé, et la simple demande d'un
+lien aurait fait échouer le code du courriel de confirmation : exactement le
+défaut que la règle du 3 novembre avait corrigé.
+
+Le tri se fait maintenant sur la **nature** du lien et non sur son échéance
+(`estCodeSecours`, seuil à deux jours), et un test couvre le cas.
+
+### 30.4 Ce qui reste à faire hors du code
+
+Les modèles de courriel `magic_link` et `speaker_link` annoncent « valable
+30 minutes » dans leur corps, en base. Le texte des trois langues est corrigé
+dans `prisma/seed.ts` et `prisma/modeles-pt.json` pour les nouvelles
+installations ; en production, il se corrige **depuis le BackOffice**
+(Notifications → Modèles), les données de contenu n'étant pas touchées par une
+migration.
+
+Reste un point d'exploitation, hors de ce correctif : quota épuisé, le courriel
+d'accès ne part pas du tout. La parade existe déjà — cinq boîtes étanches
+(`lib/mail.ts`) — mais `magic_link` partage la boîte `acces` avec `badge_ready`.
+Si les validations de la veille de l'ouverture l'assèchent, c'est la connexion
+des participants qui s'arrête. À surveiller dans l'historique des envois.
+
+## 31. Feuille d'émargement vierge, pour les badges génériques (21 novembre 2026)
+
+Les **cartes génériques** du 19 novembre (`modules/badges/anonymes.ts`) n'ont
+pas de porteur en base — c'est leur raison d'être : une fiche de participant
+fictive serait entrée dans les envois et dans les vingt-huit agrégats qui
+comptent les inscrits. Conséquence : aucune liste tirée de la base ne peut les
+faire figurer, et l'émargement de ces arrivants n'existait sur aucun document.
+
+L'export des présences produit donc une **troisième forme**, `VIERGE` : la même
+feuille d'émargement, lignes vides. Les colonnes sont celles de l'émargement
+nominatif — c'est ce qui permet aux deux liasses de s'archiver ensemble et de se
+lire de la même façon —, **plus une** : la référence de la carte remise.
+
+- Elle ne lit **pas la base** : le filtre « présents / absents » n'a rien à y
+  filtrer, et la catégorie choisie ne sert qu'à titrer le document — une liasse
+  « PROTOCOLE » ne doit pas se mélanger à une liasse « PRESSE ».
+- Le nombre de lignes se choisit **en pages** — c'est ainsi qu'on pense devant
+  une imprimante — de une à huit, deux par défaut (300 lignes au plus par
+  l'URL). Les comptes proposés remplissent des pages entières : une feuille
+  dont la dernière page ne porte qu'une ligne se jette, et on l'imprime quand
+  même.
+- Le numéro d'ordre reste imprimé : c'est lui qui permet de dire « sept cartes
+  remises » sans recompter des signatures manuscrites.
+- Le sous-titre annonce à quoi elle sert — « Badges génériques — à remplir et
+  signer sur place ». Posée sur un comptoir à côté des liasses nominatives,
+  rien d'autre ne la distinguerait d'une feuille dont les noms n'auraient pas
+  été imprimés.
+- Les cellules à remplir portent le même filet que la colonne signature : un
+  trait trop clair ne se suit pas au stylo, et le fond reste blanc partout, une
+  ligne grisée se remplissant mal.
+
+Son encadré est **séparé** des deux autres boutons sur l'écran des présences :
+sur la même ligne, elle aurait laissé croire qu'« absents uniquement »
+s'applique à elle.
+
+Le guide de l'agent d'accueil (`docs/guide-agents-accueil.html`, §5) décrit la
+procédure : la carte générique se remet, la personne s'inscrit à la main sur la
+feuille vierge et signe. Sans cette feuille, la carte remise ne se rattache à
+personne.
+
+### 31.1 Un pied de page qui barrait une signature sur dix-neuf
+
+Défaut trouvé en imprimant la nouvelle feuille, et **présent depuis toujours sur
+la feuille nominative**. Le pied de page est en « position: fixed » ; à
+l'impression, un élément fixe se place dans la zone de contenu de chaque page,
+pas dans sa marge. Il recouvrait donc la dernière ligne de chaque page : sur une
+liasse de 627 noms, une ligne sur dix-neuf portait « Document généré le… » en
+travers de l'espace réservé à la signature.
+
+Un groupe de pied de tableau (`tfoot`, `display: table-footer-group`), répété à
+chaque page comme l'en-tête l'est déjà, rend les douze millimètres qu'il faut.
+Correction d'une ligne de HTML et deux de CSS, vérifiée sur un rendu de
+quarante lignes : dix-neuf par page, aucun chevauchement.
+
+### 31.2 La sixième colonne
+
+La feuille a d'abord été livrée avec les cinq colonnes de l'émargement ordinaire
+— « les mêmes champs », comme demandé. Une sixième a été ajoutée dans la foulée,
+et elle manquait : **la référence de la carte** (`FID-2026-ANON-014`).
+
+Une carte générique n'a pas de porteur en base, par construction. Son seul
+rattachement à une personne est ce document : sans le numéro, la feuille atteste
+que quelqu'un est entré, pas quelle carte lui a été remise. Le jour où une carte
+se perd, ou bien badge trois fois, rien ne répond. C'est exactement ce que
+prévoyait déjà la numérotation continue de `modules/badges/anonymes.ts` — « le
+numéro s'inscrit au registre de remise, en face d'un nom et d'une heure » —, et
+ce registre, c'est cette feuille.
+
+Elle vient en **deuxième position**, juste après le numéro d'ordre : la carte
+est dans la main de l'agent au moment où il remplit la ligne, et une colonne en
+bout de ligne est celle qu'on oublie.

@@ -130,6 +130,26 @@ test("produit une feuille d'émargement et une liste de présence en PDF", async
   expect(constat.headers()["content-disposition"]).toContain(`presences-${JOUR}-constat.pdf`);
 });
 
+/*
+ * Feuille vierge (21 novembre 2026) : la seule des trois formes qui ne lit pas
+ * la base. Elle sert aux porteurs de badges génériques, qui n'ont pas de fiche
+ * — l'épreuve est donc qu'un document complet sorte sans aucune donnée en
+ * entrée, et qu'il se nomme assez clairement pour ne pas se confondre, sur un
+ * comptoir d'accueil, avec les liasses nominatives.
+ */
+test("produit une feuille d'émargement vierge, sans rien lire en base", async ({ page }) => {
+  await seConnecterAdmin(page);
+
+  const vierge = await page.request.get(
+    `/api/v1/presences/export?jour=${JOUR}&forme=VIERGE&lignes=12`,
+  );
+  expect(vierge.status()).toBe(200);
+  expect(vierge.headers()["content-disposition"]).toContain(`presences-${JOUR}-vierge.pdf`);
+  const octets = await vierge.body();
+  expect(octets.subarray(0, 4).toString()).toBe("%PDF");
+  expect(octets.length).toBeGreaterThan(2000);
+});
+
 test("refuse un jour mal formé plutôt que de rendre un document vide", async ({ page }) => {
   await seConnecterAdmin(page);
   const reponse = await page.request.get("/api/v1/presences/export?jour=hier");

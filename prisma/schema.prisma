@@ -1258,7 +1258,12 @@ model NotificationLog {
   @@index([to])
 }
 
-/// Lien à usage unique, pour un participant **ou** un intervenant.
+/// Lien d'accès par courriel, pour un participant **ou** un intervenant.
+///
+/// Réutilisable jusqu'à son expiration depuis le 21 novembre 2026 : `usedAt`
+/// marque une **annulation** (nouvelle demande, cinq codes erronés) et non un
+/// usage. Les liens à usage unique ne survivaient pas aux passerelles de
+/// messagerie, qui les ouvrent avant leur destinataire.
 ///
 /// Les deux destinataires partagent la même table, donc la même durée de vie,
 /// le même hachage et les mêmes limites de débit : deux mecanismes parallèles

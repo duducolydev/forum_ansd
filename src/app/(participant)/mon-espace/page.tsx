@@ -161,9 +161,9 @@ export default async function MySpacePage({
           {/* Consigne sous le bandeau, qui ne porte plus que le titre (29 septembre 2026). */}
           <p className="text-text-2 mx-auto mb-6 max-w-[68ch] text-center">
             {t({
-              fr: "Pas de mot de passe : indiquez votre adresse e-mail, nous vous envoyons un lien d'accès valable 30 minutes.",
-              en: "No password: enter your email address and we will send you an access link valid for 30 minutes.",
-              pt: "Sem palavra-passe: indique o seu endereço de e-mail e enviamos-lhe uma ligação de acesso válida durante 30 minutos.",
+              fr: "Pas de mot de passe : indiquez votre adresse e-mail, nous vous envoyons un lien d'accès valable 24 heures.",
+              en: "No password: enter your email address and we will send you an access link valid for 24 hours.",
+              pt: "Sem palavra-passe: indique o seu endereço de e-mail e enviamos-lhe uma ligação de acesso válida durante 24 horas.",
             })}
           </p>
           <div className="border-border bg-surface rounded-2xl border p-7 shadow-sm">

@@ -1,10 +1,11 @@
 import { renderHtmlToPdf } from "@/lib/pdf";
+import { LIGNES_VIERGES_DEFAUT } from "./lignes-vierges";
 import type { FiltrePresence, LigneListe } from "./service";
 
 /**
  * Listes de présence en PDF (brief §5.6).
  *
- * Deux documents, pas un :
+ * Trois documents, pas un :
  *
  * - **émargement** — liste des attendus avec une colonne de signature vide, à
  *   imprimer *avant* la séance et à faire signer. C'est la pièce qu'on archive.
@@ -12,11 +13,19 @@ import type { FiltrePresence, LigneListe } from "./service";
  *   à produire *après*. Les absents y figurent aussi, marqués comme tels : une
  *   liste des seuls présents ne permettrait pas de voir qui manque, qui est
  *   pourtant la question qu'on se pose en la lisant.
+ * - **vierge** — la même feuille d'émargement, lignes vides (21 novembre
+ *   2026). Elle sert à qui n'est pas dans la liste : les porteurs de badges
+ *   génériques (`modules/badges/anonymes.ts`) — garde du corps d'une
+ *   délégation, chef de protocole, visiteur de passage. Ces cartes n'ont pas
+ *   de porteur en base, par construction : leur émargement ne peut donc pas
+ *   être pré-rempli, il s'écrit à la main au comptoir d'accueil. Mêmes
+ *   colonnes que l'émargement ordinaire, pour que les deux liasses s'archivent
+ *   ensemble et se lisent de la même façon.
  *
  * Le HTML est autonome (CSS en ligne, aucune ressource distante) : le rendu
  * n'attend aucun réseau, comme pour les badges.
  */
-export type FormeListe = "EMARGEMENT" | "CONSTAT";
+export type FormeListe = "EMARGEMENT" | "CONSTAT" | "VIERGE";
 
 export interface DonneesListe {
   editionName: string;
@@ -32,6 +41,11 @@ export interface DonneesListe {
    */
   filtre?: FiltrePresence;
   attendus?: number;
+  /**
+   * Nombre de lignes vides, pour la forme `VIERGE`. `lignes` est alors ignoré :
+   * une feuille vierge ne lit pas la base.
+   */
+  lignesVides?: number;
 }
 
 /**
@@ -43,6 +57,15 @@ export interface DonneesListe {
  * de fréquentation.
  */
 function synthese(donnees: DonneesListe): string {
+  /*
+   * La feuille vierge ne compte personne : annoncer « 30 personne(s)
+   * attendue(s) » sur un document sans un seul nom se lirait comme un chiffre,
+   * et c'est exactement le défaut corrigé plus haut pour l'émargement filtré.
+   */
+  if (donnees.forme === "VIERGE") {
+    const lignes = donnees.lignesVides ?? LIGNES_VIERGES_DEFAUT;
+    return `${lignes} ligne(s) à remplir sur place`;
+  }
   const nombre = donnees.lignes.length;
   const attendus = donnees.attendus ?? nombre;
   if (donnees.filtre === "PRESENTS") return `${nombre} présente(s) sur ${attendus} attendue(s)`;
@@ -77,11 +100,61 @@ const heure = new Intl.DateTimeFormat("fr-FR", {
   timeZone: "UTC",
 });
 
+/**
+ * Colonnes de la feuille vierge : celles de l'émargement, plus la référence de
+ * la carte remise.
+ *
+ * ## Pourquoi une colonne de plus, alors que les autres sont les mêmes
+ *
+ * Parce qu'une carte générique n'a pas de porteur en base : son seul rattachement
+ * à une personne est **ce document**. Sans la référence imprimée au dos de la
+ * carte (`FID-2026-ANON-014`), la feuille dit que quelqu'un est entré, pas quelle
+ * carte lui a été remise — et le jour où il faut révoquer une carte perdue, ou
+ * dire qui tenait celle qui a badgé trois fois, rien ne répond. C'est d'ailleurs
+ * ce que prévoyait déjà la numérotation continue de `modules/badges/anonymes.ts` :
+ * « le numéro s'inscrit au registre de remise, en face d'un nom et d'une heure ».
+ *
+ * Elle vient en deuxième position, juste après le numéro d'ordre : c'est la
+ * première chose que l'agent a sous les yeux — la carte est dans sa main — et
+ * la dernière qu'il penserait à remplir si elle était en bout de ligne.
+ */
+const COLONNES_VIERGE = [
+  "N°",
+  "N° de carte",
+  "Nom et prénom",
+  "Organisation",
+  "Catégorie",
+  "Signature",
+];
+
+/**
+ * Les lignes de la feuille vierge : le numéro d'ordre, et rien d'autre.
+ *
+ * Le numéro est tout de même imprimé — c'est lui qui permet de dire « sept
+ * cartes génériques remises » sans recompter des signatures manuscrites.
+ */
+function lignesVierges(nombre: number): string {
+  const cellules = '<td class="a-remplir carte"></td>' + '<td class="a-remplir"></td>'.repeat(3);
+  return Array.from(
+    { length: nombre },
+    (_, index) =>
+      `<tr class="ligne-vide"><td class="num">${index + 1}</td>${cellules}<td class="signature"></td></tr>`,
+  ).join("");
+}
+
 export function listePresenceHtml(donnees: DonneesListe): string {
-  const emargement = donnees.forme === "EMARGEMENT";
+  const emargement = donnees.forme === "EMARGEMENT" || donnees.forme === "VIERGE";
   const colonnes = emargement
     ? ["N°", "Nom et prénom", "Organisation", "Catégorie", "Signature"]
     : ["N°", "Nom et prénom", "Organisation", "Catégorie", "Pays", "Passage"];
+
+  if (donnees.forme === "VIERGE") {
+    return documentHtml(
+      donnees,
+      COLONNES_VIERGE,
+      lignesVierges(donnees.lignesVides ?? LIGNES_VIERGES_DEFAUT),
+    );
+  }
 
   const lignes = donnees.lignes
     .map((ligne, index) => {
@@ -114,6 +187,18 @@ export function listePresenceHtml(donnees: DonneesListe): string {
     })
     .join("");
 
+  return documentHtml(donnees, colonnes, lignes);
+}
+
+/**
+ * Le document lui-même : en-tête, tableau, pied de page.
+ *
+ * Séparé du calcul des lignes le 21 novembre 2026, quand la feuille vierge est
+ * arrivée : elle ne dérive ses lignes de rien. Dupliquer la feuille de style
+ * pour des cellules vides aurait fait diverger les deux documents à la première
+ * retouche, et c'est leur ressemblance qui fait qu'ils s'archivent ensemble.
+ */
+function documentHtml(donnees: DonneesListe, colonnes: string[], lignes: string): string {
   return `<!doctype html>
 <html lang="fr">
 <head>
@@ -161,6 +246,24 @@ export function listePresenceHtml(donnees: DonneesListe): string {
   .ligne-absent td { color: #8a97a3; }
   .absent { font-style: italic; }
   tbody tr:nth-child(even) td { background: #f6f9fb; }
+  /* Feuille vierge : tout s'écrit à la main. Les cellules portent donc le même
+     filet que la signature — un trait trop clair ne se suit pas au stylo — et
+     le fond reste blanc partout, une ligne grisée se remplissant mal. */
+  .ligne-vide td { background: #fff !important; vertical-align: bottom; }
+  td.a-remplir { border-bottom: 1px solid #9fb0bf; }
+  /* La référence d'une carte tient en une quinzaine de signes
+     (FID-2026-ANON-014) : au-delà, la largeur serait prise au nom. */
+  td.carte { width: 30mm; }
+  /* Réserve de bas de page (21 novembre 2026).
+
+     Le pied de page est en « position: fixed », et un élément fixe se place, à
+     l'impression, dans la zone de contenu de chaque page — pas dans la marge.
+     Il recouvrait donc la dernière ligne de chaque page : sur une liasse de
+     627 noms, une signature sur dix-neuf était barrée d'un « Document généré
+     le… ». Un groupe de pied de tableau, répété comme l'en-tête, rend les
+     douze millimètres qu'il faut. */
+  tfoot { display: table-footer-group; }
+  tfoot td { height: 12mm; border: none; background: none !important; padding: 0; }
   footer {
     position: fixed;
     bottom: 6mm; left: 0; right: 0;
@@ -183,6 +286,7 @@ export function listePresenceHtml(donnees: DonneesListe): string {
 
   <table>
     <thead><tr>${colonnes.map((colonne) => `<th>${colonne}</th>`).join("")}</tr></thead>
+    <tfoot><tr><td colspan="${colonnes.length}"></td></tr></tfoot>
     <tbody>${lignes}</tbody>
   </table>
 

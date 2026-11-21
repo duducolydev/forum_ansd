@@ -66,7 +66,13 @@ describe("lien magique (brief §5.3)", () => {
     expect(await prisma.magicLink.count()).toBe(before);
   });
 
-  it("crée un lien de 30 minutes avec un code à 6 chiffres pour un participant connu", async () => {
+  /*
+   * Vingt-quatre heures depuis le 21 novembre 2026, et non plus trente minutes :
+   * la file étale les envois et reporte jusqu'à six heures ce que la boîte
+   * refuse faute de quota, si bien qu'un lien de trente minutes arrivait
+   * périmé.
+   */
+  it("crée un lien de 24 heures avec un code à 6 chiffres pour un participant connu", async () => {
     const participant = await makeParticipant();
 
     const result = await requestMagicLink(editionId, participant.email.toUpperCase(), "127.0.0.1");
@@ -76,12 +82,19 @@ describe("lien magique (brief §5.3)", () => {
       where: { participantId: participant.id },
     });
     expect(link.code6).toMatch(/^\d{6}$/);
-    const minutes = (link.expiresAt.getTime() - Date.now()) / 60_000;
-    expect(minutes).toBeGreaterThan(25);
-    expect(minutes).toBeLessThanOrEqual(30);
+    const heures = (link.expiresAt.getTime() - Date.now()) / 3_600_000;
+    expect(heures).toBeGreaterThan(23);
+    expect(heures).toBeLessThanOrEqual(24);
   });
 
-  it("consomme le jeton une seule fois", async () => {
+  /*
+   * Le jeton était à usage unique. Les passerelles de messagerie d'entreprise
+   * ouvrent les liens d'un message avant leur destinataire : le lien était
+   * consommé par l'antivirus, et la personne lisait « lien expiré » sur un lien
+   * qu'elle n'avait jamais ouvert. Un rechargement ou un second onglet faisaient
+   * de même.
+   */
+  it("laisse le jeton valable jusqu'à son expiration", async () => {
     const participant = await makeParticipant();
     const token = randomBytes(32).toString("base64url");
     await prisma.magicLink.create({
@@ -93,11 +106,33 @@ describe("lien magique (brief §5.3)", () => {
       },
     });
 
-    const first = await consumeMagicLink(token);
-    expect(first).toEqual({ status: "OK", participantId: participant.id });
+    const attendu = { status: "OK", participantId: participant.id };
+    expect(await consumeMagicLink(token)).toEqual(attendu);
+    expect(await consumeMagicLink(token)).toEqual(attendu);
+    expect(await consumeMagicLink(token)).toEqual(attendu);
+  });
 
-    const second = await consumeMagicLink(token);
-    expect(second.status).toBe("INVALID");
+  /*
+   * Le courriel propose un lien **et** un code, et les deux vivent sur la même
+   * ligne : saisir le code rendait inopérant le lien du même message.
+   */
+  it("laisse le lien du même courriel valable après usage de son code", async () => {
+    const participant = await makeParticipant();
+    const token = randomBytes(32).toString("base64url");
+    await prisma.magicLink.create({
+      data: {
+        participantId: participant.id,
+        tokenHash: hash(token),
+        code6: "123456",
+        expiresAt: new Date(Date.now() + 30 * 60_000),
+      },
+    });
+
+    expect((await consumeCode(editionId, participant.email, "123456")).status).toBe("OK");
+    expect(await consumeMagicLink(token)).toEqual({
+      status: "OK",
+      participantId: participant.id,
+    });
   });
 
   it("refuse un jeton expiré", async () => {
@@ -115,7 +150,7 @@ describe("lien magique (brief §5.3)", () => {
     expect((await consumeMagicLink(token)).status).toBe("INVALID");
   });
 
-  it("accepte le code de secours puis le marque utilisé", async () => {
+  it("refuse un mauvais code, accepte le bon, et le garde valable", async () => {
     const participant = await makeParticipant();
     await prisma.magicLink.create({
       data: {
@@ -131,12 +166,14 @@ describe("lien magique (brief §5.3)", () => {
     const ok = await consumeCode(editionId, participant.email, "654321");
     expect(ok).toEqual({ status: "OK", participantId: participant.id });
 
+    // Le code n'est pas consommé : il rouvre l'espace depuis un autre appareil
+    // tant qu'il n'est pas expiré ni annulé (21 novembre 2026).
     const link = await prisma.magicLink.findFirstOrThrow({
       where: { participantId: participant.id },
     });
-    expect(link.usedAt).not.toBeNull();
+    expect(link.usedAt).toBeNull();
 
-    expect((await consumeCode(editionId, participant.email, "654321")).status).toBe("INVALID");
+    expect((await consumeCode(editionId, participant.email, "654321")).status).toBe("OK");
   });
 
   it("limite les demandes à 3 par minute et par e-mail", async () => {
@@ -206,6 +243,36 @@ describe("lien magique (brief §5.3)", () => {
       });
     });
 
+    /*
+     * Le tri reposait sur l'échéance : étaient annulés les liens expirant avant
+     * le nouveau. À trente minutes de validité, un code de secours de sept
+     * jours n'entrait jamais dans la fourchette. À vingt-quatre heures, un code
+     * de secours entamé y serait tombé — et la demande d'un lien aurait fait
+     * échouer le code du courriel de confirmation, exactement le défaut que la
+     * règle du 3 novembre voulait éviter.
+     */
+    it("laisse valable un code de secours à qui il reste moins d'une journée", async () => {
+      const participant = await makeParticipant();
+      const jour = 24 * 3_600_000;
+      await prisma.magicLink.create({
+        data: {
+          participantId: participant.id,
+          tokenHash: hash(randomBytes(32).toString("base64url")),
+          code6: "778899",
+          // Émis il y a six jours et demi pour sept jours : il reste douze heures.
+          createdAt: new Date(Date.now() - 6.5 * jour),
+          expiresAt: new Date(Date.now() + 0.5 * jour),
+        },
+      });
+
+      await requestMagicLink(editionId, participant.email, "127.0.0.1");
+
+      expect(await consumeCode(editionId, participant.email, "778899")).toEqual({
+        status: "OK",
+        participantId: participant.id,
+      });
+    });
+
     it("accepte aussi le code du lien demandé quand un code de secours existe", async () => {
       const participant = await makeParticipant();
       await creerCodeSecours(participant.id, 7);
@@ -251,7 +318,7 @@ describe("lien magique (brief §5.3)", () => {
       );
     });
 
-    it("un lien ne se consomme qu'une fois, même par des requêtes simultanées", async () => {
+    it("ouvre l'espace sur chacune de cinq requêtes simultanées", async () => {
       const participant = await makeParticipant();
       const token = randomBytes(32).toString("base64url");
       await prisma.magicLink.create({
@@ -265,7 +332,10 @@ describe("lien magique (brief §5.3)", () => {
 
       const resultats = await Promise.all(Array.from({ length: 5 }, () => consumeMagicLink(token)));
 
-      expect(resultats.filter((resultat) => resultat.status === "OK")).toHaveLength(1);
+      // Ce test gardait l'inverse — une seule réussite — du temps où le jeton
+      // était à usage unique. C'est la course qui n'existe plus, pas le besoin
+      // d'y résister : un lien réutilisable n'a rien à départager.
+      expect(resultats.filter((resultat) => resultat.status === "OK")).toHaveLength(5);
     });
 
     it("refuse le code d'un participant supprimé", async () => {

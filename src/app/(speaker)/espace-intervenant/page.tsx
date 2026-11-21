@@ -54,13 +54,13 @@ export default async function EspaceIntervenantPage({
           {/* Consigne sous le bandeau, qui ne porte plus que le titre (29 septembre 2026). */}
           <p className="text-text-2 mx-auto mb-6 max-w-[68ch] text-center">
             Déposez votre photo, votre biographie et votre présentation. Indiquez l&apos;adresse à
-            laquelle le comité vous a écrit : vous recevrez un lien d&apos;accès valable 30 minutes.
+            laquelle le comité vous a écrit : vous recevrez un lien d&apos;accès valable 24 heures.
           </p>
           {lien === "invalide" && (
             <p className="bg-danger-soft text-danger-text mb-4 flex items-start gap-2 rounded-lg px-4 py-3 text-sm">
               <AlertCircle aria-hidden size={16} className="mt-0.5 shrink-0" />
-              Ce lien n&apos;est plus valable : il a déjà servi ou il a expiré. Demandez-en un
-              nouveau.
+              Ce lien n&apos;est plus valable : il a expiré, ou une demande plus récente l&apos;a
+              remplacé. Demandez-en un nouveau.
             </p>
           )}
           <div className="border-border bg-surface rounded-2xl border p-7 shadow-sm">

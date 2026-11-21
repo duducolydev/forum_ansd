@@ -27,7 +27,7 @@
     },
     "magic_link": {
       "subject": "A sua ligação de acesso a «O meu espaço»",
-      "body": "Olá,\n\nEis a sua ligação de acesso ao seu espaço de participante, válida durante 30 minutos: {{lien_connexion}}\n\nCódigo de reserva: {{code6}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+      "body": "Olá,\n\nEis a sua ligação de acesso ao seu espaço de participante, válida durante 24 horas: {{lien_connexion}}\n\nCódigo de reserva: {{code6}}\n\nCom os melhores cumprimentos,\nO comité organizador"
     },
     "newsletter_published": {
       "subject": "{{titre}}",
@@ -75,7 +75,7 @@
     },
     "speaker_link": {
       "subject": "O seu espaço de orador — Fórum Internacional sobre Dados",
-      "body": "Olá {{prenom}},\n\nEis a sua ligação de acesso ao espaço de orador, válida durante 30 minutos: {{lien_connexion}}\n\nPode aí carregar a sua fotografia, a sua biografia e a sua apresentação.\n\nCódigo de reserva: {{code6}}\n\nCom os melhores cumprimentos,\nO comité organizador"
+      "body": "Olá {{prenom}},\n\nEis a sua ligação de acesso ao espaço de orador, válida durante 24 horas: {{lien_connexion}}\n\nPode aí carregar a sua fotografia, a sua biografia e a sua apresentação.\n\nCódigo de reserva: {{code6}}\n\nCom os melhores cumprimentos,\nO comité organizador"
     },
     "thank_you": {
       "subject": "Obrigado pela sua participação no Fórum",

@@ -9,6 +9,7 @@ import {
   getListePresence,
   lireFiltrePresence,
 } from "@/modules/attendance/service";
+import { LIGNES_VIERGES_DEFAUT, LIGNES_VIERGES_MAX } from "@/modules/attendance/lignes-vierges";
 import { renderListePresence, type FormeListe } from "@/modules/attendance/pdf";
 
 export const dynamic = "force-dynamic";
@@ -24,13 +25,28 @@ export const dynamic = "force-dynamic";
  * `presence=PRESENTS|ABSENTS` réduit la liste aux uns ou aux autres ; sans
  * lui, elle les montre tous.
  *
- * Le filtre vaut pour les **deux** formes depuis le 21 novembre 2026. La
- * feuille d'émargement l'ignorait, au motif qu'elle se signe avant la séance,
- * quand personne n'est encore présent — vrai de la première séance d'une
- * journée, faux des suivantes : on fait signer ceux qui sont arrivés, et on
- * relance ceux qui manquent. Refuser le filtre obligeait à imprimer les six
+ * Le filtre vaut pour les **deux** formes nominatives depuis le 21 novembre
+ * 2026. La feuille d'émargement l'ignorait, au motif qu'elle se signe avant la
+ * séance, quand personne n'est encore présent — vrai de la première séance
+ * d'une journée, faux des suivantes : on fait signer ceux qui sont arrivés, et
+ * on relance ceux qui manquent. Refuser le filtre obligeait à imprimer les six
  * cents attendus pour en faire signer deux.
+ *
+ * `forme=VIERGE` produit la même feuille d'émargement, **lignes vides**, pour
+ * les porteurs de badges génériques — qui n'ont pas de fiche en base et ne
+ * peuvent donc figurer sur aucune liste tirée de la base. `lignes=<n>` en règle
+ * le nombre. Ni la base ni les filtres de présence n'y ont de part : une
+ * catégorie choisie n'y sert qu'à titrer le document, pour qu'une liasse
+ * « PROTOCOLE » ne se mélange pas à une liasse « PRESSE ».
  */
+
+/** Nombre de lignes vides demandé, borné. Hors bornes ou illisible : le défaut. */
+function lignesVierges(valeur: string | null): number {
+  const nombre = Number(valeur);
+  if (!Number.isInteger(nombre) || nombre < 1) return LIGNES_VIERGES_DEFAUT;
+  return Math.min(nombre, LIGNES_VIERGES_MAX);
+}
+
 function jourValide(valeur: string | null): Date | null {
   if (!valeur || !/^\d{4}-\d{2}-\d{2}$/.test(valeur)) return null;
   const jour = new Date(`${valeur}T00:00:00.000Z`);
@@ -49,14 +65,20 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Jour attendu au format AAAA-MM-JJ." }, { status: 400 });
   }
 
-  const forme: FormeListe = parametres.get("forme") === "EMARGEMENT" ? "EMARGEMENT" : "CONSTAT";
+  const demandee = parametres.get("forme");
+  const forme: FormeListe =
+    demandee === "EMARGEMENT" ? "EMARGEMENT" : demandee === "VIERGE" ? "VIERGE" : "CONSTAT";
+  const vierge = forme === "VIERGE";
   const categoryId = parametres.get("categoryId") || undefined;
   const zoneId = parametres.get("zoneId") || undefined;
-  const filtre = lireFiltrePresence(parametres.get("presence"));
+  // Une feuille vierge ne porte aucun nom : le filtre de présence n'a rien à
+  // y filtrer, et la liste des attendus rien à y faire.
+  const filtre = vierge ? "TOUS" : lireFiltrePresence(parametres.get("presence"));
+  const lignesVides = vierge ? lignesVierges(parametres.get("lignes")) : 0;
 
   const edition = await getActiveEdition();
   const [attendus, categorie, zone] = await Promise.all([
-    getListePresence(edition.id, { jour, categoryId, zoneId }),
+    vierge ? [] : getListePresence(edition.id, { jour, categoryId, zoneId }),
     categoryId
       ? prisma.participantCategory.findUnique({
           where: { id: categoryId },
@@ -68,15 +90,26 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const lignes = filtrerParPresence(attendus, filtre);
 
-  const precisions = [categorie?.labelFr, zone?.name].filter(Boolean);
+  /*
+   * La feuille vierge annonce à quoi elle sert dès son sous-titre : posée sur
+   * un comptoir d'accueil à côté des liasses nominatives, rien d'autre ne la
+   * distinguerait d'une feuille d'émargement dont les noms n'auraient pas été
+   * imprimés.
+   */
+  const precisions = (
+    vierge
+      ? ["Badges génériques — à remplir et signer sur place", categorie?.labelFr]
+      : [categorie?.labelFr, zone?.name]
+  ).filter(Boolean);
   /*
    * Le titre porte le filtre : imprimé puis posé sur une table, un document
    * qui ne dit pas « absents » se confond avec la liste complète.
    */
   const restriction =
     filtre === "PRESENTS" ? " — présents" : filtre === "ABSENTS" ? " — absents" : "";
-  const titre =
-    forme === "EMARGEMENT"
+  const titre = vierge
+    ? "Feuille d'émargement vierge"
+    : forme === "EMARGEMENT"
       ? `Feuille d'émargement${restriction}`
       : filtre === "PRESENTS"
         ? "Liste des présents"
@@ -92,6 +125,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     lignes,
     filtre,
     attendus: attendus.length,
+    lignesVides,
   });
 
   await audit.log({
@@ -103,7 +137,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     after: {
       forme,
       jour: jour.toISOString().slice(0, 10),
-      lignes: lignes.length,
+      lignes: vierge ? lignesVides : lignes.length,
       presence: filtre,
       categoryId,
       zoneId,

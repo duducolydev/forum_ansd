@@ -597,9 +597,9 @@ async function seedReference() {
       subjectFr: "Votre lien d'accès à « Mon espace »",
       subjectEn: 'Your access link to "My space"',
       bodyFr:
-        "Bonjour,\n\nVoici votre lien d'accès à votre espace participant, valable 30 minutes : {{lien_connexion}}\n\nCode de secours : {{code6}}\n\nCordialement,\nLe comité d'organisation",
+        "Bonjour,\n\nVoici votre lien d'accès à votre espace participant, valable 24 heures : {{lien_connexion}}\n\nCode de secours : {{code6}}\n\nCordialement,\nLe comité d'organisation",
       bodyEn:
-        "Hello,\n\nHere is your access link to your participant space, valid for 30 minutes: {{lien_connexion}}\n\nBackup code: {{code6}}\n\nBest regards,\nThe organising committee",
+        "Hello,\n\nHere is your access link to your participant space, valid for 24 hours: {{lien_connexion}}\n\nBackup code: {{code6}}\n\nBest regards,\nThe organising committee",
       variables: ["lien_connexion", "code6"],
     },
     {
@@ -607,9 +607,9 @@ async function seedReference() {
       subjectFr: "Votre espace intervenant — Forum international sur les données",
       subjectEn: "Your speaker space — International Data Forum",
       bodyFr:
-        "Bonjour {{prenom}},\n\nVoici votre lien d'accès à l'espace intervenant, valable 30 minutes : {{lien_connexion}}\n\nVous pourrez y déposer votre photo, votre biographie et votre présentation.\n\nCode de secours : {{code6}}\n\nCordialement,\nLe comité d'organisation",
+        "Bonjour {{prenom}},\n\nVoici votre lien d'accès à l'espace intervenant, valable 24 heures : {{lien_connexion}}\n\nVous pourrez y déposer votre photo, votre biographie et votre présentation.\n\nCode de secours : {{code6}}\n\nCordialement,\nLe comité d'organisation",
       bodyEn:
-        "Hello {{prenom}},\n\nHere is your access link to the speaker space, valid for 30 minutes: {{lien_connexion}}\n\nYou can upload your photograph, biography and presentation there.\n\nBackup code: {{code6}}\n\nBest regards,\nThe organising committee",
+        "Hello {{prenom}},\n\nHere is your access link to the speaker space, valid for 24 hours: {{lien_connexion}}\n\nYou can upload your photograph, biography and presentation there.\n\nBackup code: {{code6}}\n\nBest regards,\nThe organising committee",
       variables: ["prenom", "lien_connexion", "code6"],
     },
     {

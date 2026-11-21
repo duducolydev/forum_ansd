@@ -143,10 +143,15 @@ describe("accès des intervenants (brief §5.8, contradiction C12)", () => {
       expect(await prisma.magicLink.count({ where: { speakerId } })).toBeGreaterThan(0);
     });
 
-    it("ouvre l'espace une fois, et une seule", async () => {
+    /*
+     * Réutilisable jusqu'à son expiration (21 novembre 2026). Il était à usage
+     * unique : les messageries institutionnelles, qui ouvrent les liens d'un
+     * message avant leur destinataire, le consommaient à sa place.
+     */
+    it("ouvre l'espace autant de fois qu'il le faut, tant qu'il n'est pas expiré", async () => {
       const jeton = await poserLienIntervenant();
       expect(await consumeSpeakerLink(jeton)).toEqual({ status: "OK", speakerId });
-      expect((await consumeSpeakerLink(jeton)).status).toBe("INVALID");
+      expect(await consumeSpeakerLink(jeton)).toEqual({ status: "OK", speakerId });
     });
 
     it("refuse un lien expiré", async () => {

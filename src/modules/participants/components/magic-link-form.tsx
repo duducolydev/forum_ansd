@@ -73,9 +73,9 @@ export function MagicLinkForm({
         <p className="border-border bg-surface text-text-2 flex items-start gap-2 rounded-lg border p-3 text-sm">
           <AlertCircle aria-hidden size={15} className="text-warn-text mt-0.5 shrink-0" />
           {t({
-            fr: "Ce lien est invalide ou a expiré (validité\u00a0: 30 minutes, usage unique). Demandez-en un nouveau ci-dessous.",
-            en: "This link is invalid or has expired (valid for 30 minutes, single use). Request a new one below.",
-            pt: "Esta ligação é inválida ou expirou (validade: 30 minutos, utilização única). Peça uma nova abaixo.",
+            fr: "Ce lien n'est plus valable : il a expiré (validité\u00a0: 24 heures), ou une demande plus récente l'a remplacé. Demandez-en un nouveau ci-dessous, ou saisissez le code reçu dans votre e-mail de confirmation.",
+            en: "This link is no longer valid: it has expired (valid for 24 hours), or a more recent request has replaced it. Request a new one below, or enter the code from your confirmation email.",
+            pt: "Esta ligação já não é válida: expirou (validade: 24 horas) ou foi substituída por um pedido mais recente. Peça uma nova abaixo ou introduza o código recebido no seu e-mail de confirmação.",
           })}
         </p>
       )}
@@ -145,9 +145,9 @@ export function MagicLinkForm({
               })}
               <b className="text-heading">{sentTo}</b>
               {t({
-                fr: ", un e-mail contenant un lien d'accès et un code à 6 chiffres vient d'être envoyé. Le lien est valable 30 minutes. Le code de votre e-mail de confirmation reste aussi valable.",
-                en: ", an email containing an access link and a 6-digit code has just been sent. The link is valid for 30 minutes. The code in your confirmation email also remains valid.",
-                pt: ", acaba de ser enviado um e-mail com uma ligação de acesso e um código de 6 dígitos. A ligação é válida durante 30 minutos. O código do seu e-mail de confirmação também continua válido.",
+                fr: ", un e-mail contenant un lien d'accès et un code à 6 chiffres vient d'être envoyé. Les deux sont valables 24 heures et servent autant de fois que nécessaire. Le code de votre e-mail de confirmation reste aussi valable.",
+                en: ", an email containing an access link and a 6-digit code has just been sent. Both are valid for 24 hours and can be used as many times as needed. The code in your confirmation email also remains valid.",
+                pt: ", acaba de ser enviado um e-mail com uma ligação de acesso e um código de 6 dígitos. Ambos são válidos durante 24 horas e podem ser utilizados as vezes que for necessário. O código do seu e-mail de confirmação também continua válido.",
               })}
             </p>
           ) : (

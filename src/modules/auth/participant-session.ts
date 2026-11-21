@@ -2,9 +2,9 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 
 /**
- * Session participant (décision PLAN.md C2) : le `MagicLink` est à usage unique
- * et expire en 30 minutes ; une fois consommé, on émet un cookie JWT httpOnly
- * signé, à durée glissante, plutôt que d'ajouter une table de sessions.
+ * Session participant (décision PLAN.md C2) : le `MagicLink` expire en
+ * 24 heures ; à son usage, on émet un cookie JWT httpOnly signé, à durée
+ * glissante, plutôt que d'ajouter une table de sessions.
  */
 export const PARTICIPANT_SESSION_COOKIE = "forum-participant-session";
 const SESSION_DAYS = 30;
