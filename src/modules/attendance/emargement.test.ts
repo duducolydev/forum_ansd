@@ -97,8 +97,9 @@ describe("synthèse de la feuille d'émargement", () => {
    *
    * Elle sert aux porteurs de badges génériques, qui n'ont pas de fiche en base
    * et ne peuvent donc figurer sur aucune liste tirée de la base. Ce qui se
-   * teste ici : qu'elle ait bien les colonnes de l'émargement — c'est la
-   * demande —, le nombre de lignes voulu, et aucun nom.
+   * teste ici : qu'elle ait bien les colonnes qu'on remplit à la main, le
+   * nombre de lignes voulu, et rien de ce qu'elle ne peut pas savoir — aucun
+   * nom, aucune date.
    */
   describe("feuille vierge", () => {
     const vierge = (lignesVides?: number) =>
@@ -123,14 +124,36 @@ describe("synthèse de la feuille d'émargement", () => {
       expect(compter(vierge(), 'class="ligne-vide"')).toBe(LIGNES_VIERGES_DEFAUT);
     });
 
-    it("garde les colonnes de la feuille d'émargement, et pas celles du constat", () => {
+    it("garde les colonnes qu'on remplit, et pas celles du constat", () => {
       const html = vierge(5);
       expect(html).toContain("<th>Nom et prénom</th>");
       expect(html).toContain("<th>Organisation</th>");
-      expect(html).toContain("<th>Catégorie</th>");
       expect(html).toContain("<th>Signature</th>");
       expect(html).not.toContain("<th>Passage</th>");
       expect(html).not.toContain("<th>Pays</th>");
+    });
+
+    /*
+     * La catégorie est au titre, pas sur chaque ligne : une liasse vierge se
+     * tire par catégorie, et la réécrire soixante fois à la main prenait la
+     * largeur du nom et de l'organisation, qui, eux, s'écrivent vraiment.
+     */
+    it("n'a pas de colonne « Catégorie », que porte déjà le titre", () => {
+      expect(vierge(5)).not.toContain("<th>Catégorie</th>");
+      // Elle reste sur la feuille nominative, qui la tire de la base.
+      expect(
+        listePresenceHtml({ ...base, forme: "EMARGEMENT", lignes: PRESENTS, attendus: 2 }),
+      ).toContain("<th>Catégorie</th>");
+    });
+
+    /*
+     * Sur un document déjà rempli, l'alternance de fonds suffit à suivre une
+     * ligne. Sur une feuille qu'on remplit à la main, rien n'indique où
+     * s'arrête une colonne : les écritures mordent sur la voisine.
+     */
+    it("sépare les colonnes par un filet vertical", () => {
+      expect(vierge(5)).toContain('<table class="vierge">');
+      expect(vierge(5)).toContain("table.vierge thead th, table.vierge tbody td { border-right");
     });
 
     /*
@@ -149,7 +172,7 @@ describe("synthèse de la feuille d'émargement", () => {
       expect(html).toContain("td.carte { width:");
     });
 
-    it("ne porte aucun nom, et aucun décompte de participants", () => {
+    it("ne porte aucun nom", () => {
       // Les lignes passées sont ignorées : une feuille vierge qui laisserait
       // filtrer un nom ne serait plus vierge.
       const html = listePresenceHtml({
@@ -159,15 +182,30 @@ describe("synthèse de la feuille d'émargement", () => {
         lignesVides: 4,
       });
       expect(html).not.toContain("DIOP Awa");
-      expect(html).toContain("4 ligne(s) à remplir sur place");
       expect(html).not.toContain("personne(s) attendue(s)");
+    });
+
+    /*
+     * Ni date ni décompte sous le titre (21 novembre 2026, après impression
+     * d'essai). La date était celle du jour demandé à l'écran : une liasse
+     * tirée la veille et resservie le surlendemain l'aurait portée à faux, et
+     * un document signé qui porte une mauvaise date est pire qu'un document
+     * sans date. Le décompte, lui, ne disait rien à personne.
+     */
+    it("ne porte ni date ni décompte de lignes", () => {
+      const html = vierge(4);
+      // Le sous-titre reste — c'est lui qui porte « Badges génériques » et la
+      // catégorie —, mais le jour d'édition qui le suivait a disparu.
+      expect(html).toContain(base.sousTitre);
+      expect(html).not.toContain("ligne(s) à remplir");
+      expect(html).not.toContain("23 novembre 2026");
     });
 
     it("donne de quoi écrire : les cellules à remplir portent un filet", () => {
       const html = vierge(3);
-      // Quatre cellules à remplir par ligne — carte, nom, organisation,
-      // catégorie —, la signature ayant déjà la sienne.
-      expect(compter(html, "a-remplir")).toBe(4 * 3 + 1);
+      // Trois cellules à remplir par ligne — carte, nom, organisation —, la
+      // signature ayant déjà la sienne.
+      expect(compter(html, "a-remplir")).toBe(3 * 3 + 1);
       expect(html).toContain("td.a-remplir { border-bottom");
     });
   });

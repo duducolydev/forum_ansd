@@ -56,16 +56,27 @@ export interface DonneesListe {
  * attendue(s) » là où 627 le sont, ce qui est faux et se lit comme un chiffre
  * de fréquentation.
  */
+/**
+ * La ligne sous le titre.
+ *
+ * **La feuille vierge n'y met que son sous-titre** (21 novembre 2026, après
+ * impression d'essai) : ni date, ni décompte de lignes.
+ *
+ * - La **date** était celle du jour d'édition demandé à l'écran. Une liasse
+ *   vierge se tire la veille, s'épuise le lendemain et resservira le
+ *   surlendemain : une date imprimée dessus est fausse deux jours sur trois, et
+ *   un document signé qui porte une mauvaise date est pire qu'un document sans
+ *   date.
+ * - Le **décompte** (« 152 ligne(s) à remplir ») ne disait rien à personne :
+ *   celui qui tient la feuille voit les lignes, et celui qui l'archive compte
+ *   les signatures, pas les lignes vides.
+ */
+function meta(donnees: DonneesListe): string {
+  if (donnees.forme === "VIERGE") return escapeHtml(donnees.sousTitre);
+  return `${escapeHtml(donnees.sousTitre)} · ${dateLongue.format(donnees.jour)}<br>${synthese(donnees)}`;
+}
+
 function synthese(donnees: DonneesListe): string {
-  /*
-   * La feuille vierge ne compte personne : annoncer « 30 personne(s)
-   * attendue(s) » sur un document sans un seul nom se lirait comme un chiffre,
-   * et c'est exactement le défaut corrigé plus haut pour l'émargement filtré.
-   */
-  if (donnees.forme === "VIERGE") {
-    const lignes = donnees.lignesVides ?? LIGNES_VIERGES_DEFAUT;
-    return `${lignes} ligne(s) à remplir sur place`;
-  }
   const nombre = donnees.lignes.length;
   const attendus = donnees.attendus ?? nombre;
   if (donnees.filtre === "PRESENTS") return `${nombre} présente(s) sur ${attendus} attendue(s)`;
@@ -101,31 +112,29 @@ const heure = new Intl.DateTimeFormat("fr-FR", {
 });
 
 /**
- * Colonnes de la feuille vierge : celles de l'émargement, plus la référence de
- * la carte remise.
+ * Colonnes de la feuille vierge.
  *
- * ## Pourquoi une colonne de plus, alors que les autres sont les mêmes
+ * ## La référence de la carte, en deuxième position
  *
- * Parce qu'une carte générique n'a pas de porteur en base : son seul rattachement
- * à une personne est **ce document**. Sans la référence imprimée au dos de la
- * carte (`FID-2026-ANON-014`), la feuille dit que quelqu'un est entré, pas quelle
+ * Une carte générique n'a pas de porteur en base : son seul rattachement à une
+ * personne est **ce document**. Sans la référence imprimée au dos de la carte
+ * (`FID-2026-ANON-014`), la feuille dit que quelqu'un est entré, pas quelle
  * carte lui a été remise — et le jour où il faut révoquer une carte perdue, ou
- * dire qui tenait celle qui a badgé trois fois, rien ne répond. C'est d'ailleurs
- * ce que prévoyait déjà la numérotation continue de `modules/badges/anonymes.ts` :
- * « le numéro s'inscrit au registre de remise, en face d'un nom et d'une heure ».
+ * dire qui tenait celle qui a badgé trois fois, rien ne répond. C'est ce que
+ * prévoyait déjà la numérotation continue de `modules/badges/anonymes.ts` :
+ * « le numéro s'inscrit au registre de remise, en face d'un nom et d'une
+ * heure ». Elle vient juste après le numéro d'ordre parce que la carte est dans
+ * la main de l'agent au moment où il remplit la ligne.
  *
- * Elle vient en deuxième position, juste après le numéro d'ordre : c'est la
- * première chose que l'agent a sous les yeux — la carte est dans sa main — et
- * la dernière qu'il penserait à remplir si elle était en bout de ligne.
+ * ## Pas de catégorie (21 novembre 2026, après impression d'essai)
+ *
+ * La feuille d'émargement nominative porte une colonne « Catégorie » ; celle-ci
+ * ne l'a plus. Une liasse de feuilles vierges se tire **par catégorie** — le
+ * titre la porte déjà —, et redemander à la main, sur chaque ligne, ce que le
+ * haut de page affirme ne fait que prendre la largeur du nom et de
+ * l'organisation, qui, eux, s'écrivent vraiment.
  */
-const COLONNES_VIERGE = [
-  "N°",
-  "N° de carte",
-  "Nom et prénom",
-  "Organisation",
-  "Catégorie",
-  "Signature",
-];
+const COLONNES_VIERGE = ["N°", "N° de carte", "Nom et prénom", "Organisation", "Signature"];
 
 /**
  * Les lignes de la feuille vierge : le numéro d'ordre, et rien d'autre.
@@ -134,7 +143,7 @@ const COLONNES_VIERGE = [
  * cartes génériques remises » sans recompter des signatures manuscrites.
  */
 function lignesVierges(nombre: number): string {
-  const cellules = '<td class="a-remplir carte"></td>' + '<td class="a-remplir"></td>'.repeat(3);
+  const cellules = '<td class="a-remplir carte"></td>' + '<td class="a-remplir"></td>'.repeat(2);
   return Array.from(
     { length: nombre },
     (_, index) =>
@@ -254,6 +263,14 @@ function documentHtml(donnees: DonneesListe, colonnes: string[], lignes: string)
   /* La référence d'une carte tient en une quinzaine de signes
      (FID-2026-ANON-014) : au-delà, la largeur serait prise au nom. */
   td.carte { width: 30mm; }
+  /* Filets verticaux, sur la feuille vierge seulement (21 novembre 2026).
+
+     Sur un document imprimé qui porte déjà les noms, l'alternance de fonds
+     suffit à suivre une ligne. Sur une feuille qu'on remplit à la main, rien
+     n'indique où s'arrête une colonne : les écritures mordent sur la voisine,
+     et une organisation un peu longue finit en travers de la signature. */
+  table.vierge thead th, table.vierge tbody td { border-right: 1px solid #c7d2dc; }
+  table.vierge thead th:last-child, table.vierge tbody td:last-child { border-right: none; }
   /* Réserve de bas de page (21 novembre 2026).
 
      Le pied de page est en « position: fixed », et un élément fixe se place, à
@@ -278,13 +295,10 @@ function documentHtml(donnees: DonneesListe, colonnes: string[], lignes: string)
   <header>
     <div class="edition">${escapeHtml(donnees.editionName)}</div>
     <h1>${escapeHtml(donnees.titre)}</h1>
-    <div class="meta">
-      ${escapeHtml(donnees.sousTitre)} · ${dateLongue.format(donnees.jour)}<br>
-      ${synthese(donnees)}
-    </div>
+    <div class="meta">${meta(donnees)}</div>
   </header>
 
-  <table>
+  <table${donnees.forme === "VIERGE" ? ' class="vierge"' : ""}>
     <thead><tr>${colonnes.map((colonne) => `<th>${colonne}</th>`).join("")}</tr></thead>
     <tfoot><tr><td colspan="${colonnes.length}"></td></tr></tfoot>
     <tbody>${lignes}</tbody>

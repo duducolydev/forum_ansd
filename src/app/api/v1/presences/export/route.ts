@@ -94,12 +94,11 @@ export async function GET(request: Request): Promise<NextResponse> {
    * La feuille vierge annonce à quoi elle sert dès son sous-titre : posée sur
    * un comptoir d'accueil à côté des liasses nominatives, rien d'autre ne la
    * distinguerait d'une feuille d'émargement dont les noms n'auraient pas été
-   * imprimés.
+   * imprimés. La catégorie choisie y figure, et c'est le seul endroit où elle
+   * figure désormais — la colonne « Catégorie » a été retirée des lignes.
    */
   const precisions = (
-    vierge
-      ? ["Badges génériques — à remplir et signer sur place", categorie?.labelFr]
-      : [categorie?.labelFr, zone?.name]
+    vierge ? ["Badges génériques", categorie?.labelFr] : [categorie?.labelFr, zone?.name]
   ).filter(Boolean);
   /*
    * Le titre porte le filtre : imprimé puis posé sur une table, un document

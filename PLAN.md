@@ -4571,15 +4571,28 @@ lire de la même façon —, **plus une** : la référence de la carte remise.
   « PROTOCOLE » ne doit pas se mélanger à une liasse « PRESSE ».
 - Le nombre de lignes se choisit **en pages** — c'est ainsi qu'on pense devant
   une imprimante — de une à huit, deux par défaut (300 lignes au plus par
-  l'URL). Les comptes proposés remplissent des pages entières : une feuille
-  dont la dernière page ne porte qu'une ligne se jette, et on l'imprime quand
-  même.
+  l'URL). Les comptes proposés remplissent des pages entières, et il y faut
+  **deux** nombres : la première page porte l'en-tête du document et tient
+  vingt lignes, les suivantes vingt-deux. Comptées comme la première, une
+  liasse de « huit pages » en rendait neuf, dont la dernière portait une ligne
+  unique — constaté à l'impression le 21 novembre.
 - Le numéro d'ordre reste imprimé : c'est lui qui permet de dire « sept cartes
   remises » sans recompter des signatures manuscrites.
-- Le sous-titre annonce à quoi elle sert — « Badges génériques — à remplir et
-  signer sur place ». Posée sur un comptoir à côté des liasses nominatives,
-  rien d'autre ne la distinguerait d'une feuille dont les noms n'auraient pas
-  été imprimés.
+- Le sous-titre annonce à quoi elle sert — « Badges génériques », et la
+  catégorie quand une liasse est tirée par catégorie. Posée sur un comptoir à
+  côté des liasses nominatives, rien d'autre ne la distinguerait d'une feuille
+  dont les noms n'auraient pas été imprimés.
+- **Ni date ni décompte** sous le titre (21 novembre, après impression
+  d'essai). La date était celle du jour demandé à l'écran : une liasse tirée la
+  veille, épuisée le lendemain et resservie le surlendemain l'aurait portée à
+  faux, et un document signé qui porte une mauvaise date est pire qu'un
+  document sans date. Le décompte — « 152 ligne(s) à remplir » — ne disait rien
+  à personne : qui tient la feuille voit les lignes, qui l'archive compte les
+  signatures.
+- **Des filets verticaux** séparent les colonnes, sur cette feuille seulement.
+  Sur un document déjà rempli, l'alternance de fonds suffit à suivre une ligne ;
+  sur une feuille qu'on remplit à la main, rien n'indique où s'arrête une
+  colonne, et une organisation un peu longue finit en travers de la signature.
 - Les cellules à remplir portent le même filet que la colonne signature : un
   trait trop clair ne se suit pas au stylo, et le fond reste blanc partout, une
   ligne grisée se remplissant mal.
@@ -4607,7 +4620,7 @@ chaque page comme l'en-tête l'est déjà, rend les douze millimètres qu'il fau
 Correction d'une ligne de HTML et deux de CSS, vérifiée sur un rendu de
 quarante lignes : dix-neuf par page, aucun chevauchement.
 
-### 31.2 La sixième colonne
+### 31.2 Les colonnes, après deux passages
 
 La feuille a d'abord été livrée avec les cinq colonnes de l'émargement ordinaire
 — « les mêmes champs », comme demandé. Une sixième a été ajoutée dans la foulée,
@@ -4624,3 +4637,10 @@ ce registre, c'est cette feuille.
 Elle vient en **deuxième position**, juste après le numéro d'ordre : la carte
 est dans la main de l'agent au moment où il remplit la ligne, et une colonne en
 bout de ligne est celle qu'on oublie.
+
+Puis une est partie : **« Catégorie »**. Elle venait de l'émargement nominatif,
+où la base la remplit. Ici, elle était à réécrire à la main sur chaque ligne —
+alors qu'une liasse vierge se tire par catégorie et que le titre la porte déjà.
+Elle ne prenait pas seulement du temps au comptoir, elle prenait la largeur du
+nom et de l'organisation, qui, eux, s'écrivent vraiment. Cinq colonnes :
+N°, N° de carte, Nom et prénom, Organisation, Signature.

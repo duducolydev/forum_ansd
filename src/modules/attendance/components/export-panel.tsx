@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { LIGNES_VIERGES_DEFAUT, LIGNES_VIERGES_PAR_PAGE } from "../lignes-vierges";
+import { LIGNES_VIERGES_DEFAUT, lignesPourPages } from "../lignes-vierges";
 
 const champ = "border-border bg-bg text-text rounded-lg border px-3 py-2 text-sm";
 
@@ -144,11 +144,12 @@ export function ExportPanel({
           Feuille vierge — badges génériques
         </h4>
         <p className="text-text-3 mb-4 text-xs">
-          Les colonnes de la feuille d&apos;émargement, lignes vides, plus la référence de la carte
-          remise. Pour les arrivants munis d&apos;une carte générique, qui n&apos;ont pas de fiche
-          en base : numéro de carte, nom, organisation et catégorie s&apos;écrivent au comptoir,
-          puis la personne signe. La catégorie choisie ci-dessus titre le document ; le filtre de
-          présence ne s&apos;y applique pas.
+          Lignes vides, avec la référence de la carte remise. Pour les arrivants munis d&apos;une
+          carte générique, qui n&apos;ont pas de fiche en base : numéro de carte, nom et
+          organisation s&apos;écrivent au comptoir, puis la personne signe. La catégorie choisie
+          ci-dessus titre le document, et n&apos;est donc pas à réécrire sur chaque ligne. Ni le
+          filtre de présence ni le jour ne s&apos;y appliquent : une liasse vierge ressert le
+          lendemain, et ne porte donc pas de date.
         </p>
 
         <div className="flex flex-wrap items-end gap-3">
@@ -166,8 +167,8 @@ export function ExportPanel({
                   imprimante, et les comptes proposés remplissent des pages
                   entières plutôt que d'en laisser une portant une seule ligne. */}
               {[1, 2, 4, 8].map((pages) => (
-                <option key={pages} value={String(pages * LIGNES_VIERGES_PAR_PAGE)}>
-                  {pages} page{pages > 1 ? "s" : ""} — {pages * LIGNES_VIERGES_PAR_PAGE} lignes
+                <option key={pages} value={String(lignesPourPages(pages))}>
+                  {pages} page{pages > 1 ? "s" : ""} — {lignesPourPages(pages)} lignes
                 </option>
               ))}
             </select>
