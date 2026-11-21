@@ -39,8 +39,14 @@ export function ExportPanel({
      * `zoneId` reste accepté par la route, pour le jour où des portes seraient
      * de nouveau tenues.
      */
-    // L'émargement se signe avant la séance : le filtre ne concerne que le constat.
-    if (forme === "CONSTAT" && presence !== "TOUS") parametres.set("presence", presence);
+    /*
+     * Le filtre de présence vaut pour les deux formes (21 novembre 2026). Il
+     * était réservé au constat, au motif qu'une feuille d'émargement se signe
+     * avant la séance : vrai de la première séance d'une journée, faux des
+     * suivantes, où l'on fait signer ceux qui sont arrivés et où l'on relance
+     * ceux qui manquent.
+     */
+    if (presence !== "TOUS") parametres.set("presence", presence);
     return `/api/v1/presences/export?${parametres.toString()}`;
   }
 
@@ -49,7 +55,8 @@ export function ExportPanel({
       <h3 className="text-heading mb-1 text-sm font-semibold">Exporter en PDF — {jourLibelle}</h3>
       <p className="text-text-3 mb-4 text-xs">
         La feuille d&apos;émargement se prépare avant la séance, avec une colonne signature. La
-        liste de présence rend compte après coup, absents compris.
+        liste de présence rend compte après coup, absents compris. Les deux suivent les filtres
+        ci-dessous.
       </p>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -74,7 +81,7 @@ export function ExportPanel({
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="export-presence" className="text-text-3 text-xs font-semibold">
-            Présence (liste de présence)
+            Présence
           </label>
           <select
             id="export-presence"
@@ -96,7 +103,11 @@ export function ExportPanel({
           rel="noopener"
           className="border-border text-heading rounded-lg border px-4 py-2 text-sm font-semibold"
         >
-          Feuille d&apos;émargement
+          {presence === "PRESENTS"
+            ? "Émargement des présents"
+            : presence === "ABSENTS"
+              ? "Émargement des absents"
+              : "Feuille d’émargement"}
         </a>
         <a
           href={lien("CONSTAT")}

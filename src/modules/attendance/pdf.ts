@@ -34,13 +34,20 @@ export interface DonneesListe {
   attendus?: number;
 }
 
-/** Ligne de synthèse sous le titre. */
+/**
+ * Ligne de synthèse sous le titre.
+ *
+ * Le filtre vaut pour les deux formes depuis le 21 novembre 2026 : une
+ * feuille d'émargement réduite aux présents dirait sinon « 2 personne(s)
+ * attendue(s) » là où 627 le sont, ce qui est faux et se lit comme un chiffre
+ * de fréquentation.
+ */
 function synthese(donnees: DonneesListe): string {
   const nombre = donnees.lignes.length;
   const attendus = donnees.attendus ?? nombre;
-  if (donnees.forme === "EMARGEMENT") return `${nombre} personne(s) attendue(s)`;
   if (donnees.filtre === "PRESENTS") return `${nombre} présente(s) sur ${attendus} attendue(s)`;
   if (donnees.filtre === "ABSENTS") return `${nombre} absente(s) sur ${attendus} attendue(s)`;
+  if (donnees.forme === "EMARGEMENT") return `${nombre} personne(s) attendue(s)`;
   const presents = donnees.lignes.filter((ligne) => ligne.premierPassage !== null).length;
   return `${nombre} personne(s) attendue(s) · ${presents} présente(s)`;
 }

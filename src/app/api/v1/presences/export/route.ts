@@ -21,9 +21,15 @@ export const dynamic = "force-dynamic";
  * sont ceux de l'écran, pour que le document imprimé corresponde exactement à
  * ce que l'utilisateur avait sous les yeux.
  *
- * `presence=PRESENTS|ABSENTS` réduit la liste de présence aux uns ou aux
- * autres ; sans lui, elle les montre tous. La feuille d'émargement l'ignore :
- * elle se signe avant la séance, quand personne n'est encore présent.
+ * `presence=PRESENTS|ABSENTS` réduit la liste aux uns ou aux autres ; sans
+ * lui, elle les montre tous.
+ *
+ * Le filtre vaut pour les **deux** formes depuis le 21 novembre 2026. La
+ * feuille d'émargement l'ignorait, au motif qu'elle se signe avant la séance,
+ * quand personne n'est encore présent — vrai de la première séance d'une
+ * journée, faux des suivantes : on fait signer ceux qui sont arrivés, et on
+ * relance ceux qui manquent. Refuser le filtre obligeait à imprimer les six
+ * cents attendus pour en faire signer deux.
  */
 function jourValide(valeur: string | null): Date | null {
   if (!valeur || !/^\d{4}-\d{2}-\d{2}$/.test(valeur)) return null;
@@ -46,7 +52,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   const forme: FormeListe = parametres.get("forme") === "EMARGEMENT" ? "EMARGEMENT" : "CONSTAT";
   const categoryId = parametres.get("categoryId") || undefined;
   const zoneId = parametres.get("zoneId") || undefined;
-  const filtre = forme === "CONSTAT" ? lireFiltrePresence(parametres.get("presence")) : "TOUS";
+  const filtre = lireFiltrePresence(parametres.get("presence"));
 
   const edition = await getActiveEdition();
   const [attendus, categorie, zone] = await Promise.all([
@@ -63,9 +69,15 @@ export async function GET(request: Request): Promise<NextResponse> {
   const lignes = filtrerParPresence(attendus, filtre);
 
   const precisions = [categorie?.labelFr, zone?.name].filter(Boolean);
+  /*
+   * Le titre porte le filtre : imprimé puis posé sur une table, un document
+   * qui ne dit pas « absents » se confond avec la liste complète.
+   */
+  const restriction =
+    filtre === "PRESENTS" ? " — présents" : filtre === "ABSENTS" ? " — absents" : "";
   const titre =
     forme === "EMARGEMENT"
-      ? "Feuille d'émargement"
+      ? `Feuille d'émargement${restriction}`
       : filtre === "PRESENTS"
         ? "Liste des présents"
         : filtre === "ABSENTS"
