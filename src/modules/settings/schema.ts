@@ -38,7 +38,7 @@ export const inscriptionsSchema = z.object({
     .trim()
     .max(600)
     .default(
-      "Les inscriptions sont clôturées. Merci de votre intérêt pour le Forum international sur les données. Vous pourrez suivre les sessions en direct sur la page /direct du site le jour J. Un mail vous sera envoyé au début de la transmission, avec un lien vers le lecteur et le programme complet.",
+      "En raison de la capacité d’accueil limitée des salles et du nombre important de demandes de participation, les inscriptions pour une participation en présentiel sont désormais clôturées. Nous vous invitons toutefois à suivre la retransmission en direct du Forum à distance, à travers les plateformes digitales officielles de l’ANSD et même le portail du forum. Un mail vous sera envoyé avec le lien du direct. Merci de votre compréhension et de votre intérêt pour cet événement.",
     ),
   messageFermeEn: z.string().trim().max(600).default("Registration is not open at the moment."),
   messageFermePt: z.string().trim().max(600).default("As inscrições não estão abertas de momento."),
