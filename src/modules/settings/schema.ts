@@ -40,8 +40,20 @@ export const inscriptionsSchema = z.object({
     .default(
       "En raison de la capacité d’accueil limitée des salles et du nombre important de demandes de participation, les inscriptions pour une participation en présentiel sont désormais clôturées. Nous vous invitons toutefois à suivre la retransmission en direct du Forum à distance, à travers les plateformes digitales officielles de l’ANSD et même le portail du forum. Un mail vous sera envoyé avec le lien du direct. Merci de votre compréhension et de votre intérêt pour cet événement.",
     ),
-  messageFermeEn: z.string().trim().max(600).default("Registration is not open at the moment."),
-  messageFermePt: z.string().trim().max(600).default("As inscrições não estão abertas de momento."),
+  messageFermeEn: z
+    .string()
+    .trim()
+    .max(600)
+    .default(
+      "Owing to the limited seating capacity of the venue and the high number of participation requests, registration for in-person attendance is now closed. You are nonetheless invited to follow the Forum’s live broadcast remotely, on the ANSD’s official digital platforms and on the Forum portal itself. An e-mail will be sent to you with the link to the live stream. Thank you for your understanding and for your interest in this event.",
+    ),
+  messageFermePt: z
+    .string()
+    .trim()
+    .max(600)
+    .default(
+      "Devido à capacidade de acolhimento limitada das salas e ao elevado número de pedidos de participação, as inscrições para a participação presencial estão encerradas. Convidamo-lo, no entanto, a acompanhar a transmissão em direto do Fórum à distância, nas plataformas digitais oficiais da ANSD e no próprio portal do Fórum. Receberá um e-mail com a ligação para a transmissão em direto. Obrigado pela sua compreensão e pelo seu interesse neste evento.",
+    ),
 });
 
 /**

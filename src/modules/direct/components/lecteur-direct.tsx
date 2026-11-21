@@ -140,8 +140,12 @@ export function LecteurDirect({
               className="absolute inset-0 h-full w-full object-cover opacity-70 transition-opacity group-hover:opacity-85"
             />
           )}
-          <span className="relative flex flex-col items-center gap-3 text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.7)]">
-            <PlayCircle aria-hidden size={72} strokeWidth={1.6} />
+          <span className="relative flex flex-col items-center gap-2 px-4 text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.7)] sm:gap-3">
+            <PlayCircle
+              aria-hidden
+              strokeWidth={1.6}
+              className="h-14 w-14 sm:h-[72px] sm:w-[72px]"
+            />
             <span className="text-base font-semibold">{lancer}</span>
             <span className="text-xs text-white/75">
               {selon(langue, {

@@ -108,13 +108,31 @@ export function Intermede({
     : selon(langue, { fr: "En attente", en: "Standing by", pt: "Em espera" });
 
   return (
-    <div className="relative isolate aspect-video w-full overflow-hidden rounded-xl bg-[#0b2340] text-white">
+    /*
+     * Pas de 16:9 sur telephone.
+     *
+     * L'ecran d'attente portait `aspect-video` a toutes les tailles, pour que
+     * la bascule lecteur/attente ne fasse pas sauter la page. Sur un telephone
+     * de 360 px, cela donne une boite de 176 px de haut pour un contenu qui en
+     * demande plus du double : `overflow-hidden` rognait la fin, c'est-a-dire
+     * le bouton « Voir le flux quand meme », invisible sur mobile et bien
+     * present sur PC (21 novembre 2026).
+     *
+     * En dessous de `sm`, la boite s'adapte donc a son contenu, avec un
+     * plancher. Le saut de hauteur a la bascule est le moindre mal : un ecran
+     * d'attente de 176 px ne sert personne.
+     *
+     * Le parent est en `flex` et le contenu en `flex-1` : sans cela, le
+     * contenu garderait sa hauteur propre et se collerait en haut du
+     * plancher au lieu de rester centre.
+     */
+    <div className="relative isolate flex min-h-[23rem] w-full overflow-hidden rounded-xl bg-[#0b2340] text-white sm:aspect-video sm:min-h-0">
       {/* Couche décorative, sous le contenu et sans interaction possible. */}
       <div className="absolute inset-0 isolate overflow-hidden" aria-hidden>
         <FondDirect fond={fond} />
       </div>
 
-      <div className="relative z-10 flex h-full flex-col items-center justify-center gap-5 px-6 text-center sm:px-10">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-4 px-6 py-8 text-center sm:gap-5 sm:px-10 sm:py-0">
         <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[0.7rem] font-bold tracking-[0.14em] text-white/90 uppercase backdrop-blur-sm">
           <span className="direct-pouls h-2 w-2 rounded-full bg-[#e8b931]" aria-hidden />
           {etiquette}
@@ -124,7 +142,7 @@ export function Intermede({
           <p
             key={rang}
             aria-hidden
-            className="direct-message max-w-[28ch] text-2xl font-semibold text-balance drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] sm:max-w-[34ch] sm:text-4xl"
+            className="direct-message max-w-[28ch] text-xl font-semibold text-balance drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] sm:max-w-[34ch] sm:text-4xl"
           >
             {texte}
           </p>
@@ -137,7 +155,7 @@ export function Intermede({
             </p>
             {/* Chiffres tabulaires : les secondes qui défilent ne font pas
                 danser la ligne, sans avoir à lui fixer une largeur. */}
-            <p aria-hidden className="text-3xl font-bold tabular-nums sm:text-5xl">
+            <p aria-hidden className="text-2xl font-bold tabular-nums sm:text-5xl">
               {decompte(restant)}
             </p>
             {suivant && <p className="mt-1 max-w-[36ch] text-sm text-white/80">{suivant.titre}</p>}
