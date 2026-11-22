@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bornesDuJour, jourValide, lireFiltreBadges } from "./filtre";
+import { bornesDuJour, jourValide, lireFiltreBadges, motsRecherche } from "./filtre";
 
 function lire(parametres: Record<string, string>) {
   return lireFiltreBadges((cle) => parametres[cle]);
@@ -31,6 +31,26 @@ describe("lecture du filtre de l'URL", () => {
 
     expect(filtre.export).toBeUndefined();
     expect(filtre.exporteLe).toBe("2026-11-21");
+  });
+});
+
+describe("recherche par nom", () => {
+  it("lit `q`, sans les espaces autour", () => {
+    expect(lire({ q: "  Ndiaye " }).recherche).toBe("Ndiaye");
+  });
+
+  it("ignore une recherche vide", () => {
+    expect(lire({ q: "   " }).recherche).toBeUndefined();
+  });
+
+  it("tronque une saisie démesurée", () => {
+    expect(lire({ q: "a".repeat(500) }).recherche).toHaveLength(80);
+  });
+
+  it("découpe en mots, cinq au plus", () => {
+    expect(motsRecherche(" awa   ndiaye ")).toEqual(["awa", "ndiaye"]);
+    expect(motsRecherche("a b c d e f g")).toHaveLength(5);
+    expect(motsRecherche(undefined)).toEqual([]);
   });
 });
 

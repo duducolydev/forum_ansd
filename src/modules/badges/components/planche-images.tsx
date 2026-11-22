@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
+import { BoutonExportZip } from "./bouton-export-zip";
 
 /** Images demandées en même temps. */
 const EN_PARALLELE = 4;
@@ -26,11 +27,31 @@ interface Etat {
  * environ 1 Mo. Que la connexion soit coupée en route, et des badges restaient
  * blancs, sans qu'on le voie avant d'avoir imprimé. Le compteur dit désormais
  * ce qui est chargé, et ce qui ne l'est pas.
+ *
+ * ## Sélection (22 novembre 2026)
+ *
+ * Une case par badge, et un export ZIP des seuls badges cochés : renvoyer à
+ * l'imprimeur trois badges d'un lot sans reprendre le lot entier. La sélection
+ * vit dans la page et se perd en changeant de lot ou de filtre — elle décrit
+ * un geste du moment, pas un périmètre à partager. Les cases ne s'impriment
+ * pas (classe `consignes`).
  */
 export function PlancheImages({ badges }: { badges: { badgeId: string; nom: string }[] }) {
   const [etats, setEtats] = useState<Etat[]>(() =>
     badges.map(() => ({ statut: "attente", essai: 0 })),
   );
+  const [coches, setCoches] = useState<Set<string>>(() => new Set());
+  // Coché par défaut, comme sur l'écran Badges : on exporte pour imprimer.
+  const [marquer, setMarquer] = useState(true);
+
+  function basculer(badgeId: string, coche: boolean) {
+    setCoches((avant) => {
+      const suite = new Set(avant);
+      if (coche) suite.add(badgeId);
+      else suite.delete(badgeId);
+      return suite;
+    });
+  }
 
   const changer = useCallback((rang: number, etat: Partial<Etat>) => {
     setEtats((avant) => avant.map((e, i) => (i === rang ? { ...e, ...etat } : e)));
@@ -93,27 +114,90 @@ export function PlancheImages({ badges }: { badges: { badgeId: string; nom: stri
         )}
       </div>
 
+      <div className="consignes border-border bg-surface mb-6 flex flex-wrap items-center gap-3 rounded-xl border p-3 text-sm">
+        <p className="text-heading font-semibold">{coches.size} badge(s) coché(s)</p>
+        <Bouton
+          type="button"
+          taille="petit"
+          onClick={() => setCoches(new Set(badges.map((badge) => badge.badgeId)))}
+          disabled={coches.size === badges.length}
+        >
+          Tout cocher
+        </Bouton>
+        <Bouton
+          type="button"
+          taille="petit"
+          onClick={() => setCoches(new Set())}
+          disabled={coches.size === 0}
+        >
+          Tout décocher
+        </Bouton>
+        <BoutonExportZip
+          href="/api/v1/badges/export/selection"
+          libelle={`Export ZIP de la sélection (${coches.size})`}
+          titre="Les PDF des badges cochés, côte à côte."
+          // Dans l'ordre de la planche, quel que soit l'ordre des clics.
+          corps={{
+            badgeIds: badges.map((b) => b.badgeId).filter((id) => coches.has(id)),
+            rangement: "plat",
+            marquer,
+          }}
+          desactive={coches.size === 0}
+        />
+        <label className="text-text-2 flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={marquer}
+            onChange={(evenement) => setMarquer(evenement.target.checked)}
+            className="size-4"
+          />
+          Marquer comme envoyés à l&apos;impression
+        </label>
+      </div>
+
       {badges.map((badge, rang) => {
         const { statut, essai } = etats[rang]!;
+        const coche = coches.has(badge.badgeId);
+        /*
+         * Fragment et non conteneur : la case et le badge restent frères, de
+         * sorte que `.badge:last-child` désigne toujours le dernier badge et
+         * que les sauts de page de l'impression ne changent pas.
+         */
         return (
-          <div key={badge.badgeId} className="badge">
-            {statut === "chargement" || statut === "chargee" ? (
-              /* eslint-disable-next-line @next/next/no-img-element -- image privée servie par une route authentifiée, hors optimiseur */
-              <img
-                // Le numéro d'essai change l'adresse : le navigateur redemande vraiment l'image.
-                src={`/api/v1/badges/${badge.badgeId}/png${essai > 0 ? `?essai=${essai}` : ""}`}
-                alt={`Badge de ${badge.nom}`}
-                onLoad={() => changer(rang, { statut: "chargee" })}
-                onError={() => echouer(rang)}
+          <Fragment key={badge.badgeId}>
+            <label
+              className={`consignes mt-4 flex items-center gap-2 text-sm font-semibold ${
+                coche ? "text-primary" : "text-text-2"
+              }`}
+              style={{ width: "100mm" }}
+            >
+              <input
+                type="checkbox"
+                checked={coche}
+                onChange={(evenement) => basculer(badge.badgeId, evenement.target.checked)}
+                className="size-4"
               />
-            ) : (
-              <p className="attente">
-                {statut === "echec"
-                  ? `Badge de ${badge.nom} : non chargé.`
-                  : `Badge de ${badge.nom} : chargement…`}
-              </p>
-            )}
-          </div>
+              {badge.nom}
+            </label>
+            <div className={`badge${coche ? "badge-coche" : ""}`}>
+              {statut === "chargement" || statut === "chargee" ? (
+                /* eslint-disable-next-line @next/next/no-img-element -- image privée servie par une route authentifiée, hors optimiseur */
+                <img
+                  // Le numéro d'essai change l'adresse : le navigateur redemande vraiment l'image.
+                  src={`/api/v1/badges/${badge.badgeId}/png${essai > 0 ? `?essai=${essai}` : ""}`}
+                  alt={`Badge de ${badge.nom}`}
+                  onLoad={() => changer(rang, { statut: "chargee" })}
+                  onError={() => echouer(rang)}
+                />
+              ) : (
+                <p className="attente">
+                  {statut === "echec"
+                    ? `Badge de ${badge.nom} : non chargé.`
+                    : `Badge de ${badge.nom} : chargement…`}
+                </p>
+              )}
+            </div>
+          </Fragment>
         );
       })}
     </>

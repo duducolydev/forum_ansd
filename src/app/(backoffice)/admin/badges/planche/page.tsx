@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
+import { prisma } from "@/lib/db";
 import { getActiveEdition } from "@/lib/edition";
 import { badgesAImprimer, compterAImprimer, joursExport } from "@/modules/badges/bulk";
 import { lireFiltreBadges } from "@/modules/badges/filtre";
@@ -54,6 +55,12 @@ function libelleJour(jour: string): string {
  * ordre stable. Le filtre « exportés le » retrouve un envoi précis à
  * l'imprimeur pour le refaire. La planche ne marque rien : la consulter ou
  * l'imprimer ne change pas la date d'export des badges.
+ *
+ * ## Recherche et sélection (22 novembre 2026)
+ *
+ * Un nom et une catégorie resserrent la planche, et une case par badge permet
+ * d'en exporter quelques-uns en ZIP (`PlancheImages`). Seul cet export marque
+ * des badges — et seulement si l'opérateur le laisse coché.
  */
 export default async function PlanchePage({
   searchParams,
@@ -68,9 +75,14 @@ export default async function PlanchePage({
   const filtre = lireFiltreBadges((cle) => parametres[cle]);
 
   const edition = await getActiveEdition();
-  const [total, jours] = await Promise.all([
+  const [total, jours, categories] = await Promise.all([
     compterAImprimer(edition.id, filtre),
     joursExport(edition.id, filtre),
+    prisma.participantCategory.findMany({
+      where: { editionId: edition.id, isActive: true },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, labelFr: true },
+    }),
   ]);
 
   const nombreDeLots = Math.max(1, Math.ceil(total / LIMITE));
@@ -99,6 +111,11 @@ export default async function PlanchePage({
   const conserves = Object.entries(parametres).filter(
     ([cle, valeur]) => valeur && !["exporteLe", "lot", "export"].includes(cle),
   );
+  // Même chose pour la recherche : elle reporte tout sauf ce qu'elle saisit.
+  const conservesRecherche = Object.entries(parametres).filter(
+    ([cle, valeur]) => valeur && !["q", "categoryId", "lot"].includes(cle),
+  );
+  const champ = "border-border bg-bg text-text rounded-lg border px-3 py-1.5 text-sm";
 
   const largeur = `${FORMAT_BADGE.largeurMm}mm`;
   const hauteur = `${FORMAT_BADGE.hauteurMm}mm`;
@@ -118,6 +135,7 @@ export default async function PlanchePage({
         .badge { width: ${largeur}; height: ${hauteur}; overflow: hidden; }
         .badge img { width: 100%; height: 100%; object-fit: contain; display: block; }
         .badge .attente { padding: 4mm; font-size: 12px; color: #5b6b7d; }
+        @media screen { .badge-coche { outline: 3px solid var(--primary); outline-offset: 2px; } }
       `}</style>
 
       <div className="consignes border-border bg-surface mb-6 flex flex-col gap-4 rounded-xl border p-4 text-sm">
@@ -155,6 +173,59 @@ export default async function PlanchePage({
             </nav>
           )}
         </div>
+
+        <form
+          method="get"
+          action="/admin/badges/planche"
+          className="flex flex-wrap items-end gap-2"
+          role="search"
+        >
+          {conservesRecherche.map(([cle, valeur]) => (
+            <input key={cle} type="hidden" name={cle} value={valeur} />
+          ))}
+          <div className="flex flex-col gap-1">
+            <label htmlFor="planche-nom" className="text-text-3 text-xs font-semibold">
+              Nom
+            </label>
+            <input
+              id="planche-nom"
+              name="q"
+              type="search"
+              defaultValue={filtre.recherche ?? ""}
+              placeholder="Nom, prénom ou identifiant"
+              className={`${champ} w-64`}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="planche-categorie" className="text-text-3 text-xs font-semibold">
+              Catégorie
+            </label>
+            <select
+              id="planche-categorie"
+              name="categoryId"
+              defaultValue={filtre.categoryId ?? ""}
+              className={`${champ} w-56`}
+            >
+              <option value="">Toutes</option>
+              {categories.map((categorie) => (
+                <option key={categorie.id} value={categorie.id}>
+                  {categorie.labelFr}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className={`${pastille} border-border text-heading`}>
+            Rechercher
+          </button>
+          {(filtre.recherche || filtre.categoryId) && (
+            <Link
+              href={lien({ q: null, categoryId: null, lot: null })}
+              className={`${pastille} border-border text-text-2`}
+            >
+              Effacer
+            </Link>
+          )}
+        </form>
 
         <div className="flex flex-wrap items-end gap-2">
           <Link
@@ -196,7 +267,7 @@ export default async function PlanchePage({
                 name="exporteLe"
                 type="date"
                 defaultValue={filtre.exporteLe ?? ""}
-                className="border-border bg-bg text-text rounded-lg border px-3 py-1.5 text-sm"
+                className={champ}
               />
             </div>
             <button type="submit" className={`${pastille} border-border text-heading`}>
@@ -223,14 +294,16 @@ export default async function PlanchePage({
 
       {badges.length === 0 ? (
         <p className="text-text-2 text-sm">
-          {filtre.exporteLe
-            ? "Aucun badge imprimable n'a été exporté ce jour-là dans ce périmètre."
-            : "Aucun badge rendu dans ce périmètre. Générez-les d'abord depuis l'écran Badges."}
+          {filtre.recherche
+            ? `Aucun badge imprimable ne correspond à « ${filtre.recherche} » dans ce périmètre.`
+            : filtre.exporteLe
+              ? "Aucun badge imprimable n'a été exporté ce jour-là dans ce périmètre."
+              : "Aucun badge rendu dans ce périmètre. Générez-les d'abord depuis l'écran Badges."}
         </p>
       ) : (
         // La clé remet le compteur de chargement à zéro d'un lot à l'autre.
         <PlancheImages
-          key={`${filtre.exporteLe ?? ""}-${lot}-${badges[0]!.badgeId}`}
+          key={`${filtre.exporteLe ?? ""}-${filtre.recherche ?? ""}-${filtre.categoryId ?? ""}-${lot}-${badges[0]!.badgeId}`}
           badges={badges.map(({ badgeId, nom }) => ({ badgeId, nom }))}
         />
       )}

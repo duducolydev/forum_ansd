@@ -66,10 +66,18 @@ export function BoutonExportZip({
   href,
   libelle,
   titre,
+  corps,
+  desactive = false,
 }: {
   href: string;
   libelle: string;
   titre: string;
+  /**
+   * Présent : la demande part en POST avec ce corps JSON — l'export d'une
+   * sélection, dont les identifiants ne tiennent pas dans une URL.
+   */
+  corps?: unknown;
+  desactive?: boolean;
 }) {
   const [etat, setEtat] = useState<Etat>({ phase: "pret" });
 
@@ -89,12 +97,27 @@ export function BoutonExportZip({
     setEtat({ phase: "preparation" });
 
     try {
-      const reponse = await fetch(href, { signal: controleur.signal });
+      const reponse = await fetch(
+        href,
+        corps === undefined
+          ? { signal: controleur.signal }
+          : {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(corps),
+              signal: controleur.signal,
+            },
+      );
       if (!reponse.ok) {
+        // Une sélection refusée explique pourquoi : on reprend son message.
+        const detail = await reponse
+          .json()
+          .then((json: { error?: string }) => json.error)
+          .catch(() => undefined);
         throw new Error(
           reponse.status === 401
             ? "Session expirée : rechargez la page et reconnectez-vous."
-            : `Le serveur a répondu ${reponse.status}.`,
+            : (detail ?? `Le serveur a répondu ${reponse.status}.`),
         );
       }
 
@@ -151,7 +174,7 @@ export function BoutonExportZip({
       <button
         type="button"
         onClick={() => void telecharger()}
-        disabled={enCours}
+        disabled={enCours || desactive}
         title={titre}
         aria-busy={enCours}
         className="border-border text-heading flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-60"

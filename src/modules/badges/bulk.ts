@@ -4,7 +4,7 @@ import { audit } from "@/lib/audit";
 import { fileStorage } from "@/lib/storage";
 import { creerZip, nomSur, type EntreeZip } from "@/lib/zip";
 import { GABARIT_BADGE, auGabaritCourant } from "./format";
-import { bornesDuJour, type FiltreBadges } from "./filtre";
+import { bornesDuJour, motsRecherche, type FiltreBadges } from "./filtre";
 
 /**
  * Périmètre, liste et export de badges en lot (brief §5.4).
@@ -41,6 +41,26 @@ function exigeUnExport(filtre: FiltreBadges): boolean {
   return filtre.export === "DEJA" || Boolean(filtre.exporteLe);
 }
 
+/**
+ * Recherche par nom (22 novembre 2026) : chaque mot doit se trouver dans le
+ * nom, le prénom ou l'identifiant. « ndiaye awa » retrouve ainsi Awa NDIAYE,
+ * dans un ordre comme dans l'autre. La collation MySQL rend la comparaison
+ * insensible à la casse et aux accents.
+ */
+function conditionRecherche(recherche: string | undefined): Prisma.ParticipantWhereInput {
+  const mots = motsRecherche(recherche);
+  if (mots.length === 0) return {};
+  return {
+    AND: mots.map((mot) => ({
+      OR: [
+        { lastName: { contains: mot } },
+        { firstName: { contains: mot } },
+        { publicId: { contains: mot } },
+      ],
+    })),
+  };
+}
+
 /** Seuls ces statuts ont droit à un badge (brief §5.4). */
 const STATUTS_BADGEABLES: Prisma.ParticipantWhereInput["status"] = {
   in: ["CONFIRMED", "BADGED", "CHECKED_IN"],
@@ -60,6 +80,7 @@ export function perimetreFiltre(
     status: STATUTS_BADGEABLES,
     ...(filtre.categoryId ? { categoryId: filtre.categoryId } : {}),
     ...(filtre.delegationId ? { delegationId: filtre.delegationId } : {}),
+    ...conditionRecherche(filtre.recherche),
   };
 
   if (filtre.etat === "SANS") {
@@ -332,23 +353,102 @@ export async function exporterZip(
   const participants = await prisma.participant.findMany({
     where: perimetreFiltre(editionId, filtre),
     orderBy: [{ delegation: { name: "asc" } }, { lastName: "asc" }],
-    select: {
-      publicId: true,
-      firstName: true,
-      lastName: true,
-      delegation: { select: { name: true } },
-      badges: {
-        where: { revokedAt: null, pdfPath: { not: null } },
-        orderBy: { version: "desc" },
-        take: 1,
-        select: { id: true, pdfPath: true, version: true },
-      },
-    },
+    select: selectionArchive(),
   });
 
+  return archiver(participants, 0, editionId, actorUserId, rangement, marquer, { filtre });
+}
+
+/** Plus que la planche n'en montre à la fois (100), avec de la marge. */
+export const SELECTION_MAX = 500;
+
+/**
+ * Archive ZIP des badges **cochés** sur la planche (22 novembre 2026).
+ *
+ * Le filtre désigne un périmètre ; ici, l'opérateur désigne des badges un par
+ * un — les trois retardataires d'une délégation, le badge refait d'un
+ * intervenant. Les identifiants viennent du navigateur : la requête les
+ * restreint donc à l'édition active, aux participants badgeables et aux
+ * badges valides et rendus. Un identifiant écarté par ces conditions — badge
+ * révoqué entre-temps, par exemple — est compté manquant, pas ignoré.
+ */
+export async function exporterSelection(
+  editionId: string,
+  badgeIds: string[],
+  actorUserId: string | undefined,
+  rangement: RangementArchive = "plat",
+  marquer = true,
+): Promise<ArchiveBadges> {
+  const ids = [...new Set(badgeIds)];
+  if (ids.length === 0) throw new Error("Aucun badge sélectionné.");
+  if (ids.length > SELECTION_MAX) {
+    throw new Error(`Pas plus de ${SELECTION_MAX} badges à la fois.`);
+  }
+
+  const participants = await prisma.participant.findMany({
+    where: {
+      editionId,
+      deletedAt: null,
+      status: STATUTS_BADGEABLES,
+      badges: { some: { id: { in: ids } } },
+    },
+    orderBy: [{ delegation: { name: "asc" } }, { lastName: "asc" }],
+    select: selectionArchive(ids),
+  });
+
+  // Identifiants sans participant retenu : ils ne figurent nulle part ailleurs.
+  const horsPerimetre = Math.max(0, ids.length - participants.length);
+
+  return archiver(participants, horsPerimetre, editionId, actorUserId, rangement, marquer, {
+    selection: ids.length,
+  });
+}
+
+/** Champs lus pour l'archive ; `ids` restreint aux badges choisis. */
+function selectionArchive(ids?: string[]) {
+  return {
+    publicId: true,
+    firstName: true,
+    lastName: true,
+    delegation: { select: { name: true } },
+    badges: {
+      where: {
+        revokedAt: null,
+        pdfPath: { not: null },
+        ...(ids ? { id: { in: ids } } : {}),
+      },
+      orderBy: { version: "desc" },
+      take: 1,
+      select: { id: true, pdfPath: true, version: true },
+    },
+  } satisfies Prisma.ParticipantSelect;
+}
+
+interface LigneArchive {
+  publicId: string;
+  firstName: string;
+  lastName: string;
+  delegation: { name: string } | null;
+  badges: { id: string; pdfPath: string | null; version: number }[];
+}
+
+/**
+ * Assemble, marque et journalise une archive — commun à l'export par filtre
+ * et à l'export d'une sélection, pour que les deux nomment, rangent et
+ * marquent leurs fichiers de la même façon.
+ */
+async function archiver(
+  participants: LigneArchive[],
+  dejaManquants: number,
+  editionId: string,
+  actorUserId: string | undefined,
+  rangement: RangementArchive,
+  marquer: boolean,
+  perimetre: Record<string, unknown>,
+): Promise<ArchiveBadges> {
   const entrees: EntreeZip[] = [];
   const emportes: string[] = [];
-  let manquants = 0;
+  let manquants = dejaManquants;
 
   for (const participant of participants) {
     const badge = participant.badges[0];
@@ -401,15 +501,17 @@ export async function exporterZip(
     action: "badge.bulk_export",
     entity: "Edition",
     entityId: editionId,
-    after: { inclus: entrees.length, manquants, filtre, rangement, marquer },
+    after: { inclus: entrees.length, manquants, ...perimetre, rangement, marquer },
   });
 
+  const jour = new Date().toISOString().slice(0, 10);
   return {
     fichier: creerZip(entrees),
-    nom:
-      rangement === "plat"
-        ? `badges-tous-${new Date().toISOString().slice(0, 10)}.zip`
-        : `badges-${new Date().toISOString().slice(0, 10)}.zip`,
+    nom: perimetre.selection
+      ? `badges-selection-${jour}.zip`
+      : rangement === "plat"
+        ? `badges-tous-${jour}.zip`
+        : `badges-${jour}.zip`,
     inclus: entrees.length,
     manquants,
   };

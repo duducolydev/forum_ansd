@@ -19,6 +19,7 @@ import {
   aRefaireAuGabarit,
   badgesAImprimer,
   compterAImprimer,
+  exporterSelection,
   exporterZip,
   joursExport,
   marquerExportes,
@@ -324,5 +325,104 @@ describe("badges à refaire au gabarit", () => {
 
     expect(ou.AND).toHaveLength(2);
     expect((ou.AND as object[])[0]).toEqual(perimetreFiltre("e1", { export: "JAMAIS" }));
+  });
+});
+
+describe("recherche par nom", () => {
+  it("exige chaque mot dans le nom, le prénom ou l'identifiant", () => {
+    const ou = perimetreFiltre("e1", { recherche: "awa  ndiaye" });
+
+    expect(ou.AND).toEqual([
+      {
+        OR: [
+          { lastName: { contains: "awa" } },
+          { firstName: { contains: "awa" } },
+          { publicId: { contains: "awa" } },
+        ],
+      },
+      {
+        OR: [
+          { lastName: { contains: "ndiaye" } },
+          { firstName: { contains: "ndiaye" } },
+          { publicId: { contains: "ndiaye" } },
+        ],
+      },
+    ]);
+  });
+
+  it("se cumule à la catégorie et à l'état", () => {
+    const ou = perimetreFiltre("e1", { recherche: "diouf", categoryId: "c1", etat: "AVEC" });
+
+    expect(ou.categoryId).toBe("c1");
+    expect(ou.AND).toHaveLength(1);
+    expect(ou.badges).toBeDefined();
+  });
+
+  it("n'ajoute rien sans recherche", () => {
+    expect(perimetreFiltre("e1", { recherche: "   " })).not.toHaveProperty("AND");
+  });
+});
+
+/**
+ * Export des badges cochés sur la planche : des identifiants venus du
+ * navigateur, donc à resserrer sur ce que l'édition autorise.
+ */
+describe("export d'une sélection", () => {
+  it("ne lit que les badges choisis, valides et rendus, de l'édition active", async () => {
+    await exporterSelection("e1", ["b-FID26-1", "b-FID26-2"], "u1");
+
+    const requete = findMany.mock.calls[0]![0];
+    expect(requete.where).toMatchObject({
+      editionId: "e1",
+      deletedAt: null,
+      badges: { some: { id: { in: ["b-FID26-1", "b-FID26-2"] } } },
+    });
+    expect(requete.select.badges.where).toEqual({
+      revokedAt: null,
+      pdfPath: { not: null },
+      id: { in: ["b-FID26-1", "b-FID26-2"] },
+    });
+  });
+
+  it("met les PDF à plat par défaut, dans une archive nommée à part", async () => {
+    const archive = await exporterSelection("e1", ["b-FID26-1", "b-FID26-2"], "u1");
+
+    expect(archive.inclus).toBe(2);
+    expect(archive.nom).toMatch(/^badges-selection-/);
+    expect(nomsDansArchive(archive.fichier)).toEqual([
+      "Sénégal - DIOUF-Awa-FID26-1.pdf",
+      "Sans delegation - NDIAYE-Awa-FID26-2.pdf",
+    ]);
+  });
+
+  it("compte manquant un identifiant écarté par la requête", async () => {
+    // Trois badges demandés, deux retenus : le troisième a été révoqué entre-temps.
+    const archive = await exporterSelection("e1", ["b-FID26-1", "b-FID26-2", "b-x"], "u1");
+
+    expect(archive.inclus).toBe(2);
+    expect(archive.manquants).toBe(1);
+  });
+
+  it("ignore un identifiant coché deux fois", async () => {
+    const archive = await exporterSelection("e1", ["b-FID26-1", "b-FID26-1", "b-FID26-2"], "u1");
+
+    expect(archive.manquants).toBe(0);
+  });
+
+  it("ne marque que sur demande", async () => {
+    await exporterSelection("e1", ["b-FID26-1", "b-FID26-2"], "u1", "plat", false);
+    expect(updateMany).not.toHaveBeenCalled();
+
+    await exporterSelection("e1", ["b-FID26-1", "b-FID26-2"], "u1", "plat", true);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["b-FID26-1", "b-FID26-2"] } },
+      data: { exportedAt: expect.any(Date), exportCount: { increment: 1 } },
+    });
+  });
+
+  it("refuse une sélection vide ou démesurée", async () => {
+    await expect(exporterSelection("e1", [], "u1")).rejects.toThrow(/Aucun badge/);
+    const trop = Array.from({ length: 501 }, (_, i) => `b-${i}`);
+    await expect(exporterSelection("e1", trop, "u1")).rejects.toThrow(/500/);
   });
 });

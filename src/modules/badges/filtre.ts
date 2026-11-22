@@ -25,6 +25,20 @@ export interface FiltreBadges {
    * quand les deux sont posés.
    */
   exporteLe?: string;
+  /**
+   * Nom, prénom ou identifiant, en partie (`?q=`, 22 novembre 2026) : retrouver
+   * sur la planche quelques badges précis à exporter. Chaque mot doit figurer
+   * dans l'un des trois champs.
+   */
+  recherche?: string;
+}
+
+/** Au-delà, une saisie n'est plus un nom : on la tronque plutôt que de la refuser. */
+const RECHERCHE_MAX = 80;
+
+/** Mots de la recherche, sans les espaces superflus ; vide si rien d'utile. */
+export function motsRecherche(recherche: string | undefined): string[] {
+  return (recherche ?? "").split(/\s+/).filter(Boolean).slice(0, 5);
 }
 
 /** `AAAA-MM-JJ` d'une vraie date du calendrier, ou `undefined`. */
@@ -46,6 +60,7 @@ export function lireFiltreBadges(lire: (cle: string) => string | null | undefine
   const etat = lire("etat");
   const exporte = lire("export");
   const exporteLe = jourValide(lire("exporteLe"));
+  const recherche = (lire("q") ?? "").trim().slice(0, RECHERCHE_MAX);
   return {
     categoryId: lire("categoryId") || undefined,
     delegationId: lire("delegationId") || undefined,
@@ -58,6 +73,7 @@ export function lireFiltreBadges(lire: (cle: string) => string | null | undefine
         ? exporte
         : undefined,
     exporteLe,
+    recherche: recherche || undefined,
   };
 }
 
