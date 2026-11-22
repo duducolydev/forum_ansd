@@ -26,10 +26,17 @@ import { buildBadgeToken, hashBadgeToken } from "./token";
  *
  * ## Numérotation
  *
- * Le numéro est **continu par catégorie** et ne se réutilise jamais, même
- * après révocation : c'est lui qu'on inscrit au registre de remise, en face
- * d'un nom et d'une heure. Deux cartes « PROTOCOLE n° 14 » rendraient ce
- * registre inexploitable.
+ * Le numéro est **continu sur toute l'édition**, catégories confondues, et ne
+ * se réutilise jamais, même après révocation : c'est lui qu'on inscrit au
+ * registre de remise, en face d'un nom et d'une heure.
+ *
+ * Il était d'abord continu par catégorie. Mais la référence imprimée — d'où
+ * dérive le QR — ne porte que l'édition et le numéro : la première carte d'une
+ * deuxième catégorie reprenait la référence, donc le QR, de la n° 1 de la
+ * première, et la création échouait sur l'unicité (22 novembre 2026). Y mettre
+ * la catégorie n'était pas possible : le badge n'en imprime que la couleur
+ * (12 novembre 2026), et la zone de la référence ne tient pas un code de plus.
+ * Un numéro unique dans l'édition rend la référence unique par construction.
  */
 
 /** Préfixe de la référence imprimée, pour qu'elle se lise sans ambiguïté. */
@@ -52,7 +59,8 @@ export function referenceAnonyme(editionCode: string, numero: number): string {
 }
 
 /**
- * Crée `nombre` cartes anonymes pour une catégorie, sans les rendre.
+ * Crée `nombre` cartes anonymes pour une catégorie, sans les rendre. Leurs
+ * numéros suivent le dernier émis dans l'édition, toutes catégories confondues.
  *
  * Le rendu part en file comme pour les autres badges : cinquante rendus dans
  * la requête tiendraient la minute. La fonction rend les identifiants créés,
@@ -83,12 +91,13 @@ export async function creerBadgesAnonymes(
   }
 
   /*
-   * Le dernier numéro est lu **toutes cartes confondues**, révoquées
-   * comprises : un numéro retiré de la circulation ne revient pas, sous peine
-   * de rendre le registre de remise ambigu.
+   * Le dernier numéro est lu sur **toute l'édition**, toutes catégories et
+   * révoquées comprises : un numéro retiré de la circulation ne revient pas,
+   * sous peine de rendre le registre de remise ambigu — et deux catégories ne
+   * peuvent partager une référence, faute de quoi elles partageraient le QR.
    */
   const dernier = await prisma.badge.aggregate({
-    where: { anonymousCategoryId: categoryId },
+    where: { anonymousCategory: { editionId } },
     _max: { anonymousSeq: true },
   });
   const depart = (dernier._max.anonymousSeq ?? 0) + 1;
@@ -110,9 +119,10 @@ export async function creerBadgesAnonymes(
    * identifiants — `createMany` ne les rend pas. Deux allers-retours au lieu
    * de deux cents : la leçon des mises en file, appliquée ici aussi.
    *
-   * Deux opérateurs cliquant en même temps liraient le même dernier numéro.
+   * Deux opérateurs cliquant en même temps — même sur deux catégories
+   * différentes — liraient le même dernier numéro.
    * Le second échoue alors sur l'unicité d'`anonymousRef`, et rien n'est créé
-   * — un refus net, préférable à deux cartes « PROTOCOLE n° 14 » en
+   * — un refus net, préférable à deux cartes « n° 14 » en
    * circulation, que rien ne rattraperait une fois imprimées.
    */
   await prisma.badge.createMany({ data: lignes });

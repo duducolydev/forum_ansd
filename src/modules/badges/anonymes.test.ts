@@ -64,7 +64,7 @@ describe("référence imprimée", () => {
  * imprimées et distribuées.
  */
 describe("numérotation du stock", () => {
-  it("démarre à 1 pour une catégorie neuve", async () => {
+  it("démarre à 1 pour une édition sans carte", async () => {
     const { references } = await creerBadgesAnonymes("e1", "c1", 3, acteur);
 
     expect(references).toEqual(["FID26-ANON-001", "FID26-ANON-002", "FID26-ANON-003"]);
@@ -83,9 +83,27 @@ describe("numérotation du stock", () => {
 
     // Aucune condition sur `revokedAt` : un numéro retiré ne revient jamais.
     expect(badgeAggregate).toHaveBeenCalledWith({
-      where: { anonymousCategoryId: "c1" },
+      where: { anonymousCategory: { editionId: "e1" } },
       _max: { anonymousSeq: true },
     });
+  });
+
+  /*
+   * Le cas du 22 novembre 2026 : cinquante cartes VIP émises, la première
+   * carte « Personnel ANSD » reprenait la référence FID26-ANON-001, donc le
+   * QR de la VIP n° 1, et la création échouait sur l'unicité du QR.
+   */
+  it("continue la numérotation de l'édition dans une autre catégorie", async () => {
+    badgeAggregate.mockResolvedValue({ _max: { anonymousSeq: 50 } });
+
+    const { references } = await creerBadgesAnonymes("e1", "c1", 2, acteur);
+
+    // Le maximum est lu sur l'édition, pas sur la seule catégorie demandée.
+    expect(badgeAggregate.mock.calls[0]![0]).toEqual({
+      where: { anonymousCategory: { editionId: "e1" } },
+      _max: { anonymousSeq: true },
+    });
+    expect(references).toEqual(["FID26-ANON-051", "FID26-ANON-052"]);
   });
 
   it("crée des cartes sans porteur, à la version 1", async () => {
