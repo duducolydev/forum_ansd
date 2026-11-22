@@ -1,71 +1,12 @@
 import type { Metadata } from "next";
-import { Sora, Inter, Outfit, Space_Grotesk, Source_Sans_3, IBM_Plex_Sans } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { headers } from "next/headers";
 import { getServerTheme } from "@/lib/theme";
 import { parametresPourGabarit } from "@/modules/settings/service";
 import { cssDuTheme } from "@/modules/settings/theme-css";
+import { CLASSES_POLICE, inter, outfit, sora, spaceGrotesk } from "./polices";
 import "./globals.css";
-
-const sora = Sora({
-  variable: "--font-sora",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
-
-/*
- * Polices du site public (brief « Constellation », 28 septembre 2026) : Outfit
- * pour les titres et le texte, Space Grotesk pour les dates et les étiquettes.
- * Elles ne remplacent Sora et Inter que sous `.site-public` (constellation.css)
- * : le BackOffice garde les siennes.
- */
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-grotesk",
-  subsets: ["latin"],
-  weight: ["500", "700"],
-  display: "swap",
-});
-
-/*
- * Polices proposées au paramétrage (§8.3). `preload: false` : seule celle qui
- * est réellement choisie voit sa classe appliquée, et le navigateur ne
- * télécharge donc que celle-là. Sans ce réglage, chaque visiteur paierait le
- * préchargement de trois familles inutilisées.
- */
-const sourceSans = Source_Sans_3({
-  variable: "--font-source-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  preload: false,
-});
-
-const ibmPlex = IBM_Plex_Sans({
-  variable: "--font-ibm-plex",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  preload: false,
-});
-
-/** « Système » n'a pas de classe : c'est la pile du poste, sans téléchargement. */
-const CLASSES_POLICE: Record<string, string> = {
-  inter: inter.variable,
-  systeme: "",
-  "source-sans": sourceSans.variable,
-  "ibm-plex": ibmPlex.variable,
-};
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.PUBLIC_BASE_URL ?? "http://localhost:3000"),

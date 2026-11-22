@@ -4803,3 +4803,50 @@ une image absente priverait l'accueil de ses listes le jour J. Ce sont les
 versions WebP qui servent (92 et 70 Ko contre 189 Ko pour le PNG des
 courriels) : à 11 et 38 mm de large, elles restent bien au-delà des 300 ppp
 d'une impression.
+
+## 34. Des polices embarquées : le build ne sort plus vers Google (22 novembre 2026)
+
+Le déploiement du 22 novembre a échoué à la construction, sur un code
+inchangé :
+
+```
+src/app/layout.tsx
+An error occurred in `next/font`.
+TypeError: Cannot read properties of null (reading '1')
+    at …/next/dist/compiled/@next/font/dist/google/loader.js:122:78
+```
+
+`next/font/google` ne fait rien télécharger aux visiteurs : il récupère les
+polices **à la construction** et les sert ensuite depuis notre domaine. La ligne
+122 de son chargeur lit l'extension (`.woff2`, `.ttf`…) des URL trouvées dans la
+feuille de style renvoyée par Google ; `null`, c'est une feuille dont les URL
+n'ont pas d'extension — autrement dit pas celle de Google. Le serveur sort par
+un Fortinet (voir le mémo sur le chemin réseau) : la réponse a été réécrite ou
+remplacée en route. Les constructions précédentes passaient vraisemblablement
+par le cache de Docker, qui n'a pas resservi cette étape cette fois.
+
+Relancer n'aurait rien garanti, la veille de l'ouverture. Les six familles sont
+donc **dans le dépôt** (`src/fonts/ui/`, 272 Ko) et déclarées par
+`next/font/local` dans `src/app/polices.ts` :
+
+- **mêmes variables CSS** (`--font-sora`, `--font-outfit`…), donc rien à changer
+  dans les feuilles de style ni dans les réglages du thème (§8.3) ;
+- **un fichier variable par famille**, toute la plage de graisses, sous-ensemble
+  latin — celui que demandait déjà `subsets: ["latin"]` ;
+- l'**`unicode-range` du latin recopié** : sans lui, un caractère absent du
+  sous-ensemble s'afficherait en carré au lieu d'être pris dans une police du
+  système, comme le faisait `next/font/google` ;
+- `preload: false` conservé pour Source Sans 3 et IBM Plex Sans, qui ne servent
+  que si on les choisit dans les paramètres ;
+- le texte de la **SIL Open Font License 1.1** de chaque famille accompagne les
+  fichiers (`OFL-*.txt`), comme la licence l'exige.
+
+Vérifié sur une construction complète : les six fichiers sortent dans
+`.next/static/media` à l'octet près, avec leur `unicode-range`, quatre
+préchargés et deux non, et plus aucune référence à `fonts.googleapis.com` ni
+à `fonts.gstatic.com` dans la sortie.
+
+**Pour mettre une police à jour** : redemander la feuille à Google avec un
+navigateur récent (`css2?family=Outfit:wght@100..900`), prendre l'URL du bloc
+`/* latin */` et remplacer le fichier — depuis un poste qui sort sur Internet,
+pas depuis le serveur.
