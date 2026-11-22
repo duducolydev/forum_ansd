@@ -3,6 +3,7 @@ import { audit } from "@/lib/audit";
 import { fileStorage } from "@/lib/storage";
 import { creerZip, nomSur, type EntreeZip } from "@/lib/zip";
 import type { Actor } from "@/modules/participants/service";
+import { auGabaritCourant } from "./format";
 import { buildBadgeToken, hashBadgeToken } from "./token";
 
 /**
@@ -50,6 +51,8 @@ export interface StockAnonyme {
   total: number;
   /** Cartes dont le PDF est rendu, donc imprimables. */
   pretes: number;
+  /** Cartes rendues avec un gabarit antérieur (l'ancien format), à refaire. */
+  ancienFormat: number;
   dernierNumero: number;
 }
 
@@ -221,7 +224,7 @@ export async function inventaireAnonymes(editionId: string): Promise<StockAnonym
       labelFr: true,
       color: true,
       badgesAnonymes: {
-        select: { revokedAt: true, generatedAt: true, anonymousSeq: true },
+        select: { revokedAt: true, generatedAt: true, anonymousSeq: true, pngPath: true },
       },
     },
   });
@@ -234,10 +237,39 @@ export async function inventaireAnonymes(editionId: string): Promise<StockAnonym
       couleur: categorie.color,
       total: vivantes.length,
       pretes: vivantes.filter((badge) => badge.generatedAt !== null).length,
+      ancienFormat: vivantes.filter(
+        (badge) => badge.generatedAt !== null && !auGabaritCourant(badge.pngPath),
+      ).length,
       dernierNumero: categorie.badgesAnonymes.reduce(
         (plus, badge) => Math.max(plus, badge.anonymousSeq ?? 0),
         0,
       ),
     };
   });
+}
+
+/**
+ * Cartes anonymes d'une catégorie rendues avec un gabarit antérieur — à
+ * refaire au format en vigueur (passage au 74 × 105 mm, 22 novembre 2026).
+ *
+ * Les cartes nominatives ont leur bouton « Refaire avec la nouvelle
+ * maquette » ; le stock anonyme n'en avait pas, et serait resté à l'ancien
+ * format. Le rendu reprend la même référence et le même QR : une carte déjà
+ * distribuée reste valide, seule son image change.
+ */
+export async function cartesAnonymesARefaire(
+  editionId: string,
+  categoryId: string,
+): Promise<string[]> {
+  const cartes = await prisma.badge.findMany({
+    where: {
+      anonymousCategoryId: categoryId,
+      anonymousCategory: { editionId },
+      revokedAt: null,
+      generatedAt: { not: null },
+    },
+    orderBy: { anonymousSeq: "asc" },
+    select: { id: true, pngPath: true },
+  });
+  return cartes.filter((carte) => !auGabaritCourant(carte.pngPath)).map((carte) => carte.id);
 }

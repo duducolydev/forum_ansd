@@ -39,7 +39,7 @@ function libelleJour(jour: string): string {
  * polices installées sur le poste de l'accueil.
  *
  * La règle `@page` reprend le format du badge (`modules/badges/format.ts`,
- * 100 × 150 mm, portrait) et une marge nulle : un badge par page, à taille
+ * 74 × 105 mm depuis le 22 novembre 2026, portrait) et une marge nulle : un badge par page, à taille
  * réelle. Jusqu'au 25 octobre 2026, elle réglait une page **paysage** pour un
  * badge **portrait** : l'image, réduite pour tenir dans la hauteur, sortait à
  * 34 × 54 mm au lieu de 54 × 86. Le menu du BackOffice et les marges de la page

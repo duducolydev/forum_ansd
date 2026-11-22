@@ -26,7 +26,7 @@ vi.mock("@/lib/db", () => ({
 vi.mock("@/lib/audit", () => ({ audit: { log } }));
 vi.mock("@/lib/storage", () => ({ fileStorage: { get: vi.fn() } }));
 
-import { creerBadgesAnonymes, referenceAnonyme } from "./anonymes";
+import { cartesAnonymesARefaire, creerBadgesAnonymes, referenceAnonyme } from "./anonymes";
 
 const acteur = { type: "USER" as const, userId: "u1" };
 
@@ -164,5 +164,27 @@ describe("garde-fous", () => {
         }),
       }),
     );
+  });
+});
+
+/**
+ * Passage au 74 × 105 mm (22 novembre 2026) : le stock déjà rendu au
+ * 100 × 150 doit pouvoir se refaire, même numéro et même QR.
+ */
+describe("cartes à refaire au nouveau format", () => {
+  it("ne retient que les cartes rendues avec un gabarit antérieur", async () => {
+    badgeFindMany.mockResolvedValueOnce([
+      { id: "ancienne", pngPath: "badges/FID-2026-ANON-001/v1-maquette-2026-d.png" },
+      { id: "a-jour", pngPath: "badges/FID-2026-ANON-002/v1-a7-2026.png" },
+    ]);
+
+    await expect(cartesAnonymesARefaire("e1", "c1")).resolves.toEqual(["ancienne"]);
+    // Ni les révoquées, ni celles dont le premier rendu est encore en file.
+    expect(badgeFindMany.mock.calls[0]![0].where).toEqual({
+      anonymousCategoryId: "c1",
+      anonymousCategory: { editionId: "e1" },
+      revokedAt: null,
+      generatedAt: { not: null },
+    });
   });
 });

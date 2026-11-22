@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { IdCard } from "lucide-react";
+import { IdCard, RefreshCw } from "lucide-react";
 import { Bouton } from "@/components/ui/bouton";
 import { confirmer } from "@/components/ui/confirmer";
-import { creerBadgesAnonymesAction } from "../bulk-actions";
+import { creerBadgesAnonymesAction, refaireBadgesAnonymesAction } from "../bulk-actions";
 import type { StockAnonyme } from "../anonymes";
 import { BoutonExportZip } from "./bouton-export-zip";
 
@@ -66,6 +66,24 @@ export function StockAnonymeBadges({
     });
   }
 
+  function refaire(stock: StockAnonyme) {
+    setBilan(null);
+    startTransition(async () => {
+      const reponse = await refaireBadgesAnonymesAction(stock.categoryId);
+      if (reponse.error || reponse.marques === undefined) {
+        setBilan({ ton: "alerte", texte: reponse.error ?? "La demande a échoué." });
+        return;
+      }
+      setBilan({
+        ton: "ok",
+        texte:
+          `${reponse.marques} carte(s) « ${stock.categorieLabel} » remise(s) en rendu au nouveau ` +
+          `format, même numéro et même QR. Actualisez pour suivre ; exportez le ZIP une fois ` +
+          `le compte à l'ancien format revenu à zéro.`,
+      });
+    });
+  }
+
   return (
     <div className="border-border bg-surface flex flex-col gap-4 rounded-xl border p-4">
       <div>
@@ -95,7 +113,24 @@ export function StockAnonymeBadges({
                 {stock.total} carte(s) · {stock.pretes} prête(s) à imprimer
               </span>
               <span className="text-text-3 text-xs">dernier n° {stock.dernierNumero}</span>
-              <span className="ml-auto">
+              {stock.ancienFormat > 0 && (
+                <span className="text-danger-text text-xs font-semibold">
+                  {stock.ancienFormat} à l&apos;ancien format
+                </span>
+              )}
+              <span className="ml-auto flex flex-wrap items-start gap-2">
+                {peutGenerer && stock.ancienFormat > 0 && (
+                  <Bouton
+                    ton="secondaire"
+                    taille="petit"
+                    icone={RefreshCw}
+                    type="button"
+                    disabled={enCours}
+                    onClick={() => refaire(stock)}
+                  >
+                    {`Refaire ${stock.ancienFormat} carte(s) au nouveau format`}
+                  </Bouton>
+                )}
                 <BoutonExportZip
                   href={`/api/v1/badges/anonymes?categoryId=${stock.categoryId}`}
                   libelle="Export ZIP du stock"

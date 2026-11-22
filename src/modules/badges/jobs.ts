@@ -1,5 +1,6 @@
 import { jobQueue } from "@/lib/queue";
 import { prisma } from "@/lib/db";
+import { GABARIT_BADGE } from "./format";
 
 export interface BadgeGenerateJobPayload {
   participantId: string;
@@ -54,6 +55,23 @@ export async function enqueueBadgesAnonymes(badgeIds: string[]): Promise<void> {
     badgeIds.map((badgeId) => ({
       payload: { badgeId },
       options: { idempotencyKey: `badge-anonyme:${badgeId}` },
+    })),
+  );
+}
+
+/**
+ * Remet en file le rendu de cartes anonymes déjà rendues, au gabarit en
+ * vigueur. La clé d'idempotence porte le gabarit : celle de la création
+ * (`badge-anonyme:<id>`) existe déjà et ferait ignorer la demande.
+ */
+export async function enqueueRefaireAnonymes(badgeIds: string[]): Promise<void> {
+  if (badgeIds.length === 0) return;
+  registerBadgeJobs();
+  await jobQueue.enqueueMany<BadgeAnonymeJobPayload>(
+    "badge.generate_anonymous",
+    badgeIds.map((badgeId) => ({
+      payload: { badgeId },
+      options: { idempotencyKey: `badge-anonyme:${badgeId}:${GABARIT_BADGE}` },
     })),
   );
 }

@@ -3,7 +3,7 @@ import puppeteer, { type Browser } from "puppeteer-core";
 
 export interface RenderPdfOptions {
   format?: "A4" | "A6" | "CR80";
-  /** Format sur mesure, en millimètres ; prime sur `format` (badge 100 × 150). */
+  /** Format sur mesure, en millimètres ; prime sur `format` (badge 74 × 105). */
   taille?: { largeurMm: number; hauteurMm: number };
   landscape?: boolean;
   /**

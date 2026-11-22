@@ -7,11 +7,15 @@
  * réseau, ce qui est indispensable pour tenir la cible de 500 badges en moins
  * de 5 minutes.
  *
- * Format : 100 × 150 mm, portrait, fente pour cordon en tête (`format.ts`). Les
- * cotes sont celles de la maquette, relevées sur son rendu à 300 ppp.
+ * Format : 74 × 105 mm, portrait, fente pour cordon en tête (`format.ts`). Les
+ * cotes ci-dessous restent celles de la maquette 100 × 150 mm, relevées sur
+ * son rendu à 300 ppp : le bloc `.maquette` les porte telles quelles et se
+ * réduit d'un seul facteur (0,7) à la taille du badge. Changer de format ne
+ * demande ainsi de toucher aucune cote, et le texte s'ajuste comme avant — la
+ * réduction ne change pas les mesures de mise en page que lit `AJUSTEMENT`.
  */
 import { BLANC, ratioContraste, texteSur } from "@/modules/settings/regles";
-import { FENTE_CORDON, FORMAT_BADGE } from "./format";
+import { ECHELLE_MAQUETTE, FENTE_CORDON, FORMAT_BADGE, MAQUETTE } from "./format";
 
 export interface BadgeTemplateData {
   editionName: string;
@@ -122,7 +126,7 @@ const CONSTELLATION = constellation();
  * Bleu soutenu sur les bords, plus clair au centre, rayé de pointillés fins.
  */
 const FOND = `
-<svg class="decor" viewBox="0 0 100 150" aria-hidden="true">
+<svg class="decor" viewBox="0 0 100 150" preserveAspectRatio="none" aria-hidden="true">
   <defs>
     <linearGradient id="bande" x1="0" x2="1" y1="0" y2="0">
       <stop offset="0" stop-color="#2f4999"/>
@@ -211,6 +215,8 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
   const encreAccent = ratioContraste(accent, BLANC) >= 2 ? BLANC : texteSur(accent);
   const largeur = `${FORMAT_BADGE.largeurMm}mm`;
   const hauteur = `${FORMAT_BADGE.hauteurMm}mm`;
+  // La maquette réduite est centrée dans la largeur du badge.
+  const margeMaquette = (FORMAT_BADGE.largeurMm - MAQUETTE.largeurMm * ECHELLE_MAQUETTE) / 2;
 
   const marque = initials(data.firstName, data.lastName) || (data.initialesDeSecours ?? "");
   const photo = data.photoDataUrl
@@ -241,8 +247,20 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
       #c7ced8 0%, #d4dae3 20%, #d0d9e2 30%, #b4cbdc 64%,
       #a9c4d8 73%, #86b0cf 93%, #83b1d1 100%);
   }
+  /*
+   * Le décor couvre la carte entière, étiré à ses proportions : 5 % plus
+   * large que haut par rapport à la maquette, ce qui ne se voit pas sur des
+   * cercles de cette taille, alors que deux bandes nues de 2 mm sur les côtés
+   * se verraient.
+   */
   .decor { position: absolute; inset: 0; width: ${largeur}; height: ${hauteur}; }
-  /* Repère de la fente pour cordon, dans le gris de la maquette. */
+  .maquette {
+    position: absolute; top: 0; left: ${margeMaquette}mm;
+    width: ${MAQUETTE.largeurMm}mm; height: ${MAQUETTE.hauteurMm}mm;
+    transform: scale(${ECHELLE_MAQUETTE}); transform-origin: 0 0;
+  }
+  /* Repère de la fente pour cordon, dans le gris de la maquette. Hors de la
+     maquette réduite : la perforation garde sa taille standard. */
   .fente {
     position: absolute; top: ${FENTE_CORDON.depuisLeHautMm}mm; left: 50%;
     width: ${FENTE_CORDON.largeurMm}mm; height: ${FENTE_CORDON.hauteurMm}mm;
@@ -303,7 +321,9 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
    * reconnaissable de loin, que l'agent de contrôle lit la catégorie.
    */
   .bandeau {
-    position: absolute; left: 32.5mm; right: 0; top: 119.6mm; height: 17.6mm;
+    position: absolute; left: 32.5mm; top: 119.6mm; height: 17.6mm;
+    /* Jusqu'au vrai bord droit du badge, au-delà de la maquette réduite. */
+    right: -${margeMaquette / ECHELLE_MAQUETTE}mm;
     background: linear-gradient(100deg,
       color-mix(in srgb, ${accent} 88%, #000), color-mix(in srgb, ${accent} 88%, #fff));
   }
@@ -313,6 +333,7 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
   <div class="badge" data-capture>
     ${FOND}
     <div class="fente"></div>
+    <div class="maquette">
     ${entete}
     ${data.eventDates ? `<div class="dates">${escapeHtml(data.eventDates)}</div>` : ""}
     ${photo}
@@ -324,6 +345,7 @@ export function renderBadgeHtml(data: BadgeTemplateData): string {
     <div class="qr"><img src="${data.qrDataUrl}" alt="" /></div>
     <div class="uid">${escapeHtml(data.publicId)}</div>
     <div class="bandeau"></div>
+    </div>
   </div>
   <script>${AJUSTEMENT}</script>
 </body>

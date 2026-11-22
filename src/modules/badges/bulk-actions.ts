@@ -117,6 +117,28 @@ export async function creerBadgesAnonymesAction(
   }
 }
 
+/**
+ * Refait au format en vigueur les cartes anonymes d'une catégorie rendues
+ * avec un gabarit antérieur (`anonymes.ts`). Même référence, même QR.
+ */
+export async function refaireBadgesAnonymesAction(categoryId: string): Promise<MarquageState> {
+  const session = await auth();
+  if (!can(session, "badges.generate")) return { error: "Permission refusée." };
+
+  try {
+    const edition = await getActiveEdition();
+    const { cartesAnonymesARefaire } = await import("./anonymes");
+    const { enqueueRefaireAnonymes } = await import("./jobs");
+    const ids = await cartesAnonymesARefaire(edition.id, categoryId);
+    await enqueueRefaireAnonymes(ids);
+
+    revalidatePath("/admin/badges");
+    return { marques: ids.length };
+  } catch (error) {
+    return { error: premierMessage(error) };
+  }
+}
+
 /** Révocation du périmètre : tout le filtre, ou les lignes cochées. */
 export async function revoquerEnLotAction(
   perimetre: PerimetreLot,

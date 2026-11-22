@@ -87,15 +87,20 @@ describe.skipIf(!resolveBrowserPath())("badges (brief §5.4)", () => {
     expect(badge.version).toBe(1);
     expect(badge.generatedAt).not.toBeNull();
     // Le gabarit figure dans le nom des fichiers.
-    expect(badge.pdfPath).toBe(`badges/${participant.publicId}/v1-maquette-2026-d.pdf`);
-    expect(badge.pngPath).toBe(`badges/${participant.publicId}/v1-maquette-2026-d.png`);
+    expect(badge.pdfPath).toBe(`badges/${participant.publicId}/v1-a7-2026.pdf`);
+    expect(badge.pngPath).toBe(`badges/${participant.publicId}/v1-a7-2026.png`);
 
     const pdf = await fileStorage.get(badge.pdfPath!);
     expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
     const png = await fileStorage.get(badge.pngPath!);
-    // 1000 × 1500 px : le rapport 100 × 150 mm du badge.
-    expect(png.readUInt32BE(16)).toBe(FORMAT_BADGE.largeurPng);
-    expect(png.readUInt32BE(20)).toBe(FORMAT_BADGE.largeurPng * 1.5);
+    // 740 × 1050 px, à un pixel près : le rapport 74 × 105 mm du badge.
+    expect(Math.abs(png.readUInt32BE(16) - FORMAT_BADGE.largeurPng)).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(
+        png.readUInt32BE(20) -
+          (FORMAT_BADGE.largeurPng * FORMAT_BADGE.hauteurMm) / FORMAT_BADGE.largeurMm,
+      ),
+    ).toBeLessThanOrEqual(1);
 
     const reloaded = await prisma.participant.findUniqueOrThrow({ where: { id: participant.id } });
     expect(reloaded.status).toBe("BADGED");
@@ -121,7 +126,7 @@ describe.skipIf(!resolveBrowserPath())("badges (brief §5.4)", () => {
     expect(refait.id).toBe(badge.id);
     expect(refait.version).toBe(1);
     expect(refait.qrToken).toBe(badge.qrToken);
-    expect(refait.pngPath).toBe(`badges/${participant.publicId}/v1-maquette-2026-d.png`);
+    expect(refait.pngPath).toBe(`badges/${participant.publicId}/v1-a7-2026.png`);
     expect(await compterAncienGabarit(editionId, {})).toBe(avant);
   }, 60_000);
 
