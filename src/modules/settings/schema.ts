@@ -33,6 +33,35 @@ export const inscriptionsSchema = z.object({
   validationComite: z.boolean().default(true),
   ouvertureLe: jour.default(""),
   fermetureLe: jour.default(""),
+  /**
+   * Jauge par journée du Forum : places en présentiel, par date (22 novembre
+   * 2026).
+   *
+   * ## Ce que c'est, et ce que ce n'est pas
+   *
+   * C'est un **repère de décision** pour le comité : beaucoup d'inscrits ne
+   * viennent qu'un jour ou deux, et le savoir permet d'en valider d'autres sur
+   * les journées creuses. Ce n'est **pas** un contrôle : rien ne refuse une
+   * validation au-delà, et le badge d'un validé ouvre les trois jours quoi
+   * qu'il ait coché (règle du comité, inchangée). Un participant qui n'avait
+   * déclaré que le 24 peut donc se présenter le 23 — la jauge compare des
+   * déclarations, pas des entrées.
+   *
+   * ## Pourquoi un chiffre par jour, et pas un seul
+   *
+   * La capacité utile n'est pas la même selon le dispositif de la journée : la
+   * cérémonie d'ouverture ne remplit pas la salle comme une matinée de panels.
+   * Un chiffre unique aurait obligé à prendre le plus petit des trois, donc à
+   * refuser des gens le dernier jour pour une contrainte du premier.
+   *
+   * Clé : la date ISO de la journée, celle que coche le formulaire
+   * d'inscription (`modules/participants/jours-forum.ts`). Absente ou à zéro :
+   * l'écran montre les effectifs sans pourcentage ni « places disponibles » —
+   * un pourcentage d'une jauge inventée serait pire que pas de pourcentage.
+   */
+  jauges: z
+    .record(z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.coerce.number().int().min(0).max(100_000))
+    .default({}),
   messageFermeFr: z
     .string()
     .trim()

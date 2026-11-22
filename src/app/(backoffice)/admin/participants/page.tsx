@@ -6,6 +6,7 @@ import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
 import * as service from "@/modules/participants/service";
 import { participantSearchSchema } from "@/modules/participants/schema";
+import { joursDuForum } from "@/modules/participants/jours-forum";
 import { ParticipantsTable } from "@/modules/participants/components/participants-table";
 import { ParticipantsToolbar } from "@/modules/participants/components/participants-toolbar";
 import { Pagination } from "@/modules/participants/components/pagination";
@@ -51,7 +52,10 @@ export default async function ParticipantsPage({
           )}
         </div>
       </div>
-      <ParticipantsToolbar categories={categories} />
+      <ParticipantsToolbar
+        categories={categories}
+        jours={joursDuForum(edition.startDate, edition.endDate, "fr")}
+      />
       <ParticipantsTable data={items} traitementEnLot={can(session, "participants.write")} />
       <Pagination
         page={search.page}

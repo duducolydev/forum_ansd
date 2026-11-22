@@ -81,6 +81,14 @@ export const participantSearchSchema = z.object({
   status: z.enum(participantStatusValues).optional().or(z.literal("")),
   categoryId: z.string().optional().or(z.literal("")),
   country: z.string().optional().or(z.literal("")),
+  /**
+   * Journée déclarée à l'inscription (22 novembre 2026).
+   *
+   * Une date ISO, ou `SANS` pour les dossiers qui n'ont déclaré aucune
+   * journée. Sans ce filtre, l'écran d'affluence dirait qu'il reste cent
+   * places le 25 sans qu'on puisse sélectionner les gens à valider.
+   */
+  jour: z.string().optional().or(z.literal("")),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(20),
 });

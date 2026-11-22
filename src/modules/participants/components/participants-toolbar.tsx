@@ -6,8 +6,11 @@ import { STATUS_LABELS } from "./status-badge";
 
 export function ParticipantsToolbar({
   categories,
+  jours,
 }: {
   categories: { id: string; labelFr: string }[];
+  /** Journées du Forum, telles que le formulaire d'inscription les propose. */
+  jours: { value: string; label: string }[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -62,6 +65,26 @@ export function ParticipantsToolbar({
             {category.labelFr}
           </option>
         ))}
+      </select>
+      {/*
+        Journée déclarée (22 novembre 2026). Sans ce filtre, le tableau de bord
+        annonce qu'il reste des places le 25 sans qu'on puisse désigner les gens
+        à valider : avec « En attente » et « 200 par page », la sélection se
+        confirme d'un seul geste.
+      */}
+      <select
+        aria-label="Journée déclarée"
+        onChange={(event) => updateParam("jour", event.target.value)}
+        defaultValue={searchParams.get("jour") ?? ""}
+        className="border-border bg-surface text-text rounded-lg border px-3 py-2 text-sm"
+      >
+        <option value="">Toutes journées</option>
+        {jours.map((jour) => (
+          <option key={jour.value} value={jour.value}>
+            {jour.label}
+          </option>
+        ))}
+        <option value="SANS">Sans journée déclarée</option>
       </select>
       {/*
         Taille de page : la case d'en-tête coche la page entière, et c'est en

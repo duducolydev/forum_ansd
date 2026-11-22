@@ -1,5 +1,6 @@
 import { Prisma, type ParticipantStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { calculerAffluence, type AffluenceEdition, type JourForum } from "./affluence";
 
 /**
  * Agrégats du tableau de bord (brief §13).
@@ -221,4 +222,54 @@ async function getRegistrationsPerDay(editionId: string): Promise<DailyPoint[]> 
       row.day instanceof Date ? row.day.toISOString().slice(0, 10) : String(row.day).slice(0, 10),
     value: Number(row.total),
   }));
+}
+
+/**
+ * Affluence déclarée par journée (22 novembre 2026).
+ *
+ * ## Pourquoi lire les lignes plutôt que les agréger en SQL
+ *
+ * Les journées déclarées vivent dans une colonne **JSON** (`participationDays`),
+ * et le comptage demandé est « une personne compte sur chacune des journées
+ * qu'elle a cochées ». En SQL, cela ferait une requête `JSON_CONTAINS` par
+ * journée et par statut — six requêtes pour trois journées —, à refaire pour la
+ * ventilation par catégorie. Une lecture des dossiers complets, trois colonnes
+ * et deux booléens, tient en une requête et quelques centaines de kilo-octets
+ * au pire : les dossiers d'une édition se comptent en centaines, pas en
+ * millions. Le tri se fait ensuite en mémoire, dans un module pur et testé
+ * (`affluence.ts`).
+ *
+ * Si une édition devait un jour compter des dizaines de milliers d'inscrits,
+ * c'est la requête qu'il faudrait réécrire — pas le calcul, qui ne bougerait
+ * pas.
+ */
+export async function getAffluence(
+  editionId: string,
+  jours: JourForum[],
+  jauges: Record<string, number>,
+): Promise<AffluenceEdition> {
+  const lignes = await prisma.participant.findMany({
+    where: { editionId, deletedAt: null, status: { in: REGISTERED_STATUSES } },
+    select: {
+      status: true,
+      participationDays: true,
+      attendsOpening: true,
+      attendsClosing: true,
+      attendsAwards: true,
+      category: { select: { labelFr: true } },
+    },
+  });
+
+  return calculerAffluence({
+    jours,
+    jauges,
+    lignes: lignes.map((ligne) => ({
+      status: ligne.status,
+      participationDays: ligne.participationDays,
+      categorieLabel: ligne.category.labelFr,
+      attendsOpening: ligne.attendsOpening,
+      attendsClosing: ligne.attendsClosing,
+      attendsAwards: ligne.attendsAwards,
+    })),
+  });
 }

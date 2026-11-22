@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
 import { lireParametres } from "@/modules/settings/service";
+import { joursDuForum } from "@/modules/participants/jours-forum";
 import { FormulaireIdentite } from "@/modules/settings/components/formulaire-identite";
 import { FormulaireInscriptions } from "@/modules/settings/components/formulaire-inscriptions";
 import { FormulaireLangues } from "@/modules/settings/components/formulaire-langues";
@@ -77,7 +78,10 @@ export default async function ParametresPage() {
           }}
         />
         <FormulaireLangues valeurs={parametres.langues} />
-        <FormulaireInscriptions valeurs={parametres.inscriptions} />
+        <FormulaireInscriptions
+          valeurs={parametres.inscriptions}
+          jours={joursDuForum(edition.startDate, edition.endDate, "fr")}
+        />
         <FormulaireTheme valeurs={parametres.theme} />
         <FormulairePiedDePage valeurs={parametres.piedDePage} />
 

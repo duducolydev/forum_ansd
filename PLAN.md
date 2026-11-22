@@ -4644,3 +4644,94 @@ alors qu'une liasse vierge se tire par catégorie et que le titre la porte déj�
 Elle ne prenait pas seulement du temps au comptoir, elle prenait la largeur du
 nom et de l'organisation, qui, eux, s'écrivent vraiment. Cinq colonnes :
 N°, N° de carte, Nom et prénom, Organisation, Signature.
+
+## 32. Affluence déclarée par journée (22 novembre 2026)
+
+Beaucoup d'inscrits ne viennent pas les trois jours. Les journées creuses
+laissent donc des places que d'autres demandes, en attente de validation,
+pourraient prendre — encore faut-il savoir lesquelles. Les cases à cocher du
+formulaire d'inscription portent déjà l'information ; elle n'était lue nulle
+part.
+
+### 32.1 Ce que l'écran dit, et ce qu'il ne dit pas
+
+**Une déclaration n'est pas une réservation**, et c'est la seule chose qu'il
+fallait absolument faire comprendre. Le badge d'un participant validé ouvre les
+**trois** journées, quelle que soit la case cochée — règle du comité, et elle ne
+change pas. Rien n'empêche donc quelqu'un qui n'a déclaré que le 24 de se
+présenter le 23, le jour de la cérémonie d'ouverture, celui où la salle est
+déjà la plus tendue.
+
+Remplir une salle jusqu'à sa jauge sur la foi de ces chiffres, c'est la remplir
+au-delà. L'avertissement est donc **au-dessus** des chiffres, pas en note de bas
+de page, et il renvoie au constaté des scans : dès le soir de la première
+journée, l'écart entre déclaré et constaté se mesure, et c'est lui qui doit
+corriger la décision des deux journées suivantes.
+
+### 32.2 Trois garde-fous dans le comptage
+
+- **Les non-déclarants sont comptés à part.** Un dossier créé au comptoir ou
+  importé par fichier n'a pas de case à cocher. Le répartir d'office sur les
+  trois journées serait inventer une déclaration ; le passer sous silence
+  sous-estimerait la salle — c'est-à-dire se tromper du mauvais côté. Il a donc
+  sa propre carte, et le total y figure pour qu'on voie le poids de l'angle
+  mort.
+- **Les journées qui ne sont plus au programme sont écartées.** Les dates de
+  l'édition se modifient dans les paramètres : une journée déclarée avant un tel
+  changement ne correspond plus à rien, et la compter ferait apparaître une
+  quatrième colonne dans un Forum qui en a trois.
+- **`parNombreDeJours` dit si tout le reste sert à quelque chose.** Si la
+  plupart des confirmés ont coché les trois journées, il n'y a aucune place à
+  récupérer, et l'écran le dit en toutes lettres plutôt que de laisser chercher.
+
+### 32.3 La jauge : un chiffre par journée, et aucun pouvoir
+
+Le repère de salle se règle dans Paramètres → Inscriptions, **une valeur par
+journée**. Un chiffre unique aurait obligé à retenir le plus petit des trois,
+donc à refuser des gens le dernier jour pour une contrainte du premier : la
+capacité utile d'une cérémonie d'ouverture n'est pas celle d'une matinée de
+panels.
+
+Ce chiffre **ne bloque rien** : aucune validation n'est refusée au-delà, aucun
+badge n'est restreint. C'est un repère de lecture, et le formulaire le dit à
+l'endroit où on le saisit. Journée non renseignée, ou à zéro : l'écran montre
+les effectifs sans pourcentage ni « places disponibles » — un pourcentage d'une
+jauge inventée serait pire que pas de pourcentage.
+
+### 32.4 Le filtre qui rend la décision applicable
+
+Un écran qui annonce « 120 places disponibles le 25 » sans permettre de désigner
+les gens à valider ne sert à rien. La liste des participants gagne donc un
+filtre **journée déclarée**, avec une entrée « sans journée déclarée ». Combiné
+à « En attente » et « 200 par page », il donne la sélection à confirmer d'un
+seul geste.
+
+Deux détails de mise en œuvre méritent d'être notés :
+
+- le filtre se traduit en `JSON_CONTAINS` côté MySQL (`array_contains`), donc
+  sans lire les lignes. Le typage de Prisma l'accepte sur toutes les bases,
+  l'exécution non : d'où un test qui frappe une vraie base, alors que le calcul
+  d'affluence, lui, est pur et se teste sur des lignes écrites à la main ;
+- « sans journée » demande **trois** conditions : `NULL` en base, le littéral
+  JSON `null`, et le tableau vide. Les trois disent la même chose à qui lit
+  l'écran, et n'en traiter qu'une laisserait des dossiers invisibles des deux
+  côtés du filtre.
+
+Enfin, la recherche libre et ce filtre rendent chacun un `OR`. Étalés dans le
+même objet littéral, **le second écrasait le premier sans rien signaler** :
+chercher un nom en filtrant « sans journée » aurait rendu tous les homonymes.
+Les conditions sont maintenant empilées dans un `AND` explicite, et un test le
+tient.
+
+### 32.5 Pourquoi lire les dossiers plutôt que les agréger en SQL
+
+Le comptage demandé est « une personne compte sur chacune des journées qu'elle a
+cochées », sur une colonne JSON. En SQL, cela ferait une requête par journée et
+par statut, à refaire pour la ventilation par catégorie. Une lecture des
+dossiers complets — trois colonnes et deux booléens — tient en une requête et
+quelques centaines de kilo-octets : les dossiers d'une édition se comptent en
+centaines. Le tri se fait ensuite dans un module pur, où les règles de comptage
+se vérifient sur des lignes écrites à la main.
+
+Si une édition devait un jour compter des dizaines de milliers d'inscrits, c'est
+la requête qu'il faudrait réécrire — pas le calcul, qui ne bougerait pas.

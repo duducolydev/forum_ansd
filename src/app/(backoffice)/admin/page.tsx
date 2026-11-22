@@ -15,7 +15,10 @@ import {
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
-import { getDashboardData } from "@/modules/dashboard/service";
+import { getAffluence, getDashboardData } from "@/modules/dashboard/service";
+import { AffluenceJournees } from "@/modules/dashboard/components/affluence-journees";
+import { joursDuForum } from "@/modules/participants/jours-forum";
+import { lireParametres } from "@/modules/settings/service";
 import { StatTile } from "@/modules/dashboard/components/stat-tile";
 import { BarList } from "@/modules/dashboard/components/bar-list";
 import { FunnelChart } from "@/modules/dashboard/components/funnel-chart";
@@ -40,8 +43,10 @@ export default async function AdminDashboardPage() {
   }
 
   const edition = await getActiveEdition();
-  const { kpis, funnel, byCountry, byCategory, byOrganization, registrationsPerDay } =
-    await getDashboardData(edition.id);
+  const jours = joursDuForum(edition.startDate, edition.endDate, "fr");
+  const { jauges } = lireParametres(edition).inscriptions;
+  const [{ kpis, funnel, byCountry, byCategory, byOrganization, registrationsPerDay }, affluence] =
+    await Promise.all([getDashboardData(edition.id), getAffluence(edition.id, jours, jauges)]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -128,6 +133,17 @@ export default async function AdminDashboardPage() {
           rang={7}
         />
       </div>
+
+      <section className="flex flex-col gap-4">
+        <div>
+          <h3 className="text-heading text-lg">Affluence par journée</h3>
+          <p className="text-text-3 text-sm">
+            Ce que les inscrits ont déclaré, journée par journée, pour décider s&apos;il reste de
+            quoi valider d&apos;autres demandes.
+          </p>
+        </div>
+        <AffluenceJournees affluence={affluence} />
+      </section>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Card

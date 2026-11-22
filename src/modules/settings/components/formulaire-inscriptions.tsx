@@ -17,7 +17,14 @@ const MOTIFS: Record<string, string> = {
   TERMINEES: "Fermées : la date de fermeture est dépassée.",
 };
 
-export function FormulaireInscriptions({ valeurs }: { valeurs: Inscriptions }) {
+export function FormulaireInscriptions({
+  valeurs,
+  jours,
+}: {
+  valeurs: Inscriptions;
+  /** Journées du Forum, dérivées des dates de l'édition. */
+  jours: { value: string; label: string }[];
+}) {
   const [etat, action, enCours] = useActionState(enregistrerInscriptionsAction, etatInitial);
 
   // Aperçu vivant : le réglage se juge à son effet, pas à ses trois champs.
@@ -86,6 +93,40 @@ export function FormulaireInscriptions({ valeurs }: { valeurs: Inscriptions }) {
             className={CHAMP}
           />
         </Champ>
+
+        {/*
+          Jauges par journée (22 novembre 2026). Un repère de décision, pas un
+          contrôle : rien ne refuse une validation au-delà, et le badge d'un
+          validé ouvre les trois journées quelle que soit la case cochée. Le
+          dire ici, où l'on saisit le chiffre, plutôt que seulement sur l'écran
+          qui l'affiche.
+        */}
+        <div className="border-border rounded-lg border p-4 md:col-span-2">
+          <p className="text-heading text-sm font-semibold">Jauge par journée</p>
+          <p className="text-text-3 mt-1 mb-3 text-xs">
+            Places en présentiel, journée par journée. Sert à lire l&apos;affluence déclarée sur le
+            tableau de bord et à décider s&apos;il reste de quoi valider d&apos;autres demandes.
+            Laisser vide quand la capacité n&apos;est pas fixée : l&apos;écran montre alors les
+            effectifs sans pourcentage. Aucune validation n&apos;est bloquée par ce chiffre, et le
+            badge d&apos;un participant validé reste valable les trois journées.
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {jours.map((jour) => (
+              <Champ key={jour.value} id={`jauge-${jour.value}`} label={jour.label}>
+                <input
+                  id={`jauge-${jour.value}`}
+                  name={`jauge-${jour.value}`}
+                  type="number"
+                  min={0}
+                  step={1}
+                  placeholder="Non fixée"
+                  defaultValue={valeurs.jauges[jour.value] ?? ""}
+                  className={CHAMP}
+                />
+              </Champ>
+            ))}
+          </div>
+        </div>
 
         <Champ id="insc-msg-fr" label="Message affiché quand c'est fermé (français)">
           <textarea

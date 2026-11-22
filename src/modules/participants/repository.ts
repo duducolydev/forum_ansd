@@ -1,4 +1,4 @@
-import type { Prisma, ParticipantStatus } from "@prisma/client";
+import { Prisma, type ParticipantStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 /** Champs ciblés pour la liste BackOffice — un seul aller-retour, pas de N+1 (brief §3.3). */
@@ -33,28 +33,70 @@ export interface ParticipantListFilters {
   status?: ParticipantStatus;
   categoryId?: string;
   country?: string;
+  /** Journée déclarée (date ISO), ou `SANS_JOUR` pour ceux qui n'ont rien déclaré. */
+  jour?: string;
   page: number;
   pageSize: number;
 }
 
+/** Valeur du filtre « journée » pour les dossiers sans déclaration. */
+export const SANS_JOUR = "SANS";
+
+/**
+ * Filtre sur la journée déclarée (22 novembre 2026).
+ *
+ * `participationDays` est une colonne JSON : `array_contains` se traduit par un
+ * `JSON_CONTAINS` côté MySQL, donc sans lire les lignes.
+ *
+ * Le cas « sans journée » demande trois conditions et non une : la colonne peut
+ * valoir `NULL` en base (`DbNull`, un dossier créé au comptoir ou importé), le
+ * littéral JSON `null` (`JsonNull`, écrit par une mise à jour), ou un tableau
+ * vide. Les trois veulent dire la même chose pour qui lit l'écran, et n'en
+ * traiter qu'une laisserait des dossiers invisibles des deux côtés du filtre.
+ */
+function filtreJour(jour: string): Prisma.ParticipantWhereInput {
+  if (jour !== SANS_JOUR) return { participationDays: { array_contains: jour } };
+  return {
+    OR: [
+      { participationDays: { equals: Prisma.DbNull } },
+      { participationDays: { equals: Prisma.JsonNull } },
+      { participationDays: { equals: [] } },
+    ],
+  };
+}
+
+/**
+ * Les conditions qui portent un `OR` sont empilées dans un `AND` (22 novembre
+ * 2026).
+ *
+ * La recherche libre et le filtre « sans journée déclarée » rendent chacun un
+ * `OR`. Étalés dans le même objet, le second **écrasait** le premier sans rien
+ * signaler : chercher un nom en filtrant « sans journée » aurait rendu tous les
+ * homonymes, journée déclarée ou non. Les deux sont donc des conjonctions
+ * explicites.
+ */
 function buildWhere(filters: ParticipantListFilters): Prisma.ParticipantWhereInput {
+  const et: Prisma.ParticipantWhereInput[] = [];
+  if (filters.jour) et.push(filtreJour(filters.jour));
+  if (filters.q) {
+    et.push({
+      OR: [
+        { firstName: { contains: filters.q } },
+        { lastName: { contains: filters.q } },
+        { email: { contains: filters.q } },
+        { organization: { contains: filters.q } },
+        { publicId: { contains: filters.q } },
+      ],
+    });
+  }
+
   return {
     editionId: filters.editionId,
     deletedAt: null,
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
     ...(filters.country ? { country: filters.country } : {}),
-    ...(filters.q
-      ? {
-          OR: [
-            { firstName: { contains: filters.q } },
-            { lastName: { contains: filters.q } },
-            { email: { contains: filters.q } },
-            { organization: { contains: filters.q } },
-            { publicId: { contains: filters.q } },
-          ],
-        }
-      : {}),
+    ...(et.length > 0 ? { AND: et } : {}),
   };
 }
 

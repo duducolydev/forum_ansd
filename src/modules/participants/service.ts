@@ -658,6 +658,7 @@ export async function listParticipants(editionId: string, search: ParticipantSea
     status: search.status || undefined,
     categoryId: search.categoryId || undefined,
     country: search.country || undefined,
+    jour: search.jour || undefined,
     page: search.page,
     pageSize: search.pageSize,
   });

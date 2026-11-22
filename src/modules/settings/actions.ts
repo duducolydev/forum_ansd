@@ -87,6 +87,26 @@ export async function enregistrerLanguesAction(
   return { avis: "Langues enregistrées." };
 }
 
+/**
+ * Jauges par journée, relevées dans les champs `jauge-AAAA-MM-JJ`.
+ *
+ * Un champ par journée plutôt qu'un JSON à saisir : le formulaire affiche les
+ * journées du Forum, qui dérivent des dates de l'édition. Une journée laissée
+ * vide, ou à zéro, n'entre pas dans l'objet — « pas de jauge » et « zéro
+ * place » sont la même chose, et c'est l'absence qui fait foi
+ * (`modules/dashboard/affluence.ts`).
+ */
+function jaugesDuFormulaire(formData: FormData): Record<string, number> {
+  const jauges: Record<string, number> = {};
+  for (const [cle, valeur] of formData.entries()) {
+    const jour = cle.startsWith("jauge-") ? cle.slice("jauge-".length) : null;
+    if (!jour || !/^\d{4}-\d{2}-\d{2}$/.test(jour)) continue;
+    const places = Number(String(valeur).trim());
+    if (Number.isInteger(places) && places > 0) jauges[jour] = places;
+  }
+  return jauges;
+}
+
 export async function enregistrerInscriptionsAction(
   _etat: EtatAction,
   formData: FormData,
@@ -101,6 +121,7 @@ export async function enregistrerInscriptionsAction(
       messageFermeFr: formData.get("messageFermeFr") ?? undefined,
       messageFermeEn: formData.get("messageFermeEn") ?? undefined,
       messageFermePt: formData.get("messageFermePt") ?? undefined,
+      jauges: jaugesDuFormulaire(formData),
     });
     await service.enregistrerInscriptions(editionId, valeurs, acteur);
   } catch (erreur) {
