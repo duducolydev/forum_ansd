@@ -4573,22 +4573,26 @@ lire de la même façon —, **plus une** : la référence de la carte remise.
   une imprimante — de une à huit, deux par défaut (300 lignes au plus par
   l'URL). Les comptes proposés remplissent des pages entières, et il y faut
   **deux** nombres : la première page porte l'en-tête du document et tient
-  vingt lignes, les suivantes vingt-deux. Comptées comme la première, une
+  vingt lignes, les suivantes vingt-trois. Comptées comme la première, une
   liasse de « huit pages » en rendait neuf, dont la dernière portait une ligne
-  unique — constaté à l'impression le 21 novembre.
+  unique — constaté à l'impression le 21 novembre. (Vingt-deux jusqu'au 22
+  novembre : le pied de page a quitté la zone de contenu, §33, et les douze
+  millimètres qu'on lui réservait sont revenus aux lignes.)
 - Le numéro d'ordre reste imprimé : c'est lui qui permet de dire « sept cartes
   remises » sans recompter des signatures manuscrites.
 - Le sous-titre annonce à quoi elle sert — « Badges génériques », et la
   catégorie quand une liasse est tirée par catégorie. Posée sur un comptoir à
   côté des liasses nominatives, rien d'autre ne la distinguerait d'une feuille
   dont les noms n'auraient pas été imprimés.
-- **Ni date ni décompte** sous le titre (21 novembre, après impression
-  d'essai). La date était celle du jour demandé à l'écran : une liasse tirée la
-  veille, épuisée le lendemain et resservie le surlendemain l'aurait portée à
-  faux, et un document signé qui porte une mauvaise date est pire qu'un
-  document sans date. Le décompte — « 152 ligne(s) à remplir » — ne disait rien
-  à personne : qui tient la feuille voit les lignes, qui l'archive compte les
-  signatures.
+- **La date d'émargement sous le titre, et pas de décompte.** La date a fait
+  l'aller-retour : retirée le 21 novembre après une impression d'essai — une
+  liasse tirée la veille, épuisée le lendemain et resservie le surlendemain
+  l'aurait portée à faux —, rétablie le 22. Une feuille signée sans date ne dit
+  pas de quelle journée du Forum elle vient, et c'est tout ce qu'on lui demande
+  à l'archive ; c'est donc au tirage de suivre la journée, une liasse par jour.
+  Le décompte — « 152 ligne(s) à remplir » —, lui, n'est pas revenu : il ne
+  disait rien à personne, qui tient la feuille voit les lignes et qui l'archive
+  compte les signatures.
 - **Des filets verticaux** séparent les colonnes, sur cette feuille seulement.
   Sur un document déjà rempli, l'alternance de fonds suffit à suivre une ligne ;
   sur une feuille qu'on remplit à la main, rien n'indique où s'arrête une
@@ -4619,6 +4623,12 @@ Un groupe de pied de tableau (`tfoot`, `display: table-footer-group`), répété
 chaque page comme l'en-tête l'est déjà, rend les douze millimètres qu'il faut.
 Correction d'une ligne de HTML et deux de CSS, vérifiée sur un rendu de
 quarante lignes : dix-neuf par page, aucun chevauchement.
+
+**Le 22 novembre, la cause a disparu** : le pied de page est passé dans la
+marge d'impression (§33), où il ne mord sur rien. La réserve n'avait plus
+d'objet et a été retirée — garder un pansement sur une plaie refermée, c'est
+douze millimètres de papier blanc par page, et une page supplémentaire toutes
+les vingt-trois lignes.
 
 ### 31.2 Les colonnes, après deux passages
 
@@ -4735,3 +4745,61 @@ se vérifient sur des lignes écrites à la main.
 
 Si une édition devait un jour compter des dizaines de milliers d'inscrits, c'est
 la requête qu'il faudrait réécrire — pas le calcul, qui ne bougerait pas.
+
+## 33. Les listes de présence habillées, et numérotées (22 novembre 2026)
+
+Les feuilles d'émargement sont les seuls documents du Forum qui sortent du
+portail pour être signés à la main, ramassés et archivés. Elles portaient un
+titre, un tableau et une ligne grise en bas de page — ni les logos des
+courriels et des badges, ni de quoi dire qu'une liasse est complète. Trois
+ajouts, sur les trois formes du document (émargement, constat, feuille vierge) :
+elles s'archivent ensemble, elles doivent se ressembler.
+
+- **Le logo du Forum, en haut à droite de l'en-tête.** Largeur fixée à 38 mm,
+  hauteur libre : c'est celle du bloc de titre, l'en-tête ne grandit donc pas et
+  la première page garde ses vingt lignes.
+- **Le numéro de page, en bas à gauche** : `Page 3 / 8`. Une liasse se signe,
+  se ramasse et s'archive ; sans numéro, une page tombée du paquet ne se
+  retrouve pas et personne ne peut dire si le paquet est entier.
+- **Le logo des 20 ans de l'ANSD, en bas à droite**, comme dans les courriels.
+
+### 33.1 Pourquoi le pied de page a changé de place
+
+Un numéro de page ne s'imprime pas depuis le document. Les compteurs CSS
+(`counter(page)`) n'existent que dans les boîtes de marge `@bottom-left`, que
+Chromium n'implémente pas ; un élément `position: fixed` — ce qu'était le pied
+de page — se répète bien d'une page à l'autre, mais ne sait pas compter les
+pages.
+
+Le pied est donc rendu par Chromium lui-même, dans la **marge d'impression**
+(`footerTemplate`, exposé par `lib/pdf.ts` sous `piedDePage`), avec les
+marqueurs `pageNumber` et `totalPages` qu'il remplit page par page. Deux
+conséquences :
+
+- il ne recouvre plus rien, et la réserve de `tfoot` du 21 novembre (§31.1) a
+  été retirée — les pages suivantes portent vingt-trois lignes au lieu de
+  vingt-deux, remesuré en rendant de vraies feuilles et en comptant les pages ;
+- c'est un **document à part**, sans la feuille de style de la page : tout s'y
+  écrit en style en ligne, et le logo en `data:` URI.
+
+**Le piège, trouvé à l'impression d'essai** : Chromium place ce pied dans la
+marge qu'on lui passe en option, mais une marge déclarée en CSS l'emporte sur
+elle pour la mise en page. Avec `@page { margin: 0 }`, le tableau courait
+jusqu'au bas de la feuille et sa dernière ligne repassait sous le pied de page
+— le défaut du 21 novembre, revenu par une autre porte. Le document ne déclare
+donc plus aucune marge : les seules sont celles du rendu (14 mm en tête, 12 sur
+les côtés, 18 en pied, cette dernière logeant le pied de page).
+
+### 33.2 Des logos qui ne font échouer aucun export
+
+Les deux logos sont lus une fois, gardés en mémoire et insérés en `data:` URI
+(`modules/attendance/logos.ts`, même mécanique que `modules/badges/logo.ts`) :
+le rendu n'attend aucun réseau, un `src="/images/…"` y resterait un cadre vide,
+et une liasse de six cents noms ne relit pas deux fichiers à chaque tirage.
+
+Fichier manquant : le document se compose **sans le logo**, et l'export
+aboutit. Ce qu'on signe est le nom, pas l'habillage — refuser la feuille pour
+une image absente priverait l'accueil de ses listes le jour J. Ce sont les
+versions WebP qui servent (92 et 70 Ko contre 189 Ko pour le PNG des
+courriels) : à 11 et 38 mm de large, elles restent bien au-delà des 300 ppp
+d'une impression.
