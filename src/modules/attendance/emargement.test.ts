@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LIGNES_VIERGES_DEFAUT } from "./lignes-vierges";
-import { listePresenceHtml } from "./pdf";
+import { type DonneesListe, listePresenceHtml, piedDePageHtml } from "./pdf";
 import type { LigneListe } from "./service";
 
 /**
@@ -186,19 +186,23 @@ describe("synthèse de la feuille d'émargement", () => {
     });
 
     /*
-     * Ni date ni décompte sous le titre (21 novembre 2026, après impression
-     * d'essai). La date était celle du jour demandé à l'écran : une liasse
-     * tirée la veille et resservie le surlendemain l'aurait portée à faux, et
-     * un document signé qui porte une mauvaise date est pire qu'un document
-     * sans date. Le décompte, lui, ne disait rien à personne.
+     * La date d'émargement, rétablie le 22 novembre 2026. Retirée la veille au
+     * motif qu'une liasse tirée d'avance la porterait à faux, elle manquait à
+     * l'archive : une feuille signée sans date ne dit pas de quelle journée du
+     * Forum elle vient. C'est au tirage de suivre la journée, une liasse par
+     * jour.
+     *
+     * Le décompte de lignes, lui, reste absent : celui qui tient la feuille
+     * voit les lignes, celui qui l'archive compte les signatures.
      */
-    it("ne porte ni date ni décompte de lignes", () => {
+    it("porte la date d'émargement sous son titre", () => {
       const html = vierge(4);
-      // Le sous-titre reste — c'est lui qui porte « Badges génériques » et la
-      // catégorie —, mais le jour d'édition qui le suivait a disparu.
       expect(html).toContain(base.sousTitre);
-      expect(html).not.toContain("ligne(s) à remplir");
-      expect(html).not.toContain("23 novembre 2026");
+      expect(html).toContain("lundi 23 novembre 2026");
+    });
+
+    it("ne porte pas de décompte de lignes", () => {
+      expect(vierge(4)).not.toContain("ligne(s) à remplir");
     });
 
     it("donne de quoi écrire : les cellules à remplir portent un filet", () => {
@@ -221,5 +225,70 @@ describe("synthèse de la feuille d'émargement", () => {
     });
     expect(html).toContain("3 personne(s) attendue(s) · 2 présente(s)");
     expect(html).not.toContain('class="signature"');
+  });
+});
+
+/**
+ * En-tête et pied de page (22 novembre 2026).
+ *
+ * Les listes de présence portent les mêmes logos que les courriels et les
+ * badges : le Forum en haut à droite, les 20 ans de l'ANSD en bas à droite.
+ * Les logos sont passés en `data:` URI — le rendu n'attend aucun réseau — et
+ * le pied de page est un fragment à part, que Chromium imprime dans la marge
+ * basse de chaque page, seul endroit où un numéro de page est possible.
+ */
+describe("habillage des listes de présence", () => {
+  const LOGO_FORUM = "data:image/webp;base64,Rk9SVU0=";
+  const LOGO_ANSD = "data:image/webp;base64,QU5TRA==";
+
+  const avecLogos: DonneesListe = {
+    ...base,
+    forme: "VIERGE",
+    lignes: [],
+    lignesVides: 3,
+    logoForumDataUrl: LOGO_FORUM,
+    logoAnsdDataUrl: LOGO_ANSD,
+  };
+
+  it("place le logo du Forum à droite du titre, dans l'en-tête", () => {
+    const html = listePresenceHtml(avecLogos);
+    expect(html).toContain(`<img class="logo-forum" src="${LOGO_FORUM}"`);
+    // À droite du titre : après le bloc d'identité, et toujours dans l'en-tête.
+    const logo = html.indexOf('class="logo-forum" src=');
+    expect(logo).toBeGreaterThan(html.indexOf("<h1>"));
+    expect(logo).toBeLessThan(html.indexOf("</header>"));
+  });
+
+  it("se compose sans logo quand le fichier manque", () => {
+    // Une feuille d'émargement sans logo reste une feuille d'émargement :
+    // l'export ne doit pas échouer pour un fichier absent.
+    const html = listePresenceHtml({ ...avecLogos, logoForumDataUrl: null });
+    expect(html).not.toContain('logo-forum" src');
+    expect(html).toContain("<h1>Feuille d'émargement</h1>");
+  });
+
+  it("numérote les pages à gauche du pied de page", () => {
+    // Chromium remplit lui-même ces deux marqueurs, page par page.
+    const pied = piedDePageHtml(avecLogos);
+    expect(pied).toContain('<span class="pageNumber">');
+    expect(pied).toContain('<span class="totalPages">');
+    expect(pied.indexOf('class="pageNumber"')).toBeLessThan(pied.indexOf(LOGO_ANSD));
+  });
+
+  it("met le logo des 20 ans de l'ANSD à droite du pied de page", () => {
+    const pied = piedDePageHtml(avecLogos);
+    expect(pied).toContain(`<img src="${LOGO_ANSD}"`);
+    // Dernière mention de la ligne : le logo ferme le pied de page.
+    expect(pied.indexOf(LOGO_ANSD)).toBeGreaterThan(pied.indexOf("Document généré le"));
+    expect(pied).not.toContain("undefined");
+  });
+
+  it("garde le pied de page hors du document, où il ne mord sur aucune ligne", () => {
+    // Il est rendu dans la marge d'impression, pas dans la page : plus de
+    // « position: fixed » sur la dernière signature, et plus de réserve de bas
+    // de tableau à lui ménager.
+    const html = listePresenceHtml(avecLogos);
+    expect(html).not.toContain("<footer>");
+    expect(html).not.toContain("<tfoot>");
   });
 });

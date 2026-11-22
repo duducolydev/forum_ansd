@@ -1,5 +1,6 @@
 import { renderHtmlToPdf } from "@/lib/pdf";
 import { LIGNES_VIERGES_DEFAUT } from "./lignes-vierges";
+import { logoAnsdDataUrl, logoForumDataUrl } from "./logos";
 import type { FiltrePresence, LigneListe } from "./service";
 
 /**
@@ -46,6 +47,17 @@ export interface DonneesListe {
    * une feuille vierge ne lit pas la base.
    */
   lignesVides?: number;
+  /**
+   * Logos en `data:` URI (`modules/attendance/logos.ts`) : le Forum en haut à
+   * droite de l'en-tête, les 20 ans de l'ANSD en bas à droite du pied de page.
+   *
+   * Optionnels, et `null` quand le fichier manque : le document se compose
+   * alors sans eux. Ils sont passés en paramètre plutôt que lus ici parce que
+   * `listePresenceHtml` est synchrone — c'est `renderListePresence` qui lit les
+   * fichiers.
+   */
+  logoForumDataUrl?: string | null;
+  logoAnsdDataUrl?: string | null;
 }
 
 /**
@@ -59,21 +71,25 @@ export interface DonneesListe {
 /**
  * La ligne sous le titre.
  *
- * **La feuille vierge n'y met que son sous-titre** (21 novembre 2026, après
- * impression d'essai) : ni date, ni décompte de lignes.
+ * **La feuille vierge porte son sous-titre et la date** (rétablie le 22
+ * novembre 2026), mais pas de décompte de lignes.
  *
- * - La **date** était celle du jour d'édition demandé à l'écran. Une liasse
- *   vierge se tire la veille, s'épuise le lendemain et resservira le
- *   surlendemain : une date imprimée dessus est fausse deux jours sur trois, et
- *   un document signé qui porte une mauvaise date est pire qu'un document sans
- *   date.
+ * - La **date** est celle du jour d'émargement demandé à l'écran. Elle avait
+ *   été retirée la veille, au motif qu'une liasse tirée d'avance et resservie
+ *   le surlendemain la porterait à faux ; une feuille signée sans date est
+ *   pourtant inexploitable à l'archive, où rien d'autre ne dit de quelle
+ *   journée du Forum elle vient. C'est donc au tirage de suivre la journée —
+ *   une liasse par jour —, et non au document de se taire. (Si une liasse
+ *   indatée redevenait nécessaire, c'est une mention à remplir à la main
+ *   qu'il faudrait imprimer, pas l'absence de toute mention.)
  * - Le **décompte** (« 152 ligne(s) à remplir ») ne disait rien à personne :
  *   celui qui tient la feuille voit les lignes, et celui qui l'archive compte
  *   les signatures, pas les lignes vides.
  */
 function meta(donnees: DonneesListe): string {
-  if (donnees.forme === "VIERGE") return escapeHtml(donnees.sousTitre);
-  return `${escapeHtml(donnees.sousTitre)} · ${dateLongue.format(donnees.jour)}<br>${synthese(donnees)}`;
+  const entete = `${escapeHtml(donnees.sousTitre)} · ${dateLongue.format(donnees.jour)}`;
+  if (donnees.forme === "VIERGE") return entete;
+  return `${entete}<br>${synthese(donnees)}`;
 }
 
 function synthese(donnees: DonneesListe): string {
@@ -208,12 +224,24 @@ export function listePresenceHtml(donnees: DonneesListe): string {
  * retouche, et c'est leur ressemblance qui fait qu'ils s'archivent ensemble.
  */
 function documentHtml(donnees: DonneesListe, colonnes: string[], lignes: string): string {
+  const logoForum = donnees.logoForumDataUrl
+    ? `<img class="logo-forum" src="${donnees.logoForumDataUrl}" alt="">`
+    : "";
+
   return `<!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
 <style>
-  @page { size: A4 portrait; margin: 14mm 12mm 16mm; }
+  /* Aucune marge ici : elles viennent des options de rendu (« MARGES »).
+
+     C'est dans la marge d'impression que Chromium place le pied de page, et il
+     ne connaît là que celles qu'on lui passe. Mais une marge déclarée en CSS
+     l'emporte sur elles pour la **mise en page** : avec « margin: 0 », le
+     tableau courait jusqu'au bas de la feuille et sa dernière ligne passait
+     sous le pied de page (constaté à l'impression d'essai du 22 novembre
+     2026). On n'en déclare donc aucune, et les deux coïncident. */
+  @page { size: A4 portrait; }
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -229,7 +257,20 @@ function documentHtml(donnees: DonneesListe, colonnes: string[], lignes: string)
     border-bottom: 2px solid ${ANSD_BLEU_NUIT};
     padding-bottom: 6mm;
     margin-bottom: 5mm;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8mm;
   }
+  /* Logo du Forum à droite du titre (22 novembre 2026). Largeur fixée, hauteur
+     libre : à 38 mm, le logo (1 000 × 441) reste au-dessus des 300 ppp d'une
+     impression, et sa hauteur (≈ 17 mm) est celle du bloc de titre — l'en-tête
+     ne grandit donc pas, et la première page garde ses lignes. « flex: none »
+     l'empêche d'être comprimé par un titre long. */
+  .logo-forum { width: 38mm; height: auto; flex: none; }
+  /* « min-width: 0 » : sans lui, un titre long pousserait le logo hors de la page
+     au lieu de passer à la ligne. */
+  .identite { min-width: 0; }
   .edition { font-size: 8pt; letter-spacing: .08em; text-transform: uppercase; color: ${ANSD_BLEU_VIF}; }
   h1 { margin: 2mm 0 1mm; font-size: 15pt; color: ${ANSD_BLEU_NUIT}; }
   .meta { font-size: 9pt; color: #4e5d6b; }
@@ -271,47 +312,83 @@ function documentHtml(donnees: DonneesListe, colonnes: string[], lignes: string)
      et une organisation un peu longue finit en travers de la signature. */
   table.vierge thead th, table.vierge tbody td { border-right: 1px solid #c7d2dc; }
   table.vierge thead th:last-child, table.vierge tbody td:last-child { border-right: none; }
-  /* Réserve de bas de page (21 novembre 2026).
+  /* Plus de réserve de bas de page, et plus de pied de page dans le document
+     (22 novembre 2026).
 
-     Le pied de page est en « position: fixed », et un élément fixe se place, à
-     l'impression, dans la zone de contenu de chaque page — pas dans la marge.
-     Il recouvrait donc la dernière ligne de chaque page : sur une liasse de
-     627 noms, une signature sur dix-neuf était barrée d'un « Document généré
-     le… ». Un groupe de pied de tableau, répété comme l'en-tête, rend les
-     douze millimètres qu'il faut. */
-  tfoot { display: table-footer-group; }
-  tfoot td { height: 12mm; border: none; background: none !important; padding: 0; }
-  footer {
-    position: fixed;
-    bottom: 6mm; left: 0; right: 0;
-    font-size: 7.5pt;
-    color: #8a97a3;
-    display: flex;
-    justify-content: space-between;
-  }
+     Le pied était un élément « position: fixed » : à l'impression, un élément
+     fixe se répète bien sur chaque page, mais dans la zone de **contenu** — pas
+     dans la marge. Il recouvrait donc la dernière ligne de chaque page, et on
+     lui réservait douze millimètres par un groupe de pied de tableau.
+
+     Il est désormais rendu par Chromium dans la marge basse (« piedDePageHtml »,
+     passé à « renderHtmlToPdf »), seul endroit où il peut numéroter les pages.
+     Il ne mord plus sur rien : la réserve n'a plus d'objet, et ses douze
+     millimètres reviennent aux lignes. */
 </style>
 </head>
 <body>
   <header>
-    <div class="edition">${escapeHtml(donnees.editionName)}</div>
-    <h1>${escapeHtml(donnees.titre)}</h1>
-    <div class="meta">${meta(donnees)}</div>
+    <div class="identite">
+      <div class="edition">${escapeHtml(donnees.editionName)}</div>
+      <h1>${escapeHtml(donnees.titre)}</h1>
+      <div class="meta">${meta(donnees)}</div>
+    </div>
+    ${logoForum}
   </header>
 
   <table${donnees.forme === "VIERGE" ? ' class="vierge"' : ""}>
     <thead><tr>${colonnes.map((colonne) => `<th>${colonne}</th>`).join("")}</tr></thead>
-    <tfoot><tr><td colspan="${colonnes.length}"></td></tr></tfoot>
     <tbody>${lignes}</tbody>
   </table>
-
-  <footer>
-    <span>${escapeHtml(donnees.editionName)}</span>
-    <span>Document généré le ${dateLongue.format(new Date())}</span>
-  </footer>
 </body>
 </html>`;
 }
 
+/**
+ * Marges d'impression, et donc place du pied de page.
+ *
+ * Elles reprennent celles que portait `@page` (14 mm en tête, 12 mm sur les
+ * côtés), la marge basse passant de 16 à 18 mm : c'est elle qui reçoit
+ * maintenant le pied de page, logo compris.
+ */
+const MARGES = { haut: "14mm", droite: "12mm", bas: "18mm", gauche: "12mm" } as const;
+
+/**
+ * Le pied de page, rendu par Chromium dans la marge basse de **chaque** page
+ * (22 novembre 2026).
+ *
+ * Trois mentions, de gauche à droite :
+ *
+ * - le **numéro de page**, `Page 3 / 8`. Une liasse d'émargement se signe, se
+ *   ramasse et s'archive : sans numéro, une page tombée du paquet ne se
+ *   retrouve pas, et personne ne peut dire si la liasse est complète. Chromium
+ *   remplit lui-même `pageNumber` et `totalPages` ;
+ * - l'édition et la date d'édition, qui étaient déjà là ;
+ * - le **logo des 20 ans de l'ANSD**.
+ *
+ * Le gabarit est rendu dans un document à part, sans la feuille de style de la
+ * page : tout y est en style en ligne, et le logo en `data:` URI. Les tailles
+ * y sont des unités d'impression ordinaires (mm, pt), Chromium ne leur
+ * appliquant aucune échelle particulière — vérifié au rendu.
+ */
+export function piedDePageHtml(donnees: DonneesListe): string {
+  const logoAnsd = donnees.logoAnsdDataUrl
+    ? `<img src="${donnees.logoAnsdDataUrl}" alt="" style="height:9mm;width:auto;display:block;">`
+    : "<span></span>";
+
+  return `<div style="width:100%;box-sizing:border-box;padding:0 ${MARGES.gauche} 2mm;font-family:'Helvetica Neue',Arial,sans-serif;font-size:7.5pt;color:#8a97a3;display:flex;align-items:flex-end;justify-content:space-between;gap:6mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+  <span style="white-space:nowrap;">Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>
+  <span style="text-align:center;">${escapeHtml(donnees.editionName)} · Document généré le ${dateLongue.format(new Date())}</span>
+  ${logoAnsd}
+</div>`;
+}
+
 export async function renderListePresence(donnees: DonneesListe): Promise<Buffer> {
-  return renderHtmlToPdf(listePresenceHtml(donnees), { format: "A4" });
+  const [forum, ansd] = await Promise.all([logoForumDataUrl(), logoAnsdDataUrl()]);
+  const avecLogos = { ...donnees, logoForumDataUrl: forum, logoAnsdDataUrl: ansd };
+  return renderHtmlToPdf(listePresenceHtml(avecLogos), {
+    format: "A4",
+    marges: MARGES,
+    piedDePage: piedDePageHtml(avecLogos),
+  });
 }

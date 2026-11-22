@@ -6,6 +6,32 @@ export interface RenderPdfOptions {
   /** Format sur mesure, en millimètres ; prime sur `format` (badge 100 × 150). */
   taille?: { largeurMm: number; hauteurMm: number };
   landscape?: boolean;
+  /**
+   * Marges d'impression, en unités CSS. À défaut, zéro : un badge occupe toute
+   * sa carte, et les documents A4 posaient jusqu'ici leurs marges en CSS
+   * (`@page { margin }`), que Chromium respecte.
+   *
+   * Elles passent par ici dès qu'un `piedDePage` est demandé : c'est **dans la
+   * marge d'impression** que Chromium place l'en-tête et le pied de page, et
+   * une marge nulle ne lui laisse aucune place — le pied n'apparaîtrait pas.
+   */
+  marges?: { haut: string; droite: string; bas: string; gauche: string };
+  /**
+   * Pied de page répété sur chaque page, rendu par Chromium dans la marge
+   * basse.
+   *
+   * C'est la seule façon d'imprimer un **numéro de page** : les compteurs CSS
+   * `counter(page)` n'existent que dans les boîtes de marge `@bottom-left`, que
+   * Chromium n'implémente pas, et un élément `position: fixed` — qui, lui, se
+   * répète bien d'une page à l'autre — ne sait pas compter les pages. Le
+   * gabarit reconnaît `<span class="pageNumber">` et
+   * `<span class="totalPages">`, que Chromium remplit page par page.
+   *
+   * C'est un fragment HTML autonome : il est rendu dans son propre document,
+   * sans la feuille de style de la page, donc tout s'y écrit en style en ligne,
+   * images comprises (`data:` URI — aucun réseau n'est disponible).
+   */
+  piedDePage?: string;
 }
 
 export interface RenderPngOptions {
@@ -208,12 +234,23 @@ async function pdfFromPage(
   const size = options.taille
     ? { width: `${options.taille.largeurMm}mm`, height: `${options.taille.hauteurMm}mm` }
     : PAGE_SIZES[options.format ?? "CR80"];
+  const marges = options.marges;
   const pdf = await page.pdf({
     width: options.landscape ? size.height : size.width,
     height: options.landscape ? size.width : size.height,
     printBackground: true,
-    margin: { top: "0", right: "0", bottom: "0", left: "0" },
+    margin: marges
+      ? { top: marges.haut, right: marges.droite, bottom: marges.bas, left: marges.gauche }
+      : { top: "0", right: "0", bottom: "0", left: "0" },
     preferCSSPageSize: false,
+    // `displayHeaderFooter` réactive **aussi** l'en-tête par défaut de Chromium
+    // — titre de la page et URL. D'où le gabarit d'en-tête vide : sans lui, un
+    // « about:blank » s'imprimerait en haut de chaque feuille d'émargement.
+    ...(options.piedDePage !== undefined && {
+      displayHeaderFooter: true,
+      headerTemplate: "<div></div>",
+      footerTemplate: options.piedDePage,
+    }),
   });
   return Buffer.from(pdf);
 }
