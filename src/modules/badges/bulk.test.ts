@@ -1,19 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findMany, updateMany, get, log } = vi.hoisted(() => ({
+const { findMany, count, groupBy, updateMany, get, log } = vi.hoisted(() => ({
   findMany: vi.fn(),
+  count: vi.fn(),
+  groupBy: vi.fn(),
   updateMany: vi.fn(),
   get: vi.fn(),
   log: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
-  prisma: { participant: { findMany }, badge: { updateMany } },
+  prisma: { participant: { findMany, count }, badge: { updateMany, groupBy } },
 }));
 vi.mock("@/lib/storage", () => ({ fileStorage: { get } }));
 vi.mock("@/lib/audit", () => ({ audit: { log } }));
 
-import { exporterZip, marquerExportes, perimetreFiltre } from "./bulk";
+import {
+  aRefaireAuGabarit,
+  badgesAImprimer,
+  compterAImprimer,
+  exporterZip,
+  joursExport,
+  marquerExportes,
+  perimetreFiltre,
+} from "./bulk";
 
 /** Une ligne telle que la requête d'export la renvoie. */
 function ligne(lastName: string, publicId: string, delegation: string | null) {
@@ -229,5 +239,90 @@ describe("filtre « envoi à l'impression »", () => {
     const ou = perimetreFiltre("e1", { etat: "SANS", export: "JAMAIS" });
 
     expect(ou.badges).not.toHaveProperty("some");
+  });
+});
+
+/**
+ * Le jour d'export retrouve un envoi précis à l'imprimeur (22 novembre 2026).
+ */
+describe("filtre « exportés le »", () => {
+  const jour = {
+    gte: new Date("2026-11-21T00:00:00.000Z"),
+    lt: new Date("2026-11-22T00:00:00.000Z"),
+  };
+
+  it("borne le dernier export au jour demandé, en UTC", () => {
+    const ou = perimetreFiltre("e1", { exporteLe: "2026-11-21" });
+
+    expect(ou.badges).toEqual({
+      some: { revokedAt: null, generatedAt: { not: null }, exportedAt: jour },
+    });
+  });
+
+  it("se combine à l'état « révoqué »", () => {
+    const ou = perimetreFiltre("e1", { etat: "REVOQUE", exporteLe: "2026-11-21" });
+
+    expect(ou.badges).toMatchObject({ some: { exportedAt: jour } });
+  });
+
+  it("ne désigne personne pour « sans badge »", () => {
+    const ou = perimetreFiltre("e1", { etat: "SANS", exporteLe: "2026-11-21" });
+
+    expect(ou.badges).toMatchObject({ none: expect.any(Object), some: { exportedAt: jour } });
+  });
+});
+
+/**
+ * La planche cumule son exigence d'image au périmètre du filtre. Étalée
+ * par-dessus, elle écrasait la clé `badges` et imprimait tout le périmètre.
+ */
+describe("planche d'impression", () => {
+  it("garde le filtre d'export en plus de l'exigence d'image", async () => {
+    findMany.mockResolvedValue([]);
+    await badgesAImprimer("e1", { exporteLe: "2026-11-21" }, 100, 200);
+
+    const requete = findMany.mock.calls[0]![0];
+    expect(requete.skip).toBe(200);
+    expect(requete.take).toBe(100);
+    expect(requete.where.AND).toEqual([
+      perimetreFiltre("e1", { exporteLe: "2026-11-21" }),
+      { badges: { some: { revokedAt: null, pngPath: { not: null } } } },
+    ]);
+  });
+
+  it("finit l'ordre par l'identifiant, pour que les lots ne se chevauchent pas", async () => {
+    findMany.mockResolvedValue([]);
+    await badgesAImprimer("e1", {});
+
+    expect(findMany.mock.calls[0]![0].orderBy.at(-1)).toEqual({ id: "asc" });
+  });
+
+  it("compte le total sur le même périmètre que les lots", async () => {
+    count.mockResolvedValue(342);
+    await expect(compterAImprimer("e1", { etat: "AVEC" })).resolves.toBe(342);
+
+    expect(count.mock.calls[0]![0].where.AND[0]).toEqual(perimetreFiltre("e1", { etat: "AVEC" }));
+  });
+
+  it("regroupe les envois par jour, du plus récent au plus ancien", async () => {
+    groupBy.mockResolvedValue([
+      { exportedAt: new Date("2026-11-19T09:00:00.000Z"), _count: { _all: 394 } },
+      { exportedAt: new Date("2026-11-21T08:00:00.000Z"), _count: { _all: 60 } },
+      { exportedAt: new Date("2026-11-21T16:30:00.000Z"), _count: { _all: 40 } },
+    ]);
+
+    await expect(joursExport("e1", {})).resolves.toEqual([
+      { jour: "2026-11-21", badges: 100 },
+      { jour: "2026-11-19", badges: 394 },
+    ]);
+  });
+});
+
+describe("badges à refaire au gabarit", () => {
+  it("garde le filtre d'export au lieu de l'écraser", () => {
+    const ou = aRefaireAuGabarit("e1", { export: "JAMAIS" });
+
+    expect(ou.AND).toHaveLength(2);
+    expect((ou.AND as object[])[0]).toEqual(perimetreFiltre("e1", { export: "JAMAIS" }));
   });
 });

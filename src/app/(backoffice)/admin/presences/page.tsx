@@ -9,7 +9,7 @@ import { getFluxRecent, getPresenceDuJour, listerJours } from "@/modules/attenda
 import { LiveFeed } from "@/modules/attendance/components/live-feed";
 import { ExportPanel } from "@/modules/attendance/components/export-panel";
 import { SelecteurJour } from "@/modules/attendance/components/selecteur-jour";
-import { audienceDuJour } from "@/modules/direct/audience-service";
+import { audienceDuJour, joursAvecAudience } from "@/modules/direct/audience-service";
 import { CourbeAudience } from "@/modules/direct/components/courbe-audience";
 import { lireParametres } from "@/modules/settings/service";
 
@@ -69,15 +69,22 @@ export default async function PresencesPage({
   const edition = await getActiveEdition();
   const { jour: jourDemande } = await searchParams;
 
-  const jours = await listerJours(edition.id);
+  const [joursScannes, joursDiffuses] = await Promise.all([
+    listerJours(edition.id),
+    joursAvecAudience(edition.id),
+  ]);
+  // Jours actifs : scannés à l'entrée ou suivis en direct. Les seconds comptent
+  // aussi, car une retransmission peut se tenir un jour sans scan, et sa
+  // journée resterait sinon introuvable.
+  const jours = [...joursScannes, ...joursDiffuses].sort((a, b) => b.getTime() - a.getTime());
   const aujourdhui = new Date(enIso(new Date()) + "T00:00:00.000Z");
-  // Sans date demandée : le dernier jour scanné, sinon aujourd'hui plutôt qu'un
-  // écran vide, pour que l'export reste utilisable en préparation. Une date
-  // demandée est respectée même sans scan : c'est le cas de l'émargement
+  // Sans date demandée : le jour actif le plus récent, sinon aujourd'hui plutôt
+  // qu'un écran vide, pour que l'export reste utilisable en préparation. Une
+  // date demandée est respectée même sans scan : c'est le cas de l'émargement
   // préparé à l'avance.
   const choisi = jourValide(jourDemande) ?? jours[0] ?? aujourdhui;
 
-  // Raccourcis : les journées du Forum, les jours scannés hors Forum, et le
+  // Raccourcis : les journées du Forum, les jours actifs hors Forum, et le
   // jour choisi s'il n'en fait pas partie, pour qu'il reste visible.
   const raccourcis = new Map<string, Date>();
   for (const jour of [...joursDuForum(edition.startDate, edition.endDate), ...jours, choisi]) {

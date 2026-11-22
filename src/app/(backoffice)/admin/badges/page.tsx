@@ -4,7 +4,8 @@ import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { prisma } from "@/lib/db";
 import { getActiveEdition } from "@/lib/edition";
-import { compter, compterAncienGabarit, lister, type FiltreBadges } from "@/modules/badges/bulk";
+import { compter, compterAncienGabarit, lister } from "@/modules/badges/bulk";
+import { lireFiltreBadges } from "@/modules/badges/filtre";
 import { inventaireAnonymes } from "@/modules/badges/anonymes";
 import { GestionBadges } from "@/modules/badges/components/gestion-badges";
 import { StockAnonymeBadges } from "@/modules/badges/components/stock-anonyme";
@@ -12,19 +13,6 @@ import { StockAnonymeBadges } from "@/modules/badges/components/stock-anonyme";
 export const dynamic = "force-dynamic";
 
 const LIMITE = 200;
-
-function lireFiltre(parametres: Record<string, string | undefined>): FiltreBadges {
-  const etat = parametres.etat;
-  return {
-    categoryId: parametres.categoryId || undefined,
-    delegationId: parametres.delegationId || undefined,
-    etat: etat === "SANS" || etat === "AVEC" || etat === "REVOQUE" ? etat : undefined,
-    export:
-      parametres.export === "JAMAIS" || parametres.export === "DEJA"
-        ? parametres.export
-        : undefined,
-  };
-}
 
 export default async function BadgesPage({
   searchParams,
@@ -42,7 +30,7 @@ export default async function BadgesPage({
   }
 
   const parametres = await searchParams;
-  const filtre = lireFiltre(parametres);
+  const filtre = lireFiltreBadges((cle) => parametres[cle]);
   const edition = await getActiveEdition();
 
   /*

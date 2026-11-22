@@ -40,11 +40,16 @@ export function FiltresBadges({
   const delegationId = parametres.get("delegationId") ?? "";
   const etatBadge = parametres.get("etat") ?? "";
   const dejaExporte = parametres.get("export") ?? "";
+  const exporteLe = parametres.get("exporteLe") ?? "";
 
   function naviguer(cle: string, valeur: string) {
     const suite = new URLSearchParams(parametres.toString());
     if (valeur) suite.set(cle, valeur);
     else suite.delete(cle);
+    // Un jour d'export et l'état d'envoi s'excluent : le jour l'emporterait
+    // en silence côté serveur (`filtre.ts`), autant que l'écran le montre.
+    if (valeur && cle === "exporteLe") suite.delete("export");
+    if (valeur && cle === "export") suite.delete("exporteLe");
     router.push(suite.toString() ? `/admin/badges?${suite}` : "/admin/badges");
   }
 
@@ -141,6 +146,23 @@ export function FiltresBadges({
           <option value="JAMAIS">Pas encore exportés</option>
           <option value="DEJA">Déjà exportés</option>
         </select>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="f-exporte-le" className="text-text-3 text-xs font-semibold">
+          Exportés le
+        </label>
+        <input
+          id="f-exporte-le"
+          type="date"
+          value={exporteLe}
+          onChange={(evenement) => {
+            const valeur = evenement.target.value;
+            // Champ vidé, ou date complète ; pas de navigation sur une saisie en cours.
+            if (valeur === "" || /^\d{4}-\d{2}-\d{2}$/.test(valeur)) naviguer("exporteLe", valeur);
+          }}
+          className={`${champ} w-44`}
+        />
       </div>
 
       <span className="text-text-3 ml-auto text-sm">

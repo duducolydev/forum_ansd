@@ -4,7 +4,8 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { confirmer } from "@/components/ui/confirmer";
 import { genererEnLotAction, marquerExportesAction, revoquerEnLotAction } from "../bulk-actions";
-import type { FiltreBadges, LigneBadge } from "../bulk";
+import type { LigneBadge } from "../bulk";
+import { lireFiltreBadges, type FiltreBadges } from "../filtre";
 import type { ModeGeneration, PerimetreLot, ResultatLotBadges } from "../lot";
 import { ActionsBadges, type CompteursLot } from "./actions-badges";
 import { BadgesTable } from "./badges-table";
@@ -75,14 +76,7 @@ export function GestionBadges({
 
   // Le filtre part vers le serveur tel qu'il est écrit dans l'URL : un `etat`
   // inconnu y est écarté ici plutôt que renvoyé en erreur de validation.
-  const etat = parametres.get("etat");
-  const exporte = parametres.get("export");
-  const filtre: FiltreBadges = {
-    categoryId: parametres.get("categoryId") || undefined,
-    delegationId: parametres.get("delegationId") || undefined,
-    etat: etat === "SANS" || etat === "AVEC" || etat === "REVOQUE" ? etat : undefined,
-    export: exporte === "JAMAIS" || exporte === "DEJA" ? exporte : undefined,
-  };
+  const filtre: FiltreBadges = lireFiltreBadges((cle) => parametres.get(cle));
 
   // Sélection effective : ce qui est coché **et** encore affiché. Après un
   // traitement ou un changement de filtre, les cases disparues tombent

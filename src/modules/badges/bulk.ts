@@ -4,6 +4,7 @@ import { audit } from "@/lib/audit";
 import { fileStorage } from "@/lib/storage";
 import { creerZip, nomSur, type EntreeZip } from "@/lib/zip";
 import { GABARIT_BADGE, auGabaritCourant } from "./format";
+import { bornesDuJour, type FiltreBadges } from "./filtre";
 
 /**
  * Périmètre, liste et export de badges en lot (brief §5.4).
@@ -15,18 +16,7 @@ import { GABARIT_BADGE, auGabaritCourant } from "./format";
  * mêmes lignes que la liste.
  */
 
-export interface FiltreBadges {
-  categoryId?: string;
-  delegationId?: string;
-  /** `SANS` : pas encore de badge ; `AVEC` : badge valide ; `REVOQUE` : à réémettre. */
-  etat?: "SANS" | "AVEC" | "REVOQUE";
-  /**
-   * `JAMAIS` : badge encore jamais emporté par un export ZIP ; `DEJA` : au
-   * moins une fois. C'est ce qui permet de ne confier à l'imprimeur que le
-   * complément d'un envoi précédent (19 novembre 2026).
-   */
-  export?: "JAMAIS" | "DEJA";
-}
+export type { FiltreBadges } from "./filtre";
 
 /**
  * Condition d'export, à combiner au badge que la branche d'`etat` désigne.
@@ -35,11 +25,20 @@ export interface FiltreBadges {
  * version suivante est un autre badge, qui n'est pas parti à l'impression même
  * si son prédécesseur l'était. C'est précisément le cas qu'on ne veut pas
  * manquer le jour J.
+ *
+ * Le jour d'export porte sur `exportedAt`, c'est-à-dire le **dernier** envoi :
+ * un badge parti le 19 puis renvoyé le 21 appartient au lot du 21.
  */
 function conditionExport(filtre: FiltreBadges): Prisma.BadgeWhereInput {
+  if (filtre.exporteLe) return { exportedAt: bornesDuJour(filtre.exporteLe) };
   if (filtre.export === "JAMAIS") return { exportedAt: null };
   if (filtre.export === "DEJA") return { exportedAt: { not: null } };
   return {};
+}
+
+/** Le filtre ne retient que des badges déjà partis à l'impression. */
+function exigeUnExport(filtre: FiltreBadges): boolean {
+  return filtre.export === "DEJA" || Boolean(filtre.exporteLe);
 }
 
 /** Seuls ces statuts ont droit à un badge (brief §5.4). */
@@ -86,10 +85,9 @@ export function perimetreFiltre(
      */
     return {
       ...base,
-      badges:
-        filtre.export === "DEJA"
-          ? { ...jamaisRendu, some: { exportedAt: { not: null } } }
-          : jamaisRendu,
+      badges: exigeUnExport(filtre)
+        ? { ...jamaisRendu, some: conditionExport(filtre) }
+        : jamaisRendu,
     };
   }
   const exporte = conditionExport(filtre);
@@ -114,7 +112,7 @@ export function perimetreFiltre(
    * gonflerait le compte de lignes que l'export compterait ensuite comme
    * manquantes.
    */
-  if (filtre.export) {
+  if (filtre.export || filtre.exporteLe) {
     return {
       ...base,
       badges: { some: { revokedAt: null, generatedAt: { not: null }, ...exporte } },
@@ -263,15 +261,21 @@ export function aRefaireAuGabarit(
   editionId: string,
   filtre: FiltreBadges,
 ): Prisma.ParticipantWhereInput {
+  // `AND` et non un étalement : la clé `badges` du périmètre porte le filtre
+  // d'export, qu'un second `badges` écraserait.
   return {
-    ...perimetreFiltre(editionId, { ...filtre, etat: undefined }),
-    badges: {
-      some: {
-        revokedAt: null,
-        generatedAt: { not: null },
-        NOT: { pngPath: { contains: `-${GABARIT_BADGE}.` } },
+    AND: [
+      perimetreFiltre(editionId, { ...filtre, etat: undefined }),
+      {
+        badges: {
+          some: {
+            revokedAt: null,
+            generatedAt: { not: null },
+            NOT: { pngPath: { contains: `-${GABARIT_BADGE}.` } },
+          },
+        },
       },
-    },
+    ],
   };
 }
 
@@ -412,25 +416,97 @@ export async function exporterZip(
 }
 
 /**
- * Badges prêts pour la planche d'impression.
+ * Participants de la planche : le périmètre du filtre, restreint aux porteurs
+ * d'une image rendue.
+ *
+ * Les deux conditions se cumulent par `AND`. Jusqu'au 22 novembre 2026, la
+ * seconde était étalée par-dessus le périmètre et **écrasait** sa clé
+ * `badges` : les filtres d'état et d'export n'avaient aucun effet sur la
+ * planche, qui sortait tout le périmètre.
+ */
+function perimetrePlanche(editionId: string, filtre: FiltreBadges): Prisma.ParticipantWhereInput {
+  return {
+    AND: [
+      perimetreFiltre(editionId, filtre),
+      { badges: { some: { revokedAt: null, pngPath: { not: null } } } },
+    ],
+  };
+}
+
+/** Nombre total de badges de la planche, tous lots confondus. */
+export async function compterAImprimer(editionId: string, filtre: FiltreBadges): Promise<number> {
+  return prisma.participant.count({ where: perimetrePlanche(editionId, filtre) });
+}
+
+/**
+ * Jours où des badges sont partis à l'impression, avec leur nombre, du plus
+ * récent au plus ancien — les raccourcis de la planche.
+ *
+ * Seuls la catégorie et la délégation du filtre s'appliquent : l'état et
+ * l'export sont précisément ce que ces raccourcis viennent remplacer. Un badge
+ * révoqué depuis n'y figure plus — il n'est plus imprimable.
+ */
+export async function joursExport(
+  editionId: string,
+  filtre: Pick<FiltreBadges, "categoryId" | "delegationId">,
+): Promise<{ jour: string; badges: number }[]> {
+  const envois = await prisma.badge.groupBy({
+    by: ["exportedAt"],
+    where: {
+      exportedAt: { not: null },
+      revokedAt: null,
+      pngPath: { not: null },
+      participant: {
+        is: perimetreFiltre(editionId, {
+          categoryId: filtre.categoryId,
+          delegationId: filtre.delegationId,
+        }),
+      },
+    },
+    _count: { _all: true },
+  });
+
+  // Un export marque tout son lot au même instant : on regroupe ces instants par jour.
+  const parJour = new Map<string, number>();
+  for (const envoi of envois) {
+    if (!envoi.exportedAt) continue;
+    const jour = envoi.exportedAt.toISOString().slice(0, 10);
+    parJour.set(jour, (parJour.get(jour) ?? 0) + envoi._count._all);
+  }
+  return [...parJour.entries()]
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([jour, badges]) => ({ jour, badges }));
+}
+
+/**
+ * Badges prêts pour la planche d'impression, un lot à la fois.
  *
  * Ne retient que ceux dont le **PNG** est rendu : la planche affiche l'image
  * déjà produite, de sorte que ce qui sort de l'imprimante soit exactement ce
  * qui a été vérifié à la génération, sans dépendre des polices installées sur
  * le poste de l'accueil. Les identifiants sont renvoyés plutôt que les
  * fichiers, chaque image étant chargée par sa propre route authentifiée.
+ *
+ * `decalage` découpe un périmètre trop grand pour une seule planche. L'ordre
+ * finit par l'identifiant : deux homonymes d'une même délégation garderaient
+ * sinon un rang instable, et l'un pourrait passer d'un lot à l'autre — imprimé
+ * deux fois, ou jamais.
  */
 export async function badgesAImprimer(
   editionId: string,
   filtre: FiltreBadges,
   limite = 100,
+  decalage = 0,
 ): Promise<{ badgeId: string; nom: string; publicId: string; ancienGabarit: boolean }[]> {
   const participants = await prisma.participant.findMany({
-    where: {
-      ...perimetreFiltre(editionId, filtre),
-      badges: { some: { revokedAt: null, pngPath: { not: null } } },
-    },
-    orderBy: [{ delegation: { name: "asc" } }, { lastName: "asc" }],
+    where: perimetrePlanche(editionId, filtre),
+    orderBy: [
+      { delegation: { name: "asc" } },
+      { lastName: "asc" },
+      { firstName: "asc" },
+      { id: "asc" },
+    ],
+    skip: decalage,
     take: limite,
     select: {
       publicId: true,

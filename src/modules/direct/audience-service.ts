@@ -79,6 +79,25 @@ async function releverSiNecessaire(editionId: string, maintenant: Date): Promise
   }
 }
 
+/**
+ * Journées où au moins un lecteur a été lancé, de la plus récente à la plus
+ * ancienne.
+ *
+ * L'écran des présences s'en sert pour choisir sa journée par défaut : une
+ * diffusion peut avoir lieu un jour sans aucun scan à l'entrée — un dimanche
+ * de répétition, une séance en ligne —, et ses spectateurs ne doivent pas
+ * rester invisibles derrière la dernière journée scannée.
+ */
+export async function joursAvecAudience(editionId: string): Promise<Date[]> {
+  const lignes = await prisma.liveViewer.findMany({
+    where: { editionId },
+    distinct: ["day"],
+    orderBy: { day: "desc" },
+    select: { day: true },
+  });
+  return lignes.map((ligne) => ligne.day);
+}
+
 /** Affluence d'une journée, pour l'écran de suivi. */
 export async function audienceDuJour(
   editionId: string,

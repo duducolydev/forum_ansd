@@ -44,6 +44,16 @@ const filtreSchema = z.object({
   categoryId: z.string().min(1).optional(),
   delegationId: z.string().min(1).optional(),
   etat: z.enum(["SANS", "AVEC", "REVOQUE"]).optional(),
+  /*
+   * Les filtres d'export doivent passer, eux aussi : un schéma qui les
+   * retirait en silence faisait porter « Révoquer tout le filtre » sur tout le
+   * périmètre, là où l'écran n'en montrait que les badges du lot choisi.
+   */
+  export: z.enum(["JAMAIS", "DEJA"]).optional(),
+  exporteLe: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 export const perimetreSchema: z.ZodType<PerimetreLot> = z.discriminatedUnion("mode", [

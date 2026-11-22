@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
-import { exporterZip, type FiltreBadges } from "@/modules/badges/bulk";
+import { exporterZip } from "@/modules/badges/bulk";
+import { lireFiltreBadges } from "@/modules/badges/filtre";
 
 export const dynamic = "force-dynamic";
 
@@ -25,14 +26,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   const parametres = new URL(request.url).searchParams;
-  const etat = parametres.get("etat");
-  const exporte = parametres.get("export");
-  const filtre: FiltreBadges = {
-    categoryId: parametres.get("categoryId") || undefined,
-    delegationId: parametres.get("delegationId") || undefined,
-    etat: etat === "SANS" || etat === "AVEC" || etat === "REVOQUE" ? etat : undefined,
-    export: exporte === "JAMAIS" || exporte === "DEJA" ? exporte : undefined,
-  };
+  const filtre = lireFiltreBadges((cle) => parametres.get(cle));
 
   const edition = await getActiveEdition();
   const archive = await exporterZip(
