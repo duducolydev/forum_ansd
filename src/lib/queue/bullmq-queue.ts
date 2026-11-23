@@ -33,6 +33,8 @@ export class BullMqJobQueue implements JobQueue {
       // de clé Redis en interne) : l'appelant de `JobQueue` n'a pas à le savoir.
       jobId: options.idempotencyKey?.replaceAll(":", "_"),
       delay,
+      // En tête de la liste d'attente : traité dès la fin du job en cours.
+      lifo: options.prioritaire || undefined,
       attempts: 3,
       backoff: { type: "exponential", delay: 5000 },
       removeOnComplete: true,

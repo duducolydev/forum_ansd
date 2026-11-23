@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { getActiveEdition } from "@/lib/edition";
 import { rateLimit } from "@/lib/rate-limit";
-import { enqueueNotification } from "@/modules/notifications/jobs";
+import { enqueueNotificationPrioritaire } from "@/modules/notifications/jobs";
+import { sendTemplatedEmail } from "@/modules/notifications/service";
 
 /**
  * Second facteur des comptes BackOffice : validation par e-mail (PLAN.md §23).
@@ -25,6 +26,8 @@ const VALIDITE_MINUTES = 10;
 const MAX_ESSAIS = 5;
 /** Trois demandes par minute et par compte : un formulaire ne doit pas servir à inonder une boîte. */
 const DEMANDES_PAR_MINUTE = 3;
+/** Au-delà, l'envoi direct est abandonné au profit de la file (en tête). */
+const ENVOI_DIRECT_MAX_MS = 15_000;
 
 export const VALIDITE_DEFI_MINUTES = VALIDITE_MINUTES;
 
@@ -75,7 +78,7 @@ export async function creerDefi(
 
   const edition = await getActiveEdition();
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
-  await enqueueNotification({
+  const message = {
     editionId: edition.id,
     templateKey: "admin_login_code",
     to: utilisateur.email,
@@ -85,7 +88,29 @@ export async function creerDefi(
       lien_validation: `${baseUrl}/connexion/valider/${jeton}`,
       minutes: String(VALIDITE_MINUTES),
     },
-  });
+  };
+
+  /*
+   * Envoi **direct**, par exception à la règle « jamais d'envoi synchrone »
+   * (brief §3.3) — 23 novembre 2026, premier jour du Forum.
+   *
+   * La file traite ses tâches une à une. Ce matin-là, 2 728 tâches, surtout
+   * des rendus de badges, attendaient devant les codes : aucun n'est parti à
+   * temps, et plus personne n'entrait au BackOffice — d'où l'on aurait pu,
+   * justement, agir sur la file. La personne attend devant son écran : la
+   * seconde que prend l'envoi ne coûte rien, et le BackOffice ne dépend plus
+   * de l'état de la file.
+   *
+   * En cas d'échec ou de lenteur du relais, repli sur la file, **en tête**.
+   */
+  const envoye = await Promise.race([
+    sendTemplatedEmail(message).then(
+      () => true,
+      () => false,
+    ),
+    new Promise<boolean>((resoudre) => setTimeout(() => resoudre(false), ENVOI_DIRECT_MAX_MS)),
+  ]);
+  if (!envoye) await enqueueNotificationPrioritaire(message);
 
   await audit.log({
     actorType: "USER",

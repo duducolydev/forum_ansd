@@ -20,7 +20,8 @@ export class DbJobQueue implements JobQueue {
       data: {
         type,
         payload: payload as Prisma.InputJsonValue,
-        runAt: options.runAt ?? new Date(),
+        // La file se lit par `runAt` croissant : une date ancienne passe devant.
+        runAt: options.runAt ?? (options.prioritaire ? new Date(0) : new Date()),
         idempotencyKey: options.idempotencyKey,
       },
     });

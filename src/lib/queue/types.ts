@@ -5,6 +5,15 @@ export interface EnqueueOptions {
   idempotencyKey?: string;
   /** Planifie le job pour plus tard plutôt que dès que possible. */
   runAt?: Date;
+  /**
+   * Place le job **en tête** de file plutôt qu'à la suite (23 novembre 2026).
+   *
+   * Réservé à ce qu'une personne attend devant son écran : code du
+   * BackOffice, lien de connexion. Le jour du Forum, 2 728 tâches — surtout
+   * des rendus de badges — attendaient devant les codes de connexion, traités
+   * un à un : le code arrivait après son expiration, et personne n'entrait.
+   */
+  prioritaire?: boolean;
 }
 
 /** Un job d'une mise en file groupée : même type, charge et options propres. */

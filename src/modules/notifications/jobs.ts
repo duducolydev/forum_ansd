@@ -121,6 +121,19 @@ export async function enqueueNotification(
 }
 
 /**
+ * Mise en file **en tête** (23 novembre 2026) : pour ce qu'une personne attend
+ * devant son écran — lien de connexion, code du BackOffice. Une campagne ou un
+ * lot de badges en cours ne doit pas faire expirer un code avant son départ.
+ */
+export async function enqueueNotificationPrioritaire(
+  payload: NotificationJobPayload,
+  idempotencyKey?: string,
+): Promise<void> {
+  registerNotificationJobs();
+  await jobQueue.enqueue("notification.send", payload, { idempotencyKey, prioritaire: true });
+}
+
+/**
  * Mise en file d'une série de notifications **en une écriture**.
  *
  * Avertir les inscrits d'un panel déplacé peut viser deux cents personnes : un

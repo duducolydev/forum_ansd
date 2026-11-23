@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { rateLimit } from "@/lib/rate-limit";
-import { enqueueNotification } from "@/modules/notifications/jobs";
+import { enqueueNotificationPrioritaire } from "@/modules/notifications/jobs";
 import { accesEspace, type MotifRefusAcces } from "./acces-espace";
 
 /**
@@ -214,7 +214,8 @@ export async function requestMagicLink(
   });
 
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
-  await enqueueNotification({
+  // En tête de file : la personne attend son lien devant l'écran.
+  await enqueueNotificationPrioritaire({
     editionId,
     templateKey: "magic_link",
     to: participant.email,
@@ -486,7 +487,7 @@ export async function requestSpeakerLink(
   });
 
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:3000";
-  await enqueueNotification({
+  await enqueueNotificationPrioritaire({
     editionId,
     templateKey: "speaker_link",
     to: destinataire,
