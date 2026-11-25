@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { Download, Search, X } from "lucide-react";
+import { abregerCivilite } from "@/lib/civilite";
 import type { FiltrePresence } from "../service";
 import {
   COLONNES_NOMINATIVES,
   COLONNES_PAR_DEFAUT,
   TYPES_EXTRACTION,
+  civilitesDistinctes,
   filtrerLignes,
   organisationsDistinctes,
   qualificatifPresence,
@@ -19,6 +21,8 @@ import {
 export interface LignePresent {
   publicId: string;
   nom: string;
+  /** Civilité telle que saisie, ou `null`. */
+  civilite: string | null;
   organisation: string | null;
   fonction: string | null;
   categorie: string;
@@ -71,6 +75,7 @@ export function ListePresents({
   const [categorie, setCategorie] = useState("");
   const [pays, setPays] = useState("");
   const [organisation, setOrganisation] = useState("");
+  const [civilite, setCivilite] = useState("");
 
   const categories = useMemo(
     () => [...new Set(lignes.map((ligne) => ligne.categorie))].sort((a, b) => a.localeCompare(b)),
@@ -82,6 +87,7 @@ export function ListePresents({
   );
 
   const organisations = useMemo(() => organisationsDistinctes(lignes), [lignes]);
+  const civilites = useMemo(() => civilitesDistinctes(lignes), [lignes]);
 
   const filtres = useMemo<FiltresListePresents>(
     () => ({
@@ -89,14 +95,16 @@ export function ListePresents({
       categorie: categorie || undefined,
       pays: pays || undefined,
       organisation: organisation || undefined,
+      civilite: civilite || undefined,
       recherche: recherche.trim() || undefined,
     }),
-    [presence, categorie, pays, organisation, recherche],
+    [presence, categorie, pays, organisation, civilite, recherche],
   );
   const filtrees = useMemo(() => filtrerLignes(lignes, filtres), [lignes, filtres]);
 
   const filtreActif =
-    Boolean(recherche || categorie || pays || organisation) || presence !== presenceInitiale;
+    Boolean(recherche || categorie || pays || organisation || civilite) ||
+    presence !== presenceInitiale;
 
   return (
     <div className="flex flex-col gap-4">
@@ -139,6 +147,13 @@ export function ListePresents({
           options={organisations.map((o) => ({ valeur: o.cle, libelle: o.libelle }))}
           large
         />
+        <Choix
+          id="filtre-civilite"
+          label="Civilité / sexe"
+          valeur={civilite}
+          onChange={setCivilite}
+          options={civilites.map((c) => ({ valeur: c.cle, libelle: c.libelle }))}
+        />
 
         <div>
           <span className="text-text-3 mb-1.5 block text-xs font-semibold">Présence</span>
@@ -170,6 +185,7 @@ export function ListePresents({
               setCategorie("");
               setPays("");
               setOrganisation("");
+              setCivilite("");
             }}
             className="text-text-2 hover:text-heading inline-flex items-center gap-1.5 py-2.5 text-sm"
           >
@@ -209,6 +225,11 @@ export function ListePresents({
               {filtrees.map((ligne) => (
                 <tr key={ligne.publicId} className="border-border border-b last:border-0">
                   <td className="text-heading px-4 py-2.5 font-medium">
+                    {abregerCivilite(ligne.civilite) && (
+                      <span className="text-text-3 font-normal">
+                        {abregerCivilite(ligne.civilite)}{" "}
+                      </span>
+                    )}
                     {ligne.nom}
                     <span className="text-text-3 block text-xs">{ligne.publicId}</span>
                   </td>
@@ -302,6 +323,7 @@ function PanneauExtraction({ jour, filtres }: { jour: string; filtres: FiltresLi
   if (filtres.categorie) parametres.set("categorie", filtres.categorie);
   if (filtres.pays) parametres.set("pays", filtres.pays);
   if (filtres.organisation) parametres.set("organisation", filtres.organisation);
+  if (filtres.civilite) parametres.set("civilite", filtres.civilite);
   if (filtres.recherche) parametres.set("q", filtres.recherche);
   const lien = `/api/v1/presences/extraction?${parametres.toString()}`;
 
@@ -313,7 +335,9 @@ function PanneauExtraction({ jour, filtres }: { jour: string; filtres: FiltresLi
         ? `Extraire les organisations${qualificatif}`
         : type === "PAYS"
           ? `Extraire les pays${qualificatif}`
-          : `Extraire les catégories${qualificatif}`;
+          : type === "CIVILITES"
+            ? "Extraire la répartition par civilité"
+            : `Extraire les catégories${qualificatif}`;
   // Aucune colonne cochée : le serveur reprendrait les colonnes par défaut, ce
   // qui surprendrait ; le bouton est désactivé à la place.
   const bloque = type === "NOMINATIVE" && colonnes.length === 0;
@@ -331,8 +355,8 @@ function PanneauExtraction({ jour, filtres }: { jour: string; filtres: FiltresLi
       <div>
         <h3 className="text-heading text-sm font-semibold">Extraire</h3>
         <p className="text-text-3 text-xs">
-          Suit les filtres ci-dessus. Un regroupement liste les organisations, pays ou catégories
-          concernés, avec le nombre de présents et d&apos;attendus de chacun.
+          Suit les filtres ci-dessus. Un regroupement liste les organisations, pays, catégories ou
+          civilités concernés, avec le nombre de présents et d&apos;attendus de chacun.
         </p>
       </div>
 

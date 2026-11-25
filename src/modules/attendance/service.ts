@@ -219,6 +219,8 @@ export async function getFluxRecent(editionId: string, limite = 25): Promise<Lig
 export interface LigneListe {
   publicId: string;
   nom: string;
+  /** Civilité telle que saisie (« Madame », « Mme », « Dr »…), ou `null`. */
+  civilite?: string | null;
   organisation: string | null;
   /** Fonction declaree a l'inscription : utile a la liste consultable. */
   fonction: string | null;
@@ -280,6 +282,7 @@ export async function getListePresence(
     select: {
       id: true,
       publicId: true,
+      civility: true,
       firstName: true,
       lastName: true,
       organization: true,
@@ -303,6 +306,7 @@ export async function getListePresence(
   return participants.map((participant) => ({
     publicId: participant.publicId,
     nom: `${participant.lastName.toUpperCase()} ${participant.firstName}`,
+    civilite: participant.civility,
     organisation: participant.organization,
     fonction: participant.jobTitle,
     categorie: participant.category.labelFr,

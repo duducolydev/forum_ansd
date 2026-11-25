@@ -1,3 +1,4 @@
+import { abregerCivilite, sexeDeCivilite } from "@/lib/civilite";
 import type { FiltrePresence } from "./service";
 
 /**
@@ -12,7 +13,7 @@ import type { FiltrePresence } from "./service";
  * ## Ce qu'on extrait
  *
  * - une **liste nominative**, aux colonnes choisies ;
- * - ou un **regroupement** — organisations, pays, catégories — avec, pour
+ * - ou un **regroupement** — organisations, pays, catégories, civilités — avec, pour
  *   chacun, le nombre de présents et d'attendus. C'est la question posée après
  *   coup : « quelles organisations étaient là ? », « combien de pays ? ».
  */
@@ -21,6 +22,8 @@ import type { FiltrePresence } from "./service";
 export interface LigneFiltrable {
   publicId: string;
   nom: string;
+  /** Civilité telle que saisie ; absente des lignes construites sans elle. */
+  civilite?: string | null;
   organisation: string | null;
   fonction: string | null;
   categorie: string;
@@ -37,6 +40,8 @@ export interface FiltresListePresents {
   pays?: string;
   /** Clé d'organisation (`cleOrganisation`), pas le libellé. */
   organisation?: string;
+  /** Clé de civilité (`cleCivilite`) : « Mme », « M. », « Dr »… ou `_`. */
+  civilite?: string;
   /** Recherche libre : nom, organisation, fonction, identifiant. */
   recherche?: string;
 }
@@ -60,6 +65,48 @@ export function sansAccents(valeur: string): string {
  */
 export function cleOrganisation(organisation: string | null): string {
   return sansAccents((organisation ?? "").trim().replace(/\s+/g, " ")) || CLE_SANS_ORGANISATION;
+}
+
+/** Libellé des fiches sans civilité. */
+export const SANS_CIVILITE = "Civilité non renseignée";
+/** Clé de ces fiches, comme pour les organisations. */
+export const CLE_SANS_CIVILITE = "_";
+
+/**
+ * Clé de civilité (25 novembre 2026) : l'abréviation française, qui réunit
+ * « Madame », « Mme » et « Mrs » ; une saisie non reconnue reste telle quelle.
+ * Il n'y a pas de champ « sexe » : c'est la civilité qui le dit, quand elle le
+ * dit — « Mme » pour les femmes, « M. » pour les hommes.
+ */
+export function cleCivilite(civilite: string | null | undefined): string {
+  return abregerCivilite(civilite, "fr") || CLE_SANS_CIVILITE;
+}
+
+/** Libellé d'une clé de civilité, le sexe précisé quand elle le dit. */
+export function libelleCivilite(cle: string): string {
+  if (cle === CLE_SANS_CIVILITE) return SANS_CIVILITE;
+  if (cle === "Mme") return "Mme (femmes)";
+  if (cle === "M.") return "M. (hommes)";
+  return cle;
+}
+
+const ORDRE_CIVILITES = ["Mme", "M.", "Dr", "Pr", "SE"];
+
+/**
+ * Civilités présentes dans les lignes : Mme et M. d'abord, puis les titres,
+ * les saisies libres, et « non renseignée » en dernier.
+ */
+export function civilitesDistinctes(
+  lignes: Pick<LigneFiltrable, "civilite">[],
+): { cle: string; libelle: string }[] {
+  const rang = (cle: string) => {
+    if (cle === CLE_SANS_CIVILITE) return ORDRE_CIVILITES.length + 1;
+    const index = ORDRE_CIVILITES.indexOf(cle);
+    return index === -1 ? ORDRE_CIVILITES.length : index;
+  };
+  return [...new Set(lignes.map((ligne) => cleCivilite(ligne.civilite)))]
+    .sort((a, b) => rang(a) - rang(b) || a.localeCompare(b, "fr"))
+    .map((cle) => ({ cle, libelle: libelleCivilite(cle) }));
 }
 
 /** Organisations distinctes des lignes : clé et libellé le plus fréquent. */
@@ -114,6 +161,7 @@ export function filtrerHorsPresence<T extends LigneFiltrable>(
     if (filtres.organisation && cleOrganisation(ligne.organisation) !== filtres.organisation) {
       return false;
     }
+    if (filtres.civilite && cleCivilite(ligne.civilite) !== filtres.civilite) return false;
     if (!terme) return true;
     return sansAccents(
       `${ligne.nom} ${ligne.organisation ?? ""} ${ligne.fonction ?? ""} ${ligne.publicId}`,
@@ -131,16 +179,19 @@ function retenueParPresence(ligne: LigneFiltrable, presence: FiltrePresence): bo
 // Extraction
 // ---------------------------------------------------------------------------
 
-export type TypeExtraction = "NOMINATIVE" | "ORGANISATIONS" | "PAYS" | "CATEGORIES";
+export type TypeExtraction = "NOMINATIVE" | "ORGANISATIONS" | "PAYS" | "CATEGORIES" | "CIVILITES";
 
 export const TYPES_EXTRACTION: { cle: TypeExtraction; libelle: string }[] = [
   { cle: "NOMINATIVE", libelle: "Liste nominative" },
   { cle: "ORGANISATIONS", libelle: "Organisations" },
   { cle: "PAYS", libelle: "Pays" },
   { cle: "CATEGORIES", libelle: "Catégories" },
+  { cle: "CIVILITES", libelle: "Civilités / sexe" },
 ];
 
 export type ColonneNominative =
+  | "civilite"
+  | "sexe"
   | "nom"
   | "identifiant"
   | "organisation"
@@ -152,7 +203,9 @@ export type ColonneNominative =
 
 /** Colonnes proposées, dans l'ordre où elles sortent. */
 export const COLONNES_NOMINATIVES: { cle: ColonneNominative; libelle: string }[] = [
+  { cle: "civilite", libelle: "Civilité" },
   { cle: "nom", libelle: "Nom" },
+  { cle: "sexe", libelle: "Sexe" },
   { cle: "identifiant", libelle: "Identifiant" },
   { cle: "organisation", libelle: "Organisation" },
   { cle: "fonction", libelle: "Fonction" },
@@ -243,6 +296,12 @@ export function construireExtraction(
       lignes: retenues.map((ligne) =>
         colonnes.map((cle) => {
           switch (cle) {
+            case "civilite":
+              return abregerCivilite(ligne.civilite, "fr");
+            case "sexe": {
+              const sexe = sexeDeCivilite(ligne.civilite);
+              return sexe === "F" ? "Femme" : sexe === "H" ? "Homme" : "";
+            }
             case "nom":
               return ligne.nom;
             case "identifiant":
@@ -283,11 +342,15 @@ export function construireExtraction(
         ? cleOrganisation(ligne.organisation)
         : type === "PAYS"
           ? ligne.pays
-          : ligne.categorie;
+          : type === "CIVILITES"
+            ? cleCivilite(ligne.civilite)
+            : ligne.categorie;
     const libelle =
       type === "ORGANISATIONS"
         ? ligne.organisation?.trim().replace(/\s+/g, " ") || SANS_ORGANISATION
-        : cle || "Non renseigné";
+        : type === "CIVILITES"
+          ? libelleCivilite(cle)
+          : cle || "Non renseigné";
     const groupe = groupes.get(cle) ?? {
       variantes: new Map<string, number>(),
       pays: new Set<string>(),
@@ -309,13 +372,21 @@ export function construireExtraction(
     .sort((a, b) => b.presents - a.presents || a.libelle.localeCompare(b.libelle, "fr"));
 
   const libelleType =
-    type === "ORGANISATIONS" ? "Organisation" : type === "PAYS" ? "Pays" : "Catégorie";
+    type === "ORGANISATIONS"
+      ? "Organisation"
+      : type === "PAYS"
+        ? "Pays"
+        : type === "CIVILITES"
+          ? "Civilité"
+          : "Catégorie";
   const titre =
     type === "ORGANISATIONS"
       ? `Organisations${qualificatif}`
       : type === "PAYS"
         ? `Pays${qualificatif}`
-        : `Catégories${qualificatif}`;
+        : type === "CIVILITES"
+          ? titreCivilites(filtres.presence)
+          : `Catégories${qualificatif}`;
 
   return {
     titre,
@@ -334,4 +405,11 @@ export function construireExtraction(
         : [groupe.libelle, groupe.presents, groupe.attendus],
     ),
   };
+}
+
+/** « Présents par civilité » : « Civilités présentes » ne se dirait pas. */
+function titreCivilites(presence: FiltrePresence): string {
+  const qui =
+    presence === "PRESENTS" ? "Présents" : presence === "ABSENTS" ? "Absents" : "Attendus";
+  return `${qui} par civilité`;
 }

@@ -80,6 +80,7 @@ export default async function ListePresencePage({
         lignes={lignes.map((ligne) => ({
           publicId: ligne.publicId,
           nom: ligne.nom,
+          civilite: ligne.civilite ?? null,
           organisation: ligne.organisation,
           fonction: ligne.fonction,
           categorie: ligne.categorie,

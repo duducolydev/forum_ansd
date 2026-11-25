@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  CLE_SANS_CIVILITE,
   CLE_SANS_ORGANISATION,
+  civilitesDistinctes,
+  cleCivilite,
   cleOrganisation,
   construireExtraction,
   filtrerLignes,
@@ -16,10 +19,12 @@ function ligne(
   pays: string,
   present: boolean,
   categorie = "Délégué",
+  civilite: string | null = null,
 ): LigneFiltrable {
   return {
     publicId: `ID-${nom}`,
     nom,
+    civilite,
     organisation,
     fonction: null,
     categorie,
@@ -29,10 +34,10 @@ function ligne(
 }
 
 const LIGNES = [
-  ligne("SOW Aminata", "ANSD", "Sénégal", true),
-  ligne("DIOP Moussa", "Ansd ", "Sénégal", false),
-  ligne("KONE Awa", "INS Côte d'Ivoire", "Côte d'Ivoire", true, "Partenaire"),
-  ligne("MARTIN Paul", "Banque mondiale", "France", false),
+  ligne("SOW Aminata", "ANSD", "Sénégal", true, "Délégué", "Madame"),
+  ligne("DIOP Moussa", "Ansd ", "Sénégal", false, "Délégué", "M."),
+  ligne("KONE Awa", "INS Côte d'Ivoire", "Côte d'Ivoire", true, "Partenaire", "Mme"),
+  ligne("MARTIN Paul", "Banque mondiale", "France", false, "Délégué", "Dr"),
   ligne("BA Fatou", null, "Sénégal", true),
 ];
 
@@ -144,5 +149,56 @@ describe("extraction par regroupement", () => {
     );
 
     expect(extraction.lignes).toEqual([["Partenaire", 1, 1]]);
+  });
+});
+
+describe("civilité et sexe", () => {
+  it("réunit les écritures d'une même civilité", () => {
+    expect(cleCivilite("Madame")).toBe("Mme");
+    expect(cleCivilite(" mme ")).toBe("Mme");
+    expect(cleCivilite("Monsieur")).toBe("M.");
+    expect(cleCivilite(null)).toBe(CLE_SANS_CIVILITE);
+  });
+
+  it("propose Mme et M. d'abord, la non renseignée en dernier", () => {
+    expect(civilitesDistinctes(LIGNES).map((c) => c.libelle)).toEqual([
+      "Mme (femmes)",
+      "M. (hommes)",
+      "Dr",
+      "Civilité non renseignée",
+    ]);
+  });
+
+  it("filtre les femmes, toutes écritures de « Madame » confondues", () => {
+    const retenues = filtrerLignes(LIGNES, { presence: "TOUS", civilite: "Mme" });
+    expect(retenues.map((l) => l.nom)).toEqual(["SOW Aminata", "KONE Awa"]);
+  });
+
+  it("sort la civilité abrégée et le sexe qu'elle dit, rien quand elle ne le dit pas", () => {
+    const extraction = construireExtraction(LIGNES, { presence: "TOUS" }, "NOMINATIVE", [
+      "civilite",
+      "nom",
+      "sexe",
+    ]);
+    expect(extraction.colonnes).toEqual(["Civilité", "Nom", "Sexe"]);
+    expect(extraction.lignes).toEqual([
+      ["Mme", "SOW Aminata", "Femme"],
+      ["M.", "DIOP Moussa", "Homme"],
+      ["Mme", "KONE Awa", "Femme"],
+      ["Dr", "MARTIN Paul", ""],
+      ["", "BA Fatou", ""],
+    ]);
+  });
+
+  it("répartit présents et attendus par civilité", () => {
+    const extraction = construireExtraction(LIGNES, { presence: "TOUS" }, "CIVILITES");
+    expect(extraction.titre).toBe("Attendus par civilité");
+    expect(extraction.colonnes).toEqual(["Civilité", "Présents", "Attendus"]);
+    expect(extraction.lignes).toEqual([
+      ["Mme (femmes)", 2, 2],
+      ["Civilité non renseignée", 1, 1],
+      ["Dr", 0, 1],
+      ["M. (hommes)", 0, 1],
+    ]);
   });
 });

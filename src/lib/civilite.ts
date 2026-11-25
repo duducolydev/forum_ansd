@@ -77,6 +77,17 @@ export function abregerCivilite(civilite: string | null | undefined, langue = "f
   return reconnue ? ABREVIATIONS[reconnue][lireLangue(langue)] : saisie;
 }
 
+/**
+ * Sexe que dit la civilité (25 novembre 2026), faute de champ dédié : seules
+ * « Mme » et « M. » le disent ; Dr, Pr, SE ou une saisie libre, non.
+ */
+export function sexeDeCivilite(civilite: string | null | undefined): "F" | "H" | null {
+  const saisie = civilite?.trim() ?? "";
+  if (!saisie) return null;
+  const reconnue = FORMES[forme(saisie)];
+  return reconnue === "MME" ? "F" : reconnue === "MR" ? "H" : null;
+}
+
 /** Le nom précédé de la civilité abrégée, s'il y en a une. */
 export function avecCivilite(
   civilite: string | null | undefined,

@@ -6,6 +6,7 @@ import { getActiveEdition } from "@/lib/edition";
 import { getListePresence, lireFiltrePresence } from "@/modules/attendance/service";
 import {
   construireExtraction,
+  libelleCivilite,
   lireColonnes,
   organisationsDistinctes,
   lireTypeExtraction,
@@ -64,6 +65,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     categorie: parametres.get("categorie") || undefined,
     pays: parametres.get("pays") || undefined,
     organisation: parametres.get("organisation") || undefined,
+    civilite: parametres.get("civilite") || undefined,
     recherche: parametres.get("q") || undefined,
   };
 
@@ -86,6 +88,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       filtres.categorie,
       filtres.pays,
       organisation,
+      filtres.civilite ? libelleCivilite(filtres.civilite) : undefined,
       filtres.recherche ? `« ${filtres.recherche} »` : undefined,
     ].filter(Boolean);
     fichier = await versPdf(
