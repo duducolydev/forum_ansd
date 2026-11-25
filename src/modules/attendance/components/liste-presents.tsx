@@ -1,8 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Download, Search, X } from "lucide-react";
 import type { FiltrePresence } from "../service";
+import {
+  COLONNES_NOMINATIVES,
+  COLONNES_PAR_DEFAUT,
+  TYPES_EXTRACTION,
+  filtrerLignes,
+  organisationsDistinctes,
+  qualificatifPresence,
+  type ColonneNominative,
+  type FiltresListePresents,
+  type TypeExtraction,
+} from "../extraction";
 
 /** Une ligne telle qu'elle arrive du serveur : les dates y sont sérialisées. */
 export interface LignePresent {
@@ -40,11 +51,18 @@ const PRESENCES: { cle: FiltrePresence; libelle: string }[] = [
  * l'identifiant — ce qu'on a sous les yeux quand on cherche quelqu'un. Elle
  * ignore les accents et la casse : « goree » doit trouver « Gorée », sans
  * quoi l'outil renvoie « aucun résultat » à une orthographe correcte.
+ *
+ * Le filtre par organisation et l'extraction (25 novembre 2026) suivent la même
+ * règle, écrite une fois dans `extraction.ts` : l'écran et le fichier
+ * téléchargé ne peuvent pas diverger.
  */
 export function ListePresents({
+  jour,
   lignes,
   presenceInitiale = "PRESENTS",
 }: {
+  /** Jour affiché (`AAAA-MM-JJ`), transmis à l'extraction. */
+  jour: string;
   lignes: LignePresent[];
   presenceInitiale?: FiltrePresence;
 }) {
@@ -52,6 +70,7 @@ export function ListePresents({
   const [presence, setPresence] = useState<FiltrePresence>(presenceInitiale);
   const [categorie, setCategorie] = useState("");
   const [pays, setPays] = useState("");
+  const [organisation, setOrganisation] = useState("");
 
   const categories = useMemo(
     () => [...new Set(lignes.map((ligne) => ligne.categorie))].sort((a, b) => a.localeCompare(b)),
@@ -62,22 +81,22 @@ export function ListePresents({
     [lignes],
   );
 
-  const filtrees = useMemo(() => {
-    const terme = sansAccents(recherche.trim());
-    return lignes.filter((ligne) => {
-      if (presence === "PRESENTS" && ligne.premierPassage === null) return false;
-      if (presence === "ABSENTS" && ligne.premierPassage !== null) return false;
-      if (categorie && ligne.categorie !== categorie) return false;
-      if (pays && ligne.pays !== pays) return false;
-      if (!terme) return true;
-      const foin = sansAccents(
-        `${ligne.nom} ${ligne.organisation ?? ""} ${ligne.fonction ?? ""} ${ligne.publicId}`,
-      );
-      return foin.includes(terme);
-    });
-  }, [lignes, recherche, presence, categorie, pays]);
+  const organisations = useMemo(() => organisationsDistinctes(lignes), [lignes]);
 
-  const filtreActif = Boolean(recherche || categorie || pays) || presence !== presenceInitiale;
+  const filtres = useMemo<FiltresListePresents>(
+    () => ({
+      presence,
+      categorie: categorie || undefined,
+      pays: pays || undefined,
+      organisation: organisation || undefined,
+      recherche: recherche.trim() || undefined,
+    }),
+    [presence, categorie, pays, organisation, recherche],
+  );
+  const filtrees = useMemo(() => filtrerLignes(lignes, filtres), [lignes, filtres]);
+
+  const filtreActif =
+    Boolean(recherche || categorie || pays || organisation) || presence !== presenceInitiale;
 
   return (
     <div className="flex flex-col gap-4">
@@ -112,6 +131,14 @@ export function ListePresents({
           options={categories}
         />
         <Choix id="filtre-pays" label="Pays" valeur={pays} onChange={setPays} options={listePays} />
+        <Choix
+          id="filtre-organisation"
+          label="Organisation"
+          valeur={organisation}
+          onChange={setOrganisation}
+          options={organisations.map((o) => ({ valeur: o.cle, libelle: o.libelle }))}
+          large
+        />
 
         <div>
           <span className="text-text-3 mb-1.5 block text-xs font-semibold">Présence</span>
@@ -142,6 +169,7 @@ export function ListePresents({
               setPresence(presenceInitiale);
               setCategorie("");
               setPays("");
+              setOrganisation("");
             }}
             className="text-text-2 hover:text-heading inline-flex items-center gap-1.5 py-2.5 text-sm"
           >
@@ -157,6 +185,8 @@ export function ListePresents({
         {filtrees.length} personne{filtrees.length > 1 ? "s" : ""} sur {lignes.length} attendue
         {lignes.length > 1 ? "s" : ""}
       </p>
+
+      <PanneauExtraction jour={jour} filtres={filtres} />
 
       {filtrees.length === 0 ? (
         <p className="border-border bg-surface text-text-3 rounded-xl border p-8 text-center text-sm">
@@ -211,12 +241,15 @@ function Choix({
   valeur,
   onChange,
   options,
+  large = false,
 }: {
   id: string;
   label: string;
   valeur: string;
   onChange: (valeur: string) => void;
-  options: string[];
+  options: (string | { valeur: string; libelle: string })[];
+  /** Organisations : des libellés longs, bornés pour ne pas pousser le reste. */
+  large?: boolean;
 }) {
   return (
     <div>
@@ -227,20 +260,159 @@ function Choix({
         id={id}
         value={valeur}
         onChange={(evenement) => onChange(evenement.target.value)}
-        className="border-border bg-surface text-text rounded-lg border px-3 py-2.5 text-sm"
+        className={`border-border bg-surface text-text rounded-lg border px-3 py-2.5 text-sm ${
+          large ? "max-w-xs" : ""
+        }`}
       >
         <option value="">Toutes</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
+        {options.map((option) => {
+          const { valeur: cle, libelle } =
+            typeof option === "string" ? { valeur: option, libelle: option } : option;
+          return (
+            <option key={cle} value={cle}>
+              {libelle}
+            </option>
+          );
+        })}
       </select>
     </div>
   );
 }
 
-/** Minuscules sans accents, pour que « goree » trouve « Gorée ». */
-function sansAccents(valeur: string): string {
-  return valeur.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+const FORMATS = [
+  { cle: "xlsx", libelle: "Excel" },
+  { cle: "csv", libelle: "CSV" },
+  { cle: "pdf", libelle: "PDF" },
+] as const;
+
+type Format = (typeof FORMATS)[number]["cle"];
+
+/**
+ * Extraction de ce que les filtres montrent (25 novembre 2026) : la liste,
+ * aux colonnes choisies, ou les organisations, pays ou catégories qu'elle
+ * réunit, avec présents et attendus. Le lien porte les filtres de l'écran.
+ */
+function PanneauExtraction({ jour, filtres }: { jour: string; filtres: FiltresListePresents }) {
+  const [type, setType] = useState<TypeExtraction>("NOMINATIVE");
+  const [colonnes, setColonnes] = useState<ColonneNominative[]>(COLONNES_PAR_DEFAUT);
+  const [format, setFormat] = useState<Format>("xlsx");
+
+  const parametres = new URLSearchParams({ jour, type, format, presence: filtres.presence });
+  if (type === "NOMINATIVE") parametres.set("colonnes", colonnes.join(","));
+  if (filtres.categorie) parametres.set("categorie", filtres.categorie);
+  if (filtres.pays) parametres.set("pays", filtres.pays);
+  if (filtres.organisation) parametres.set("organisation", filtres.organisation);
+  if (filtres.recherche) parametres.set("q", filtres.recherche);
+  const lien = `/api/v1/presences/extraction?${parametres.toString()}`;
+
+  const qualificatif = qualificatifPresence(filtres.presence, type !== "PAYS");
+  const libelleBouton =
+    type === "NOMINATIVE"
+      ? "Extraire la liste"
+      : type === "ORGANISATIONS"
+        ? `Extraire les organisations${qualificatif}`
+        : type === "PAYS"
+          ? `Extraire les pays${qualificatif}`
+          : `Extraire les catégories${qualificatif}`;
+  // Aucune colonne cochée : le serveur reprendrait les colonnes par défaut, ce
+  // qui surprendrait ; le bouton est désactivé à la place.
+  const bloque = type === "NOMINATIVE" && colonnes.length === 0;
+
+  function basculer(cle: ColonneNominative, coche: boolean) {
+    setColonnes((avant) =>
+      COLONNES_NOMINATIVES.map((colonne) => colonne.cle).filter((c) =>
+        c === cle ? coche : avant.includes(c),
+      ),
+    );
+  }
+
+  return (
+    <div className="border-border bg-surface flex flex-col gap-3 rounded-xl border p-4">
+      <div>
+        <h3 className="text-heading text-sm font-semibold">Extraire</h3>
+        <p className="text-text-3 text-xs">
+          Suit les filtres ci-dessus. Un regroupement liste les organisations, pays ou catégories
+          concernés, avec le nombre de présents et d&apos;attendus de chacun.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <span className="text-text-3 mb-1.5 block text-xs font-semibold">Contenu</span>
+          <div className="flex flex-wrap gap-1">
+            {TYPES_EXTRACTION.map((choix) => (
+              <button
+                key={choix.cle}
+                type="button"
+                onClick={() => setType(choix.cle)}
+                aria-pressed={type === choix.cle}
+                className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
+                  type === choix.cle
+                    ? "border-primary bg-primary text-primary-text"
+                    : "border-border text-heading"
+                }`}
+              >
+                {choix.libelle}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label
+            htmlFor="extraction-format"
+            className="text-text-3 mb-1.5 block text-xs font-semibold"
+          >
+            Format
+          </label>
+          <select
+            id="extraction-format"
+            value={format}
+            onChange={(evenement) => setFormat(evenement.target.value as Format)}
+            className="border-border bg-surface text-text rounded-lg border px-3 py-2.5 text-sm"
+          >
+            {FORMATS.map((choix) => (
+              <option key={choix.cle} value={choix.cle}>
+                {choix.libelle}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {bloque ? (
+          <span className="text-text-3 py-2.5 text-sm">Cochez au moins une colonne.</span>
+        ) : (
+          <a
+            href={lien}
+            className="bg-primary text-primary-text hover:bg-primary-hover inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold no-underline"
+          >
+            <Download aria-hidden size={15} />
+            {libelleBouton}
+          </a>
+        )}
+      </div>
+
+      {type === "NOMINATIVE" && (
+        <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
+          <legend className="text-text-3 mb-1.5 text-xs font-semibold">Colonnes</legend>
+          {COLONNES_NOMINATIVES.map((colonne) => (
+            <label key={colonne.cle} className="text-text-2 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={colonnes.includes(colonne.cle)}
+                onChange={(evenement) => basculer(colonne.cle, evenement.target.checked)}
+                className="size-4"
+              />
+              {colonne.libelle}
+            </label>
+          ))}
+        </fieldset>
+      )}
+      {format === "pdf" && (
+        <p className="text-text-3 text-xs">
+          Le PDF s&apos;arrête à 300 lignes ; au-delà, choisissez Excel.
+        </p>
+      )}
+    </div>
+  );
 }

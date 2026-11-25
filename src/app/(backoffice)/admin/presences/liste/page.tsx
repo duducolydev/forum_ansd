@@ -75,6 +75,7 @@ export default async function ListePresencePage({
       </div>
 
       <ListePresents
+        jour={enIso(choisi)}
         presenceInitiale={lireFiltrePresence(presence ?? "PRESENTS")}
         lignes={lignes.map((ligne) => ({
           publicId: ligne.publicId,
