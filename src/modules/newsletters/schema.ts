@@ -1,79 +1,79 @@
 import { z } from "zod";
-import {
-  nettoyerDoc,
-  serialiserTexteRiche,
-  texteBrut,
-  TAILLE_MAX_DOCUMENT,
-} from "@/lib/texte-riche";
 
 /**
- * Saisie d'une newsletter (§34).
+ * Saisie d'une newsletter (§34, refondue le 25 novembre 2026).
  *
- * Le corps est un **document structuré** sérialisé, jamais du HTML : voir
- * l'en-tête de `lib/texte-riche.ts` pour la raison. Il est nettoyé ici, au
- * franchissement de la frontière, et non à l'affichage — un nettoyage à
- * l'affichage s'oublie sur la page qu'on ajoute six mois plus tard.
+ * Une newsletter est désormais un **titre**, une **description** et un
+ * **fichier de synthèse** en PDF, téléchargeable depuis le portail. Le corps
+ * mis en forme des premières newsletters n'est plus saisi ; il reste affiché
+ * pour celles qui en ont un, et n'est jamais réécrit.
+ *
+ * Les traductions du titre et de la description sont facultatives : vides, le
+ * français est repris, et l'annonce part dans la langue de chaque destinataire.
  */
 
-/** Longueur maximale du corps, en texte visible : les images n'y comptent pas. */
-export const LONGUEUR_MAX_CORPS = 20_000;
-
-/** Limite d'une image insérée dans le corps. */
+/** Limite d'une image insérée dans le corps (newsletters antérieures). */
 export const IMAGE_NEWSLETTER_MAX_BYTES = 3 * 1024 * 1024;
 
+/**
+ * Poids maximal du fichier de synthèse. Il passe par une **route** et non par
+ * une Server Action, plafonnée à 3 Mo (voir `contributions/fichier.ts`).
+ */
+export const FICHIER_NEWSLETTER_MAX_BYTES = 50 * 1024 * 1024;
+
 export const newsletterInputSchema = z.object({
-  titleFr: z.string().trim().min(1, "Le titre en français est requis").max(200),
+  titleFr: z.string().trim().min(1, "Le titre est requis").max(200),
   titleEn: z.string().trim().max(200).optional().or(z.literal("")),
   titlePt: z.string().trim().max(200).optional().or(z.literal("")),
   excerptFr: z
     .string()
     .trim()
-    .min(1, "Le chapô en français est requis")
-    .max(600, "Le chapô tient en 600 caractères : c'est lui qui part dans l'e-mail."),
+    .min(1, "La description est requise")
+    .max(600, "La description tient en 600 caractères : c'est elle qui part dans l'e-mail."),
   excerptEn: z.string().trim().max(600).optional().or(z.literal("")),
   excerptPt: z.string().trim().max(600).optional().or(z.literal("")),
-  bodyFr: z.string().max(TAILLE_MAX_DOCUMENT),
-  bodyEn: z.string().max(TAILLE_MAX_DOCUMENT),
-  bodyPt: z.string().max(TAILLE_MAX_DOCUMENT).default(""),
-  isPublished: z.coerce.boolean().default(false),
 });
 
 export type NewsletterInput = z.infer<typeof newsletterInputSchema>;
 
 export class NewsletterRuleError extends Error {}
 
+export function parseNewsletterForm(formData: FormData): NewsletterInput {
+  return newsletterInputSchema.parse({
+    titleFr: formData.get("titleFr"),
+    titleEn: formData.get("titleEn") ?? "",
+    titlePt: formData.get("titlePt") ?? "",
+    excerptFr: formData.get("excerptFr"),
+    excerptEn: formData.get("excerptEn") ?? "",
+    excerptPt: formData.get("excerptPt") ?? "",
+  });
+}
+
+/** Statuts visés par défaut : ceux qui ont manifesté leur intérêt, hors désistés et annulés. */
+export const STATUTS_NEWSLETTER = ["REGISTERED", "CONFIRMED", "BADGED", "CHECKED_IN"] as const;
+
 /**
- * Nettoie les deux corps et vérifie leur longueur visible.
+ * Population visée et boîtes retenues pour l'envoi.
  *
- * `images: true` : c'est le seul document du site qui en porte. Le nettoyage
- * borne l'alignement et la largeur de chacune, et écarte les rangs qui ne
- * désignent aucune image.
+ * Aucune catégorie cochée veut dire **toutes** : c'est le cas courant, et une
+ * liste vide qui n'enverrait à personne serait un piège.
  */
-export function normaliserNewsletter(input: NewsletterInput): NewsletterInput {
-  const nettoyer = (brut: string, langue: string): string => {
-    let analyse: unknown;
-    try {
-      analyse = brut.trim() ? JSON.parse(brut) : { type: "doc", content: [] };
-    } catch {
-      throw new NewsletterRuleError(`Corps en ${langue} illisible.`);
-    }
+export const ciblageSchema = z.object({
+  categoryIds: z.array(z.string().min(1)).max(100).default([]),
+  statuts: z.array(z.enum(STATUTS_NEWSLETTER)).min(1, "Choisissez au moins un statut."),
+  boites: z
+    .array(z.enum(["transactionnel", "campagne", "acces", "inscription", "participation"]))
+    .min(1, "Choisissez au moins une boîte d'envoi."),
+});
 
-    const doc = nettoyerDoc(analyse, { images: true });
-    const longueur = texteBrut(doc).length;
-    if (longueur > LONGUEUR_MAX_CORPS) {
-      throw new NewsletterRuleError(
-        `Le corps en ${langue} dépasse ${LONGUEUR_MAX_CORPS} caractères (${longueur}).`,
-      );
-    }
-    return serialiserTexteRiche(doc);
-  };
+export type Ciblage = z.infer<typeof ciblageSchema>;
 
-  return {
-    ...input,
-    bodyFr: nettoyer(input.bodyFr, "français"),
-    bodyEn: nettoyer(input.bodyEn, "anglais"),
-    bodyPt: nettoyer(input.bodyPt, "portugais"),
-  };
+/** Population enregistrée avec la newsletter, relue sans faire confiance à la base. */
+export function lireAudience(brut: unknown): { categoryIds: string[]; statuts: string[] } | null {
+  const analyse = z
+    .object({ categoryIds: z.array(z.string()), statuts: z.array(z.string()) })
+    .safeParse(brut);
+  return analyse.success ? analyse.data : null;
 }
 
 /** Image du corps : seul le chemin est stocké, le document n'en connaît que le rang. */
@@ -98,7 +98,7 @@ export function slugDepuisTitre(titre: string): string {
     titre
       .trim()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[̀-ͯ]/g, "")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
@@ -106,17 +106,29 @@ export function slugDepuisTitre(titre: string): string {
   );
 }
 
-export function parseNewsletterForm(formData: FormData): NewsletterInput {
-  return newsletterInputSchema.parse({
-    titleFr: formData.get("titleFr"),
-    titleEn: formData.get("titleEn") ?? "",
-    titlePt: formData.get("titlePt") ?? "",
-    excerptFr: formData.get("excerptFr"),
-    excerptEn: formData.get("excerptEn") ?? "",
-    excerptPt: formData.get("excerptPt") ?? "",
-    bodyFr: formData.get("bodyFr") ?? "",
-    bodyEn: formData.get("bodyEn") ?? "",
-    bodyPt: formData.get("bodyPt") ?? "",
-    isPublished: formData.get("isPublished") === "on",
-  });
+/**
+ * Nom proposé au téléchargement : celui d'origine, débarrassé de ce qui
+ * casserait l'en-tête `Content-Disposition`, toujours terminé par `.pdf`.
+ */
+export function nomFichierPropre(nom: string | null | undefined, repli: string): string {
+  const base = (nom ?? "")
+    .replace(/\.pdf$/i, "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^\w\- .]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+  return `${base || slugDepuisTitre(repli)}.pdf`;
+}
+
+/** « 2,4 Mo », « 830 Ko » ; « 2.4 MB » hors du français. */
+export function poidsLisible(octets: number | null | undefined, locale = "fr-FR"): string {
+  if (!octets) return "";
+  const francais = locale.startsWith("fr");
+  if (octets < 1024 * 1024) {
+    return `${Math.max(1, Math.round(octets / 1024))} ${francais ? "Ko" : "KB"}`;
+  }
+  const mega = (octets / 1024 / 1024).toLocaleString(locale, { maximumFractionDigits: 1 });
+  return `${mega} ${francais ? "Mo" : "MB"}`;
 }

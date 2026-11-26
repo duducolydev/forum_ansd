@@ -1,10 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
-import { creerNewsletterAction } from "@/modules/newsletters/actions";
 import { FormulaireNewsletter } from "@/modules/newsletters/components/formulaire-newsletter";
 
-export const metadata = { title: "Rédiger une newsletter" };
+export const metadata = { title: "Nouvelle newsletter" };
 
 export default async function NouvelleNewsletterPage() {
   const session = await auth();
@@ -14,9 +14,16 @@ export default async function NouvelleNewsletterPage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <h2 className="mb-5 text-2xl">Rédiger une newsletter</h2>
+      <Link href="/admin/newsletters" className="text-link text-sm">
+        ← Newsletters
+      </Link>
+      <h2 className="mt-1 mb-1 text-2xl">Nouvelle newsletter</h2>
+      <p className="text-text-3 mb-5 text-sm">
+        Un titre, une description et le fichier de synthèse en PDF. La publication et l&apos;envoi
+        se font ensuite, depuis la fiche.
+      </p>
       <div className="border-border bg-surface rounded-xl border p-6">
-        <FormulaireNewsletter action={creerNewsletterAction} submitLabel="Créer la newsletter" />
+        <FormulaireNewsletter />
       </div>
     </div>
   );

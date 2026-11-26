@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { configBoite, estRefusQuota } from "./mail";
+import { compteBoite, configBoite, estRefusQuota, quotaJourBoite } from "./mail";
 
 const BASE = {
   SMTP_HOST: "smtp.gmail.com",
@@ -197,5 +197,42 @@ describe("configBoite — Mailjet", () => {
     // Le réglage normal depuis la bascule : pas de SMTP_CAMPAGNE_*, un seul
     // plan souscrit, et le pool partagé évite de rouvrir deux connexions.
     expect(configBoite("campagne", MAILJET)).toEqual(configBoite("transactionnel", MAILJET));
+  });
+});
+
+describe("compte et quota d'une boîte (newsletters)", () => {
+  const MAILJET = {
+    SMTP_HOST: "in-v3.mailjet.com",
+    SMTP_PORT: "587",
+    SMTP_USER: "cle-api",
+    SMTP_PASSWORD: "secret",
+    SMTP_FROM: "Forum <forum26@ansd.sn>",
+    SMTP_CAMPAGNE_HOST: "smtp.gmail.com",
+    SMTP_CAMPAGNE_USER: "forum20.ansd@gmail.com",
+  };
+
+  it("reconnaît qu'une boîte non déclarée partage le compte de la transactionnelle", () => {
+    expect(compteBoite("inscription", MAILJET).cle).toBe(
+      compteBoite("transactionnel", MAILJET).cle,
+    );
+    expect(compteBoite("campagne", MAILJET).cle).not.toBe(
+      compteBoite("transactionnel", MAILJET).cle,
+    );
+    expect(compteBoite("campagne", MAILJET).adresse).toBe("forum20.ansd@gmail.com");
+  });
+
+  it("donne 500 à Gmail, 200 à Mailjet, et le quota de la transactionnelle à une boîte repliée", () => {
+    expect(quotaJourBoite("campagne", MAILJET)).toBe(500);
+    expect(quotaJourBoite("transactionnel", MAILJET)).toBe(200);
+    expect(quotaJourBoite("inscription", MAILJET)).toBe(200);
+  });
+
+  it("laisse la variable d'environnement l'emporter", () => {
+    expect(
+      quotaJourBoite("campagne", { ...MAILJET, SMTP_CAMPAGNE_PLAFOND_QUOTIDIEN: "2000" }),
+    ).toBe(2000);
+    expect(quotaJourBoite("inscription", { ...MAILJET, SMTP_PLAFOND_QUOTIDIEN: "6000" })).toBe(
+      6000,
+    );
   });
 });

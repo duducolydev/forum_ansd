@@ -1061,6 +1061,20 @@ model Newsletter {
   /// Nombre de destinataires au moment de l'envoi, pour le journal.
   sentCount   Int       @default(0)
 
+  /// Fichier de synthèse (PDF) téléchargeable depuis le portail
+  /// (25 novembre 2026) : depuis lors, une newsletter est un titre, une
+  /// description et ce fichier — le corps mis en forme ne sert plus qu'aux
+  /// newsletters antérieures.
+  filePath      String?
+  /// Nom d'origine du fichier, proposé au téléchargement.
+  fileName      String?
+  fileSize      Int?
+  downloadCount Int     @default(0)
+  /// Population visée à l'envoi : `{ categoryIds, statuts }`.
+  audience      Json?
+  /// Plan d'envoi retenu : lots par boîte et par jour (`newsletters/repartition.ts`).
+  envoi         Json?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1247,6 +1261,9 @@ model NotificationLog {
   /// Message-ID de cet avis : le relevé repasse sur les mêmes messages, et ne
   /// doit pas les compter deux fois.
   bounceMessageId   String?             @unique
+  /// Boîte d'envoi qui a porté le message (25 novembre 2026), pour mesurer ce
+  /// que chacune a déjà consommé de son quota sur vingt-quatre heures.
+  boite             String?             @db.VarChar(20)
   createdAt         DateTime            @default(now())
 
   participant Participant? @relation(fields: [participantId], references: [id], onDelete: Cascade)
@@ -1256,6 +1273,7 @@ model NotificationLog {
   @@index([invitationId])
   @@index([providerMessageId])
   @@index([to])
+  @@index([boite, createdAt])
 }
 
 /// Lien d'accès par courriel, pour un participant **ou** un intervenant.

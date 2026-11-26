@@ -1,12 +1,14 @@
 import { lireLangue, localeIntl, selon } from "@/lib/langue";
 import Link from "next/link";
 import { getLocale } from "next-intl/server";
-import { ArrowRight, Mails } from "lucide-react";
+import { Download, Mails } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
 import { resolveLocaleValue } from "@/modules/content/service";
-import { listerPubliees } from "@/modules/newsletters/service";
+import { listerPubliees, urlFichier } from "@/modules/newsletters/service";
+import { poidsLisible } from "@/modules/newsletters/schema";
 import { EnteteSection } from "@/components/site/entete-section";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
+import { LienSiteExterne } from "@/components/site/bouton-site";
 import { RevealListe } from "@/components/site/reveal-liste";
 
 export const metadata = { title: "Newsletters" };
@@ -17,10 +19,14 @@ export const metadata = { title: "Newsletters" };
  */
 export const dynamic = "force-dynamic";
 
-/** Newsletters du Forum (§34) : la liste, la plus récente d'abord. */
+/**
+ * Newsletters du Forum (§34) : la liste, la plus récente d'abord, chacune avec
+ * son fichier de synthèse à télécharger (25 novembre 2026).
+ */
 export default async function NewslettersPage() {
   const locale = lireLangue(await getLocale());
-  const dateLongue = new Intl.DateTimeFormat(localeIntl(locale), {
+  const intl = localeIntl(locale);
+  const dateLongue = new Intl.DateTimeFormat(intl, {
     dateStyle: "long",
     timeZone: "Africa/Dakar",
   });
@@ -50,10 +56,9 @@ export default async function NewslettersPage() {
         ) : (
           <RevealListe className="flex flex-col gap-4">
             {newsletters.map((newsletter) => (
-              <Link
+              <article
                 key={newsletter.id}
-                href={`/newsletters/${newsletter.slug}`}
-                className="border-border bg-surface carte-relief hover:border-link group block rounded-xl border p-6 transition-colors"
+                className="border-border bg-surface carte-relief rounded-xl border p-6"
               >
                 {newsletter.publishedAt && (
                   <span className="text-text-3 text-xs">
@@ -63,14 +68,16 @@ export default async function NewslettersPage() {
                 {/* `h2` : la page n'a qu'un `h1`, sauter un palier désoriente la
                     navigation par titres. */}
                 <h2 className="font-display text-heading mt-1 text-lg leading-snug">
-                  {resolveLocaleValue(
-                    newsletter.titleFr,
-                    newsletter.titleEn,
-                    locale,
-                    newsletter.titlePt,
-                  )}
+                  <Link href={`/newsletters/${newsletter.slug}`} className="hover:text-link">
+                    {resolveLocaleValue(
+                      newsletter.titleFr,
+                      newsletter.titleEn,
+                      locale,
+                      newsletter.titlePt,
+                    )}
+                  </Link>
                 </h2>
-                <p className="text-text-2 mt-2 leading-relaxed">
+                <p className="text-text-2 mt-2 leading-relaxed whitespace-pre-line">
                   {resolveLocaleValue(
                     newsletter.excerptFr,
                     newsletter.excerptEn,
@@ -78,15 +85,30 @@ export default async function NewslettersPage() {
                     newsletter.excerptPt,
                   )}
                 </p>
-                <span className="text-link mt-3 flex items-center gap-1.5 text-sm font-semibold">
-                  {selon(locale, { fr: "Lire", en: "Read", pt: "Ler" })}
-                  <ArrowRight
-                    aria-hidden
-                    size={15}
-                    className="transition-transform group-hover:translate-x-0.5"
-                  />
-                </span>
-              </Link>
+                <div className="mt-4 flex flex-wrap items-center gap-4">
+                  {newsletter.filePath ? (
+                    <LienSiteExterne
+                      href={urlFichier(newsletter.id)}
+                      icone={Download}
+                      taille="compact"
+                    >
+                      {selon(locale, {
+                        fr: "Télécharger le PDF",
+                        en: "Download the PDF",
+                        pt: "Descarregar o PDF",
+                      })}
+                      {newsletter.fileSize ? ` · ${poidsLisible(newsletter.fileSize, intl)}` : ""}
+                    </LienSiteExterne>
+                  ) : (
+                    <Link
+                      href={`/newsletters/${newsletter.slug}`}
+                      className="text-link text-sm font-semibold"
+                    >
+                      {selon(locale, { fr: "Lire", en: "Read", pt: "Ler" })}
+                    </Link>
+                  )}
+                </div>
+              </article>
             ))}
           </RevealListe>
         )}

@@ -1,15 +1,14 @@
 "use client";
 
-import { useActionState, useId } from "react";
-import { Save } from "lucide-react";
-import { BoutonEnvoiConfirme, siDecoche } from "@/components/ui/bouton-confirme";
-import { EditeurTexteRiche } from "@/components/ui/editeur-texte-riche";
-import { TAILLE_MAX_DOCUMENT } from "@/lib/texte-riche";
-import { ajouterImageAction, type EtatAction } from "../actions";
-import { LONGUEUR_MAX_CORPS } from "../schema";
+import { useRef, useState, useTransition, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { FileText, Save } from "lucide-react";
+import { Bouton } from "@/components/ui/bouton";
+import { creerNewsletterAction, modifierNewsletterAction } from "../actions";
+import { FICHIER_NEWSLETTER_MAX_BYTES, poidsLisible } from "../schema";
 
-const etatInitial: EtatAction = {};
 const CHAMP = "border-border bg-surface text-text w-full rounded-lg border px-3 py-2.5";
+const ETIQUETTE = "text-heading text-sm font-semibold";
 
 interface Valeurs {
   titleFr?: string;
@@ -18,213 +17,241 @@ interface Valeurs {
   excerptFr?: string;
   excerptEn?: string;
   excerptPt?: string;
-  bodyFr?: string;
-  bodyEn?: string;
-  bodyPt?: string;
-  isPublished?: boolean;
+}
+
+/** Dépose le fichier par la route (une Server Action s'arrête à 3 Mo). */
+async function deposer(id: string, fichier: File): Promise<string | null> {
+  const reponse = await fetch(`/api/v1/newsletters/${id}/fichier`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/pdf",
+      "X-Nom-Fichier": encodeURIComponent(fichier.name),
+    },
+    body: fichier,
+  });
+  if (reponse.ok) return null;
+  const corps = (await reponse.json().catch(() => null)) as { erreur?: string } | null;
+  return corps?.erreur ?? `Dépôt du fichier impossible (${reponse.status}).`;
 }
 
 /**
- * Rédaction d'une newsletter (§34).
+ * Saisie d'une newsletter (25 novembre 2026) : titre, description et fichier
+ * de synthèse en PDF.
  *
- * Les images ne sont proposées qu'à la **modification**, pas à la création :
- * une image se rattache à une newsletter, et celle-ci n'a pas encore
- * d'identifiant tant qu'elle n'est pas enregistrée. Le premier enregistrement
- * ouvre donc l'éditeur complet, ce que le formulaire annonce.
+ * Le fichier est **obligatoire à la création**. Il part après l'enregistrement
+ * du texte, par une route : si son dépôt échoue, le brouillon existe déjà et
+ * la fiche invite à recommencer — rien de ce qui a été saisi n'est perdu.
  */
 export function FormulaireNewsletter({
-  action,
-  defaultValues,
-  submitLabel,
   newsletterId,
-  clesImages,
+  defaultValues,
+  fichierActuel,
 }: {
-  action: (etat: EtatAction, formData: FormData) => Promise<EtatAction>;
-  defaultValues?: Valeurs;
-  submitLabel: string;
-  /** Absent à la création : les images ne sont alors pas proposées. */
+  /** Absent à la création. */
   newsletterId?: string;
-  clesImages?: number[];
+  defaultValues?: Valeurs;
+  fichierActuel?: { nom: string; octets: number | null } | null;
 }) {
-  const [etat, formAction, enCours] = useActionState(action, etatInitial);
+  const router = useRouter();
+  const formulaire = useRef<HTMLFormElement>(null);
+  const [fichier, setFichier] = useState<File | null>(null);
+  const [message, setMessage] = useState<{ texte: string; erreur: boolean } | null>(null);
+  const [enCours, startTransition] = useTransition();
   const d = defaultValues ?? {};
-  const idFr = useId();
-  const idEn = useId();
-  const idPt = useId();
+  const creation = !newsletterId;
 
-  const images = newsletterId
-    ? {
-        urlBase: `/api/v1/newsletters/${newsletterId}/image`,
-        cles: clesImages ?? [],
-        televerser: async (fichier: File): Promise<number | null> => {
-          const donnees = new FormData();
-          donnees.set("image", fichier);
-          const resultat = await ajouterImageAction(newsletterId, {}, donnees);
-          return resultat.cleImage ?? null;
-        },
+  function choisir(choisi: File | null) {
+    setMessage(null);
+    if (choisi && choisi.size > FICHIER_NEWSLETTER_MAX_BYTES) {
+      setMessage({
+        texte: `Fichier trop lourd (maximum ${FICHIER_NEWSLETTER_MAX_BYTES / 1024 / 1024} Mo).`,
+        erreur: true,
+      });
+      setFichier(null);
+      return;
+    }
+    setFichier(choisi);
+  }
+
+  function soumettre(evenement: FormEvent<HTMLFormElement>) {
+    evenement.preventDefault();
+    if (creation && !fichier) {
+      setMessage({ texte: "Joignez le fichier PDF de la newsletter.", erreur: true });
+      return;
+    }
+    const donnees = new FormData(evenement.currentTarget);
+    donnees.delete("fichier");
+
+    startTransition(async () => {
+      const resultat = creation
+        ? await creerNewsletterAction({}, donnees)
+        : await modifierNewsletterAction(newsletterId, {}, donnees);
+      if (resultat.erreur || !resultat.id) {
+        setMessage({ texte: resultat.erreur ?? "Enregistrement impossible.", erreur: true });
+        return;
       }
-    : undefined;
+
+      const echecDepot = fichier ? await deposer(resultat.id, fichier) : null;
+      if (creation) {
+        // Le brouillon existe : sa fiche reprend la main, et y signale un
+        // fichier manquant si le dépôt a échoué.
+        router.push(`/admin/newsletters/${resultat.id}`);
+        return;
+      }
+      setFichier(null);
+      if (formulaire.current) {
+        const champ = formulaire.current.elements.namedItem("fichier");
+        if (champ instanceof HTMLInputElement) champ.value = "";
+      }
+      setMessage(
+        echecDepot
+          ? { texte: `Texte enregistré, mais ${echecDepot}`, erreur: true }
+          : {
+              texte: fichier ? "Newsletter et fichier enregistrés." : "Newsletter enregistrée.",
+              erreur: false,
+            },
+      );
+      router.refresh();
+    });
+  }
 
   return (
-    <form action={formAction} className="flex flex-col gap-5">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="titleFr" className="text-heading text-sm font-semibold">
-            Titre (français)
-          </label>
-          <input id="titleFr" name="titleFr" required defaultValue={d.titleFr} className={CHAMP} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="titleEn" className="text-heading text-sm font-semibold">
-            Titre (anglais)
-          </label>
-          <input id="titleEn" name="titleEn" defaultValue={d.titleEn} className={CHAMP} />
-          <span className="text-text-3 text-xs">Vide, le français est repris.</span>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="titlePt" className="text-heading text-sm font-semibold">
-            Titre (portugais)
-          </label>
-          <input id="titlePt" name="titlePt" defaultValue={d.titlePt} className={CHAMP} />
-          <span className="text-text-3 text-xs">Vide, l&apos;anglais est repris.</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="excerptFr" className="text-heading text-sm font-semibold">
-            Chapô (français)
-          </label>
-          <textarea
-            id="excerptFr"
-            name="excerptFr"
-            required
-            rows={3}
-            maxLength={600}
-            defaultValue={d.excerptFr}
-            className={CHAMP}
-          />
-          <span className="text-text-3 text-xs">
-            C&apos;est ce texte qui part dans l&apos;e-mail d&apos;annonce, avec le titre et le
-            lien. 600 caractères au maximum.
-          </span>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="excerptEn" className="text-heading text-sm font-semibold">
-            Chapô (anglais)
-          </label>
-          <textarea
-            id="excerptEn"
-            name="excerptEn"
-            rows={3}
-            maxLength={600}
-            defaultValue={d.excerptEn}
-            className={CHAMP}
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="excerptPt" className="text-heading text-sm font-semibold">
-            Chapô (portugais)
-          </label>
-          <textarea
-            id="excerptPt"
-            name="excerptPt"
-            rows={3}
-            maxLength={600}
-            defaultValue={d.excerptPt}
-            className={CHAMP}
-          />
-        </div>
+    <form ref={formulaire} onSubmit={soumettre} className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="titleFr" className={ETIQUETTE}>
+          Titre
+        </label>
+        <input
+          id="titleFr"
+          name="titleFr"
+          required
+          maxLength={200}
+          defaultValue={d.titleFr}
+          className={CHAMP}
+        />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span id={idFr} className="text-heading text-sm font-semibold">
-          Corps (français)
-        </span>
-        <EditeurTexteRiche
-          id="corps-fr"
-          name="bodyFr"
-          labelId={idFr}
-          libelle="Corps en français"
-          valeurInitiale={d.bodyFr ?? ""}
-          max={LONGUEUR_MAX_CORPS}
-          images={images}
+        <label htmlFor="excerptFr" className={ETIQUETTE}>
+          Description
+        </label>
+        <textarea
+          id="excerptFr"
+          name="excerptFr"
+          required
+          rows={4}
+          maxLength={600}
+          defaultValue={d.excerptFr}
+          className={CHAMP}
         />
-        {!newsletterId && (
-          <span className="text-text-3 text-xs">
-            Les images s&apos;ajoutent après le premier enregistrement : elles se rattachent à la
-            newsletter, qui n&apos;existe pas encore.
+        <span className="text-text-3 text-xs">
+          Affichée sur le portail et reprise dans le courriel d&apos;annonce. 600 caractères au
+          maximum.
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="fichier" className={ETIQUETTE}>
+          Fichier de synthèse (PDF){creation ? "" : " — remplacer"}
+        </label>
+        {fichierActuel && (
+          <span className="text-text-2 flex items-center gap-1.5 text-sm">
+            <FileText aria-hidden size={15} />
+            {fichierActuel.nom}
+            {fichierActuel.octets ? ` · ${poidsLisible(fichierActuel.octets)}` : ""}
           </span>
         )}
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <span id={idEn} className="text-heading text-sm font-semibold">
-          Corps (anglais)
-        </span>
-        <EditeurTexteRiche
-          id="corps-en"
-          name="bodyEn"
-          labelId={idEn}
-          libelle="Corps en anglais"
-          valeurInitiale={d.bodyEn ?? ""}
-          max={LONGUEUR_MAX_CORPS}
-          images={images}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <span id={idPt} className="text-heading text-sm font-semibold">
-          Corps (portugais)
-        </span>
-        <EditeurTexteRiche
-          id="corps-pt"
-          name="bodyPt"
-          labelId={idPt}
-          libelle="Corps en portugais"
-          valeurInitiale={d.bodyPt ?? ""}
-          max={LONGUEUR_MAX_CORPS}
-          images={images}
-        />
-        <span className="text-text-3 text-xs">Vide, la version anglaise est affichée.</span>
-      </div>
-
-      <label className="text-text flex items-center gap-2.5 text-sm">
         <input
-          type="checkbox"
-          name="isPublished"
-          defaultChecked={d.isPublished ?? false}
-          className="size-4"
+          id="fichier"
+          name="fichier"
+          type="file"
+          accept="application/pdf,.pdf"
+          required={creation}
+          onChange={(evenement) => choisir(evenement.target.files?.[0] ?? null)}
+          className="text-text text-sm"
         />
-        Publiée sur le site
         <span className="text-text-3 text-xs">
-          La publication ne déclenche aucun envoi : le bouton est séparé, et il ne se reprend pas.
+          {creation
+            ? `Obligatoire. PDF uniquement, ${FICHIER_NEWSLETTER_MAX_BYTES / 1024 / 1024} Mo au maximum.`
+            : "Facultatif : laissez vide pour garder le fichier actuel. Un fichier remplacé après l'envoi est celui que téléchargeront les destinataires."}
         </span>
-      </label>
+      </div>
 
-      {etat.erreur && <p className="text-danger-text text-sm">{etat.erreur}</p>}
-      {etat.avis && <p className="text-accent-text text-sm">{etat.avis}</p>}
+      <details className="border-border rounded-lg border px-4 py-3">
+        <summary className="text-heading cursor-pointer text-sm font-semibold">
+          Traductions (facultatif)
+        </summary>
+        <p className="text-text-3 mt-2 text-xs">
+          Vides, le français est repris. L&apos;annonce part dans la langue de chaque participant.
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="titleEn" className={ETIQUETTE}>
+              Titre (anglais)
+            </label>
+            <input
+              id="titleEn"
+              name="titleEn"
+              maxLength={200}
+              defaultValue={d.titleEn}
+              className={CHAMP}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="titlePt" className={ETIQUETTE}>
+              Titre (portugais)
+            </label>
+            <input
+              id="titlePt"
+              name="titlePt"
+              maxLength={200}
+              defaultValue={d.titlePt}
+              className={CHAMP}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="excerptEn" className={ETIQUETTE}>
+              Description (anglais)
+            </label>
+            <textarea
+              id="excerptEn"
+              name="excerptEn"
+              rows={3}
+              maxLength={600}
+              defaultValue={d.excerptEn}
+              className={CHAMP}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="excerptPt" className={ETIQUETTE}>
+              Description (portugais)
+            </label>
+            <textarea
+              id="excerptPt"
+              name="excerptPt"
+              rows={3}
+              maxLength={600}
+              defaultValue={d.excerptPt}
+              className={CHAMP}
+            />
+          </div>
+        </div>
+      </details>
+
+      {message && (
+        <p
+          role="status"
+          className={`text-sm ${message.erreur ? "text-danger-text" : "text-accent-text"}`}
+        >
+          {message.texte}
+        </p>
+      )}
 
       <div>
-        <BoutonEnvoiConfirme
-          ton="principal"
-          icone={Save}
-          siNecessaire={siDecoche("isPublished")}
-          confirmation={{
-            titre: "Dépublier cette newsletter ?",
-            texte: "Sa page disparaîtra du site.",
-            confirmer: "Dépublier",
-            ton: "danger",
-          }}
-          disabled={enCours}
-        >
-          {enCours ? "Enregistrement…" : submitLabel}
-        </BoutonEnvoiConfirme>
+        <Bouton type="submit" ton="principal" icone={Save} disabled={enCours}>
+          {enCours ? "Enregistrement…" : creation ? "Créer le brouillon" : "Enregistrer"}
+        </Bouton>
       </div>
-
-      {/* La limite du document sérialisé est bien plus haute que celle du texte
-          visible : le balisage et les attributs d'image y comptent aussi. */}
-      <input type="hidden" name="_tailleMax" value={TAILLE_MAX_DOCUMENT} />
     </form>
   );
 }

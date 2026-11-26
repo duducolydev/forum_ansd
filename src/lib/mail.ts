@@ -244,6 +244,59 @@ export function configBoite(
 }
 
 /**
+ * Compte réellement derrière une boîte (25 novembre 2026).
+ *
+ * Deux boîtes peuvent retomber sur le **même** compte — une boîte non
+ * renseignée replie sur la transactionnelle — et partagent alors un seul
+ * quota. Répartir un envoi entre elles comme si elles étaient deux doublerait
+ * la charge du compte au lieu de la diviser : la répartition des newsletters
+ * raisonne donc par compte, et cette clé est celle du pool de `transport`.
+ */
+export function compteBoite(
+  boite: BoiteEnvoi,
+  env: Record<string, string | undefined> = process.env,
+): { cle: string; adresse: string } {
+  const config = configBoite(boite, env);
+  return {
+    cle: `${config.host}:${config.port}:${config.user ?? ""}`,
+    adresse: adresseSeule(config.from) || config.user || config.host || "non configurée",
+  };
+}
+
+/**
+ * Envois quotidiens permis par le compte d'une boîte, sur vingt-quatre heures
+ * glissantes.
+ *
+ * `<PRÉFIXE>PLAFOND_QUOTIDIEN` l'emporte — la variable que lit déjà
+ * `pnpm envois:projection`, transmise au conteneur par
+ * `docker-compose.prod.yml`. À défaut, 200 pour Mailjet (le palier gratuit) et
+ * 500 ailleurs (la limite d'un compte Gmail ordinaire). Une boîte repliée sur
+ * la transactionnelle prend le plafond de celle-ci, puisque c'est son compte
+ * qui envoie.
+ *
+ * Contrairement à la projection, `SMTP_PLAFOND_QUOTIDIEN` ne sert pas de
+ * défaut aux autres boîtes : le plafond d'un plan Mailjet payant appliqué à un
+ * compte Gmail ferait partir dix fois trop de messages par lui.
+ */
+export function quotaJourBoite(
+  boite: BoiteEnvoi,
+  env: Record<string, string | undefined> = process.env,
+): number {
+  const config = configBoite(boite, env);
+  const propre = configBoite("transactionnel", env);
+  const repliee =
+    boite !== "transactionnel" &&
+    config.host === propre.host &&
+    config.port === propre.port &&
+    config.user === propre.user;
+  const prefixe = BOITES[repliee ? "transactionnel" : boite].prefixe;
+  const declare = Number(env[`${prefixe}PLAFOND_QUOTIDIEN`]);
+  if (Number.isInteger(declare) && declare > 0) return declare;
+  if (/mailjet/i.test(config.host)) return 200;
+  return 500;
+}
+
+/**
  * Transport SMTP **mutualisé**, un par boîte (17 novembre 2026).
  *
  * ## Le défaut que cela ferme

@@ -736,10 +736,10 @@ async function seedReference() {
       subjectFr: "{{titre}}",
       subjectEn: "{{titre}}",
       bodyFr:
-        "Bonjour {{prenom}},\n\n{{titre}}\n\n{{chapo}}\n\nLire l'information complète, avec les illustrations, et la télécharger en PDF :\n{{lien_newsletter}}\n\nCordialement,\nLe comité d'organisation",
+        "Bonjour {{prenom}},\n\n{{titre}}\n\n{{chapo}}\n\nTélécharger la synthèse (PDF) :\n{{lien_fichier}}\n\nSur le portail du Forum :\n{{lien_newsletter}}\n\nCordialement,\nLe comité d'organisation",
       bodyEn:
-        "Hello {{prenom}},\n\n{{titre}}\n\n{{chapo}}\n\nRead the full text with illustrations, and download it as a PDF:\n{{lien_newsletter}}\n\nBest regards,\nThe organising committee",
-      variables: ["prenom", "titre", "chapo", "lien_newsletter"],
+        "Hello {{prenom}},\n\n{{titre}}\n\n{{chapo}}\n\nDownload the summary (PDF):\n{{lien_fichier}}\n\nOn the Forum portal:\n{{lien_newsletter}}\n\nBest regards,\nThe organising committee",
+      variables: ["prenom", "titre", "chapo", "lien_newsletter", "lien_fichier"],
     },
     /*
      * Alertes du référent d'une délégation (§28). Destinataire : un membre du

@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { can } from "@/lib/rbac";
 import { getActiveEdition } from "@/lib/edition";
 import { listerNewsletters } from "@/modules/newsletters/service";
+import { poidsLisible } from "@/modules/newsletters/schema";
 
 export const metadata = { title: "Newsletters" };
 
@@ -18,11 +19,8 @@ const dateCourte = new Intl.DateTimeFormat("fr-FR", {
 });
 
 /**
- * Newsletters (§34).
- *
- * La colonne « Envoyée » précède « Publiée » : une newsletter publiée mais
- * jamais envoyée est le cas qu'on vient repérer ici, et c'est la seule action
- * qui ne se rattrape pas.
+ * Newsletters (§34) : depuis le 25 novembre 2026, des fichiers de synthèse en
+ * PDF, publiés sur le portail et annoncés par courriel.
  */
 export default async function NewslettersAdminPage() {
   const session = await auth();
@@ -45,14 +43,15 @@ export default async function NewslettersAdminPage() {
         </div>
         {can(session, "content.write") && (
           <LienBouton href="/admin/newsletters/nouvelle" ton="principal" icone={Plus}>
-            Rédiger
+            Nouvelle newsletter
           </LienBouton>
         )}
       </div>
 
       <p className="text-text-2 mb-5 max-w-[80ch] text-sm">
-        Une newsletter se publie sur le site, puis s&apos;envoie aux participants. Les deux gestes
-        sont séparés : la publication se corrige, l&apos;envoi non.
+        Une newsletter est un titre, une description et un fichier de synthèse en PDF. Publiée, elle
+        est téléchargeable sur le portail, et un courriel l&apos;annonce aux participants choisis,
+        réparti entre les boîtes d&apos;envoi pour tenir leurs quotas.
       </p>
 
       <div className="border-border bg-surface overflow-x-auto rounded-xl border">
@@ -60,9 +59,11 @@ export default async function NewslettersAdminPage() {
           <thead>
             <tr>
               <th className={TH}>Titre</th>
+              <th className={TH}>Fichier</th>
               <th className={TH}>Publiée</th>
               <th className={TH}>Envoyée</th>
               <th className={TH}>Destinataires</th>
+              <th className={TH}>Téléchargements</th>
               <th className="border-border bg-surface-2 border-b px-3.5 py-3"></th>
             </tr>
           </thead>
@@ -71,7 +72,14 @@ export default async function NewslettersAdminPage() {
               <tr key={newsletter.id} className="hover:bg-blue-soft">
                 <td className={`${TD} text-heading font-semibold`}>{newsletter.titleFr}</td>
                 <td className={TD}>
-                  {newsletter.publishedAt ? (
+                  {newsletter.filePath ? (
+                    <span className="text-text-2">PDF · {poidsLisible(newsletter.fileSize)}</span>
+                  ) : (
+                    <span className="text-warn-text">Manquant</span>
+                  )}
+                </td>
+                <td className={TD}>
+                  {newsletter.isPublished && newsletter.publishedAt ? (
                     dateCourte.format(newsletter.publishedAt)
                   ) : (
                     <span className="text-text-3">Brouillon</span>
@@ -85,6 +93,7 @@ export default async function NewslettersAdminPage() {
                   )}
                 </td>
                 <td className={TD}>{newsletter.sentAt ? newsletter.sentCount : "—"}</td>
+                <td className={TD}>{newsletter.isPublished ? newsletter.downloadCount : "—"}</td>
                 <td className={TD}>
                   <LienBouton
                     href={`/admin/newsletters/${newsletter.id}`}
@@ -99,7 +108,7 @@ export default async function NewslettersAdminPage() {
             ))}
             {newsletters.length === 0 && (
               <tr>
-                <td colSpan={5} className="text-text-3 px-3.5 py-8 text-center">
+                <td colSpan={7} className="text-text-3 px-3.5 py-8 text-center">
                   Aucune newsletter pour l&apos;instant.
                 </td>
               </tr>

@@ -269,6 +269,7 @@ export async function sendTemplatedEmail(options: {
     appendHtml: options.appendHtml,
   });
 
+  const boite = options.boite ?? boitePourModele(options.templateKey);
   let log: { id: string } | undefined;
   // Seuls les envois rattachés à quelqu'un sont consignés : le formulaire de
   // contact et les codes de connexion du BackOffice ne visent ni participant
@@ -282,6 +283,7 @@ export async function sendTemplatedEmail(options: {
         channel: "EMAIL",
         to: options.to,
         status: "QUEUED",
+        boite,
       },
     });
   }
@@ -293,7 +295,7 @@ export async function sendTemplatedEmail(options: {
       html,
       text: body,
       replyTo: options.replyTo,
-      boite: options.boite ?? boitePourModele(options.templateKey),
+      boite,
     });
 
     // Le serveur SMTP a accepté la connexion mais refusé ce destinataire :
@@ -486,6 +488,8 @@ export interface BulkFilter {
    */
   statuts?: string[];
   categoryId?: string;
+  /** Plusieurs catégories à la fois (newsletters, 25 novembre 2026). */
+  categoryIds?: string[];
   country?: string;
 }
 
@@ -496,6 +500,7 @@ export function bulkWhere(editionId: string, filter: BulkFilter): Prisma.Partici
     ...(filter.status ? { status: filter.status as never } : {}),
     ...(filter.statuts?.length ? { status: { in: filter.statuts as never[] } } : {}),
     ...(filter.categoryId ? { categoryId: filter.categoryId } : {}),
+    ...(filter.categoryIds?.length ? { categoryId: { in: filter.categoryIds } } : {}),
     ...(filter.country ? { country: filter.country } : {}),
   };
 }

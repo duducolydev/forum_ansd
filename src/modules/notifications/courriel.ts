@@ -141,6 +141,11 @@ export const LIBELLES_LIEN: Record<string, { fr: string; en: string; pt: string 
     en: "Read the newsletter",
     pt: "Ler a newsletter",
   },
+  lien_fichier: {
+    fr: "Télécharger la synthèse (PDF)",
+    en: "Download the summary (PDF)",
+    pt: "Descarregar a síntese (PDF)",
+  },
   lien_direct: {
     fr: "Suivre le Forum en direct",
     en: "Watch the Forum live",

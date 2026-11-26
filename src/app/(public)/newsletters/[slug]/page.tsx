@@ -5,11 +5,12 @@ import { getLocale } from "next-intl/server";
 import { ArrowLeft, Download, Mails } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
 import { resolveLocaleValue } from "@/modules/content/service";
-import { trouverParSlug, urlImage } from "@/modules/newsletters/service";
+import { aUnCorps, trouverParSlug, urlFichier, urlImage } from "@/modules/newsletters/service";
+import { poidsLisible } from "@/modules/newsletters/schema";
 import { EnteteSection } from "@/components/site/entete-section";
 import { TexteRiche } from "@/components/site/texte-riche";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
-import { LienSite } from "@/components/site/bouton-site";
+import { LienSite, LienSiteExterne } from "@/components/site/bouton-site";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +22,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 /**
- * Texte intégral d'une newsletter (§34).
+ * Page d'une newsletter (§34) : celle où mène le courriel d'annonce.
  *
- * Les images du corps sont résolues par leur **rang** : le document n'en porte
- * jamais le chemin, et c'est le serveur qui fabrique l'URL. Le PDF se produit à
- * la demande, sur la même donnée — ce qui est lu ici est ce qui est téléchargé.
+ * Depuis le 25 novembre 2026, une newsletter est un fichier de synthèse : la
+ * page en donne la description et le bouton de téléchargement. Les premières
+ * newsletters, rédigées en texte mis en forme, gardent leur corps ; ses images
+ * sont résolues par leur **rang**, et leur PDF se produit à la demande.
  */
 export default async function NewsletterPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -52,6 +54,12 @@ export default async function NewsletterPage({ params }: { params: Promise<{ slu
     en: newsletter.bodyEn,
     pt: newsletter.bodyPt,
   });
+  const ancienne = aUnCorps(newsletter);
+  const libelleTelecharger = selon(locale, {
+    fr: "Télécharger le PDF",
+    en: "Download the PDF",
+    pt: "Descarregar o PDF",
+  });
 
   return (
     <>
@@ -74,7 +82,7 @@ export default async function NewsletterPage({ params }: { params: Promise<{ slu
           )}
         </div>
 
-        <p className="text-text-2 mb-8 text-lg leading-relaxed">
+        <p className="text-text-2 mb-8 text-lg leading-relaxed whitespace-pre-line">
           {resolveLocaleValue(
             newsletter.excerptFr,
             newsletter.excerptEn,
@@ -83,21 +91,31 @@ export default async function NewsletterPage({ params }: { params: Promise<{ slu
           )}
         </p>
 
-        <TexteRiche
-          valeur={corps}
-          className="text-text leading-relaxed"
-          urlImage={(cle) => urlImage(newsletter.id, cle)}
-        />
+        {newsletter.filePath && (
+          <LienSiteExterne href={urlFichier(newsletter.id)} icone={Download}>
+            {libelleTelecharger}
+            {newsletter.fileSize
+              ? ` · ${poidsLisible(newsletter.fileSize, localeIntl(locale))}`
+              : ""}
+          </LienSiteExterne>
+        )}
 
-        <div className="border-border mt-10 border-t pt-6">
-          <LienSite href={`/api/v1/newsletters/${newsletter.id}/pdf`} icone={Download}>
-            {selon(locale, {
-              fr: "Télécharger en PDF",
-              en: "Download as PDF",
-              pt: "Descarregar em PDF",
-            })}
-          </LienSite>
-        </div>
+        {ancienne && (
+          <>
+            <TexteRiche
+              valeur={corps}
+              className="text-text mt-8 leading-relaxed"
+              urlImage={(cle) => urlImage(newsletter.id, cle)}
+            />
+            {!newsletter.filePath && (
+              <div className="border-border mt-10 border-t pt-6">
+                <LienSite href={`/api/v1/newsletters/${newsletter.id}/pdf`} icone={Download}>
+                  {libelleTelecharger}
+                </LienSite>
+              </div>
+            )}
+          </>
+        )}
       </CorpsPage>
     </>
   );

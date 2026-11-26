@@ -156,6 +156,9 @@ const ROUTES_FICHIER_DEPOSE = [
   // Les contributions de type PHOTO passent par le même détecteur, qui accepte
   // le SVG : la route hérite donc de la même politique verrouillée.
   /^\/api\/v1\/contributions\/[^/]+\/fichier$/,
+  // Synthèses des newsletters (25 novembre 2026) : des PDF déposés, qui
+  // peuvent porter du script ; même politique que les contributions.
+  /^\/api\/v1\/newsletters\/[^/]+\/fichier$/,
 ];
 
 function sertUnFichierDepose(pathname: string): boolean {

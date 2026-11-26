@@ -205,9 +205,12 @@ export const CATALOGUE: Record<string, EntreeCatalogue> = {
   // Communication
   // -------------------------------------------------------------------------
   newsletter_published: {
-    declenchement: "À l'envoi d'une newsletter publiée, aux inscrits et aux confirmés.",
+    declenchement:
+      "Au bouton « Publier et envoyer » d'une newsletter, aux catégories et statuts choisis, réparti entre les boîtes d'envoi.",
     destinataire: "participant",
-    variables: ["titre", "chapo", "lien_newsletter"],
+    // `chapo` est la description saisie ; `lien_fichier` télécharge
+    // directement le PDF de synthèse (25 novembre 2026).
+    variables: ["titre", "chapo", "lien_newsletter", "lien_fichier"],
   },
   thank_you: {
     declenchement: "Aucun envoi automatique : à utiliser depuis « Envoi groupé », après le Forum.",
@@ -318,6 +321,7 @@ export const EXEMPLES: Record<string, string> = {
   lien_programme: "https://forum2026.ansd.sn/programme",
   lien_direct: "https://forum2026.ansd.sn/direct",
   lien_newsletter: "https://forum2026.ansd.sn/newsletters/lettre-no3",
+  lien_fichier: "https://forum2026.ansd.sn/api/v1/newsletters/xxxxx/fichier",
   date_limite: "15 octobre 2026",
   referent_bloc:
     "Votre délégation est accompagnée par Fatou NDIAYE (fatou.ndiaye@ansd.sn, +221 33 869 21 39).",
