@@ -19,6 +19,15 @@ const nextConfig: NextConfig = {
      * avec une erreur opaque.
      */
     serverActions: { bodySizeLimit: "3mb" },
+    /*
+     * Le middleware voit passer **toutes** les requêtes, dépôts de fichiers
+     * compris, et Next n'en garde que les 10 premiers Mo par défaut : au-delà,
+     * le corps est tronqué, avec un simple avertissement dans les journaux.
+     * Constaté le 26 novembre 2026 sur le PDF d'une newsletter, dont le dépôt
+     * faisait planter la page ; les contributions (50 Mo) avaient le même
+     * défaut. Le plafond suit celui de nginx (`client_max_body_size 55M`).
+     */
+    middlewareClientMaxBodySize: "55mb",
   },
 
   /**

@@ -167,6 +167,7 @@ export async function construireCorpus(options: OptionsCorpus = {}): Promise<Cor
         bodyFr: true,
         bodyEn: true,
         bodyPt: true,
+        filePath: true,
         publishedAt: true,
         updatedAt: true,
       },

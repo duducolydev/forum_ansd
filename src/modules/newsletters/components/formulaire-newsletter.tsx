@@ -19,16 +19,27 @@ interface Valeurs {
   excerptPt?: string;
 }
 
-/** Dépose le fichier par la route (une Server Action s'arrête à 3 Mo). */
+/**
+ * Dépose le fichier par la route (une Server Action s'arrête à 3 Mo).
+ *
+ * Ne lance jamais : une coupure réseau en plein dépôt devient un message. Non
+ * rattrapée, elle remontait jusqu'à la racine de React et remplaçait toute la
+ * page par « Application error » (26 novembre 2026).
+ */
 async function deposer(id: string, fichier: File): Promise<string | null> {
-  const reponse = await fetch(`/api/v1/newsletters/${id}/fichier`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/pdf",
-      "X-Nom-Fichier": encodeURIComponent(fichier.name),
-    },
-    body: fichier,
-  });
+  let reponse: Response;
+  try {
+    reponse = await fetch(`/api/v1/newsletters/${id}/fichier`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/pdf",
+        "X-Nom-Fichier": encodeURIComponent(fichier.name),
+      },
+      body: fichier,
+    });
+  } catch {
+    return "le dépôt du fichier a été interrompu (connexion coupée ou fichier trop lourd pour le réseau). Réessayez.";
+  }
   if (reponse.ok) return null;
   const corps = (await reponse.json().catch(() => null)) as { erreur?: string } | null;
   return corps?.erreur ?? `Dépôt du fichier impossible (${reponse.status}).`;
@@ -83,18 +94,32 @@ export function FormulaireNewsletter({
     donnees.delete("fichier");
 
     startTransition(async () => {
-      const resultat = creation
-        ? await creerNewsletterAction({}, donnees)
-        : await modifierNewsletterAction(newsletterId, {}, donnees);
+      let resultat: Awaited<ReturnType<typeof creerNewsletterAction>>;
+      try {
+        resultat = creation
+          ? await creerNewsletterAction({}, donnees)
+          : await modifierNewsletterAction(newsletterId, {}, donnees);
+      } catch {
+        setMessage({
+          texte: "Le serveur n'a pas répondu. Vérifiez la connexion et réessayez.",
+          erreur: true,
+        });
+        return;
+      }
       if (resultat.erreur || !resultat.id) {
         setMessage({ texte: resultat.erreur ?? "Enregistrement impossible.", erreur: true });
         return;
       }
 
       const echecDepot = fichier ? await deposer(resultat.id, fichier) : null;
+      if (creation && !echecDepot) {
+        router.push(`/admin/newsletters/${resultat.id}`);
+        return;
+      }
       if (creation) {
-        // Le brouillon existe : sa fiche reprend la main, et y signale un
-        // fichier manquant si le dépôt a échoué.
+        // Le brouillon existe : on l'annonce ici, puis sa fiche reprend la main
+        // et invite à redéposer le fichier.
+        setMessage({ texte: `Brouillon créé, mais ${echecDepot}`, erreur: true });
         router.push(`/admin/newsletters/${resultat.id}`);
         return;
       }

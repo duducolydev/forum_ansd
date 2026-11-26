@@ -132,7 +132,9 @@ export function PublicationNewsletter({
     }
     const minuterie = setTimeout(() => {
       startCalcul(async () => {
-        const resultat = await apercuEnvoiAction(id, ciblage);
+        const resultat = await apercuEnvoiAction(id, ciblage).catch(() => ({
+          erreur: "Aperçu indisponible : le serveur n'a pas répondu.",
+        }));
         setApercu(
           "destinataires" in resultat
             ? resultat
@@ -160,7 +162,11 @@ export function PublicationNewsletter({
 
   function lancer(action: () => Promise<{ erreur?: string; avis?: string }>) {
     startTransition(async () => {
-      const resultat = await action();
+      // Une coupure réseau devient un message, au lieu de faire tomber la page.
+      const resultat = await action().catch(() => ({
+        erreur: "Le serveur n'a pas répondu. Vérifiez la connexion avant de réessayer.",
+        avis: undefined,
+      }));
       setMessage(
         resultat.erreur
           ? { texte: resultat.erreur, erreur: true }
@@ -377,7 +383,9 @@ export function PublicationNewsletter({
             },
             () =>
               startTransition(async () => {
-                const resultat = await supprimerNewsletterAction(id, {});
+                const resultat = await supprimerNewsletterAction(id, {}).catch(() => ({
+                  erreur: "Le serveur n'a pas répondu.",
+                }));
                 if (resultat.erreur) {
                   setMessage({ texte: resultat.erreur, erreur: true });
                   return;

@@ -335,7 +335,15 @@ export function documentActualite(post: LigneArticle, langue: Langue): DocumentC
   };
 }
 
-export function documentNewsletter(lettre: LigneArticle, langue: Langue): DocumentCorpus {
+export function documentNewsletter(
+  lettre: LigneArticle & { filePath?: string | null },
+  langue: Langue,
+): DocumentCorpus {
+  // Avec un fichier de synthèse, l'ancien corps n'est plus affiché
+  // (26 novembre 2026) : le corpus ne doit pas en citer ce que la page tait.
+  const corps = lettre.filePath
+    ? { fr: "", en: "", pt: null }
+    : { fr: lettre.bodyFr, en: lettre.bodyEn, pt: lettre.bodyPt };
   return {
     id: `newsletter:${lettre.id}:${langue}`,
     type: "newsletter",
@@ -347,7 +355,7 @@ export function documentNewsletter(lettre: LigneArticle, langue: Langue): Docume
       en: lettre.excerptEn,
       pt: lettre.excerptPt,
     }),
-    texte: brut(langue, { fr: lettre.bodyFr, en: lettre.bodyEn, pt: lettre.bodyPt }),
+    texte: brut(langue, corps),
     donnees: sansVides({ publie: lettre.publishedAt ? jourIso(lettre.publishedAt) : null }),
     maj: iso(lettre.updatedAt),
   };

@@ -54,7 +54,11 @@ export default async function NewsletterPage({ params }: { params: Promise<{ slu
     en: newsletter.bodyEn,
     pt: newsletter.bodyPt,
   });
-  const ancienne = aUnCorps(newsletter);
+  // L'ancien corps mis en forme ne s'affiche que faute de fichier : dès qu'une
+  // synthèse PDF est déposée, c'est elle la newsletter, et le texte d'avant —
+  // qui ne se corrige plus depuis le BackOffice — ferait double emploi
+  // (26 novembre 2026). Il reste en base, intact.
+  const ancienne = !newsletter.filePath && aUnCorps(newsletter);
   const libelleTelecharger = selon(locale, {
     fr: "Télécharger le PDF",
     en: "Download the PDF",
@@ -107,13 +111,11 @@ export default async function NewsletterPage({ params }: { params: Promise<{ slu
               className="text-text mt-8 leading-relaxed"
               urlImage={(cle) => urlImage(newsletter.id, cle)}
             />
-            {!newsletter.filePath && (
-              <div className="border-border mt-10 border-t pt-6">
-                <LienSite href={`/api/v1/newsletters/${newsletter.id}/pdf`} icone={Download}>
-                  {libelleTelecharger}
-                </LienSite>
-              </div>
-            )}
+            <div className="border-border mt-10 border-t pt-6">
+              <LienSite href={`/api/v1/newsletters/${newsletter.id}/pdf`} icone={Download}>
+                {libelleTelecharger}
+              </LienSite>
+            </div>
           </>
         )}
       </CorpsPage>
