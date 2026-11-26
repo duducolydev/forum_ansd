@@ -1,14 +1,14 @@
 import { lireLangue, localeIntl, selon } from "@/lib/langue";
 import Link from "next/link";
 import { getLocale } from "next-intl/server";
-import { Download, Mails } from "lucide-react";
+import { Download, Eye, Mails } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
 import { resolveLocaleValue } from "@/modules/content/service";
 import { listerPubliees, urlFichier } from "@/modules/newsletters/service";
 import { poidsLisible } from "@/modules/newsletters/schema";
 import { EnteteSection } from "@/components/site/entete-section";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
-import { LienSiteExterne } from "@/components/site/bouton-site";
+import { LienSite, LienSiteExterne } from "@/components/site/bouton-site";
 import { RevealListe } from "@/components/site/reveal-liste";
 
 export const metadata = { title: "Newsletters" };
@@ -86,6 +86,16 @@ export default async function NewslettersPage() {
                   )}
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-4">
+                  {newsletter.filePath && (
+                    <LienSite
+                      href={`/newsletters/${newsletter.slug}`}
+                      icone={Eye}
+                      ton="principal"
+                      taille="compact"
+                    >
+                      {selon(locale, { fr: "Consulter", en: "View", pt: "Consultar" })}
+                    </LienSite>
+                  )}
                   {newsletter.filePath ? (
                     <LienSiteExterne
                       href={urlFichier(newsletter.id)}

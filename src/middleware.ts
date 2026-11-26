@@ -33,7 +33,10 @@ function buildCsp(nonce: string, isDev: boolean, enHttps: boolean): string {
     "img-src 'self' data: blob: https://i.ytimg.com",
     // Lecteurs vidéo de la médiathèque, et eux seuls : une vidéo est un lien
     // YouTube ou Vimeo (`modules/medias/video.ts`), lu dans un `iframe`.
-    "frame-src https://www.youtube-nocookie.com https://player.vimeo.com",
+    //
+    // `'self'` : la visionneuse PDF des newsletters (26 novembre 2026), qui
+    // affiche dans un cadre la synthèse servie par `…/apercu`.
+    "frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com",
     "font-src 'self' data:",
     // Aucun appel sortant : tout est servi par l'application elle-même.
     "connect-src 'self'",
@@ -165,12 +168,42 @@ function sertUnFichierDepose(pathname: string): boolean {
   return ROUTES_FICHIER_DEPOSE.some((motif) => motif.test(pathname));
 }
 
+/**
+ * Aperçu des synthèses de newsletter (26 novembre 2026) : le même PDF que
+ * `…/fichier`, servi `inline` pour la visionneuse du navigateur, dans un cadre
+ * de la page de la newsletter.
+ *
+ * Deux écarts à la politique du site, et ils sont la raison d'être de cette
+ * adresse distincte :
+ *
+ * - pas de `sandbox` : la visionneuse PDF de Chrome refuse de s'afficher sous
+ *   cette directive — c'est pourquoi le téléchargement, qui la garde, ne peut
+ *   pas servir d'aperçu ;
+ * - `frame-ancestors 'self'` et `X-Frame-Options: SAMEORIGIN` au lieu de
+ *   `'none'`/`DENY` : le site seul peut l'afficher dans un cadre.
+ *
+ * Pas de `default-src 'none'` non plus : la visionneuse de Chrome se monte par
+ * un `<embed>` et des styles internes que cette directive peut bloquer. La
+ * réponse est un PDF servi avec `nosniff` — jamais interprété comme une page du
+ * site —, les fichiers ne sont déposés que par le comité (`content.write`), et
+ * la visionneuse tourne dans sa propre origine : le risque est celui d'un
+ * téléchargement ouvert par le visiteur, pas celui d'un script sur le site.
+ */
+const CSP_APERCU_PDF = "base-uri 'none'; form-action 'none'; frame-ancestors 'self'";
+
+function sertUnApercuPdf(pathname: string): boolean {
+  return /^\/api\/v1\/newsletters\/[^/]+\/apercu$/.test(pathname);
+}
+
 export default auth((request) => {
   const nonce = crypto.randomUUID().replaceAll("-", "");
   const enHttps = estServiEnHttps(request);
-  const csp = sertUnFichierDepose(request.nextUrl.pathname)
-    ? CSP_FICHIER_DEPOSE
-    : buildCsp(nonce, process.env.NODE_ENV !== "production", enHttps);
+  const apercuPdf = sertUnApercuPdf(request.nextUrl.pathname);
+  const csp = apercuPdf
+    ? CSP_APERCU_PDF
+    : sertUnFichierDepose(request.nextUrl.pathname)
+      ? CSP_FICHIER_DEPOSE
+      : buildCsp(nonce, process.env.NODE_ENV !== "production", enHttps);
 
   // Le nonce doit voyager sur la **requête** : c'est là que Next le lit pour en
   // marquer ses propres balises `<script>`.
@@ -220,7 +253,9 @@ export default auth((request) => {
   }
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  return applySecurityHeaders(response, csp, enHttps, utiliseCamera);
+  applySecurityHeaders(response, csp, enHttps, utiliseCamera);
+  if (apercuPdf) response.headers.set("X-Frame-Options", "SAMEORIGIN");
+  return response;
 }) as unknown as (request: NextRequest) => Promise<Response>;
 
 export const config = {

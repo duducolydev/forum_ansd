@@ -316,3 +316,8 @@ export function urlImage(id: string, cle: number): string {
 export function urlFichier(id: string): string {
   return `/api/v1/newsletters/${id}/fichier`;
 }
+
+/** URL du même fichier pour la visionneuse intégrée (`inline`, non compté). */
+export function urlApercu(id: string): string {
+  return `/api/v1/newsletters/${id}/apercu`;
+}

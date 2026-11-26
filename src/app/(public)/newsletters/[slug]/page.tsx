@@ -5,12 +5,19 @@ import { getLocale } from "next-intl/server";
 import { ArrowLeft, Download, Mails } from "lucide-react";
 import { getActiveEdition } from "@/lib/edition";
 import { resolveLocaleValue } from "@/modules/content/service";
-import { aUnCorps, trouverParSlug, urlFichier, urlImage } from "@/modules/newsletters/service";
-import { poidsLisible } from "@/modules/newsletters/schema";
+import {
+  aUnCorps,
+  trouverParSlug,
+  urlApercu,
+  urlFichier,
+  urlImage,
+} from "@/modules/newsletters/service";
+import { nomFichierPropre, poidsLisible } from "@/modules/newsletters/schema";
+import { ApercuPdf } from "@/modules/newsletters/components/apercu-pdf";
 import { EnteteSection } from "@/components/site/entete-section";
 import { TexteRiche } from "@/components/site/texte-riche";
 import { BandeauPage, CorpsPage } from "@/components/site/bandeau-page";
-import { LienSite, LienSiteExterne } from "@/components/site/bouton-site";
+import { LienSite } from "@/components/site/bouton-site";
 
 export const dynamic = "force-dynamic";
 
@@ -96,12 +103,47 @@ export default async function NewsletterPage({ params }: { params: Promise<{ slu
         </p>
 
         {newsletter.filePath && (
-          <LienSiteExterne href={urlFichier(newsletter.id)} icone={Download}>
-            {libelleTelecharger}
-            {newsletter.fileSize
-              ? ` · ${poidsLisible(newsletter.fileSize, localeIntl(locale))}`
-              : ""}
-          </LienSiteExterne>
+          <ApercuPdf
+            urlApercu={urlApercu(newsletter.id)}
+            urlTelechargement={urlFichier(newsletter.id)}
+            nomFichier={nomFichierPropre(newsletter.fileName, newsletter.titleFr)}
+            poids={poidsLisible(newsletter.fileSize, localeIntl(locale))}
+            textes={{
+              titre: selon(locale, {
+                fr: "Aperçu du document",
+                en: "Document preview",
+                pt: "Pré-visualização do documento",
+              }),
+              telecharger: selon(locale, { fr: "Télécharger", en: "Download", pt: "Descarregar" }),
+              agrandir: selon(locale, { fr: "Plein écran", en: "Full screen", pt: "Ecrã inteiro" }),
+              reduire: selon(locale, {
+                fr: "Quitter le plein écran",
+                en: "Exit full screen",
+                pt: "Sair do ecrã inteiro",
+              }),
+              ouvrir: selon(locale, {
+                fr: "Ouvrir dans un onglet",
+                en: "Open in a new tab",
+                pt: "Abrir num separador",
+              }),
+              fermer: selon(locale, {
+                fr: "Fermer l'aperçu",
+                en: "Close preview",
+                pt: "Fechar a pré-visualização",
+              }),
+              afficher: selon(locale, {
+                fr: "Afficher l'aperçu",
+                en: "Show preview",
+                pt: "Mostrar a pré-visualização",
+              }),
+              mobile: selon(locale, {
+                fr: "L'aperçu ne s'affiche pas sur téléphone : téléchargez le fichier pour le lire.",
+                en: "The preview is not shown on phones: download the file to read it.",
+                pt: "A pré-visualização não aparece no telemóvel: descarregue o ficheiro para o ler.",
+              }),
+              cadre: titre,
+            }}
+          />
         )}
 
         {ancienne && (
