@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { Ticket, UserPlus } from "lucide-react";
+import { Images, Ticket, UserPlus } from "lucide-react";
 import { getServerTheme } from "@/lib/theme";
 import { languesProposees } from "@/i18n/locale";
 import { getActiveEdition } from "@/lib/edition";
@@ -13,11 +13,11 @@ import { LocaleSwitcher } from "./locale-switcher";
 import { LogoForum } from "./logo-forum";
 import { MobileNav } from "./mobile-nav";
 import { NavDropdown } from "./nav-dropdown";
-import { NAV_ENTRIES, isGroup } from "./nav-items";
+import { NAV_ENTRIES, isGroup, type Vedette } from "./nav-items";
 
 export type ResolvedNavEntry =
-  /** `enAvant` : entree mise en surbrillance, reservee a la retransmission. */
-  | { kind: "link"; href: string; label: string; enAvant?: boolean }
+  /** `vedette` : entrée en pastille pleine — la retransmission, la médiathèque. */
+  | { kind: "link"; href: string; label: string; vedette?: Vedette }
   | { kind: "group"; label: string; children: { href: string; label: string }[] };
 
 /**
@@ -60,7 +60,7 @@ export async function SiteHeader() {
           label: t(entry.key),
           children: entry.children.map((child) => ({ href: child.href, label: t(child.key) })),
         }
-      : { kind: "link", href: entry.href, label: t(entry.key) },
+      : { kind: "link", href: entry.href, label: t(entry.key), vedette: entry.vedette },
   );
 
   /*
@@ -76,7 +76,7 @@ export async function SiteHeader() {
       kind: "link",
       href: "/direct",
       label: t("live"),
-      enAvant: true,
+      vedette: "direct",
     });
   }
 
@@ -135,12 +135,17 @@ export async function SiteHeader() {
                 key={entry.href}
                 href={entry.href}
                 className={
-                  entry.enAvant
-                    ? "pastille-direct ml-1 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-bold whitespace-nowrap"
+                  entry.vedette
+                    ? `pastille-${entry.vedette} ml-1 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-bold whitespace-nowrap`
                     : `${SUR_ENTETE} lien-menu rounded-lg px-2 py-2 text-sm font-medium whitespace-nowrap`
                 }
               >
-                {entry.enAvant && <span aria-hidden className="direct-pouls point-direct" />}
+                {entry.vedette === "direct" && (
+                  <span aria-hidden className="direct-pouls point-direct" />
+                )}
+                {entry.vedette === "mediatheque" && (
+                  <Images aria-hidden size={15} strokeWidth={2.4} />
+                )}
                 {entry.label}
               </Link>
             ),

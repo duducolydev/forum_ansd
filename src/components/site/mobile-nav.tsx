@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Menu, Ticket, UserPlus, X } from "lucide-react";
+import { Images, Menu, Ticket, UserPlus, X } from "lucide-react";
 import type { Theme } from "@/lib/theme";
 import { ThemeToggle } from "./theme-toggle";
 import { LocaleSwitcher } from "./locale-switcher";
@@ -66,12 +66,17 @@ export function MobileNav({
                 href={entry.href}
                 onClick={() => setOpen(false)}
                 className={
-                  entry.enAvant
-                    ? "pastille-direct flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold"
+                  entry.vedette
+                    ? `pastille-${entry.vedette} flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold`
                     : "text-text-2 hover:bg-blue-soft hover:text-blue-text transition-tout rounded-lg px-3 py-2 text-sm font-medium"
                 }
               >
-                {entry.enAvant && <span aria-hidden className="direct-pouls point-direct" />}
+                {entry.vedette === "direct" && (
+                  <span aria-hidden className="direct-pouls point-direct" />
+                )}
+                {entry.vedette === "mediatheque" && (
+                  <Images aria-hidden size={15} strokeWidth={2.4} />
+                )}
                 {entry.label}
               </Link>
             ),

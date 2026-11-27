@@ -2746,6 +2746,61 @@ html[data-motion] .direct-pouls {
   outline-offset: 2px;
 }
 
+/* ---------------------------------------------------------------------------
+   « Médiathèque » en vedette (27 novembre 2026)
+
+   Le Forum terminé, les participants viennent pour les photos et les vidéos :
+   la médiathèque prend dans le menu la place qu'avait « En direct », en bleu
+   ANSD pour ne se confondre ni avec le rouge du direct ni avec le vert de
+   « S'inscrire ».
+
+   Contrastes : #0b4f8a tient 8,1:1 sous texte blanc, et 6,2:1 contre le bleu
+   clair de la barre — bien au-dessus des 3:1 exigés d'un élément d'interface.
+
+   La pulsation est un **halo** qui s'élargit et s'efface, jamais un
+   clignotement du bouton lui-même : le texte reste immobile et lisible. Elle
+   ne tourne que sous `html[data-motion]`, donc s'arrête avec les autres
+   animations sous mouvement réduit et sous « Animations : aucune ».
+--------------------------------------------------------------------------- */
+
+.site-public .pastille-mediatheque {
+  background: #0b4f8a;
+  color: #ffffff;
+  transition:
+    background-color 160ms var(--ease),
+    transform 160ms var(--ease);
+}
+
+.site-public .pastille-mediatheque:hover {
+  background: #083b68;
+  transform: translateY(-1px);
+}
+
+.site-public .pastille-mediatheque:focus-visible {
+  outline: 2px solid #081a33;
+  outline-offset: 2px;
+}
+
+@keyframes vedette-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(47 127 209 / 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgb(47 127 209 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(47 127 209 / 0);
+  }
+}
+
+html[data-motion] .site-public .pastille-mediatheque {
+  animation: vedette-pulse 2s ease-out infinite;
+}
+
+html[data-motion] .site-public .pastille-mediatheque:hover {
+  animation-play-state: paused;
+}
+
 .site-public .point-direct {
   width: 0.5rem;
   height: 0.5rem;

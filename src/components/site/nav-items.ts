@@ -9,10 +9,14 @@
  * « À propos » n'y figure plus : son contenu est devenu une section de la page
  * d'accueil (§12), atteignable par l'ancre `/#a-propos`.
  */
+/** Entrée mise en vedette dans le menu : pastille pleine, comme « En direct ». */
+export type Vedette = "direct" | "mediatheque";
+
 export interface NavLeaf {
   href: string;
   /** Clé du namespace `nav` des fichiers de traduction. */
   key: string;
+  vedette?: Vedette;
 }
 
 export interface NavGroup {
@@ -41,11 +45,17 @@ export const NAV_ENTRIES: readonly NavEntry[] = [
     children: [
       { href: "/infos-pratiques", key: "practicalInfo" },
       { href: "/actualites", key: "news" },
-      { href: "/mediatheque", key: "mediaLibrary" },
       { href: "/newsletters", key: "newsletters" },
       { href: "/verifier", key: "verifyBadge" },
     ],
   },
+  /*
+   * La médiathèque en vedette (27 novembre 2026) : le Forum terminé, ce sont
+   * ses photos et vidéos que les participants viennent chercher. Elle quitte
+   * « Infos & services » pour une pastille en vue directe, comme « En direct »
+   * pendant les trois jours.
+   */
+  { href: "/mediatheque", key: "mediaLibrary", vedette: "mediatheque" },
   { href: "/sponsors", key: "sponsors" },
   { href: "/admin", key: "admin" },
 ] as const;
